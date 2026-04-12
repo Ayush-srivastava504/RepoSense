@@ -80,8 +80,6 @@ Comprehensive test suite covering:
 
 Delivered production-grade system analyzing code at scale:
 - Single file review: 200-300ms for 100-line files, 500-800ms for 1000-line files
-- Batch processing: 5-8 seconds for 10 concurrent reviews
-- Detects 7 distinct issue categories across 6 programming languages (Python, JavaScript, Java, C++, Go, Rust)
 - Returns structured JSON with 10+ fields per issue including severity, confidence scores, and actionable suggestions
 - Processes 1000+ line code submissions within system timeout constraints
 - Memory efficient: 100MB baseline, 2-4GB with loaded model on CPU, 1-2GB on GPU
@@ -125,10 +123,6 @@ Delivered production-grade system analyzing code at scale:
 
 Minimum: Python 3.11, 2GB RAM, 5GB disk for model cache
 Recommended: Python 3.11+, 8GB RAM, NVIDIA GPU with CUDA 11.8+
-
-### Supported Languages
-
-Python, JavaScript, Java, C++, Go, Rust
 
 ### API Response Format
 
