@@ -1,24 +1,18 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
 *.so
 .Python
-env/
 venv/
-ENV/
-env.bak/
-venv.bak/
-.venv/
+env/
+*.egg-info/
+dist/
+build/
 
-# Model cache
-.model_cache/
-*.pth
-*.bin
-*.h5
-
-# Logs
-logs/
+# Node
+node_modules/
+.next/
+out/
 *.log
 
 # Environment
@@ -30,19 +24,20 @@ logs/
 .vscode/
 .idea/
 *.swp
-*.swo
-*~
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.mypy_cache/
+# Model files (downloaded at runtime)
+services/api/models/*.onnx
+services/api/models/*.json
 
-# Railway
-.railway/
+# Database
+*.db
+*.sqlite
 
 # OS
 .DS_Store
 Thumbs.db
+venv/
+__pycache__/
+.model_cache/
+*.pyc
+.env
