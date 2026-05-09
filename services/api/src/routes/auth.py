@@ -3,8 +3,8 @@ from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
-from ..config.db import get_db_pool
-from ..config.settings import settings
+from ..configs.db import get_db_pool
+from ..configs.settings import settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

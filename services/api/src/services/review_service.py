@@ -5,7 +5,7 @@ from app.schemas.models import ReviewRequest, ReviewResponse, Issue, QualityMetr
 from app.core.dependencies import get_model_loader
 from app.utils.logger import setup_logger
 from ml.preprocessing.code_preprocessor import CodePreprocessor
-from ml.inference.analysis_engine import CodeAnalysisEngine
+from services.api.src.services.analysis_engine import CodeAnalysisEngine
 from ml.inference.postprocessor import Postprocessor
 from configs.config import settings
 import uuid

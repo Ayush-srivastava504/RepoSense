@@ -1,5 +1,5 @@
 # test_autofix.py
-from ml.inference.auto_fixer import AutoFixer
+from services.api.src.services.auto_fixer import AutoFixer
 
 fixer = AutoFixer()
 

@@ -1,5 +1,5 @@
 # backend/app/services/integration/github.py
-from github import Github
+from services.api.src.services.github import Github
 from github.Repository import Repository
 from typing import List, Dict, Any
 import asyncio

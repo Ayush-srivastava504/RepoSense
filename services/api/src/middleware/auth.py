@@ -1,13 +1,15 @@
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
-from jose import jwt
+from jose import jwt, JWTError
 from datetime import datetime, timedelta
-from ..config.db import get_db_pool
-from ..config.settings import settings
+from ..configs.db import get_db_pool
+from ..configs.settings import settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+security = HTTPBearer()
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -39,3 +41,15 @@ async def login(user: UserLogin):
         settings.JWT_SECRET, algorithm="HS256"
     )
     return {"access_token": token, "token_type": "bearer"}
+
+
+async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(401, "Invalid token")
+        return payload
+    except JWTError:
+        raise HTTPException(401, "Invalid or expired token")

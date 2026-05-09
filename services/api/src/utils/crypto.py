@@ -1,5 +1,5 @@
 from cryptography.fernet import Fernet
-from ..config.settings import settings
+from ..configs.settings import settings
 
 cipher = Fernet(settings.GITHUB_TOKEN_ENCRYPTION_KEY.encode())
 

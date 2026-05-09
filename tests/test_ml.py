@@ -4,10 +4,10 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from ml.preprocessing.code_preprocessor import CodePreprocessor
-from ml.inference.analysis_engine import CodeAnalysisEngine
-from ml.inference.auto_fixer import AutoFixer
+from services.api.src.services.analysis_engine import CodeAnalysisEngine
+from services.api.src.services.auto_fixer import AutoFixer
 from ml.inference.validation_engine import ValidationEngine
-from ml.evaluation.metrics import MetricsCalculator, AICodeMetrics
+from services.api.src.services.metrics import MetricsCalculator, AICodeMetrics
 
 class TestCodePreprocessor:
     def setup_method(self):

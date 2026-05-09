@@ -1,7 +1,7 @@
 import hashlib
 import json
 import time
-from ..config.redis import get_redis
+from ..configs.redis import get_redis
 from .analysis_engine import CodeAnalysisEngine
 from .auto_fixer import AutoFixer
 from .validation_engine import ValidationEngine

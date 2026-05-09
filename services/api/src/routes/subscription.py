@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request
 import stripe
-from ..config.settings import settings
+from ..configs.settings import settings
 
 router = APIRouter(prefix="/api/subscription", tags=["subscription"])
 stripe.api_key = settings.STRIPE_SECRET_KEY

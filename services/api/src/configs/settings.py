@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import List
+import json
 
 class Settings(BaseSettings):
     DATABASE_URL: str
@@ -15,7 +16,15 @@ class Settings(BaseSettings):
     S3_BUCKET: str = "resume-storage"
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
 
+    GITHUB_REDIRECT_URI: str
+    FRONTEND_URL: str
+
     class Config:
         env_file = ".env"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        if isinstance(self.CORS_ORIGINS, str):
+            self.CORS_ORIGINS = json.loads(self.CORS_ORIGINS)
 
 settings = Settings()

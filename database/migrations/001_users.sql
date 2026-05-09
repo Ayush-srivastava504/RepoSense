@@ -1,0 +1,10 @@
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    subscription_tier TEXT DEFAULT 'free',
+    github_token TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);

@@ -1,4 +1,4 @@
-from ..config.db import get_db_pool
+from ..configs.db import get_db_pool
 
 class ResumeService:
     async def create_resume(self, user_id: str, title: str, content: dict):

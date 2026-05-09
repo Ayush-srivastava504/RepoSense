@@ -1,6 +1,6 @@
 # test_analysis.py
 from ml.model.model_loader import ModelLoader
-from ml.inference.analysis_engine import CodeAnalysisEngine
+from services.api.src.services.analysis_engine import CodeAnalysisEngine
 
 loader = ModelLoader()
 model, tokenizer = loader.get_model()

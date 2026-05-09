@@ -1,5 +1,5 @@
 from fastapi import Request, HTTPException
-from ..config.redis import get_redis
+from ..configs.redis import get_redis
 
 async def rate_limit_middleware(request: Request, call_next):
     redis = await get_redis()
