@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from ..services.ai_service import AIService
-from ..middleware.auth import verify_token
+from services.ai_service import AIService
+from middleware.auth import verify_token
 
 router = APIRouter(prefix="/api/v1", tags=["review"])
 

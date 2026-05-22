@@ -1,125 +1,293 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
-import { useAuth } from '@/lib/auth';
+import { useState } from 'react';
 
-interface Resume {
-  id: string;
-  title: string;
-  content: any;
-  created_at: string;
-}
+import { api } from '@/lib/api';
 
 export default function ResumeBuilder() {
-  const { user, token } = useAuth();
-  const [resumes, setResumes] = useState<Resume[]>([]);
-  const [selectedResume, setSelectedResume] = useState<Resume | null>(null);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
 
-  const isPremium = user?.subscription_tier === 'premium';
+  const [resumeType, setResumeType] =
+    useState('internship');
 
-  useEffect(() => {
-    if (token && isPremium) {
-      loadResumes();
+  const [jobDescription, setJobDescription] =
+    useState('');
+
+  const [skills, setSkills] =
+    useState('');
+
+  const [experience, setExperience] =
+    useState('');
+
+  const [generatedResume, setGeneratedResume] =
+    useState('');
+
+  const [title, setTitle] =
+    useState('');
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const generateResume = async () => {
+
+    if (!jobDescription.trim()) {
+
+      alert(
+        'Paste job description first'
+      );
+
+      return;
     }
-  }, [token, isPremium]);
 
-  const loadResumes = async () => {
+    setLoading(true);
+
     try {
-      const data = await api.get('/resume/list');
-      setResumes(data);
+
+      const response = await api.post(
+        '/resume/generate',
+        {
+          resume_type: resumeType,
+          job_description: jobDescription,
+          skills,
+          experience,
+        }
+      );
+
+      setGeneratedResume(
+        response.resume || ''
+      );
+
     } catch (err) {
+
       console.error(err);
+
+      alert(
+        'Resume generation failed'
+      );
+
+    } finally {
+
+      setLoading(false);
+
     }
   };
 
   const saveResume = async () => {
-    if (!isPremium) {
-      setMessage('Upgrade to premium to save resumes.');
+
+    if (!title.trim()) {
+
+      alert(
+        'Enter resume title'
+      );
+
       return;
     }
-    setLoading(true);
+
+    if (!generatedResume.trim()) {
+
+      alert(
+        'Generate resume first'
+      );
+
+      return;
+    }
+
+    setSaving(true);
+
     try {
-      const payload = { title, content: JSON.parse(content) };
-      await api.post('/resume/create', payload);
-      setMessage('Resume saved successfully!');
-      loadResumes();
-      setTitle('');
-      setContent('');
-    } catch (err: any) {
-      setMessage(err.message);
+
+      await api.post(
+        '/resume/create',
+        {
+          title,
+          content: generatedResume,
+        }
+      );
+
+      alert(
+        'Resume saved successfully'
+      );
+
+    } catch (err) {
+
+      console.error(err);
+
+      alert(
+        'Save failed'
+      );
+
     } finally {
-      setLoading(false);
+
+      setSaving(false);
+
     }
   };
 
-  if (!isPremium) {
-    return (
-      <div className="container mx-auto p-8 text-center">
-        <h1 className="text-2xl font-bold mb-4">Premium Feature</h1>
-        <p className="mb-4">Resume builder is available for premium subscribers only.</p>
-        <button className="bg-green-600 text-white px-6 py-2 rounded">Upgrade Now</button>
-      </div>
+  const downloadResume = () => {
+
+    if (!generatedResume) {
+      return;
+    }
+
+    const blob = new Blob(
+      [generatedResume],
+      {
+        type: 'text/plain',
+      }
     );
-  }
+
+    const url =
+      URL.createObjectURL(blob);
+
+    const a =
+      document.createElement('a');
+
+    a.href = url;
+
+    a.download =
+      `${title || 'resume'}.txt`;
+
+    a.click();
+
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Resume Builder</h1>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Sidebar: List of resumes */}
-        <div className="bg-white p-4 rounded shadow">
-          <h2 className="text-xl font-semibold mb-3">My Resumes</h2>
-          {resumes.length === 0 && <p className="text-gray-500">No resumes yet.</p>}
-          <ul className="space-y-2">
-            {resumes.map((res) => (
-              <li
-                key={res.id}
-                className="cursor-pointer text-blue-600 hover:underline"
-                onClick={() => setSelectedResume(res)}
-              >
-                {res.title}
-              </li>
-            ))}
-          </ul>
-        </div>
-        {/* Editor */}
-        <div className="md:col-span-2 bg-white p-4 rounded shadow">
+
+    <div className="container mx-auto p-6 max-w-6xl">
+
+      <h1 className="text-4xl font-bold mb-6">
+        AI Resume Builder
+      </h1>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <div className="space-y-4">
+
           <input
             type="text"
             placeholder="Resume Title"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full border p-2 rounded mb-4"
+            onChange={(e) =>
+              setTitle(
+                e.target.value
+              )
+            }
+            className="w-full border p-3 rounded"
           />
-          <textarea
-            placeholder='Resume content (JSON format) e.g., {"summary":"...", "experience":[]}'
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="w-full h-64 border p-2 rounded font-mono text-sm"
-          />
-          <button
-            onClick={saveResume}
-            disabled={loading}
-            className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+
+          <select
+            value={resumeType}
+            onChange={(e) =>
+              setResumeType(
+                e.target.value
+              )
+            }
+            className="w-full border p-3 rounded"
           >
-            {loading ? 'Saving...' : 'Save Resume'}
-          </button>
-          {message && <p className="mt-2 text-green-600">{message}</p>}
-          {selectedResume && (
-            <div className="mt-4 p-3 border-t">
-              <h3 className="font-semibold">Preview (JSON)</h3>
-              <pre className="text-xs bg-gray-100 p-2 overflow-auto">
-                {JSON.stringify(selectedResume.content, null, 2)}
-              </pre>
-            </div>
-          )}
+
+            <option value="internship">
+              Internship Resume
+            </option>
+
+            <option value="full-time">
+              Full-Time Resume
+            </option>
+
+          </select>
+
+          <textarea
+            placeholder="Paste complete job description..."
+            value={jobDescription}
+            onChange={(e) =>
+              setJobDescription(
+                e.target.value
+              )
+            }
+            className="w-full h-64 border p-3 rounded"
+          />
+
+          <textarea
+            placeholder="Skills (Python, FastAPI, React, SQL...)"
+            value={skills}
+            onChange={(e) =>
+              setSkills(
+                e.target.value
+              )
+            }
+            className="w-full h-32 border p-3 rounded"
+          />
+
+          <textarea
+            placeholder="Experience / projects / internships..."
+            value={experience}
+            onChange={(e) =>
+              setExperience(
+                e.target.value
+              )
+            }
+            className="w-full h-48 border p-3 rounded"
+          />
+
+          <div className="flex gap-3">
+
+            <button
+              onClick={generateResume}
+              disabled={loading}
+              className="bg-purple-600 text-white px-5 py-3 rounded"
+            >
+
+              {
+                loading
+                  ? 'Generating...'
+                  : 'Generate Resume'
+              }
+
+            </button>
+
+            <button
+              onClick={saveResume}
+              disabled={saving}
+              className="bg-blue-600 text-white px-5 py-3 rounded"
+            >
+
+              {
+                saving
+                  ? 'Saving...'
+                  : 'Save Resume'
+              }
+
+            </button>
+
+            <button
+              onClick={downloadResume}
+              className="bg-green-600 text-white px-5 py-3 rounded"
+            >
+              Download
+            </button>
+
+          </div>
+
         </div>
+
+        <div>
+
+          <textarea
+            value={generatedResume}
+            onChange={(e) =>
+              setGeneratedResume(
+                e.target.value
+              )
+            }
+            className="w-full h-[900px] border p-4 rounded font-mono text-sm"
+          />
+
+        </div>
+
       </div>
+
     </div>
   );
 }

@@ -1,82 +1,90 @@
 #!/usr/bin/env python3
-"""
-Database migration runner for Internship Platform.
-Automatically runs all migration SQL files in order.
-"""
+
 
 import subprocess
 import os
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def run_migrations():
     """Run all database migrations in sequence."""
-    
-    # Get DATABASE_URL from environment or use default
-    db_url = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/postgres")
-    
+
+    db_url = os.getenv(
+        "DATABASE_URL",
+        "postgresql://postgres:postgres@localhost:5432/postgres"
+    )
+
     if not db_url:
-        print("ERROR: DATABASE_URL not set. Please set it in your .env file")
+        print("ERROR: DATABASE_URL not set.")
         sys.exit(1)
-    
-    # Path to migration files
+
+    print(f"Using database: {db_url}")
+    print()
+
     migrations_dir = Path(__file__).parent / "database" / "migrations"
-    
+
     if not migrations_dir.exists():
         print(f"ERROR: Migrations directory not found at {migrations_dir}")
         sys.exit(1)
-    
-    # Get all migration files in order
+
     migration_files = sorted([
         f for f in migrations_dir.glob("*.sql")
         if f.name.startswith(tuple(str(i).zfill(3) for i in range(10)))
     ])
-    
+
     if not migration_files:
         print("ERROR: No migration files found")
         sys.exit(1)
-    
+
     print(f"Found {len(migration_files)} migration files:")
+
     for f in migration_files:
         print(f"  - {f.name}")
+
     print()
-    
-    # Run each migration
+
+    psql_path = r"D:\New folder (4)\bin\psql.exe"
+
+    if not os.path.exists(psql_path):
+        print(f"ERROR: psql not found at {psql_path}")
+        sys.exit(1)
+
     for migration_file in migration_files:
         print(f"Running: {migration_file.name}...")
-        
+
         try:
-            # Use psql to run the migration
             result = subprocess.run(
                 [
-                    "psql",
+                    psql_path,
                     db_url,
-                    "-f", str(migration_file),
-                    "-v", "ON_ERROR_STOP=1"  # Stop on first error
+                    "-f",
+                    str(migration_file),
+                    "-v",
+                    "ON_ERROR_STOP=1"
                 ],
                 capture_output=True,
-                text=True,
-                check=False
+                text=True
             )
-            
+
             if result.returncode != 0:
                 print(f"ERROR in {migration_file.name}:")
                 print(result.stderr)
                 sys.exit(1)
-            else:
-                print(f"✓ {migration_file.name} completed")
-                if result.stdout:
-                    print(result.stdout)
-        
-        except FileNotFoundError:
-            print("ERROR: psql command not found. Please install PostgreSQL client tools.")
-            print("  Windows: choco install postgresql")
-            print("  Mac: brew install postgresql")
-            print("  Linux: sudo apt install postgresql-client")
+
+            print(f"✓ {migration_file.name} completed")
+
+            if result.stdout.strip():
+                print(result.stdout)
+
+        except Exception as e:
+            print(f"ERROR: {e}")
             sys.exit(1)
-        
+
         print()
-    
+
     print("✓ All migrations completed successfully!")
 
 if __name__ == "__main__":

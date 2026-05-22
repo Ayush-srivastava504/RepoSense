@@ -1,8 +1,8 @@
-# 🚀 Repo Sense API Service
+#  Repo Sense API Service
 
 FastAPI-based REST API for the AI Code Review Platform. Handles authentication, code analysis, resume processing, job listings, and payment subscriptions. Features OAuth 2.0 GitHub integration, JWT stateless auth, AI-powered code reviews, and seamless integration with Neural Generator and RAG services.
 
-## 🎯 Key Features
+##  Key Features
 
 - **GitHub OAuth 2.0**: Login via GitHub, encrypted token storage
 - **JWT Authentication**: Stateless, token-based access control
@@ -15,7 +15,7 @@ FastAPI-based REST API for the AI Code Review Platform. Handles authentication, 
 - **Async/Fast**: 100+ concurrent requests on t2.micro
 - **Monitoring**: Swagger UI, structured logging, health checks
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
@@ -27,7 +27,7 @@ FastAPI-based REST API for the AI Code Review Platform. Handles authentication, 
 | **Async** | asyncio, httpx |
 | **Documentation** | Swagger/OpenAPI |
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 services/api/src/
@@ -71,7 +71,7 @@ tests/
 └── ...
 ```
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -159,7 +159,7 @@ python -m uvicorn api.src.core.app:app --host 0.0.0.0 --port 8000 --reload
 **Swagger Docs:** http://localhost:8000/docs  
 **ReDoc:** http://localhost:8000/redoc
 
-## 📚 API Endpoints
+##  API Endpoints
 
 ### Authentication
 
@@ -253,7 +253,7 @@ POST   /api/subscription/upgrade       # Upgrade plan
 POST   /api/stripe/webhook             # Stripe webhook (auto)
 ```
 
-## 🔐 Authentication Flow
+##  Authentication Flow
 
 ### OAuth 2.0 (GitHub)
 
@@ -288,7 +288,7 @@ Client: GET /api/review/history
 Server: Verifies JWT, returns user's data
 ```
 
-## 🔑 Authorization Headers
+##  Authorization Headers
 
 ```bash
 # All protected endpoints require:
@@ -299,7 +299,7 @@ curl -H "Authorization: Bearer eyJhbGc..." \
      http://localhost:8000/api/review/history
 ```
 
-## 💾 Database Schema
+##  Database Schema
 
 ### users
 ```sql
@@ -343,7 +343,7 @@ stripe_id       VARCHAR
 active          BOOLEAN
 ```
 
-## 🔐 Environment Variables
+##  Environment Variables
 
 ### Required
 
@@ -367,7 +367,7 @@ RATE_LIMIT_REQUESTS=100                         # Per minute
 RATE_LIMIT_PERIOD=60                            # Seconds
 ```
 
-## 🐳 Docker
+##  Docker
 
 ### Build & Run
 
@@ -403,7 +403,7 @@ api:
     - rag-service
 ```
 
-## 📊 Performance & Rate Limiting
+##  Performance & Rate Limiting
 
 ### Rate Limits (per IP/User)
 
@@ -430,7 +430,7 @@ Memory per req: ~10-50MB
 Total RAM needed: 512MB (container), 2GB (VM)
 ```
 
-## 🆘 Troubleshooting
+##  Troubleshooting
 
 ### API won't start
 
@@ -485,7 +485,7 @@ RATE_LIMIT_PERIOD=60
 # Or use Pro subscription tier
 ```
 
-## 📈 Monitoring
+##  Monitoring
 
 ### Health Check
 
@@ -513,7 +513,7 @@ WHERE mean_time > 100
 ORDER BY mean_time DESC;
 ```
 
-## 🧪 Testing
+##  Testing
 
 ```bash
 # Run all tests
@@ -529,7 +529,7 @@ pytest tests/ --cov=api/src
 python api/test_imports.py
 ```
 
-## 🚀 Deployment
+## Deployment
 
 ### Railway.app (Recommended)
 
@@ -585,13 +585,11 @@ docker push 123456.dkr.ecr.us-east-1.amazonaws.com/repo-sense-api:latest
 # Deploy with ECS/Fargate
 ```
 
-## 📖 Related Services
+##  Related Services
 
 - **Frontend**: [apps/web/README.md](../../apps/web/README.md)
 - **Neural Generator**: [services/api/neural-generator/README.md](../neural-generator/README.md)
 - **RAG Service**: [services/api/rag/README.md](../rag/README.md)
 - **Crawler**: [services/api/crawler/README.md](../crawler/README.md)
 
-## 📄 License
 
-Part of Repo Sense project

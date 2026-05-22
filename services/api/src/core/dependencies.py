@@ -1,8 +1,8 @@
 from fastapi import Request, HTTPException, status
 from functools import lru_cache
-from ..utils.logger import setup_logger
-from ..configs.config import settings
-from ..services.ai_service import AIService  # our lightweight service
+from utils.logger import setup_logger
+from configs.config import settings
+from services.ai_service import AIService  # our lightweight service
 import time
 from collections import defaultdict
 

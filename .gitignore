@@ -25,21 +25,23 @@ out/
 .idea/
 *.swp
 
-# Model files - MUST BE IGNORED (large files)
-models/
+# Model files - DO NOT COMMIT (uses Hugging Face Hub instead)
+# Local model cache directory
 .model_cache/
-services/api/models/
-services/api/neural-generator/models/
-services/models/
+
+# Large model file extensions
 *.gguf
 *.onnx
 *.bin
 *.pt
 *.pth
 *.pkl
-codebert_quantized/
-codebert_onnx/
-codebert_tokenizer/
+
+# Deprecated local model directories (use HF instead)
+services/api/models/
+services/api/neural-generator/models/
+services/models/
+models/
 
 # Database
 *.db

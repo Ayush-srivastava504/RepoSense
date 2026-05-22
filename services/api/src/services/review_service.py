@@ -7,7 +7,7 @@ from app.utils.logger import setup_logger
 from ml.preprocessing.code_preprocessor import CodePreprocessor
 from services.api.src.services.analysis_engine import CodeAnalysisEngine
 from ml.inference.postprocessor import Postprocessor
-from ..configs.config import settings
+from configs.config import settings
 import uuid
 
 logger = setup_logger(__name__)

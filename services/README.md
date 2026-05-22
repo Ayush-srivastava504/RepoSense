@@ -1,8 +1,8 @@
-# 🚀 Repo Sense Backend Services
+#  Repo Sense Backend Services
 
 Complete backend infrastructure for the AI Code Review Platform, featuring microservices architecture with API, neural generation, RAG (Retrieval-Augmented Generation), and web scraping capabilities.
 
-## 📋 Architecture Overview
+## Architecture Overview
 
 ```
 services/
@@ -33,7 +33,7 @@ services/
         └── docker-compose.prod.yml     # Production
 ```
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Component | Technology |
 |-----------|------------|
@@ -47,7 +47,7 @@ services/
 | **Authentication** | JWT + Fernet encryption |
 | **Payments** | Stripe webhooks |
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -98,7 +98,7 @@ python app.py
 **API available at:** http://localhost:8000  
 **Docs:** http://localhost:8000/docs
 
-## 📚 Service Documentation
+## Service Documentation
 
 ### API Service (`services/api/src/`)
 
@@ -255,7 +255,7 @@ pytest tests/ --cov=api
 pytest tests/test_imports.py
 ```
 
-## 📈 Performance
+## Performance
 
 | Feature | Details |
 |---------|---------|
@@ -264,7 +264,7 @@ pytest tests/test_imports.py
 | **Async** | All endpoints use async/await |
 | **DB Pool** | 5 max connections |
 
-## 🚢 Deployment
+## Deployment
 
 ### Railway.app (Free tier friendly)
 
@@ -280,7 +280,7 @@ sudo systemctl start repo-sense-api
 sudo journalctl -u repo-sense-api -f
 ```
 
-## 🆘 Troubleshooting
+## Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
@@ -290,32 +290,32 @@ sudo journalctl -u repo-sense-api -f
 | Encryption key invalid | Regenerate: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
 | Migrations fail | Drop tables: `DROP TABLE ... CASCADE;` |
 
-## 📖 Related Docs
+## Related Docs
 
 - **Frontend**: [apps/web/README.md](../apps/web/README.md)
 - **Neural Generator**: [services/api/neural-generator/README.md](./api/neural-generator/README.md)
 - **RAG**: [services/api/rag/README.md](./api/rag/README.md)
 - **Crawler**: [services/api/crawler/README.md](./api/crawler/README.md)
 
-## 📝 Swagger Documentation
+## Swagger Documentation
 
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
 - **OpenAPI JSON**: http://localhost:8000/openapi.json
 
-## ✨ Features
+## Features
 
-✅ OAuth 2.0 GitHub login  
-✅ JWT stateless authentication  
-✅ Code review with AI analysis  
-✅ Auto-fix suggestions  
-✅ 9+ job site scraping  
-✅ RAG-powered documentation  
-✅ Rate limiting & caching  
-✅ Async/high performance  
-✅ Stripe payments  
-✅ Free tier AWS t2.micro compatible  
+- OAuth 2.0 GitHub login
+- JWT stateless authentication
+- Code review with AI analysis
+- Auto-fix suggestions
+- 9+ job site scraping
+- RAG-powered documentation
+- Rate limiting and caching
+- Async/high performance
+- Stripe payments
+- Free tier AWS t2.micro compatible
 
-## 📄 License
+## License
 
 Part of Repo Sense project

@@ -1,4 +1,4 @@
-from ..configs.db import get_db_pool
+from configs.db import get_db_pool
 
 class JobsService:
     async def get_recent_jobs(self, limit: int, offset: int):

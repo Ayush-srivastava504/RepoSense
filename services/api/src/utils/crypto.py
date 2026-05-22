@@ -1,14 +1,12 @@
 from cryptography.fernet import Fernet, InvalidToken
-from ..configs.config import settings
+from configs.config import settings
 
 def _get_cipher() -> Fernet:
-    """Create a Fernet cipher, generating a key if the provided one is invalid.
-
-    The GITHUB_TOKEN_ENCRYPTION_KEY environment variable may be missing or
-    malformed. In that case we generate a fresh key and fall back to it so the
-    application can start without crashing. The generated key is logged for
-    debugging purposes.
-    """
+    # Create a Fernet cipher, generating a key if the provided one is invalid.
+    # The GITHUB_TOKEN_ENCRYPTION_KEY environment variable may be missing or
+    # malformed. In that case we generate a fresh key and fall back to it so the
+    # application can start without crashing. The generated key is logged for
+    # debugging purposes.
     key = settings.GITHUB_TOKEN_ENCRYPTION_KEY or ""
     try:
         # Ensure the key is a valid base64‑encoded 32‑byte string.

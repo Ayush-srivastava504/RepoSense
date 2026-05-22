@@ -1,28 +1,105 @@
 'use client';
+
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 
 export default function ResumeBuilder() {
   const { user } = useAuth();
+
   const [title, setTitle] = useState('');
-  const [content, setContent] = useState({ summary: '', experience: [] });
+  const [summary, setSummary] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const saveResume = async () => {
-    if (user?.subscription_tier !== 'premium') {
-      alert('Please upgrade to premium to save resumes');
-      return;
+    try {
+
+      setLoading(true);
+
+      const payload = {
+        title,
+        content: {
+          summary,
+          experience: [],
+        },
+      };
+
+      await api.post(
+        '/resume/create',
+        payload
+      );
+
+      alert('Resume saved successfully');
+
+    } catch (err: any) {
+
+      console.error(err);
+
+      alert(
+        err?.response?.data?.detail ||
+        'Failed to save resume'
+      );
+
+    } finally {
+
+      setLoading(false);
+
     }
-    await api.post('/resume/create', { title, content });
-    alert('Resume saved');
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Resume Builder</h1>
-      <input className="border p-2 w-full mb-4" placeholder="Resume title" value={title} onChange={(e) => setTitle(e.target.value)} />
-      <textarea className="border p-2 w-full h-64" placeholder="JSON content" value={JSON.stringify(content)} onChange={(e) => setContent(JSON.parse(e.target.value))} />
-      <button onClick={saveResume} className="bg-blue-500 text-white p-2 rounded mt-2">Save Resume</button>
+    <div className="container mx-auto p-6 max-w-3xl">
+
+      <h1 className="text-3xl font-bold mb-6">
+        Resume Builder
+      </h1>
+
+      <div className="mb-4">
+
+        <label className="block mb-2 font-medium">
+          Resume Title
+        </label>
+
+        <input
+          className="border p-3 w-full rounded"
+          placeholder="Frontend Developer Resume"
+          value={title}
+          onChange={(e) =>
+            setTitle(e.target.value)
+          }
+        />
+
+      </div>
+
+      <div className="mb-4">
+
+        <label className="block mb-2 font-medium">
+          Professional Summary
+        </label>
+
+        <textarea
+          className="border p-3 w-full h-48 rounded"
+          placeholder="Write your professional summary..."
+          value={summary}
+          onChange={(e) =>
+            setSummary(e.target.value)
+          }
+        />
+
+      </div>
+
+      <button
+        onClick={saveResume}
+        disabled={loading}
+        className="bg-blue-600 text-white px-5 py-3 rounded hover:bg-blue-700"
+      >
+        {
+          loading
+            ? 'Saving...'
+            : 'Save Resume'
+        }
+      </button>
+
     </div>
   );
 }

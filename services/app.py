@@ -1,20 +1,38 @@
-import sys
-import uvicorn
-from pathlib import Path
 import os
+import sys
 
-# Add api/src to Python path
-sys.path.insert(0, str(Path(__file__).parent / "api" / "src"))
+from pathlib import Path
+
+import uvicorn
+
+
+sys.path.insert(
+    0,
+    str(
+        Path(__file__).parent
+        / "api"
+        / "src"
+    ),
+)
 
 from configs.config import settings
 
+
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", settings.api.PORT))
+    port = int(
+        os.environ.get(
+            "PORT",
+            settings.PORT,
+        )
+    )
 
     uvicorn.run(
         "core.app:app",
-        host="0.0.0.0",
+        host=settings.HOST,
         port=port,
-        reload=settings.is_development,
-        log_level=settings.logging.LOG_LEVEL.lower()
+        reload=(
+            settings.ENVIRONMENT
+            == "development"
+        ),
+        log_level="info",
     )

@@ -1,8 +1,8 @@
-# 📚 RAG (Retrieval-Augmented Generation) Service
+#  RAG (Retrieval-Augmented Generation) Service
 
 FastAPI microservice for intelligent documentation generation using Retrieval-Augmented Generation (RAG). Indexes repository files, creates semantic embeddings with FAISS, and generates accurate READMEs using context from the codebase.
 
-## 🎯 What is RAG?
+##  What is RAG?
 
 **Retrieval-Augmented Generation** combines:
 1. **Retrieval**: Search indexed documents using semantic similarity
@@ -11,7 +11,7 @@ FastAPI microservice for intelligent documentation generation using Retrieval-Au
 
 **Advantage**: More accurate, sourced-based outputs vs. pure hallucination-prone LLM
 
-## 📋 Features
+## Features
 
 - **Repository Indexing**: Process GitHub/local repos into embeddings
 - **FAISS Vector Store**: Fast semantic search on embeddings
@@ -22,7 +22,7 @@ FastAPI microservice for intelligent documentation generation using Retrieval-Au
 - **Persistence**: Save/load FAISS indices to disk
 - **Integration**: Works with Neural Generator service
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Framework**: FastAPI
 - **Vector DB**: FAISS (Meta's similarity search library)
@@ -31,7 +31,7 @@ FastAPI microservice for intelligent documentation generation using Retrieval-Au
 - **LLM Client**: httpx (async HTTP for Neural Generator)
 - **Persistence**: Pickle for metadata
 
-## 📂 Project Structure
+##  Project Structure
 
 ```
 services/api/rag/
@@ -52,7 +52,7 @@ services/api/rag/
 └── nixpacks.toml
 ```
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -94,7 +94,7 @@ python -m uvicorn src.app:app --host 0.0.0.0 --port 8002 --reload
 **Service available at:** http://localhost:8002  
 **Docs:** http://localhost:8002/docs
 
-## 📚 API Endpoints
+##  API Endpoints
 
 ### POST `/api/rag/index`
 
@@ -245,7 +245,7 @@ Health check.
 }
 ```
 
-## 🔐 Environment Variables
+## Environment Variables
 
 ```bash
 # Neural Generator integration
@@ -268,7 +268,7 @@ PORT=8002
 TIMEOUT=300                                          # Request timeout (seconds)
 ```
 
-## 🔄 RAG Pipeline Flow
+## RAG Pipeline Flow
 
 ```
 Input Repository
@@ -306,7 +306,7 @@ Input Repository
 Generated README
 ```
 
-## 📊 Performance
+## Performance
 
 ### Indexing Speed
 
@@ -333,7 +333,7 @@ Per-query: ~50MB (temporary)
 Total: ~300MB baseline
 ```
 
-## 📝 Usage Examples
+## Usage Examples
 
 ### Index a Repository
 
@@ -403,7 +403,7 @@ async def generate_readme():
 asyncio.run(generate_readme())
 ```
 
-## 🐳 Docker
+## Docker
 
 ### Build
 
@@ -440,7 +440,7 @@ rag-service:
     - neural-generator
 ```
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Model Download Hangs
 
@@ -488,7 +488,7 @@ POST /api/rag/search with "threshold": 0.3
 export NEURAL_GENERATOR_URL=http://localhost:8001
 ```
 
-## 📊 Monitoring
+## Monitoring
 
 ### Index Health
 
@@ -509,7 +509,7 @@ du -sh indices/
 ls -lh indices/*.faiss
 ```
 
-## 🚀 Deployment
+## Deployment
 
 ### Railway.app
 
@@ -527,7 +527,7 @@ docker service create \
   rag-service:latest
 ```
 
-## 🆘 Performance Tuning
+## Performance Tuning
 
 | Issue | Solution |
 |-------|----------|
@@ -536,13 +536,13 @@ docker service create \
 | High memory | Limit chunks per index, use smaller model |
 | Slow generation | Use smaller max_tokens, lower max_retrieval_context |
 
-## 📖 Related Services
+## Related Services
 
 - **Main API**: [services/README.md](../README.md)
 - **Neural Generator**: [services/api/neural-generator/README.md](../neural-generator/README.md)
 - **Crawler**: [services/api/crawler/README.md](../crawler/README.md)
 
-## 📄 License
+##  License
 
 Part of Repo Sense project
 ```

@@ -45,3 +45,9 @@ models/**/*.pt
 # OS
 .DS_Store
 Thumbs.db
+# GGUF Models
+models/**/*.gguf
+services/api/neural_generator/models/**/*.gguf
+
+# Model Cache
+.model_cache/

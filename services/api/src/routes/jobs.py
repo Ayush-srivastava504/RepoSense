@@ -1,20 +1,27 @@
-from fastapi import APIRouter, Depends, HTTPException
-from ..services.jobs_service import JobsService
-from ..configs.db import get_db_pool
-from ..middleware.auth import verify_token
+from fastapi import APIRouter
+from fastapi import HTTPException
 
-router = APIRouter(prefix="/api/jobs", tags=["jobs"])
+from configs.db import get_db_pool
+
+
+router = APIRouter(
+    prefix="/api/jobs",
+    tags=["jobs"],
+)
+
 
 @router.get("/")
 async def get_jobs(
     limit: int = 20,
     offset: int = 0,
-    user=Depends(verify_token)
 ):
-
     pool = await get_db_pool()
+
     if pool is None:
-        raise HTTPException(503, "Database unavailable")
+        raise HTTPException(
+            503,
+            "Database unavailable",
+        )
 
     rows = await pool.fetch(
         """
@@ -36,4 +43,7 @@ async def get_jobs(
         offset,
     )
 
-    return [dict(r) for r in rows]
+    return [
+        dict(row)
+        for row in rows
+    ]

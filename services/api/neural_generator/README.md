@@ -1,8 +1,8 @@
-# 🧠 Neural Generator Service
+#  Neural Generator Service
 
 FastAPI microservice for AI-powered text generation using **Qwen GGUF** model via **llama-cpp-python**. Generates documentation, READMEs, and other content efficiently on CPU with minimal memory footprint.
 
-## 📋 Features
+##  Features
 
 - **Local LLM Inference**: Run Qwen 3 0.6B model on CPU
 - **Quantized Model**: Q4_K_M format (~400MB)
@@ -12,7 +12,7 @@ FastAPI microservice for AI-powered text generation using **Qwen GGUF** model vi
 - **Health Checks**: Monitoring and status endpoints
 - **CORS Enabled**: Integrate with multiple frontend domains
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 - **Framework**: FastAPI
 - **LLM**: llama-cpp-python (GGUF)
@@ -20,13 +20,12 @@ FastAPI microservice for AI-powered text generation using **Qwen GGUF** model vi
 - **Async**: asyncio for concurrent requests
 - **Validation**: Pydantic
 
-## 📂 Project Structure
+##  Project Structure
 
 ```
 services/api/neural-generator/
 ├── src/
 │   ├── app.py                      # FastAPI application
-│   └── generate.py                 # (Empty - logic in app.py)
 ├── models/
 │   └── Qwen3-0_6B-Q4_K_M.gguf     # Quantized model (~400MB)
 ├── requirements.txt                # Dependencies
@@ -35,7 +34,7 @@ services/api/neural-generator/
 └── nixpacks.toml                   # Railway deployment
 ```
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -78,7 +77,7 @@ python -m uvicorn src.app:app --host 0.0.0.0 --port 8001 --reload
 **Service available at:** http://localhost:8001  
 **Docs:** http://localhost:8001/docs
 
-## 📚 API Endpoints
+##  API Endpoints
 
 ### POST `/generate`
 
@@ -150,7 +149,7 @@ Check service health.
 }
 ```
 
-## 🔐 Environment Variables
+##  Environment Variables
 
 ```bash
 # Model path (required)
@@ -169,7 +168,7 @@ PORT=8001
 GENERATION_TIMEOUT=120             # Max seconds per request
 ```
 
-## 📊 Performance
+##  Performance
 
 ### Memory Usage
 
@@ -201,7 +200,7 @@ n_threads=4              # More CPU cores
 batch_size=2             # Not yet implemented
 ```
 
-## 🐳 Docker
+##  Docker
 
 ### Build
 
@@ -237,7 +236,7 @@ neural-generator:
   mem_limit: 1024m
 ```
 
-## 📝 Usage Examples
+##  Usage Examples
 
 ### Generate README
 
@@ -286,7 +285,7 @@ async def generate_with_context(repo_files):
     return response.json()["text"]
 ```
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Model not found
 
@@ -337,7 +336,7 @@ app.add_middleware(
 )
 ```
 
-## 📊 Monitoring
+##  Monitoring
 
 ### Health Check
 
@@ -359,7 +358,7 @@ async def log_requests(request, call_next):
     return response
 ```
 
-## 🚀 Deployment
+##  Deployment
 
 ### Railway.app
 
@@ -410,19 +409,16 @@ sudo systemctl start neural-gen
 sudo systemctl status neural-gen
 ```
 
-## 📖 Related Services
+##  Related Services
 
 - **Main API**: [services/README.md](../README.md)
 - **RAG Service**: [services/api/rag/README.md](../rag/README.md)
 - **Crawler**: [services/api/crawler/README.md](../crawler/README.md)
 
-## 🆘 Support
+##  Support
 
 1. Check logs: `docker logs neural-gen`
 2. Test endpoint: `curl http://localhost:8001/health`
 3. Verify model: `ls -la models/`
 4. Check RAM: `free -h` or `top`
 
-## 📄 License
-
-Part of Repo Sense project
