@@ -1,0 +1,97 @@
+FROM public.ecr.aws/lambda/python:3.11 AS builder
+
+WORKDIR /build
+
+RUN dnf install -y \
+        gcc \
+        gcc-c++ \
+        libxml2-devel \
+        libxslt-devel \
+    && dnf clean all
+
+COPY requirements.txt .
+
+RUN pip install --upgrade pip && \
+    pip install \
+        --no-cache-dir \
+        --target /build/packages \
+        -r requirements.txt
+
+RUN pip install \
+        --no-cache-dir \
+        playwright==1.44.0 && \
+    playwright install chromium \
+        --with-deps \
+        2>/dev/null || true
+
+
+FROM public.ecr.aws/lambda/python:3.11 AS final
+
+LABEL maintainer="platform-team"
+
+LABEL description="Job aggregator crawler Lambda"
+
+COPY --from=builder \
+    /build/packages \
+    ${LAMBDA_TASK_ROOT}
+
+COPY --from=builder \
+    /root/.cache/ms-playwright \
+    /root/.cache/ms-playwright
+
+RUN dnf install -y \
+        chromium \
+        chromium-headless \
+        chromedriver \
+    && dnf clean all || true
+
+ENV CHROME_BINARY=/usr/bin/chromium-browser
+ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
+ENV HEADLESS=true
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR ${LAMBDA_TASK_ROOT}
+
+COPY src/ .
+
+HEALTHCHECK \
+    --interval=60s \
+    --timeout=10s \
+    --retries=2 \
+    CMD python -c "import index; print('ok')"
+
+CMD ["index.lambda_handler"]
+
+
+FROM python:3.11-slim AS dev
+
+WORKDIR /app
+
+RUN apt-get update && \
+    apt-get install -y \
+        --no-install-recommends \
+        gcc \
+        libxml2-dev \
+        libxslt-dev \
+        curl \
+        chromium \
+        chromium-driver \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+
+RUN pip install \
+        --no-cache-dir \
+        -r requirements.txt && \
+    playwright install chromium \
+        2>/dev/null || true
+
+ENV CHROME_BINARY=/usr/bin/chromium
+ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
+ENV HEADLESS=true
+ENV PYTHONPATH=/app/src
+
+COPY src/ /app/src/
+
+CMD ["python", "src/index.py", "--dry-run", "--max-pages", "2"]

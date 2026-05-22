@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+
+# Models
+models/**/*.onnx
+models/**/*.json
+models/**/*.bin
+models/**/*.pt
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

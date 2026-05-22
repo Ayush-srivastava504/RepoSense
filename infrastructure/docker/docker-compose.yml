@@ -1,4 +1,5 @@
 version: '3.8'
+
 services:
   postgres:
     image: postgres:15
@@ -10,9 +11,77 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  neural-generator:
+    build: ../../services/neural-generator
+    ports:
+      - "8002:8002"
+    volumes:
+      - model_cache:/app/models
+    environment:
+      - MODEL_PATH=/app/models/qwen3-codersmall-0.8b-q4_k_m.gguf
+    mem_limit: 1024m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  rag:
+    build: ../../services/rag
+    ports:
+      - "8001:8001"
+    volumes:
+      - rag_data:/app/data
+    environment:
+      LLM_ENDPOINT: http://neural-generator:8002/generate
+      VECTOR_STORE_PATH: /app/data/faiss_index
+    depends_on:
+      neural-generator:
+        condition: service_healthy
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  api:
+    build: ../../services/api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/internship_db
+      REDIS_URL: redis://redis:6379
+      RAG_SERVICE_URL: http://rag:8001
+      CODEBERT_ONNX_PATH: /app/models/codebert_quantized.onnx
+      CODEBERT_TOKENIZER_PATH: microsoft/codebert-base
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rag:
+        condition: service_healthy
+    mem_limit: 512m
+
 volumes:
   postgres_data:
+  model_cache:
+  rag_data:

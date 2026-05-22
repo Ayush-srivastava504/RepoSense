@@ -17,6 +17,9 @@ export default function GitHubPage() {
   const [review, setReview] = useState(null);
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [connected, setConnected] = useState(false);
+  const [generatedReadme, setGeneratedReadme] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [showReadme, setShowReadme] = useState(false);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -73,6 +76,25 @@ export default function GitHubPage() {
     setReview(result);
   };
 
+  const generateReadme = async () => {
+    if (!selectedRepo) {
+      alert('Please select a repository first');
+      return;
+    }
+    
+    setIsGenerating(true);
+    try {
+      const result = await api.post(`/github/${selectedRepo}/auto-setup`, {});
+      setGeneratedReadme(result.readme);
+      setShowReadme(true);
+    } catch (error) {
+      console.error('Error generating README:', error);
+      alert('Failed to generate README. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-900 via-gray-900 to-black text-gray-200 p-6">
       <h1 className="text-3xl font-bold mb-6 text-gray-100">GitHub Integration</h1>
@@ -124,17 +146,46 @@ export default function GitHubPage() {
             </div>
           </div>
 
-          <button
-            onClick={runReview}
-            className="bg-red-600 hover:bg-red-700 text-white p-2 rounded mt-4"
-          >
-            Review Code
-          </button>
+          <div className="mt-6 flex gap-4">
+            <button
+              onClick={runReview}
+              className="bg-red-600 hover:bg-red-700 text-white p-2 rounded"
+            >
+              Review Code
+            </button>
+            
+            <button
+              onClick={generateReadme}
+              disabled={isGenerating || !selectedRepo}
+              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white p-2 rounded"
+            >
+              {isGenerating ? 'Generating README...' : 'Generate README'}
+            </button>
+          </div>
 
           {review && (
             <pre className="bg-gray-900 border border-gray-700 p-4 mt-4 overflow-auto rounded text-gray-300">
               {JSON.stringify(review, null, 2)}
             </pre>
+          )}
+
+          {showReadme && generatedReadme && (
+            <div className="mt-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-100">Generated README</h2>
+                <button
+                  onClick={() => setShowReadme(false)}
+                  className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm"
+                >
+                  Close
+                </button>
+              </div>
+              <div className="bg-gray-900 border border-gray-700 p-4 rounded prose prose-invert max-w-none">
+                <pre className="text-gray-300 whitespace-pre-wrap text-sm overflow-auto max-h-96">
+                  {generatedReadme}
+                </pre>
+              </div>
+            </div>
           )}
         </>
       )}
