@@ -28,6 +28,10 @@ out/
 # Model files (downloaded at runtime)
 services/api/models/*.onnx
 services/api/models/*.json
+# Also ignore ONNX files in any subdirectory of models
+services/api/models/**/*.onnx
+# Ignore large GGUF model files
+services/api/neural-generator/models/*.gguf
 
 # Database
 *.db
@@ -41,3 +45,5 @@ __pycache__/
 .model_cache/
 *.pyc
 .env
+services/api/neural-generator/models/
+services/api/models/codebert_quantized/
