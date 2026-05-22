@@ -4,7 +4,7 @@ from app.api.routes import router
 from app.api.routes_self_healing import router as self_healing_router
 from app.core.exceptions import CodeReviewerException
 from app.utils.logger import setup_logger
-from configs.config import settings
+from ..configs.config import settings
 import time
 
 logger = setup_logger(__name__)

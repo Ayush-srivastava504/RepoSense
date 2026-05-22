@@ -1,7 +1,40 @@
 import re
+import os
 from typing import List, Dict, Any, Optional
 
 class CodeAnalysisEngine:
+    """Code analysis engine using CodeBERT ONNX embeddings + pattern rules.
+    
+    The ONNX model (CodeBERT quantized) is loaded from CODEBERT_ONNX_PATH.
+    If unavailable, falls back to pure regex pattern matching.
+    """
+
+    def __init__(self):
+        self.onnx_available = False
+        self.session = None
+        self.tokenizer = None
+        
+        # Try to load CodeBERT ONNX model for better analysis
+        try:
+            import onnxruntime as ort
+            from transformers import AutoTokenizer
+            
+            onnx_path = os.getenv("CODEBERT_ONNX_PATH", "/app/models/codebert_quantized.onnx")
+            if os.path.exists(onnx_path):
+                self.session = ort.InferenceSession(
+                    onnx_path,
+                    providers=["CPUExecutionProvider"],
+                )
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    "microsoft/codebert-base",
+                    cache_dir="/tmp/models",
+                    local_files_only=False,
+                )
+                self.onnx_available = True
+        except Exception as e:
+            # ONNX not available; fall back to patterns
+            print(f"[WARN] CodeBERT ONNX not available: {e}; using pattern-based analysis")
+
     def analyze(self, code: str, language: str, focus_areas: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         issues = []
         # Bug patterns

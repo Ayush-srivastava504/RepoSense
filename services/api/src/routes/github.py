@@ -3,9 +3,10 @@ from fastapi.responses import RedirectResponse
 import secrets
 import httpx
 import json
+import base64
 from urllib.parse import urlencode
 from datetime import datetime, timedelta
-from ..configs.settings import settings
+from ..configs.config import settings
 from ..configs.redis import get_redis
 from ..utils.crypto import encrypt_token, decrypt_token
 from ..configs.db import get_db_pool
@@ -20,6 +21,8 @@ ws_tokens = {}
 @router.get("/login")
 async def github_login(request: Request):
     redis = await get_redis()
+    if redis is None:
+        raise HTTPException(503, "Redis unavailable")
     state = secrets.token_urlsafe(32)
 
     params = {
@@ -38,6 +41,8 @@ async def github_login(request: Request):
 @router.get("/callback")
 async def github_callback(request: Request, code: str, state: str):
     redis = await get_redis()
+    if redis is None:
+        raise HTTPException(503, "Redis unavailable")
 
     stored = await redis.get(f"github_oauth_state:{state}")
     if not stored:
@@ -82,6 +87,8 @@ async def github_callback(request: Request, code: str, state: str):
         raise HTTPException(400, "No email found")
 
     pool = await get_db_pool()
+    if pool is None:
+        raise HTTPException(503, "Database unavailable")
 
     user_row = await pool.fetchrow(
         "SELECT id, email, subscription_tier FROM users WHERE email = $1",
@@ -127,6 +134,8 @@ async def github_callback(request: Request, code: str, state: str):
 @router.get("/repos")
 async def get_repos(user=Depends(verify_token)):
     pool = await get_db_pool()
+    if pool is None:
+        raise HTTPException(503, "Database unavailable")
 
     row = await pool.fetchrow(
         "SELECT github_token FROM users WHERE id = $1",
@@ -181,9 +190,12 @@ async def terminal_websocket(websocket: WebSocket, token: str):
 
     except WebSocketDisconnect:
         pass
+
 @router.get("/contents")
 async def get_repo_contents(repo: str, path: str = "", user=Depends(verify_token)):
     pool = await get_db_pool()
+    if pool is None:
+        raise HTTPException(503, "Database unavailable")
 
     row = await pool.fetchrow(
         "SELECT github_token FROM users WHERE id = $1",
@@ -208,6 +220,8 @@ async def get_repo_contents(repo: str, path: str = "", user=Depends(verify_token
 @router.get("/file")
 async def get_file_content(repo: str, path: str, user=Depends(verify_token)):
     pool = await get_db_pool()
+    if pool is None:
+        raise HTTPException(503, "Database unavailable")
 
     row = await pool.fetchrow(
         "SELECT github_token FROM users WHERE id = $1",
@@ -228,7 +242,6 @@ async def get_file_content(repo: str, path: str, user=Depends(verify_token)):
         )
         data = resp.json()
 
-    import base64
     content = base64.b64decode(data["content"]).decode("utf-8")
 
     return {"content": content}
@@ -253,7 +266,6 @@ async def index_github_repo(repo: str, user=Depends(verify_token)):
                     headers={"Authorization": f"token {token}"}
                 )
                 data = content_resp.json()
-                import base64
                 content = base64.b64decode(data["content"]).decode("utf-8")
                 files.append({"path": item["path"], "content": content})
 
@@ -262,3 +274,46 @@ async def index_github_repo(repo: str, user=Depends(verify_token)):
     async with httpx.AsyncClient() as client:
         await client.post(rag_url, json={"repo_name": repo, "files": files})
     return {"status": "indexing started"}
+@router.post("/{repo_name}/auto-setup")
+async def auto_setup_repo(repo_name: str, user=Depends(verify_token)):
+    # 1. Index the repo (fetch files and call RAG index)
+    pool = await get_db_pool()
+    row = await pool.fetchrow("SELECT github_token FROM users WHERE id = $1", user["sub"])
+    if not row or not row["github_token"]:
+        raise HTTPException(400, "GitHub not connected")
+    token = decrypt_token(row["github_token"])
+
+    # Fetch all code files (simplified – use tree API)
+    async with httpx.AsyncClient() as client:
+        tree_resp = await client.get(
+            f"https://api.github.com/repos/{repo_name}/git/trees/HEAD?recursive=1",
+            headers={"Authorization": f"token {token}"}
+        )
+        tree = tree_resp.json()
+        files = []
+        for item in tree.get("tree", []):
+            if item["type"] == "blob" and item["path"].endswith((".py", ".js", ".ts", ".java", ".go", ".rs", ".cpp")):
+                content_resp = await client.get(item["url"], headers={"Authorization": f"token {token}"})
+                data = content_resp.json()
+                content = base64.b64decode(data["content"]).decode("utf-8")
+                files.append({"path": item["path"], "content": content})
+
+    # Call RAG index
+    rag_url = f"{settings.RAG_SERVICE_URL}/api/rag/index"
+    async with httpx.AsyncClient() as client:
+        await client.post(rag_url, json={"repo_name": repo_name, "files": files})
+
+    # 2. Generate README
+    gen_url = f"{settings.RAG_SERVICE_URL}/api/rag/generate"
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(gen_url, json={"repo_name": repo_name})
+        readme = resp.json().get("readme", "")
+
+    # 3. Store in database
+    await pool.execute("""
+        INSERT INTO repo_docs (repo_name, user_id, readme_content)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (repo_name, user_id) DO UPDATE SET readme_content = $3, updated_at = NOW()
+    """, repo_name, user["sub"], readme)
+
+    return {"status": "readme generated", "readme": readme}

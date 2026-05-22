@@ -4,7 +4,7 @@ from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
 from ..configs.db import get_db_pool
-from ..configs.settings import settings
+from ..configs.config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -20,6 +20,8 @@ class UserLogin(BaseModel):
 @router.post("/register")
 async def register(user: UserCreate):
     pool = await get_db_pool()
+    if pool is None:
+        raise HTTPException(503, "Database unavailable")
     existing = await pool.fetchrow("SELECT id FROM users WHERE email = $1", user.email)
     if existing:
         raise HTTPException(400, "Email already registered")
@@ -30,6 +32,8 @@ async def register(user: UserCreate):
 @router.post("/login")
 async def login(user: UserLogin):
     pool = await get_db_pool()
+    if pool is None:
+        raise HTTPException(503, "Database unavailable")
     db_user = await pool.fetchrow("SELECT id, email, password_hash, subscription_tier FROM users WHERE email = $1", user.email)
     if not db_user or not pwd_context.verify(user.password, db_user["password_hash"]):
         raise HTTPException(401, "Invalid credentials")

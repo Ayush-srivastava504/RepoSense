@@ -21,7 +21,7 @@ logger = setup_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    logger.info(f"Starting API in {settings.api.ENVIRONMENT} mode")
+    logger.info(f"Starting API in development mode")
     await get_db_pool()
     await get_redis()
     # Pre‑load AI service (optional)
@@ -30,10 +30,14 @@ async def lifespan(app: FastAPI):
     logger.info("AI service ready")
     yield
     # Shutdown
+    # Close DB pool if it was successfully created
     pool = await get_db_pool()
-    await pool.close()
-    redis = await get_redis()
-    await redis.close()
+    if pool is not None:
+        await pool.close()
+    # Close Redis connection if it was successfully created
+    redis_conn = await get_redis()
+    if redis_conn is not None:
+        await redis_conn.close()
     logger.info("Shutdown complete")
 
 def create_application() -> FastAPI:
@@ -49,8 +53,7 @@ def create_application() -> FastAPI:
     # CORS – allow frontend origin
     app.add_middleware(
         CORSMiddleware,
-        # Use CORS origins from API config nested within Settings
-        allow_origins=settings.api.CORS_ORIGINS,
+        allow_origins=settings.CORS_ORIGINS,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

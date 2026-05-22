@@ -66,6 +66,24 @@ class Settings:
         self.api = APIConfig()
         self.logging = LoggingConfig()
         self.security = SecurityConfig()
+        # Additional flat settings that were previously in settings.py
+        import os
+        self.DATABASE_URL = os.getenv(
+            "DATABASE_URL",
+            "postgresql://postgres:postgres@localhost:5432/postgres",
+        )
+        # Optional fields – default to empty strings to avoid validation errors
+        self.REDIS_URL = os.getenv("REDIS_URL", "")
+        self.GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID", "")
+        self.GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET", "")
+        self.STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+        self.STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+        self.JWT_SECRET = os.getenv("JWT_SECRET", "")
+        self.GITHUB_TOKEN_ENCRYPTION_KEY = os.getenv("GITHUB_TOKEN_ENCRYPTION_KEY", "")
+        self.AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY", "")
+        self.AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY", "")
+        self.GITHUB_REDIRECT_URI = os.getenv("GITHUB_REDIRECT_URI", "")
+        self.FRONTEND_URL = os.getenv("FRONTEND_URL", "")
     
     @property
     def is_production(self) -> bool:
