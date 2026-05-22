@@ -25,24 +25,35 @@ out/
 .idea/
 *.swp
 
-# Model files (downloaded at runtime)
-services/api/models/*.onnx
-services/api/models/*.json
+# Model files - MUST BE IGNORED (large files)
+models/
+.model_cache/
+services/api/models/
+services/api/neural-generator/models/
+services/models/
+*.gguf
+*.onnx
+*.bin
+*.pt
+*.pth
+*.pkl
+codebert_quantized/
+codebert_onnx/
+codebert_tokenizer/
 
 # Database
 *.db
 *.sqlite
+*.sqlite3
 
 # OS
 .DS_Store
 Thumbs.db
-venv/
 __pycache__/
-.model_cache/
-*.pyc
-.env
+.pyc
 
-*.gguf
-*.onnx
-*.bin
-models/
+# Logs
+logs/
+*.log
+debug.log
+error.log
