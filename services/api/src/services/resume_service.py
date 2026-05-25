@@ -1,7 +1,5 @@
 from configs.db import get_db_pool
 
-from fastapi import HTTPException
-
 
 class ResumeService:
 
@@ -9,21 +7,15 @@ class ResumeService:
         self,
         user_id: str,
         title: str,
-        content: dict,
+        content: str,
     ):
 
         pool = await get_db_pool()
 
-        if pool is None:
-
-            raise HTTPException(
-                503,
-                "Database unavailable"
-            )
-
         row = await pool.fetchrow(
             """
-            INSERT INTO resumes (
+            INSERT INTO resumes
+            (
                 user_id,
                 title,
                 content
@@ -44,17 +36,10 @@ class ResumeService:
 
     async def list_resumes(
         self,
-        user_id: str
+        user_id: str,
     ):
 
         pool = await get_db_pool()
-
-        if pool is None:
-
-            raise HTTPException(
-                503,
-                "Database unavailable"
-            )
 
         rows = await pool.fetch(
             """

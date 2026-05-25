@@ -19,3 +19,6 @@ cryptography==41.0.7
 python-multipart==0.0.6
 python-jose==3.3.0
 bcrypt==4.0.1
+
+pylatex==1.4.2
+latexcodec==3.0.0

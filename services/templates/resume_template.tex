@@ -1,0 +1,88 @@
+\documentclass[11pt]{article}
+\usepackage[letterpaper]{geometry}
+\usepackage{fontawesome5}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{enumitem}
+
+% Page margins
+\geometry{top=0.5in, bottom=0.5in, left=0.75in, right=0.75in}
+
+% Color definitions
+\definecolor{darkblue}{HTML}{0066CC}
+\definecolor{gray}{HTML}{555555}
+
+% Hyperlink setup
+\hypersetup{colorlinks=true, linkcolor=darkblue, urlcolor=darkblue}
+
+% Title formatting
+\titleformat{\section}{\large\bfseries\color{darkblue}}{}{0em}{}[\titlerule]
+\titlespacing{\section}{0pt}{12pt}{6pt}
+
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{#1}
+}
+
+\newcommand{\resumeItemListStart}{
+  \begin{itemize}[leftmargin=0.2in, label={--}]
+}
+
+\newcommand{\resumeItemListEnd}{
+  \end{itemize}\vspace{-8pt}
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & \textit{\small #2} \\
+      \small#3 & \small #4 \\
+    \end{tabular*}\vspace{-8pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      #1 & #2 \\
+    \end{tabular*}\vspace{-8pt}
+}
+
+% Remove default indentation
+\setlist[itemize]{leftmargin=0.2in}
+
+\begin{document}
+
+% Header with summary
+\begin{center}
+    \large{\textbf{AI ENGINEER}}
+\end{center}
+
+\vspace{-12pt}
+
+\noindent\textcolor{gray}{{{SUMMARY}}}
+
+\vspace{8pt}
+
+% Technical Skills Section
+\section{Technical Skills}
+
+\begin{itemize}[leftmargin=0.2in]
+    \resumeItem{\textbf{Languages:} {{TECH_LANGUAGES}}}
+    \resumeItem{\textbf{Backend \& DevOps:} {{TECH_BACKEND}}}
+    \resumeItem{\textbf{AI/ML:} {{TECH_AI}}}
+    \resumeItem{\textbf{Databases:} {{TECH_DATABASES}}}
+    \resumeItem{\textbf{Tools \& Frameworks:} {{TECH_TOOLS}}}
+\end{itemize}
+
+% Experience Section
+\section{Experience}
+
+{{EXPERIENCE_SECTION}}
+
+% Projects Section
+\section{Projects}
+
+{{PROJECT_SECTION}}
+
+\end{document}

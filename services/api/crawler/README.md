@@ -1,8 +1,8 @@
-# 🕷️ Job Aggregator Crawler
+# Job Aggregator Crawler
 
 Automated web scraper for job postings from 9+ platforms. Fetches job data from LinkedIn, Indeed, Naukri, Internshala, Wellfound, Unstop, Glassdoor, Cutshort, and company portals. Normalizes data and stores in PostgreSQL for unified job search.
 
-## 🎯 Features
+## Features
 
 - **Multi-Platform Scraping**: 9+ job sites with platform-specific parsers
 - **Stealth Mode**: Proxy rotation, user-agent randomization, rate limiting
@@ -13,7 +13,7 @@ Automated web scraper for job postings from 9+ platforms. Fetches job data from 
 - **Debug Mode**: Capture HTML snapshots for troubleshooting
 - **PostgreSQL Storage**: Unified database, not AWS (DynamoDB/S3)
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Browser Automation**: Playwright (headless Chrome/Firefox)
 - **HTML Parsing**: BeautifulSoup
@@ -21,7 +21,7 @@ Automated web scraper for job postings from 9+ platforms. Fetches job data from 
 - **Database**: PostgreSQL (asyncpg)
 - **Concurrency**: asyncio, ThreadPoolExecutor
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 services/api/crawler/
@@ -53,15 +53,15 @@ services/api/crawler/
     └── (HTML snapshots)            # Only in SCRAPER_DEBUG mode
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
 ```bash
-- Python 3.10+
-- PostgreSQL (running)
-- 500MB free space (logs, cache)
-- 2GB RAM minimum
+Python 3.10+
+PostgreSQL (running)
+500MB free space (logs, cache)
+2GB RAM minimum
 ```
 
 ### Installation
@@ -117,21 +117,21 @@ export SCRAPER_DEBUG=true
 python index.py --scrapers linkedin --max-pages 1
 ```
 
-## 📊 Supported Job Sites
+## Supported Job Sites
 
 | Site | Scraper | Support | Auth | Notes |
 |------|---------|---------|------|-------|
-| **LinkedIn** | `linkedin.py` | ✅ Full | None | JavaScript heavy |
-| **Indeed** | `indeed.py` | ✅ Full | None | Pagination support |
-| **Naukri** | `naukri.py` | ✅ Full | None | India-focused |
-| **Internshala** | `internshala.py` | ✅ Jobs + Internships | None | Student platform |
-| **Wellfound** | `wellfound.py` | ✅ Full | None | Startup jobs |
-| **Unstop** | `unstop.py` | ✅ Jobs + Competitions | None | Campus recruitment |
-| **Glassdoor** | `glassdoor.py` | ✅ Full | None | Company reviews included |
-| **Cutshort** | `cutshort.py` | ✅ Full | None | Tech-focused |
-| **Company Portals** | `company_portals.py` | ✅ Multiple | None | Wipro, TCS, Infosys, etc |
+| LinkedIn | `linkedin.py` | Full | None | JavaScript heavy |
+| Indeed | `indeed.py` | Full | None | Pagination support |
+| Naukri | `naukri.py` | Full | None | India-focused |
+| Internshala | `internshala.py` | Jobs + Internships | None | Student platform |
+| Wellfound | `wellfound.py` | Full | None | Startup jobs |
+| Unstop | `unstop.py` | Jobs + Competitions | None | Campus recruitment |
+| Glassdoor | `glassdoor.py` | Full | None | Company reviews included |
+| Cutshort | `cutshort.py` | Full | None | Tech-focused |
+| Company Portals | `company_portals.py` | Multiple | None | Wipro, TCS, Infosys, etc |
 
-## 🔄 Pipeline Flow
+## Pipeline Flow
 
 ```
 Start
@@ -168,7 +168,7 @@ Start
 End
 ```
 
-## 📝 Data Schema
+##  Data Schema
 
 ### jobs Table
 
@@ -198,7 +198,7 @@ CREATE TABLE jobs (
 | `source` | String | `linkedin`, `indeed`, etc |
 | `posted_at` | DateTime | Relative: `2 days ago` → parsed |
 
-## 🎛️ Command-Line Options
+##  Command-Line Options
 
 ```bash
 python index.py [OPTIONS]
@@ -226,7 +226,7 @@ python index.py --scrapers linkedin indeed naukri --max-pages 3
 SCRAPER_DEBUG=true python index.py --scrapers linkedin --max-pages 1
 ```
 
-## 🔐 Environment Variables
+##  Environment Variables
 
 ### Required (with defaults)
 
@@ -248,7 +248,7 @@ HEADLESS=true                      # Run browser headless
 PROXY_LIST=proxy1.com|proxy2.com   # Pipe-separated proxies
 ```
 
-## 📊 Performance
+##  Performance
 
 ### Scraping Speed
 
@@ -274,7 +274,7 @@ Per browser instance: ~150MB
 Total (3 parallel): ~500MB
 ```
 
-## 🐳 Docker
+##  Docker
 
 ### Build
 
@@ -312,7 +312,7 @@ crawler:
     - internship_network
 ```
 
-## 🔧 Troubleshooting
+##  Troubleshooting
 
 ### Scrapers Timeout
 
@@ -369,7 +369,7 @@ export MAX_WORKERS=1
 python index.py --max-pages 2
 ```
 
-## 📊 Monitoring
+##  Monitoring
 
 ### Job Count by Source
 
@@ -395,7 +395,7 @@ tail -f crawler.log
 # Duration: grep for "Total time"
 ```
 
-## 🚀 Scheduling
+##  Scheduling
 
 ### Cron Job (Linux)
 
@@ -456,19 +456,19 @@ docker run -d \
 | Database full | Clean old jobs: `DELETE FROM jobs WHERE created_at < DATE_SUB(NOW(), INTERVAL 3 MONTH)` |
 | Missing data | Check SCRAPER_DEBUG=true, inspect HTML |
 
-## 📖 Related Services
+##  Related Services
 
 - **Main API**: [services/README.md](../README.md)
 - **Neural Generator**: [services/api/neural-generator/README.md](../neural-generator/README.md)
 - **RAG Service**: [services/api/rag/README.md](../rag/README.md)
 
-## 🆘 Support
+##  Support
 
 1. **Debug mode**: `SCRAPER_DEBUG=true python index.py --scrapers linkedin --max-pages 1`
 2. **Check logs**: `tail -f crawler.log`
 3. **Verify DB**: `psql -c "SELECT COUNT(*) FROM jobs"`
 4. **Browser issues**: `playwright install`
 
-## 📄 License
+##  License
 
 Part of Repo Sense project

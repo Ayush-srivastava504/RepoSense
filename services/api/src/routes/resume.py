@@ -1,31 +1,46 @@
-from fastapi import APIRouter, Depends, HTTPException
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+)
+
+from fastapi.responses import (
+    FileResponse,
+)
+
 from pydantic import BaseModel
 
-import sys
 import traceback
-
-from pathlib import Path
 
 from middleware.auth import verify_token
 
-from services.resume_service import ResumeService
-
-
-api_root = Path(
-    __file__
-).resolve().parents[2]
-
-sys.path.append(
-    str(api_root)
+from services.resume_service import (
+    ResumeService,
 )
 
-from neural_generator.src.app import llm
+from services.resume_ai_service import (
+    ResumeAIService,
+)
+
+from services.resume_template_service import (
+    ResumeTemplateService,
+)
+
+from services.resume_pdf_service import (
+    ResumePDFService,
+)
 
 
 router = APIRouter(
     prefix="/api/resume",
     tags=["resume"],
 )
+
+
+@router.get("/test")
+async def test():
+    return {"ok": True}
 
 
 class ResumeData(BaseModel):
@@ -48,138 +63,61 @@ async def generate_resume(
 
     try:
 
-        if data.resume_type == "internship":
-
-            style_reference = """
-AI Engineer | Software Developer | Machine Learning
-
-SUMMARY
-Junior AI Engineer and Software Developer experienced in building intelligent systems using machine learning, NLP, and Python-based backend development.
-
-TECHNICAL SKILLS
-- Python
-- FastAPI
-- NLP
-- Elasticsearch
-- Redis
-- Hugging Face
-"""
-
-        else:
-
-            style_reference = """
-Software Engineer
-
-TECHNICAL SKILLS
-- Python
-- FastAPI
-- React
-- PostgreSQL
-- Docker
-- JWT
-- AWS
-
-PROJECTS
-- quantified achievements
-- realistic metrics
-- production systems
-"""
-
-        prompt = f"""
-Generate a professional ATS-optimized resume.
-
-STYLE REFERENCE:
-{style_reference}
-
-CANDIDATE INFO:
-
-Resume Type:
-{data.resume_type}
-
-Job Description:
-{data.job_description}
-
-Skills:
-{data.skills}
-
-Experience:
-{data.experience}
-
-STRICT RULES:
-
-- NO placeholders
-- NO fake universities
-- NO fake companies
-- NO markdown
-- NO code blocks
-- realistic metrics only
-- concise bullets
-- ATS optimized
-- modern formatting
-- strong action verbs
-- no explanations
-- no commentary
-
-Generate sections:
-
-Professional Summary
-Technical Skills
-Experience
-Projects
-Education
-Certifications
-Achievements
-
-Return ONLY the resume.
-"""
-
-        output = llm(
-            prompt,
-            max_tokens=700,
-            temperature=0.45,
-            top_k=40,
-            top_p=0.9,
-            repeat_penalty=1.2,
-            stop=["</s>"],
+        ai_service = (
+            ResumeAIService()
         )
 
-        generated_resume = (
-            output.get(
-                "choices",
-                [{}]
-            )[0]
-            .get("text", "")
-            .strip()
+        template_service = (
+            ResumeTemplateService()
         )
 
-        generated_resume = (
-            generated_resume
-            .replace("```", "")
-            .replace("markdown", "")
-            .replace("plain-text", "")
-            .strip()
+        pdf_service = (
+            ResumePDFService()
         )
 
-        if not generated_resume:
-
-            raise HTTPException(
-                500,
-                "Empty resume generated"
+        structured_data = (
+            await ai_service.generate_resume_data(
+                data.resume_type,
+                data.job_description,
+                data.skills,
+                data.experience,
             )
+        )
 
-        return {
-            "success": True,
-            "resume": generated_resume,
-        }
+        latex_resume = (
+            template_service.render_resume(
+                structured_data
+            )
+        )
+
+        pdf_path = (
+            await pdf_service.compile_latex(
+                "generated_resume",
+                latex_resume,
+            )
+        )
+
+        return FileResponse(
+            pdf_path,
+            media_type="application/pdf",
+            filename="resume.pdf",
+        )
 
     except Exception as exc:
-
+        # Log the full traceback for debugging purposes.
         traceback.print_exc()
 
-        raise HTTPException(
-            500,
-            f"Resume generation failed: {str(exc)}"
-        )
+        # Provide a more specific error response when the AI service fails to produce valid JSON.
+        if "No JSON found" in str(exc) or "JSON parsing failed" in str(exc):
+            raise HTTPException(
+                400,
+                f"Invalid AI output: {str(exc)}"
+            )
+        else:
+            raise HTTPException(
+                500,
+                f"Resume generation failed: {str(exc)}"
+            )
 
 
 @router.post("/create")
@@ -188,11 +126,11 @@ async def create_resume(
     user=Depends(verify_token),
 ):
 
-    svc = ResumeService()
-
     try:
 
-        return await svc.create_resume(
+        service = ResumeService()
+
+        return await service.create_resume(
             user["sub"],
             data.title,
             data.content,
@@ -210,14 +148,14 @@ async def create_resume(
 
 @router.get("/list")
 async def list_resumes(
-    user=Depends(verify_token)
+    user=Depends(verify_token),
 ):
-
-    svc = ResumeService()
 
     try:
 
-        return await svc.list_resumes(
+        service = ResumeService()
+
+        return await service.list_resumes(
             user["sub"]
         )
 

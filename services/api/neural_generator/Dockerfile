@@ -1,20 +1,29 @@
-FROM alpine:latest
+FROM python:3.11-slim
 
-RUN apk add --no-cache g++ make cmake git curl python3 py3-pip
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Build llama.cpp
-RUN git clone https://github.com/ggerganov/llama.cpp
-RUN cd llama.cpp && make
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    curl \
+    wget \
+    texlive-latex-base \
+    texlive-latex-extra \
+    texlive-fonts-recommended \
+    texlive-fonts-extra \
+    texlive-xetex \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy model (download separately, see instructions)
-COPY models/qwen3-codersmall-0.8b-q4_k_m.gguf /app/models/model.gguf
-COPY src/ /app/src/
+COPY requirements.txt .
 
-RUN pip install fastapi uvicorn
+RUN pip install --no-cache-dir -r requirements.txt
 
-EXPOSE 8002
+COPY . .
 
-# Limit memory usage and threads
-CMD ["uvicorn", "src.app:app", "--host", "0.0.0.0", "--port", "8002"]
+EXPOSE 8000
+
+CMD ["python", "app.py"]

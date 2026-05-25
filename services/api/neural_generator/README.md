@@ -1,8 +1,8 @@
-#  Neural Generator Service
+# Neural Generator Service
 
 FastAPI microservice for AI-powered text generation using **Qwen GGUF** model via **llama-cpp-python**. Generates documentation, READMEs, and other content efficiently on CPU with minimal memory footprint.
 
-##  Features
+## Features
 
 - **Local LLM Inference**: Run Qwen 3 0.6B model on CPU
 - **Quantized Model**: Q4_K_M format (~400MB)
@@ -12,7 +12,7 @@ FastAPI microservice for AI-powered text generation using **Qwen GGUF** model vi
 - **Health Checks**: Monitoring and status endpoints
 - **CORS Enabled**: Integrate with multiple frontend domains
 
-##  Tech Stack
+## Tech Stack
 
 - **Framework**: FastAPI
 - **LLM**: llama-cpp-python (GGUF)
@@ -20,7 +20,7 @@ FastAPI microservice for AI-powered text generation using **Qwen GGUF** model vi
 - **Async**: asyncio for concurrent requests
 - **Validation**: Pydantic
 
-##  Project Structure
+## Project Structure
 
 ```
 services/api/neural-generator/
@@ -34,7 +34,7 @@ services/api/neural-generator/
 └── nixpacks.toml                   # Railway deployment
 ```
 
-##  Quick Start
+## Quick Start
 
 ### Prerequisites
 
