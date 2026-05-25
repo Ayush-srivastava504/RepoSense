@@ -199,15 +199,15 @@ docker run -d -p 6379:6379 redis:latest
 
 #### Error 2: `redis.exceptions.ConnectionError`
 **Cause**: Redis connection failed in rate-limiting middleware
-**Status**: ✅ **FIXED** - Rate limiter now skips if Redis is unavailable
+**Status**: **FIXED** - Rate limiter now skips if Redis is unavailable
 
 #### Error 3: `AttributeError: 'NoneType' object has no attribute ...`
 **Cause**: DB pool is None and code tries to call methods on it
-**Status**: ✅ **FIXED** - All routes now check `if pool is None: raise HTTPException(503)`
+**Status**: **FIXED** - All routes now check `if pool is None: raise HTTPException(503)`
 
 #### Error 4: `NameError: name 'get_db_pool' is not defined`
 **Cause**: Missing import in route files
-**Status**: ✅ **FIXED** - All imports added
+**Status**:  **FIXED** - All imports added
 
 #### Error 5: `ModuleNotFoundError: No module named '...'`
 **Cause**: Missing dependencies

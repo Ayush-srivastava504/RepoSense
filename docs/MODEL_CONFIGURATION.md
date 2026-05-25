@@ -376,12 +376,12 @@ docker build -t repo-sense --build-arg HF_TOKEN=$HF_TOKEN .
 # Test CodeBERT
 python -c "from transformers import AutoModel, AutoTokenizer; \
     model = AutoModel.from_pretrained('$CODEBERT_MODEL'); \
-    print('✅ CodeBERT OK')"
+    print(' CodeBERT OK')"
 
 # Test Qwen
 python -c "from huggingface_hub import hf_hub_download; \
     path = hf_hub_download('$HF_MODEL_REPO', '$HF_MODEL_FILE'); \
-    print(f'✅ Qwen OK: {path}')"
+    print(f' Qwen OK: {path}')"
 
 # Test cache
 du -sh $MODEL_CACHE_DIR
@@ -445,4 +445,4 @@ MODEL_CACHE_DIR=/tmp
 
 ---
 
-**For more details, see COMPLETE_MODEL_MIGRATION_GUIDE.md** 📚
+**For more details, see COMPLETE_MODEL_MIGRATION_GUIDE.md** 

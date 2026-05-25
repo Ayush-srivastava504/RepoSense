@@ -17,12 +17,12 @@ python scripts/setup_models.py
 ```
 
 This wizard will:
-1. ✅ Check dependencies
-2. ✅ Configure CodeBERT model
-3. ✅ Configure Qwen LLM
-4. ✅ Create .env file
-5. ✅ Update .gitignore
-6. ✅ Optionally download models
+1.  Check dependencies
+2.  Configure CodeBERT model
+3.  Configure Qwen LLM
+4.  Create .env file
+5.  Update .gitignore
+6.  Optionally download models
 
 **That's it!** Your app is ready to run.
 

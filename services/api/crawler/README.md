@@ -1,89 +1,60 @@
 # Job Aggregator Crawler
 
-Automated web scraper for job postings from 9+ platforms. Fetches job data from LinkedIn, Indeed, Naukri, Internshala, Wellfound, Unstop, Glassdoor, Cutshort, and company portals. Normalizes data and stores in PostgreSQL for unified job search.
+> Automated multi-platform job scraper for 9+ job boards. Fetches job postings, normalizes data, deduplicates, and stores in PostgreSQL for unified job search across LinkedIn, Indeed, Naukri, Internshala, Wellfound, Unstop, Glassdoor, Cutshort, and company portals.
 
-## Features
+## Overview
 
-- **Multi-Platform Scraping**: 9+ job sites with platform-specific parsers
-- **Stealth Mode**: Proxy rotation, user-agent randomization, rate limiting
-- **Playwright Automation**: Handle dynamic JavaScript-heavy sites
-- **Data Normalization**: Consistent schema across all platforms
-- **Deduplication**: Avoid storing duplicate jobs
-- **Intelligent Retry**: Exponential backoff, timeout handling
-- **Debug Mode**: Capture HTML snapshots for troubleshooting
-- **PostgreSQL Storage**: Unified database, not AWS (DynamoDB/S3)
+The RepoSense Crawler is a high-performance, asynchronous job scraper that:
+- **Scrapes 9+ job boards** simultaneously using Playwright browser automation
+- **Handles dynamic JavaScript-heavy sites** with headless Chrome/Firefox
+- **Normalizes data** into consistent schema across all platforms
+- **Deduplicates** jobs to avoid storing the same posting twice
+- **Enriches job data** with company info, tags, and categorization
+- **Stores in PostgreSQL** for unified job search and matching
+- **Includes retry logic** with exponential backoff for reliability
+- **Supports proxy rotation** and user-agent randomization for stealth
 
 ## Tech Stack
 
-- **Browser Automation**: Playwright (headless Chrome/Firefox)
-- **HTML Parsing**: BeautifulSoup
-- **HTTP Client**: httpx (async)
-- **Database**: PostgreSQL (asyncpg)
-- **Concurrency**: asyncio, ThreadPoolExecutor
-
-## Project Structure
-
-```
-services/api/crawler/
-├── src/
-│   ├── index.py                    # Main pipeline orchestrator
-│   ├── utils.py                    # DB, S3 client, utilities
-│   ├── config.py                   # Configuration
-│   ├── scrapers/
-│   │   ├── __init__.py
-│   │   ├── linkedin.py             # LinkedIn Jobs scraper
-│   │   ├── indeed.py               # Indeed scraper
-│   │   ├── naukri.py               # Naukri scraper
-│   │   ├── internshala.py          # Internshala (jobs & internships)
-│   │   ├── wellfound.py            # Wellfound scraper
-│   │   ├── unstop.py               # Unstop (jobs & competitions)
-│   │   ├── glassdoor.py            # Glassdoor scraper
-│   │   ├── cutshort.py             # Cutshort scraper
-│   │   ├── company_portals.py      # Wipro, TCS, Infosys, etc
-│   │   └── base.py                 # Base scraper class
-│   ├── processors/
-│   │   ├── __init__.py
-│   │   └── normalize.py            # Data normalization
-│   └── templates/
-│       └── ...                     # CSS selectors, XPath
-├── requirements.txt
-├── Dockerfile
-├── README.md                       # This file
-└── debug/
-    └── (HTML snapshots)            # Only in SCRAPER_DEBUG mode
-```
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| **Browser Automation** | Playwright | Headless browser control |
+| **HTML Parsing** | BeautifulSoup | DOM parsing & CSS selectors |
+| **HTTP** | httpx | Async HTTP client |
+| **Async** | asyncio | Concurrent scraping |
+| **Database** | PostgreSQL (asyncpg) | Job storage |
+| **Configuration** | Python Dotenv | Environment settings |
+| **Logging** | structlog | Structured logging |
 
 ## Quick Start
 
 ### Prerequisites
 
 ```bash
-Python 3.10+
-PostgreSQL (running)
-500MB free space (logs, cache)
-2GB RAM minimum
+- Python 3.10+
+- PostgreSQL 12+ (running)
+- 500MB free disk space (cache & logs)
+- Internet connection
 ```
 
 ### Installation
 
 ```bash
-# Navigate to crawler
+# Navigate to crawler directory
 cd services/api/crawler
 
 # Create virtual environment
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\Activate.ps1
+source venv/bin/activate          # Linux/Mac
+# OR
+venv\Scripts\activate              # Windows
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Download Playwright browsers
+# Download Playwright browsers (required once)
 playwright install
-```
 
-### Configuration
-
-```bash
 # Create .env file
 cat > .env << EOF
 # PostgreSQL
@@ -93,11 +64,59 @@ PG_USER=postgres
 PG_PASSWORD=postgres
 PG_DB=internship_db
 
-# Scraping (optional)
-SCRAPER_DEBUG=false                # Enable HTML debug capture
-MAX_WORKERS=3                      # Parallel scrapers
-REQUEST_TIMEOUT=30                 # Seconds per request
+# Scraping Settings
+SCRAPER_DEBUG=false               # Enable HTML debug capture
+MAX_WORKERS=4                     # Parallel scrapers
+REQUEST_TIMEOUT=30                # Seconds per request
+HEADLESS=true                     # Run browsers in headless mode
+
+# Optional
+PROXY_LIST=http://proxy1:8080,http://proxy2:8080
+PROXY_ROTATION=true
+USER_AGENT_ROTATION=true
 EOF
+
+# Run the crawler
+python src/index.py
+```
+
+**Crawler running at:** http://localhost:8003 (if running as microservice)
+
+## Project Structure
+
+```
+services/api/crawler/
+├── README.md                          # This file
+├── requirements.txt                   # Python dependencies
+├── Dockerfile                         # Container image
+├── .env.example                       # Environment template
+│
+├── src/
+│   ├── index.py                       # Main orchestrator
+│   ├── config.py                      # Configuration settings
+│   ├── utils.py                       # Database & utilities
+│   │
+│   ├── scrapers/
+│   │   ├── __init__.py
+│   │   ├── base.py                    # Base scraper class
+│   │   ├── linkedin.py                # LinkedIn Jobs
+│   │   ├── indeed.py                  # Indeed
+│   │   ├── naukri.py                  # Naukri (India)
+│   │   ├── internshala.py             # Internshala (India)
+│   │   ├── wellfound.py               # Wellfound (Startups)
+│   │   ├── unstop.py                  # Unstop (India)
+│   │   ├── glassdoor.py               # Glassdoor
+│   │   ├── cutshort.py                # Cutshort (India)
+│   │   └── company_portals.py         # Company sites (Wipro, TCS, etc)
+│   │
+│   └── processors/
+│       ├── __init__.py
+│       ├── normalize.py               # Data standardization
+│       └── dedup.py                   # Duplicate removal
+│
+└── debug/
+    └── (HTML snapshots - only when SCRAPER_DEBUG=true)
+```
 ```
 
 ### Running the Crawler
@@ -274,11 +293,364 @@ Per browser instance: ~150MB
 Total (3 parallel): ~500MB
 ```
 
-##  Docker
 
-### Build
+
+## Configuration Reference
+
+### Basic Configuration
 
 ```bash
+# .env file
+PG_HOST=localhost
+PG_PORT=5432
+PG_USER=postgres
+PG_PASSWORD=postgres
+PG_DB=internship_db
+```
+
+### Advanced Options
+
+```bash
+# Scraping Settings
+SCRAPER_DEBUG=false               # Capture HTML for debugging
+MAX_WORKERS=4                     # Number of parallel scrapers
+REQUEST_TIMEOUT=30                # Seconds to wait per request
+HEADLESS=true                     # Run browser in headless mode
+VERIFY_SSL=true                   # Verify HTTPS certificates
+
+# Retry & Resilience
+MAX_RETRIES=3                     # Retries per scraper
+RETRY_BACKOFF=2                   # Exponential backoff multiplier
+CONNECTION_POOL_SIZE=5            # PostgreSQL connections
+
+# Proxy & Stealth (Optional)
+PROXY_LIST=http://proxy1:8080;http://proxy2:8080
+PROXY_ROTATION=true
+USER_AGENT_ROTATION=true
+RANDOM_DELAY_MIN=1                # Min delay between requests (sec)
+RANDOM_DELAY_MAX=5                # Max delay between requests (sec)
+```
+
+## Supported Sites & Details
+
+### 1. LinkedIn (`linkedin.py`)
+- **URL**: https://www.linkedin.com/jobs/search/
+- **Features**: Rich job descriptions, company info, skills tags
+- **Rate Limit**: Slow (JavaScript heavy)
+- **Auth**: Not required
+
+### 2. Indeed (`indeed.py`)
+- **URL**: https://www.indeed.com/jobs/
+- **Features**: Large job database, salary info
+- **Rate Limit**: Fast, paginated
+- **Auth**: Not required
+
+### 3. Naukri (`naukri.py`)
+- **URL**: https://www.naukri.com/
+- **Features**: India-focused, salary expectations
+- **Rate Limit**: Moderate
+- **Auth**: Not required (site specific)
+
+### 4. Internshala (`internshala.py`)
+- **URL**: https://internshala.com/jobs/
+- **Features**: Student internships + jobs
+- **Rate Limit**: Moderate
+- **Auth**: Not required
+
+### 5. Wellfound (`wellfound.py`)
+- **URL**: https://wellfound.com/jobs
+- **Features**: Startup jobs, equity info
+- **Rate Limit**: Moderate
+- **Auth**: Not required
+
+### 6. Unstop (`unstop.py`)
+- **URL**: https://www.unstop.com/
+- **Features**: Campus recruitment, competitions
+- **Rate Limit**: Moderate
+- **Auth**: Not required
+
+### 7. Glassdoor (`glassdoor.py`)
+- **URL**: https://www.glassdoor.com/Job/jobs.htm
+- **Features**: Company reviews, salary data
+- **Rate Limit**: Fast
+- **Auth**: Not required
+
+### 8. Cutshort (`cutshort.py`)
+- **URL**: https://cutshort.io/tech-jobs
+- **Features**: Tech-focused, India-centric
+- **Rate Limit**: Fast
+- **Auth**: Not required
+
+### 9. Company Portals (`company_portals.py`)
+- **Companies**: Wipro, TCS, Infosys, Accenture, Deloitte, etc
+- **Features**: Direct company career pages
+- **Rate Limit**: Varies
+- **Auth**: Not required
+
+## Data Extraction
+
+All jobs are normalized to this schema:
+
+```json
+{
+  "id": "linkedin_job_123456",
+  "title": "Senior Python Developer",
+  "company": "Google",
+  "location": "Bangalore, India",
+  "description": "We are looking for...",
+  "salary_min": 50000,
+  "salary_max": 120000,
+  "currency": "INR",
+  "job_type": "Full-time",
+  "experience_level": "Senior",
+  "skills": ["Python", "FastAPI", "PostgreSQL"],
+  "url": "https://...",
+  "source": "linkedin",
+  "posted_at": "2024-01-15T00:00:00Z"
+}
+```
+
+## Running the Crawler
+
+### Default Run (All Sites)
+
+```bash
+cd services/api/crawler/src
+python index.py
+```
+
+**Output:**
+```
+[2024-01-15 10:30:00] Starting job crawl...
+[2024-01-15 10:30:05] LinkedIn scraper started...
+[2024-01-15 10:32:10] LinkedIn: Fetched 125 jobs
+[2024-01-15 10:32:15] Indeed scraper started...
+[2024-01-15 10:34:20] Indeed: Fetched 98 jobs
+...
+[2024-01-15 10:50:00] Crawl complete!
+  ├─ Total jobs: 892
+  ├─ New jobs: 456
+  ├─ Duplicates skipped: 436
+  ├─ Errors: 2
+  └─ Duration: 20 minutes
+```
+
+### Custom Scraping
+
+```bash
+# LinkedIn only, 10 pages
+python index.py --scrapers linkedin --max-pages 10
+
+# Multiple sites
+python index.py --scrapers linkedin indeed naukri --max-pages 5
+
+# Dry-run (no database writes)
+python index.py --dry-run
+
+# Debug mode (saves HTML)
+SCRAPER_DEBUG=true python index.py --scrapers linkedin --max-pages 1
+```
+
+### Scheduled Runs (Cron)
+
+```bash
+# Run daily at 2 AM
+0 2 * * * cd /repo/services/api/crawler && python src/index.py >> /var/log/crawler.log 2>&1
+
+# Run every 6 hours
+0 */6 * * * cd /repo/services/api/crawler && python src/index.py
+```
+
+## Docker Usage
+
+### Build Image
+
+```bash
+cd services/api/crawler
+docker build -t repo-sense-crawler:latest .
+```
+
+### Run Container
+
+```bash
+docker run -d \
+  --name crawler \
+  -e PG_HOST=postgres \
+  -e PG_USER=postgres \
+  -e PG_PASSWORD=postgres \
+  -e PG_DB=internship_db \
+  --network repo-sense-net \
+  repo-sense-crawler:latest
+```
+
+### With Docker Compose
+
+```yaml
+crawler:
+  build: ./services/api/crawler
+  environment:
+    PG_HOST: postgres
+    PG_USER: postgres
+    PG_PASSWORD: postgres
+    PG_DB: internship_db
+    MAX_WORKERS: 4
+  depends_on:
+    - postgres
+  volumes:
+    - ./logs:/app/logs
+```
+
+## Testing
+
+```bash
+# Test imports
+python -c "from src.scrapers import linkedin, indeed; print('✓ Imports OK')"
+
+# Dry-run (no DB)
+python src/index.py --dry-run
+
+# Single page test
+python src/index.py --scrapers linkedin --max-pages 1 --dry-run
+
+# Verify database connection
+python -c "import asyncio; from src.utils import get_db; asyncio.run(get_db())"
+```
+
+## Troubleshooting
+
+### Issue 1: "ConnectionRefusedError: PostgreSQL not running"
+
+**Solution:**
+```bash
+# Start PostgreSQL (Linux/Mac)
+brew services start postgresql
+
+# Or Docker
+docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:15
+
+# Verify
+psql -U postgres -c "SELECT 1"
+```
+
+### Issue 2: "Timeout waiting for browser launch"
+
+**Solution:**
+```bash
+# Install Playwright browsers
+playwright install
+
+# Or manually
+playwright install chromium firefox
+```
+
+### Issue 3: "Blocked: Too many requests (429)"
+
+**Solution:**
+```bash
+# Increase delays and reduce workers
+MAX_WORKERS=2
+RANDOM_DELAY_MIN=3
+RANDOM_DELAY_MAX=10
+
+# Or use proxy rotation
+PROXY_ROTATION=true
+PROXY_LIST=http://proxy1:8080;http://proxy2:8080
+```
+
+### Issue 4: "jobs table does not exist"
+
+**Solution:**
+```bash
+# Run migrations
+cd ../..
+python run_migrations.py
+
+# Verify
+psql -U postgres internship_db -c "\dt"
+```
+
+### Issue 5: "HTMLParseError or selector not found"
+
+**Enable debug mode:**
+```bash
+SCRAPER_DEBUG=true python src/index.py --scrapers linkedin --max-pages 1
+
+# Check HTML snapshots in debug/
+ls debug/
+```
+
+## Performance Optimization
+
+### Scale Up Scraping
+
+```bash
+# Increase parallel workers
+MAX_WORKERS=8
+
+# Reduce delays
+RANDOM_DELAY_MIN=0.5
+RANDOM_DELAY_MAX=2
+
+# Run multiple instances
+# Instance 1: python index.py --scrapers linkedin indeed naukri
+# Instance 2: python index.py --scrapers internshala wellfound unstop
+# Instance 3: python index.py --scrapers glassdoor cutshort company_portals
+```
+
+### Database Optimization
+
+```sql
+-- Add index on source for faster filtering
+CREATE INDEX idx_jobs_source ON jobs(source);
+
+-- Add index on posted_at for sorting
+CREATE INDEX idx_jobs_posted_at ON jobs(posted_at DESC);
+
+-- Add index on url for deduplication
+CREATE INDEX idx_jobs_url ON jobs(url);
+
+-- Analyze table for query optimization
+ANALYZE jobs;
+```
+
+## Development
+
+### Adding a New Scraper
+
+```python
+# src/scrapers/example_site.py
+from .base import BaseScraper
+
+class ExampleSiteScraper(BaseScraper):
+    BASE_URL = "https://example-site.com"
+    
+    async def parse_jobs(self, page_num: int):
+        """Parse jobs from page_num."""
+        url = f"{self.BASE_URL}/jobs?page={page_num}"
+        
+        # Navigate and parse
+        jobs = []
+        for job_elem in await self.get_elements(".job-card"):
+            job = {
+                "id": await job_elem.get_attribute("data-id"),
+                "title": await self.get_text(".title", job_elem),
+                "company": await self.get_text(".company", job_elem),
+                # ... more fields
+            }
+            jobs.append(job)
+        
+        return jobs
+```
+
+## Related Services
+
+- **Main API:** [services/api/README.md](../README.md)
+- **Database:** [Database Migrations](../../database/migrations/)
+- **Backend:** [services/README.md](../../README.md)
+
+---
+
+**For deployment:** See [docs/DEPLOYMENT_GUIDE.md](../../../../docs/DEPLOYMENT_GUIDE.md)
 docker build -t job-crawler:latest .
 ```
 

@@ -462,4 +462,4 @@ huggingface-cli upload myorg/my-model ./file \
 
 ---
 
-**Ready to share your models? Create a repository and upload!** 🚀
+**Ready to share your models? Create a repository and upload!** 

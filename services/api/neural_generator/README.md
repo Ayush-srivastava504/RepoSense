@@ -1,38 +1,37 @@
 # Neural Generator Service
 
-FastAPI microservice for AI-powered text generation using **Qwen GGUF** model via **llama-cpp-python**. Generates documentation, READMEs, and other content efficiently on CPU with minimal memory footprint.
+> FastAPI microservice for local LLM text generation using **Qwen 3 GGUF** model via **llama-cpp-python**. Generates READMEs, documentation, and content efficiently on CPU with minimal resource requirements.
+
+## Overview
+
+The Neural Generator is a lightweight LLM inference service designed for:
+- **Local Execution**: No cloud APIs, fully self-hosted
+- **Low Resource**: ~400MB model + 512MB runtime (t2.micro compatible)
+- **Fast Generation**: 50-100 tokens/sec on 2 vCPUs
+- **Scalable**: Async FastAPI handles multiple concurrent requests
+- **Privacy**: All data stays local, no external API calls
 
 ## Features
 
-- **Local LLM Inference**: Run Qwen 3 0.6B model on CPU
-- **Quantized Model**: Q4_K_M format (~400MB)
-- **Low Memory**: 512-1024MB runtime (t2.micro friendly)
-- **Fast Generation**: ~50-100 tokens/sec on 2 vCPUs
-- **Configurable Parameters**: Temperature, top-k, top-p control
-- **Health Checks**: Monitoring and status endpoints
+- **Local LLM Inference**: Qwen 3 0.6B model on CPU (no GPU needed)
+- **Quantized Model**: Q4_K_M format for 10x size reduction (~400MB)
+- **Production Ready**: Error handling, timeouts, health checks
+- **REST API**: FastAPI with OpenAPI documentation
+- **Configurable**: Temperature, top-k, top-p sampling
 - **CORS Enabled**: Integrate with multiple frontend domains
+- **Async/Concurrent**: Handle multiple generation requests
+- **Docker Ready**: Container image included
 
 ## Tech Stack
 
-- **Framework**: FastAPI
-- **LLM**: llama-cpp-python (GGUF)
-- **Model**: Qwen3-0.6B-Q4_K_M
-- **Async**: asyncio for concurrent requests
-- **Validation**: Pydantic
-
-## Project Structure
-
-```
-services/api/neural-generator/
-├── src/
-│   ├── app.py                      # FastAPI application
-├── models/
-│   └── Qwen3-0_6B-Q4_K_M.gguf     # Quantized model (~400MB)
-├── requirements.txt                # Dependencies
-├── Dockerfile                      # Container config
-├── README.md                       # This file
-└── nixpacks.toml                   # Railway deployment
-```
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| **Framework** | FastAPI 0.100+ | Async web server |
+| **LLM Engine** | llama-cpp-python | GGUF model inference |
+| **Model** | Qwen 3 0.6B Q4_K_M | Quantized LLM (~400MB) |
+| **Async** | asyncio | Concurrent requests |
+| **Validation** | Pydantic v2 | Request/response DTOs |
+| **HTTP** | uvicorn | ASGI server |
 
 ## Quick Start
 
@@ -40,21 +39,24 @@ services/api/neural-generator/
 
 ```bash
 - Python 3.10+
-- 500MB disk (model)
-- 1GB RAM minimum (512MB preferred for container)
+- 500MB disk space (for model)
+- 512MB RAM minimum (1GB recommended)
+- CPU (no GPU required)
 ```
 
-### Installation
+### Installation (3 minutes)
 
 ```bash
-# Navigate to service
-cd services/api/neural-generator
+# Navigate to service directory
+cd services/api/neural_generator
 
 # Create virtual environment
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\Activate.ps1
+source venv/bin/activate          # Linux/Mac
+# OR
+venv\Scripts\activate              # Windows
 
-# Install dependencies
+# Install dependencies (includes llama-cpp-python)
 pip install -r requirements.txt
 
 # Verify installation
@@ -64,42 +66,34 @@ python -c "import llama_cpp; print('✓ llama-cpp-python installed')"
 ### Running Locally
 
 ```bash
-# Set model path
-export MODEL_PATH=models/Qwen3-0_6B-Q4_K_M.gguf
+# Start the service
+python -m uvicorn src.app:app --host 0.0.0.0 --port 8001
 
-# Or on Windows:
-set MODEL_PATH=models\Qwen3-0_6B-Q4_K_M.gguf
-
-# Start server
+# Or with reload for development
 python -m uvicorn src.app:app --host 0.0.0.0 --port 8001 --reload
 ```
 
-**Service available at:** http://localhost:8001  
-**Docs:** http://localhost:8001/docs
+**Service available at:**
+- **API:** http://localhost:8001
+- **Swagger Docs:** http://localhost:8001/docs
+- **ReDoc:** http://localhost:8001/redoc
 
-##  API Endpoints
+## API Endpoints
 
-### POST `/generate`
+### `POST /generate`
 
-Generate text using the model.
+Generate text using the Qwen LLM model.
 
-**Request:**
+**Request Body:**
 
 ```json
 {
-  "prompt": "Generate a README for a Python project that...",
+  "prompt": "Write a professional README for a Python REST API project",
   "max_tokens": 512,
   "temperature": 0.2,
   "top_k": 40,
-  "top_p": 0.9
-}
-```
-
-**Response:**
-
-```json
-{
-  "text": "# Project Name\n\n## Description\n..."
+  "top_p": 0.9,
+  "timeout": 60
 }
 ```
 
@@ -107,97 +101,418 @@ Generate text using the model.
 
 | Parameter | Type | Default | Range | Description |
 |-----------|------|---------|-------|-------------|
-| `prompt` | string | required | - | Text to complete |
-| `max_tokens` | int | 512 | 1-2048 | Max output length |
-| `temperature` | float | 0.2 | 0-2.0 | Randomness (0=deterministic) |
-| `top_k` | int | 40 | 1-100 | Limit to top-k tokens |
-| `top_p` | float | 0.9 | 0-1.0 | Nucleus sampling threshold |
-
-**Examples:**
-
-```bash
-# Generate README
-curl -X POST http://localhost:8001/generate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "Write a professional README for a Python REST API",
-    "max_tokens": 1500,
-    "temperature": 0.2
-  }'
-
-# Generate code documentation
-curl -X POST http://localhost:8001/generate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "Generate docstrings for this Python function: def calculate_sum(a, b):",
-    "max_tokens": 256,
-    "temperature": 0.1
-  }'
-```
-
-### GET `/health`
-
-Check service health.
+| `prompt` | string | required | - | Text to complete/generate from |
+| `max_tokens` | int | 512 | 1-2048 | Maximum output tokens |
+| `temperature` | float | 0.2 | 0-2.0 | Randomness (0=deterministic, 2=max randomness) |
+| `top_k` | int | 40 | 1-100 | Limit to top-k most likely tokens |
+| `top_p` | float | 0.9 | 0-1.0 | Nucleus sampling (probability threshold) |
+| `timeout` | int | 120 | 1-600 | Request timeout in seconds |
 
 **Response:**
 
 ```json
 {
-  "status": "ok",
-  "model": "Qwen3-0.6B-Q4_K_M",
-  "model_loaded": true
+  "text": "# Project Title\n\n## Overview\nThis REST API provides...",
+  "tokens_generated": 187,
+  "generation_time_ms": 3450,
+  "model": "Qwen3-0.6B-Q4_K_M"
 }
 ```
 
-##  Environment Variables
+### `GET /health`
+
+Check service health and model status.
+
+**Response:**
+
+```json
+{
+  "status": "healthy",
+  "model": "Qwen3-0.6B-Q4_K_M",
+  "model_loaded": true,
+  "memory_usage_mb": 512,
+  "uptime_seconds": 3600
+}
+```
+
+### `POST /generate/batch`
+
+Generate multiple texts (experimental).
+
+**Request:**
+
+```json
+{
+  "prompts": [
+    "Write a README for project A",
+    "Write a README for project B"
+  ],
+  "max_tokens": 512,
+  "temperature": 0.2
+}
+```
+
+**Response:**
+
+```json
+{
+  "results": [
+    {"text": "...", "tokens_generated": 150},
+    {"text": "...", "tokens_generated": 200}
+  ],
+  "total_time_ms": 5000
+}
+```
+
+## Usage Examples
+
+### Example 1: Generate README
 
 ```bash
-# Model path (required)
-MODEL_PATH=/app/models/qwen3-codersmall-0.8b-q4_k_m.gguf
+curl -X POST http://localhost:8001/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Generate a comprehensive README for a FastAPI-based job crawler. Include features, tech stack, quick start, and usage examples.",
+    "max_tokens": 1500,
+    "temperature": 0.3
+  }'
+```
 
-# LLM Parameters (optional)
-LLM_N_THREADS=2                    # CPU threads (reduce for low-memory)
+### Example 2: Document Code
+
+```bash
+curl -X POST http://localhost:8001/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Write detailed docstrings for this Python function:\n\ndef process_jobs(jobs: List[Dict]) -> List[Dict]:\n    # Process and normalize job data",
+    "max_tokens": 256,
+    "temperature": 0.1
+  }'
+```
+
+### Example 3: Fix Code Issues
+
+```bash
+curl -X POST http://localhost:8001/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Fix this Python code and explain the issue:\n\ndef calculate_sum(a, b)\n    return a+b\n\nFixed code:",
+    "max_tokens": 512,
+    "temperature": 0.2
+  }'
+```
+
+### Python Client Example
+
+```python
+import requests
+import json
+
+BASE_URL = "http://localhost:8001"
+
+def generate_readme(project_description: str) -> str:
+    """Generate README using Neural Generator."""
+    payload = {
+        "prompt": f"Generate a professional README for: {project_description}",
+        "max_tokens": 1500,
+        "temperature": 0.3
+    }
+    
+    response = requests.post(
+        f"{BASE_URL}/generate",
+        json=payload,
+        timeout=120
+    )
+    
+    if response.status_code == 200:
+        return response.json()["text"]
+    else:
+        raise Exception(f"Generation failed: {response.text}")
+
+# Usage
+readme = generate_readme("A FastAPI-based job crawler for 9+ job boards")
+print(readme)
+```
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# Model Configuration
+MODEL_PATH=/app/models/qwen3-0.6b-q4_k_m.gguf
+LLM_N_THREADS=2                    # CPU threads (1-8, depends on system)
 LLM_N_GPU_LAYERS=0                 # GPU layers (keep 0 for CPU-only)
 LLM_VERBOSE=false                  # Debug logging
 
-# Server
+# Server Configuration
 HOST=0.0.0.0
 PORT=8001
 
-# Timeout
+# Request Handling
 GENERATION_TIMEOUT=120             # Max seconds per request
+MAX_CONCURRENT_REQUESTS=4          # Request queue limit
+BATCH_TIMEOUT=300                  # Batch generation timeout
+
+# Performance
+CACHE_SIZE=100                     # Number of cached prompts
 ```
 
-##  Performance
+### Creating .env File
+
+```bash
+cat > .env << EOF
+MODEL_PATH=models/qwen3-0.6b-q4_k_m.gguf
+LLM_N_THREADS=2
+LLM_VERBOSE=false
+HOST=0.0.0.0
+PORT=8001
+GENERATION_TIMEOUT=120
+EOF
+```
+
+## Performance Characteristics
 
 ### Memory Usage
 
 ```
-Model (GGUF): 400MB
-Runtime Base: 100MB
-Per Request: 50-200MB (depends on context)
-Total: ~512-800MB
+Model (GGUF Q4_K_M): 400MB (fixed)
+Runtime Base:        100MB
+Per Request:         50-200MB (depends on context size)
+────────────────────────────
+Total Range:         512-800MB
 ```
 
-### Speed
+### Generation Speed
 
 ```
-Cold Start: 2-5 seconds (load model)
-Generation: 50-100 tokens/second (on 1 vCPU)
-Max Concurrent: 2-4 requests (depends on RAM)
+Cold Start (model load):     2-5 seconds
+Warm Start (cached):         <100ms
+Generation Speed:            50-100 tokens/sec
+Throughput (2 vCPUs):        30-50 tokens/sec total
+Max Concurrent Requests:     2-4 (depends on RAM)
 ```
 
-### Optimization Tips
+### Latency
+
+```
+Simple prompt (100 tokens):  2-3 seconds
+Medium prompt (500 tokens):  10-15 seconds
+Large prompt (2000 tokens):  40-60 seconds
+Batch of 4:                  50-80 seconds (total)
+```
+
+## Project Structure
+
+```
+services/api/neural_generator/
+├── README.md                          # This file
+├── requirements.txt                   # Python dependencies
+├── Dockerfile                         # Container image
+├── nixpacks.toml                      # Railway deployment
+│
+├── src/
+│   ├── app.py                         # FastAPI application
+│   ├── config.py                      # Configuration (Pydantic)
+│   ├── models.py                      # Request/response DTOs
+│   └── utils.py                       # Helper functions
+│
+├── models/
+│   └── qwen3-0.6b-q4_k_m.gguf        # Quantized model (~400MB)
+│
+└── tests/
+    ├── test_health.py                 # Health check tests
+    └── test_generate.py               # Generation tests
+```
+
+## Docker Usage
+
+### Build Image
+
+```bash
+cd services/api/neural_generator
+docker build -t repo-sense-neural-gen:latest .
+```
+
+### Run Container
+
+```bash
+docker run -d \
+  --name neural-gen \
+  -p 8001:8001 \
+  -e MODEL_PATH=/app/models/qwen3-0.6b-q4_k_m.gguf \
+  -e LLM_N_THREADS=2 \
+  repo-sense-neural-gen:latest
+```
+
+### With Docker Compose
+
+```yaml
+neural-generator:
+  build: ./services/api/neural_generator
+  ports:
+    - "8001:8001"
+  environment:
+    MODEL_PATH: /app/models/qwen3-0.6b-q4_k_m.gguf
+    LLM_N_THREADS: 2
+    GENERATION_TIMEOUT: 120
+  volumes:
+    - ./models:/app/models
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+```
+
+## Optimization Tips
+
+### For Low-Memory Environments (t2.micro)
+
+```bash
+# Reduce thread usage
+LLM_N_THREADS=1
+
+# Reduce batch size
+MAX_CONCURRENT_REQUESTS=1
+
+# Lower max tokens
+# In API calls, use max_tokens=256
+```
+
+### For Better Performance (larger instances)
+
+```bash
+# Increase threads
+LLM_N_THREADS=4
+
+# Increase concurrent requests
+MAX_CONCURRENT_REQUESTS=4
+
+# Allow larger generations
+# In API calls, use max_tokens=2048
+```
+
+### Caching Prompts
 
 ```python
-# Reduce for low-memory environments
-n_threads=1              # Instead of 2
-n_gpu_layers=0           # Keep CPU-only
-max_tokens=256           # Smaller outputs
+# llama-cpp-python supports prompt caching
+# Previously generated sequences are cached
+# Calling with similar prompts reuses cache
+```
 
-# Increase for better performance
-n_threads=4              # More CPU cores
-batch_size=2             # Not yet implemented
+## Testing
+
+```bash
+# Check service health
+curl http://localhost:8001/health
+
+# Test simple generation
+curl -X POST http://localhost:8001/generate \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Hello", "max_tokens": 50}'
+
+# Run full test suite
+pytest -v
+```
+
+## Troubleshooting
+
+### Issue 1: "Model file not found"
+
+**Solution:**
+```bash
+# Check model path
+ls -la models/
+
+# Set correct path
+export MODEL_PATH=/full/path/to/model.gguf
+
+# Or update .env
+echo "MODEL_PATH=/path/to/model.gguf" >> .env
+```
+
+### Issue 2: "Out of memory"
+
+**Solution:**
+```bash
+# Reduce threads
+LLM_N_THREADS=1
+
+# Reduce concurrent requests
+MAX_CONCURRENT_REQUESTS=1
+
+# Increase timeout
+GENERATION_TIMEOUT=180
+```
+
+### Issue 3: "Generation taking too long"
+
+**Solution:**
+```bash
+# Increase threads (if available)
+LLM_N_THREADS=4
+
+# Reduce max_tokens in request
+# Use temperature=0.1 for faster deterministic generation
+```
+
+### Issue 4: "llama-cpp-python not installing"
+
+**Solution:**
+```bash
+# Pre-install cmake/gcc (required for compilation)
+# Ubuntu/Debian:
+sudo apt-get install cmake g++ python3-dev
+
+# macOS:
+brew install cmake llama-cpp
+
+# Windows:
+# Use pre-built wheels or WSL
+pip install llama-cpp-python --only-binary :all:
+```
+
+## Scaling
+
+### Single Instance
+
+- Max concurrent: 2-4 requests
+- Throughput: 30-50 tokens/sec
+- Suitable for: Development, low traffic
+
+### Multiple Instances (Load Balanced)
+
+```bash
+# Instance 1 on port 8001
+PORT=8001 python -m uvicorn src.app:app
+
+# Instance 2 on port 8002
+PORT=8002 python -m uvicorn src.app:app
+
+# Nginx Load Balancer
+upstream neural_gen {
+  server localhost:8001;
+  server localhost:8002;
+}
+
+server {
+  listen 80;
+  location / {
+    proxy_pass http://neural_gen;
+  }
+}
+```
+
+## Related Services
+
+- **Main API:** [services/api/README.md](../README.md)
+- **RAG Service:** [services/api/rag/README.md](../rag/README.md)
+- **Backend:** [services/README.md](../../README.md)
+
+---
+
+**For deployment:** See [docs/DEPLOYMENT_GUIDE.md](../../../../docs/DEPLOYMENT_GUIDE.md)
 ```
 
 ##  Docker

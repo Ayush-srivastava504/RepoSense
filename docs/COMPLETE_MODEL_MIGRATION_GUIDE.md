@@ -21,17 +21,17 @@
 
 RepoSense has been migrated to use **Hugging Face Hub** for model management:
 
-- ✅ **No large files in Git** - Models download on-demand
-- ✅ **Automatic caching** - Downloaded models cached locally
-- ✅ **Easy deployment** - Works with Docker, K8s, Railway, Heroku
-- ✅ **Custom models** - Use fine-tuned models from Hugging Face
-- ✅ **Private models** - Support for private repositories
+- **No large files in Git** - Models download on-demand
+- **Automatic caching** - Downloaded models cached locally
+- **Easy deployment** - Works with Docker, K8s, Railway, Heroku
+- **Custom models** - Use fine-tuned models from Hugging Face
+- **Private models** - Support for private repositories
 
 ---
 
 ## What Changed
 
-### Before Migration ❌
+### Before Migration 
 
 ```
 Repository Structure:
@@ -52,7 +52,7 @@ Repository Structure:
 
 ---
 
-### After Migration ✅
+### After Migration
 
 ```
 Repository Structure:
