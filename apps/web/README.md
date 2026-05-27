@@ -39,7 +39,7 @@ The RepoSense frontend is a full-featured Next.js 14+ application built with Typ
 - **Historical Reviews**: View past code analysis results
 
 ### Payments & Subscriptions
-- **Stripe Integration**: Secure payment processing
+- **Razorpay Integration**: Secure payment processing
 - **Free Tier**: Limited reviews and features
 - **Premium Tier**: Unlimited access with priority support
 - **Subscription Management**: Upgrade/downgrade anytime
@@ -54,7 +54,7 @@ The RepoSense frontend is a full-featured Next.js 14+ application built with Typ
 | **Tailwind CSS** | 3+ | Utility-first CSS framework |
 | **Next/Auth** | 5+ | Authentication & session management |
 | **Axios / Fetch API** | - | HTTP client for API communication |
-| **Stripe.js** | - | Payment integration |
+| **Razorpay** | - | Payment integration |
 | **WS (WebSocket)** | - | Real-time terminal communication |
 
 ##  Project Structure

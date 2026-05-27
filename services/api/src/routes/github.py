@@ -40,8 +40,6 @@ router = APIRouter(
     tags=["github"],
 )
 
-ws_tokens = {}
-
 
 @router.get("/login")
 async def github_login(request: Request):
@@ -230,7 +228,6 @@ async def github_callback(
                 id,
                 email,
                 subscription_tier
-            )
             """,
             email,
             fake_hash,
@@ -271,15 +268,53 @@ async def github_callback(
         algorithm="HS256",
     )
 
+    code = secrets.token_urlsafe(32)
+    await redis.setex(
+        f"auth_code:{code}",
+        60,
+        jwt_token
+    )
+
     redirect_url = (
         f"{settings.FRONTEND_URL}/github"
-        f"?token={jwt_token}"
+        f"?code={code}"
     )
 
     return RedirectResponse(
         redirect_url,
         status_code=302,
     )
+
+
+@router.get("/exchange")
+async def exchange_code(code: str):
+    """Exchange one-time code for JWT token.
+    
+    The /callback endpoint returns a temporary code valid for 60 seconds.
+    The frontend exchanges this code for the actual JWT using this endpoint.
+    This prevents the JWT from being exposed in browser history, server logs,
+    or referrer headers. The code is single-use and expires automatically.
+    
+    Args:
+        code: One-time authorization code from /callback redirect.
+        
+    Returns:
+        Dictionary with 'access_token' and 'token_type' keys.
+        
+    Raises:
+        HTTPException: 400 if code is invalid, expired, or already used.
+        HTTPException: 503 if Redis is unavailable.
+    """
+    redis = await get_redis()
+    if redis is None:
+        raise HTTPException(503, "Redis unavailable")
+
+    token = await redis.get(f"auth_code:{code}")
+    if not token:
+        raise HTTPException(400, "Invalid or expired code")
+
+    await redis.delete(f"auth_code:{code}")
+    return {"access_token": token, "token_type": "bearer"}
 
 
 @router.get("/repos")
@@ -731,16 +766,31 @@ README generation failed.
 async def get_ws_token(
     user=Depends(verify_token),
 ):
+    """Generate a one-time WebSocket token.
+    
+    Creates a temporary token stored in Redis valid for 30 seconds.
+    Used by the frontend to establish a WebSocket connection to /terminal.
+    The token is single-use and verified on connection before any communication.
+    
+    Args:
+        user: Authenticated user from verify_token dependency.
+        
+    Returns:
+        Dictionary with 'token' key containing the WebSocket token.
+        
+    Raises:
+        HTTPException: 503 if Redis is unavailable.
+    """
+    redis = await get_redis()
+    if redis is None:
+        raise HTTPException(503, "Redis unavailable")
 
     token = secrets.token_urlsafe(32)
-
-    ws_tokens[token] = {
-        "user_id": user["sub"],
-        "expires": (
-            datetime.utcnow()
-            + timedelta(seconds=30)
-        ),
-    }
+    await redis.setex(
+        f"ws_token:{token}",
+        30,
+        user["sub"],
+    )
 
     return {"token": token}
 
@@ -750,12 +800,29 @@ async def terminal_websocket(
     websocket: WebSocket,
     token: str,
 ):
-
-    if (
-        token not in ws_tokens
-        or ws_tokens[token]["expires"]
-        < datetime.utcnow()
-    ):
+    """WebSocket endpoint for terminal session management.
+    
+    Accepts a WebSocket connection using a valid token from /terminal/token.
+    The token is verified against Redis and consumed (deleted) immediately
+    to prevent replay attacks. Handles terminal session startup and command
+    execution messages in JSON format.
+    
+    Args:
+        websocket: WebSocket connection from client.
+        token: One-time WebSocket token from /terminal/token endpoint.
+        
+    Raises:
+        Closes connection with code 1008 if token is invalid or expired.
+    """
+    redis = await get_redis()
+    user_id = None
+    
+    if redis:
+        user_id = await redis.get(f"ws_token:{token}")
+        if user_id:
+            await redis.delete(f"ws_token:{token}")
+    
+    if not user_id:
         await websocket.close(code=1008)
         return
 

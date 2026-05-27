@@ -59,3 +59,8 @@ logs/
 *.log
 debug.log
 error.log
+
+# Documentation & Internal Files (keep private)
+docs/
+REFACTORING_COMPLETION_SUMMARY.md
+push_output.txt

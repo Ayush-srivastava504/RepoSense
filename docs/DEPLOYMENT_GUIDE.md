@@ -50,7 +50,7 @@ PostgreSQL client tools
 
 ```
 GitHub OAuth app (for authentication)
-Stripe account (for payments)
+Razorpay account (for payments)
 HuggingFace account (for model access)
 Domain name & DNS
 SSL certificate (Let's Encrypt recommended)
@@ -115,9 +115,9 @@ GITHUB_CLIENT_ID=your_github_client_id
 GITHUB_CLIENT_SECRET=your_github_client_secret
 GITHUB_REDIRECT_URI=https://yourdomain.com/api/auth/github/callback
 
-# Stripe (for payments)
-STRIPE_API_KEY=sk_live_your_stripe_key
-STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
+# Razorpay (for payments)
+RAZORPAY_KEY_ID=rzp_live_your_razorpay_key
+RAZORPAY_KEY_SECRET=your_razorpay_key_secret
 
 # Services
 CRAWLER_SERVICE_URL=http://crawler:8003
@@ -147,7 +147,7 @@ EMBEDDING_MODEL=all-MiniLM-L6-v2
 vault kv put secret/repo-sense/prod \
   DATABASE_PASSWORD="your_db_password" \
   JWT_SECRET_KEY="your_jwt_secret" \
-  STRIPE_API_KEY="your_stripe_key"
+  RAZORPAY_KEY_ID="your_razorpay_key_id"
 
 # Using AWS Secrets Manager
 aws secretsmanager create-secret \
@@ -300,7 +300,7 @@ services:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/repo_sense_prod
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-      STRIPE_API_KEY: ${STRIPE_API_KEY}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
     ports:
       - "8000:8000"
     depends_on:

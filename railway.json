@@ -5,8 +5,8 @@
   },
   "deploy": {
     "numReplicas": 1,
+    "startCommand": "uvicorn core.app:app --host 0.0.0.0 --port $PORT --app-dir src",
     "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 3,
-    "startCommand": "gunicorn -w 2 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT app.core.app:app"
+    "restartPolicyMaxRetries": 3
   }
 }

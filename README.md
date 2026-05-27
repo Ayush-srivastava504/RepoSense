@@ -20,7 +20,7 @@ RepoSense is a **full-stack, production-grade platform** that combines intellige
 - **Low-Resource LLM**: Qwen GGUF quantized model (~400MB) runs on CPU/t2.micro
 - **Batch Processing**: Handle up to 50 files per request with sub-1s latency
 - **GitHub Integration**: OAuth 2.0 login, repository browser, auto-README generation
-- **Stripe Integration**: Subscription management with free & premium tiers
+- **Razorpay Integration**: Secure payment processing with subscription management for free & premium tiers
 - **Production Ready**: Docker-Compose, Railway deployment, comprehensive testing
 - **Extensible Architecture**: Add custom scrapers, analysis rules, and detection patterns
 
@@ -111,7 +111,7 @@ RepoSense/
 │   ├── lib/
 │   │   ├── api.ts                     # API client with auth
 │   │   ├── auth.ts                    # Authentication utilities
-│   │   └── stripe.ts                  # Stripe integration
+│   │   └── razorpay.ts                # Razorpay integration
 │   ├── public/                        # Static assets
 │   ├── next.config.js                 # Next.js configuration
 │   ├── tailwind.config.js             # Tailwind CSS config
@@ -135,13 +135,13 @@ RepoSense/
 │       │   │   ├── review.py          # Code review endpoints
 │       │   │   ├── jobs.py            # Job search API
 │       │   │   ├── resume.py          # Resume operations
-│       │   │   └── subscription.py    # Stripe subscriptions
+│       │   │   └── subscription.py    # Razorpay subscriptions
 │       │   ├── services/              # Business logic
 │       │   │   ├── ai_service.py      # Review orchestration
 │       │   │   ├── analysis_engine.py # CodeBERT analysis
 │       │   │   ├── github_service.py  # GitHub API client
 │       │   │   ├── resume_service.py  # Resume parsing
-│       │   │   └── stripe_service.py  # Payment processing
+│       │   │   └── razorpay_service.py  # Payment processing
 │       │   ├── middleware/            # Auth & rate limiting
 │       │   ├── configs/               # Pydantic settings
 │       │   ├── schemas/               # Request/response models
@@ -195,7 +195,7 @@ RepoSense/
 │       ├── 001_users.sql              # User accounts & GitHub tokens
 │       ├── 002_resumes.sql            # User resumes
 │       ├── 003_jobs.sql               # Scraped job listings
-│       ├── 004_subscriptions.sql      # Stripe subscription data
+│       ├── 004_subscriptions.sql      # Razorpay subscription data
 │       └── 005_repo_docs.sql          # Repository documentation
 │
 ├── infrastructure/                    # Deployment

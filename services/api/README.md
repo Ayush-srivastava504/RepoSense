@@ -1,6 +1,6 @@
 #  RepoSense Main API Service
 
-> FastAPI-based REST API serving as the central gateway for the RepoSense platform. Handles authentication, code review orchestration, job searching, resume processing, GitHub integration, and Stripe subscription management.
+> FastAPI-based REST API serving as the central gateway for the RepoSense platform. Handles authentication, code review orchestration, job searching, resume processing, GitHub integration, and Razorpay subscription management.
 
 ## Overview
 
@@ -9,7 +9,7 @@ The Main API (`services/api/`) is the heart of RepoSense. It:
 - **Manages authentication** with JWT tokens and GitHub OAuth 2.0
 - **Implements rate limiting** (100 req/min free, 500+ req/min paid)
 - **Caches responses** using Redis (optional)
-- **Handles payments** via Stripe webhooks
+- **Handles payments** via Razorpay webhooks
 - **Provides OpenAPI documentation** via Swagger UI
 
 ## Tech Stack
@@ -99,9 +99,9 @@ GITHUB_TOKEN_ENCRYPTION_KEY=Fernet_key_from_cryptography
 # ================= FRONTEND =================
 FRONTEND_URL=http://localhost:3000
 
-# ================= STRIPE (Optional) =================
-STRIPE_SECRET_KEY=sk_test_your_key
-STRIPE_WEBHOOK_SECRET=whsec_your_secret
+# ================= RAZORPAY (Optional) =================
+RAZORPAY_KEY_ID=rzp_test_your_key
+RAZORPAY_KEY_SECRET=your_razorpay_key_secret
 
 # ================= MODELS =================
 MODEL_PATH=/app/models/qwen3-codersmall-0.8b-q4_k_m.gguf

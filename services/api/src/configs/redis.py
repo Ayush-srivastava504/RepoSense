@@ -1,21 +1,43 @@
-import redis.asyncio as redis
+import redis.asyncio as aioredis
 from .config import settings
 
 _redis = None
 
 async def get_redis():
     """Create and return a singleton Redis client.
-
-    If the Redis server is unavailable we log a warning and return ``None`` so
-    the application can continue to start in a degraded mode.
+    
+    Attempts to establish a Redis connection on first call. If the connection
+    fails or Redis is not configured, logs a warning and returns None, allowing
+    the application to operate in degraded mode. On subsequent calls, verifies
+    the connection is still alive and reconnects if needed.
+    
+    This pattern handles containerized deployments where Redis may not be
+    immediately available at startup and where connections can be lost during
+    operation. Callers should handle None returns gracefully.
+    
+    Returns:
+        aioredis.Redis client if available, None if Redis is unavailable.
     """
     global _redis
-    if _redis is None:
+    if _redis is not None:
         try:
-            _redis = await redis.from_url(
-                settings.REDIS_URL, decode_responses=True
-            )
-        except Exception as exc:  # pragma: no cover
-                print(f"[WARN] Failed to connect to Redis: {exc}")
-                _redis = None
+            await _redis.ping()
+            return _redis
+        except Exception:
+            _redis = None
+
+    if not settings.REDIS_URL:
+        return None
+
+    try:
+        _redis = aioredis.from_url(
+            settings.REDIS_URL,
+            decode_responses=True,
+            socket_connect_timeout=5,
+        )
+        await _redis.ping()
+        print("[Redis] Connected")
+    except Exception as exc:
+        print(f"[WARN] Redis connect failed: {exc}")
+        _redis = None
     return _redis

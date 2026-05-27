@@ -25,7 +25,7 @@ psql "postgresql://postgres:postgres@localhost:5432/postgres" -f database/migrat
 | `001_users.sql` | `users` table | Stores user accounts, GitHub tokens, subscription tier |
 | `002_resumes.sql` | `resumes` table | Stores user-created resumes |
 | `003_jobs.sql` | `jobs` table | Stores scraped internship/job postings |
-| `004_subscriptions.sql` | `subscriptions` table | Stores Stripe payment info |
+| `004_subscriptions.sql` | `subscriptions` table | Stores Razorpay payment info |
 | `005_repo_docs.sql` | `repo_docs` table | Stores GitHub repository documentation |
 
 ### Database Schema
@@ -62,7 +62,7 @@ CREATE TABLE jobs (
     is_active BOOLEAN DEFAULT TRUE
 );
 
--- Subscriptions: Stripe payment records
+-- Subscriptions: Razorpay payment records
 -- Repo Docs: GitHub repository documentation
 ```
 
@@ -295,9 +295,9 @@ AWS_ACCESS_KEY=your_aws_key
 AWS_SECRET_KEY=your_aws_secret
 S3_BUCKET=job-crawler-raw
 
-# Stripe
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
+# Razorpay
+RAZORPAY_KEY_ID=rzp_test_...
+RAZORPAY_KEY_SECRET=...
 
 # Frontend
 FRONTEND_URL=http://localhost:3000

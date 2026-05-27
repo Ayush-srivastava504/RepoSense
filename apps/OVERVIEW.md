@@ -99,7 +99,7 @@ Runs a local LLM (via HuggingFace `transformers` + `torch`) to generate resume i
 | Crawling | Playwright, Selenium |
 | Database | PostgreSQL |
 | Auth | Custom auth (`lib/auth.ts`) |
-| Payments | Stripe (`lib/stripe.ts`) |
+| Payments | Razorpay (`lib/razorpay.ts`) |
 | Infrastructure | Docker, Docker Compose, Railway.app |
 | Testing | Pytest |
 
@@ -113,7 +113,7 @@ Repo_Sense/
 │   └── web/                  # Next.js frontend
 │       ├── app/              # App Router pages & layouts
 │       ├── components/       # React components
-│       └── lib/              # api.ts, auth.ts, stripe.ts
+│       └── lib/              # api.ts, auth.ts, razorpay.ts
 ├── services/
 │   ├── crawler/              # Job board scraping service
 │   ├── rag/                  # RAG service (embeddings + retrieval)
