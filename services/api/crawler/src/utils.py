@@ -33,7 +33,9 @@ from config import (
 # PostgreSQL Config – read from environment with sensible defaults for local dev
 import os
 
-PG_HOST = os.getenv("PG_HOST", "postgres")
+# Default to localhost for local development; Docker services use the
+# hostname "postgres" which is resolved only inside containers.
+PG_HOST = os.getenv("PG_HOST", "localhost")
 PG_DB = os.getenv("PG_DB", "internship_db")
 PG_USER = os.getenv("PG_USER", "postgres")
 PG_PASSWORD = os.getenv("PG_PASSWORD", "postgres")

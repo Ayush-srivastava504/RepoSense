@@ -7,12 +7,28 @@ from .services.generator import Generator
 
 router = APIRouter(prefix="/api/rag", tags=["rag"])
 
-embedder = Embedder()
-store = VectorStore()
+# Lazy initialization - defer until needed
+_embedder = None
+_store = None
+
+def get_embedder():
+    global _embedder
+    if _embedder is None:
+        _embedder = Embedder()
+    return _embedder
+
+def get_store():
+    global _store
+    if _store is None:
+        _store = VectorStore()
+    return _store
 
 @router.post("/index")
 async def index_repository(request: IndexRequest):
     try:
+        embedder = get_embedder()
+        store = get_store()
+        
         all_chunks = []
         for file_item in request.files:
             chunks = CodeChunker.chunk_file(file_item.content, file_item.path)
@@ -33,6 +49,9 @@ async def index_repository(request: IndexRequest):
 @router.post("/generate", response_model=GenerateResponse)
 async def generate_readme(request: GenerateRequest):
     try:
+        embedder = get_embedder()
+        store = get_store()
+        
         query_vec = embedder.embed([request.prompt])[0].reshape(1, -1)
         results = store.search(query_vec, k=10)
 

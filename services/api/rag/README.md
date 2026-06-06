@@ -86,9 +86,6 @@ venv\Scripts\activate              # Windows
 # Install dependencies
 pip install -r requirements.txt
 
-# Download embedding model (one-time, ~100MB)
-python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
-
 # Create indices directory
 mkdir -p indices
 ```
@@ -395,7 +392,7 @@ print(readme_response.json()["readme"])
 ```bash
 # Embedding Model
 EMBEDDING_MODEL=all-MiniLM-L6-v2    # sentence-transformers model
-MODEL_CACHE_DIR=.model_cache         # Where to cache downloaded models
+HF_HOME=/tmp/hf                      # HuggingFace model cache (set in Dockerfile)
 
 # FAISS
 FAISS_FACTORY=IVF100,Flat           # Index type (optional)
@@ -543,11 +540,13 @@ pytest -v
 ### Issue 1: "Model not found"
 
 ```bash
-# Download model manually
-python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+# Model downloads automatically on first request via HF_HOME=/tmp/hf
+# If it fails, verify the env var is set:
+echo $HF_HOME   # should print /tmp/hf
 
-# Or set cache directory
-export SENTENCE_TRANSFORMERS_HOME=/path/to/models
+# Or override the cache directory explicitly
+export HF_HOME=/tmp/hf
+export TRANSFORMERS_CACHE=/tmp/hf
 ```
 
 ### Issue 2: "Indices directory not writable"
@@ -783,11 +782,13 @@ rag-service:
 ### Model Download Hangs
 
 ```bash
-# Download embedding model manually
-python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+# Model is downloaded automatically on first request.
+# Cache lives at HF_HOME=/tmp/hf (set in Dockerfile).
+# Check what's been cached:
+ls /tmp/hf/
 
-# Check cache
-ls ~/.cache/huggingface/
+# If the container can't reach HuggingFace Hub, verify outbound network access:
+curl -I https://huggingface.co
 ```
 
 ### FAISS Index Corrupted

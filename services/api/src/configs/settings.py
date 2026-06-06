@@ -15,10 +15,13 @@ class Settings(BaseSettings):
     AWS_ACCESS_KEY: str = ""
     AWS_SECRET_KEY: str = ""
     S3_BUCKET: str = "resume-storage"
+    # Allowed origins for CORS. Include both API and frontend URLs.
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
 
-    GITHUB_REDIRECT_URI: str = ""
-    FRONTEND_URL: str = ""
+    # Default redirect URI for GitHub OAuth flow. Adjust if your frontend runs on a different host/port.
+    GITHUB_REDIRECT_URI: str = "http://localhost:3000/api/github/callback"
+    # Base URL of the frontend application used for redirects after login failures.
+    FRONTEND_URL: str = "http://localhost:3000"
 
     RAG_SERVICE_URL: str = "http://rag:8001"
 

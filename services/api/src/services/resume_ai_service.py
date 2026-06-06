@@ -1,8 +1,11 @@
 import json
 import sys
 import re
+import httpx
 
 from pathlib import Path
+
+from configs.config import settings
 
 
 api_root = Path(
@@ -12,8 +15,6 @@ api_root = Path(
 sys.path.append(
     str(api_root)
 )
-
-from neural_generator.src.app import llm
 
 
 class ResumeAIService:
@@ -96,24 +97,27 @@ class ResumeAIService:
             "}\n"
         )
 
-        output = llm(
-            prompt,
-            max_tokens=1000,
-            temperature=0,
-            top_k=1,
-            top_p=0.1,
-            repeat_penalty=1.05,
-            stop=["</s>"],
-        )
+        async with httpx.AsyncClient(timeout=120) as client:
 
-        text = (
-            output.get(
-                "choices",
-                [{}]
-            )[0]
-            .get("text", "")
-            .strip()
-        )
+            response = await client.post(
+                f"{settings.NEURAL_GENERATOR_URL}/generate",
+                json={
+                    "prompt": prompt,
+                    "max_tokens": 1000,
+                    "temperature": 0,
+                    "top_k": 1,
+                    "top_p": 0.1,
+                }
+            )
+
+            response.raise_for_status()
+
+            output = response.json()
+
+        text = output.get(
+            "text",
+            ""
+        ).strip()
 
         text = (
             text

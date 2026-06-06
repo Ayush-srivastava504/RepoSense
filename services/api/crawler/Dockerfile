@@ -13,11 +13,15 @@ COPY requirements.txt .
 
 RUN pip install --upgrade pip && \
     pip install \
+        --retries 5 \
+        --default-timeout 1000 \
         --no-cache-dir \
         --target /build/packages \
         -r requirements.txt
 
 RUN pip install \
+        --retries 5 \
+        --default-timeout 1000 \
         --no-cache-dir \
         playwright==1.44.0 && \
     playwright install chromium \

@@ -1,18 +1,15 @@
-# middleware/auth.py
-
-from fastapi import HTTPException, Depends
+from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 
 from configs.config import settings
-
 
 security = HTTPBearer()
 
 
 async def verify_token(
     credentials: HTTPAuthorizationCredentials = Depends(security)
-) -> dict:
+):
     token = credentials.credentials
 
     try:
@@ -22,12 +19,22 @@ async def verify_token(
             algorithms=["HS256"],
         )
 
+        print("JWT PAYLOAD:", payload)
+
         user_id = payload.get("sub")
 
         if user_id is None:
-            raise HTTPException(401, "Invalid token")
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid token",
+            )
 
         return payload
 
-    except JWTError:
-        raise HTTPException(401, "Invalid or expired token")
+    except JWTError as e:
+        print("JWT ERROR:", repr(e))
+
+        raise HTTPException(
+            status_code=401,
+            detail=f"JWT Error: {str(e)}",
+        )

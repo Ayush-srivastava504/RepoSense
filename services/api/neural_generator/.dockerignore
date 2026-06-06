@@ -1,0 +1,15 @@
+venv
+.venv
+**/venv
+**/.venv
+
+node_modules
+**/node_modules
+
+.model_cache
+**/.model_cache
+
+__pycache__
+**/__pycache__
+
+.git

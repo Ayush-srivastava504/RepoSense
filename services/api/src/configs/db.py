@@ -20,12 +20,34 @@ async def get_db_pool():
     if _pool is not None:
         return _pool
     try:
-        _pool = await asyncpg.create_pool(
-            settings.DATABASE_URL,
-            min_size=1,
-            max_size=10,
-            command_timeout=60,
-        )
+        # Attempt to create a connection pool using the configured URL.
+        # In development environments the URL may contain a Docker service name
+        # (e.g. "postgres") that cannot be resolved when the app is run locally.
+        # If a DNS resolution error occurs, fall back to localhost while keeping
+        # the original credentials and database name.
+        try:
+            _pool = await asyncpg.create_pool(
+                settings.DATABASE_URL,
+                min_size=1,
+                max_size=10,
+                command_timeout=60,
+            )
+        except OSError as dns_err:
+            # OSError with errno 11001 indicates getaddrinfo failure.
+            import urllib.parse
+
+            parsed = urllib.parse.urlparse(settings.DATABASE_URL)
+            # Replace the hostname with localhost while preserving the original path.
+            # The netloc should contain only the credentials and host/port.
+            netloc = f"{parsed.username}:{parsed.password}@localhost:{parsed.port}"
+            fallback_url = parsed._replace(netloc=netloc).geturl()
+            print(f"[WARN] DB hostname resolution failed ({dns_err}); retrying with localhost")
+            _pool = await asyncpg.create_pool(
+                fallback_url,
+                min_size=1,
+                max_size=10,
+                command_timeout=60,
+            )
         print("[DB] Connection pool created")
     except Exception as exc:
         print(f"[WARN] DB connect failed: {exc}")
