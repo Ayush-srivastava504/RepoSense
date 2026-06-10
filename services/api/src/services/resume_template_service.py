@@ -35,11 +35,13 @@ class ResumeTemplateService:
         self,
         data: dict,
     ):
-
+        # FIXED: correct number of parents to reach project root
+        # From /app/src/services/resume_template_service.py
+        # .parent -> /app/src/services
+        # .parent -> /app/src
+        # .parent -> /app
         template_path = (
-            Path(
-                os.path.abspath(__file__)
-            ).parent.parent.parent.parent
+            Path(__file__).resolve().parent.parent.parent
             / "templates"
             / "resume_template.tex"
         )

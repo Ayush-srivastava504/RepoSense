@@ -1,21 +1,16 @@
 services:
-
   postgres:
     image: postgres:15
     container_name: reposense-postgres
     restart: unless-stopped
-
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: internship_db
-
     ports:
       - "5432:5432"
-
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -26,10 +21,8 @@ services:
     image: redis:7-alpine
     container_name: reposense-redis
     restart: unless-stopped
-
     ports:
       - "6379:6379"
-
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -40,26 +33,19 @@ services:
     build:
       context: ../../services/api/neural_generator
       dockerfile: Dockerfile
-
     container_name: neural-generator
     restart: unless-stopped
-
     ports:
       - "8002:8002"
-
     environment:
       PYTHONPATH: /app
       MODEL_PATH: /app/models/Qwen3-0.6B-Q4_K_M.gguf
       LLM_N_THREADS: 4
       LLM_N_CTX: 4096
       LLM_N_GPU_LAYERS: 0
-
-    volumes:
-      - E:/Repo_Sense/models:/app/models
-
+    # NO VOLUME MOUNT – model must be inside the image
     mem_limit: 1024m
     cpus: 1.0
-
     command:
       [
         "uvicorn",
@@ -67,24 +53,23 @@ services:
         "--host",
         "0.0.0.0",
         "--port",
-        "8002"
+        "8002",
+        "--timeout-keep-alive",
+        "600"
       ]
-
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 60s
+      retries: 5
+      start_period: 180s
 
   rag:
     build:
       context: ../../services/api/rag
       dockerfile: Dockerfile
-
     container_name: rag
     restart: unless-stopped
-
     command:
       [
         "uvicorn",
@@ -96,30 +81,21 @@ services:
         "--log-level",
         "debug"
       ]
-
     ports:
       - "8001:8001"
-
     volumes:
-      # Commenting out volume mount to prevent Python import errors
-      # The src directory is built into the image, mounting over it breaks imports
-      # - ../../services/api/rag/src:/app/src
       - rag_data:/app/data
       - huggingface_cache:/root/.cache/huggingface
-
     environment:
       PYTHONPATH: /app
       HF_HOME: /root/.cache/huggingface
       LLM_ENDPOINT: http://neural-generator:8002/generate
       VECTOR_STORE_PATH: /app/data/faiss_index
       EMBEDDING_MODEL: all-MiniLM-L6-v2
-
     depends_on:
       neural-generator:
         condition: service_healthy
-
     mem_limit: 1024m
-
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
@@ -131,26 +107,21 @@ services:
     build:
       context: ../../services/api
       dockerfile: Dockerfile
-
     container_name: reposense-api
     restart: unless-stopped
-
     ports:
       - "8000:8000"
-
-    volumes:
-      - ../../services/api/src:/app/src
-
     env_file:
       - .env
-
     environment:
-      PYTHONPATH: /app
+      PYTHONPATH: /app/src
       DATABASE_URL: postgresql://postgres:password@postgres:5432/internship_db
       REDIS_URL: redis://redis:6379
       RAG_SERVICE_URL: http://rag:8001
       NEURAL_GENERATOR_URL: http://neural-generator:8002
-
+    volumes:
+      - ../../../templates:/templates
+      - ../../../generated_resumes:/app/generated_resumes   # <-- NEW: persist generated resumes
     depends_on:
       postgres:
         condition: service_healthy
@@ -158,23 +129,18 @@ services:
         condition: service_healthy
       rag:
         condition: service_healthy
-
     mem_limit: 512m
-
-    # Use the correct import path for the FastAPI application. The code lives
-    # in `src/core/app.py`, and the Dockerfile sets `--app-dir src`, so the
-    # module path is `core.app`. This matches the entrypoint used in the
-    # Dockerfile's default CMD.
     command:
       [
         "uvicorn",
         "core.app:app",
+        "--app-dir",
+        "/app/src",
         "--host",
         "0.0.0.0",
         "--port",
         "8000"
       ]
-
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s

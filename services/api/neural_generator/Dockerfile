@@ -17,6 +17,7 @@ COPY requirements.txt .
 RUN pip install --retries 5 --default-timeout 1000 --no-cache-dir -r requirements.txt
 
 COPY src ./src
+COPY models ./models
 
 EXPOSE 8002
 

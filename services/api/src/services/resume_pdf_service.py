@@ -1,79 +1,58 @@
 import subprocess
-import os
+import shutil
 from pathlib import Path
 
-
 class ResumePDFService:
+    def __init__(self, pdflatex_path: str = None):
+        if pdflatex_path is None:
+            self.pdflatex_path = shutil.which("pdflatex")
+        else:
+            self.pdflatex_path = pdflatex_path
 
-    async def compile_latex(
-        self,
-        title: str,
-        latex_content: str,
-    ):
-
-        output_dir = Path(
-            "generated_resumes"
-        )
-
-        output_dir.mkdir(
-            exist_ok=True
-        )
-
-        tex_path = (
-            output_dir /
-            f"{title}.tex"
-        )
-
-        pdf_path = (
-            output_dir /
-            f"{title}.pdf"
-        )
-
-        with open(
-            tex_path,
-            "w",
-            encoding="utf-8"
-        ) as f:
-
-            f.write(
-                latex_content
+        if not self.pdflatex_path:
+            raise RuntimeError(
+                "pdflatex not found. Install TeX Live and ensure pdflatex is in PATH."
             )
 
-        try:
+    async def compile_latex(self, title: str, latex_content: str, output_dir: str = "/tmp") -> str:
+        workdir = Path(output_dir) / title
+        workdir.mkdir(parents=True, exist_ok=True)
+
+        tex_path = workdir / f"{title}.tex"
+        tex_path.write_text(latex_content, encoding="utf-8")
+
+        for _ in range(2):  # run twice for references
             result = subprocess.run(
                 [
-                    r"E:\latex\miktex\bin\x64\pdflatex.exe",
+                    self.pdflatex_path,
                     "-interaction=nonstopmode",
                     "-output-directory",
-                    str(output_dir),
+                    str(workdir),
                     str(tex_path),
                 ],
-                check=False,
                 capture_output=True,
                 text=True,
+                cwd=str(workdir),
             )
-
             if result.returncode != 0:
-                log_path = output_dir / f"{title}.log"
-                error_msg = result.stderr or result.stdout
-                
+                # Extract detailed error from log file
+                log_path = workdir / f"{title}.log"
+                error_details = result.stderr or result.stdout or ""
                 if log_path.exists():
-                    with open(log_path, "r", encoding="utf-8", errors="ignore") as log_file:
-                        log_content = log_file.read()
-                        # Extract the LaTeX error lines
-                        lines = log_content.split("\n")
-                        error_lines = [l for l in lines if "Error:" in l or "Missing" in l or "\\item" in l]
+                    with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
+                        log_content = f.read()
+                        # Find lines with errors
+                        error_lines = []
+                        for line in log_content.split("\n"):
+                            if "Error" in line or "!" in line or "Missing" in line:
+                                error_lines.append(line)
+                            if len(error_lines) >= 20:
+                                break
                         if error_lines:
-                            error_msg = "\n".join(error_lines[:10])
-                
-                raise RuntimeError(
-                    f"LaTeX compilation failed:\n{error_msg}\n\nCheck generated .tex file at {tex_path} for details."
-                )
+                            error_details = "\n".join(error_lines)
+                raise RuntimeError(f"pdflatex failed:\n{error_details}")
 
-        except FileNotFoundError:
-            raise RuntimeError(
-                f"pdflatex not found at E:\\latex\\miktex\\bin\\x64\\pdflatex.exe. "
-                f"Please ensure MiKTeX is installed."
-            )
-
+        pdf_path = workdir / f"{title}.pdf"
+        if not pdf_path.exists():
+            raise RuntimeError("PDF not generated")
         return str(pdf_path)
