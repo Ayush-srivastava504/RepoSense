@@ -11,6 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ../../sql:/docker-entrypoint-initdb.d   # runs *.sql once on first db creation
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -43,7 +44,6 @@ services:
       LLM_N_THREADS: 4
       LLM_N_CTX: 4096
       LLM_N_GPU_LAYERS: 0
-    # NO VOLUME MOUNT – model must be inside the image
     mem_limit: 1024m
     cpus: 1.0
     command:
@@ -121,7 +121,7 @@ services:
       NEURAL_GENERATOR_URL: http://neural-generator:8002
     volumes:
       - ../../../templates:/templates
-      - ../../../generated_resumes:/app/generated_resumes   # <-- NEW: persist generated resumes
+      - ../../../generated_resumes:/app/generated_resumes
     depends_on:
       postgres:
         condition: service_healthy
@@ -130,17 +130,7 @@ services:
       rag:
         condition: service_healthy
     mem_limit: 512m
-    command:
-      [
-        "uvicorn",
-        "core.app:app",
-        "--app-dir",
-        "/app/src",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8000"
-      ]
+    entrypoint: ["/app/entrypoint.sh"]   # runs migrations → then uvicorn
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s

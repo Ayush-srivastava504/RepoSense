@@ -3,7 +3,6 @@ set -e
 
 # Load environment variables from .env if present
 if [ -f .env ]; then
-  # Export each line that is not a comment and not empty
   export $(grep -v '^#' .env | xargs)
 fi
 
@@ -14,16 +13,19 @@ if [ -z "$DATABASE_URL" ]; then
 fi
 
 # Run all migration .sql files in /app/migrations
-if [ -d migrations ]; then
-  for sql_file in migrations/*.sql; do
+if [ -d /app/migrations ]; then
+  for sql_file in /app/migrations/*.sql; do
     if [ -f "$sql_file" ]; then
-      echo "Running migration $sql_file"
+      echo "Running migration: $sql_file"
       psql "$DATABASE_URL" -f "$sql_file"
     fi
   done
 else
-  echo "No migrations directory found. Skipping migrations."
+  echo "No /app/migrations directory found. Skipping migrations."
 fi
 
-# Start the FastAPI app
-exec uvicorn src.app:app --host 0.0.0.0 --port 8000
+# Start the FastAPI app  (core.app:app matches docker-compose command)
+exec uvicorn core.app:app \
+  --app-dir /app/src \
+  --host 0.0.0.0 \
+  --port 8000

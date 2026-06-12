@@ -1,6 +1,5 @@
 import json
 import sys
-import re
 import httpx
 from pathlib import Path
 from configs.config import settings
@@ -19,63 +18,91 @@ class ResumeAIService:
         experience: str,
     ):
 
-        prompt = (
-            "You are a strict JSON generator. Return ONLY valid JSON.\n"
-            "No markdown, no code fences, no explanations, no extra text.\n"
-            "Do NOT output example JSON or placeholders like '...'.\n"
-            "Output exactly one JSON object.\n\n"
-            f"Resume Type: {resume_type}\n"
-            f"Job Description: {job_description}\n"
-            f"Skills: {skills}\n"
-            f"Experience: {experience}\n\n"
-            "Required JSON structure:\n"
-            "{\n"
-            '  "summary": "Brief professional summary",\n'
-            '  "technical_skills": {\n'
-            '    "languages": "Programming languages",\n'
-            '    "backend": "Backend frameworks",\n'
-            '    "ai_ml": "AI/ML technologies",\n'
-            '    "databases": "Database technologies",\n'
-            '    "tools": "Developer tools"\n'
-            "  },\n"
-            '  "experience": [\n'
-            "    {\n"
-            '      "company": "Company name",\n'
-            '      "role": "Job title",\n'
-            '      "duration": "Time period",\n'
-            '      "location": "Location",\n'
-            '      "bullets": ["Achievement 1", "Achievement 2", "Achievement 3"]\n'
-            "    }\n"
-            "  ],\n"
-            '  "projects": [\n'
-            "    {\n"
-            '      "title": "Project name",\n'
-            '      "tech": "Technologies used",\n'
-            '      "github": "GitHub URL or none",\n'
-            '      "bullets": ["Feature 1", "Feature 2", "Feature 3"]\n'
-            "    }\n"
-            "  ]\n"
-            "}"
-        )
+        prompt = f"""
+You are a JSON API.
 
-        async with httpx.AsyncClient(timeout=600) as client:
+Return ONLY ONE valid JSON object.
+
+Rules:
+- No markdown
+- No code fences
+- No explanations
+- No Example section
+- No Answer section
+- No repeated JSON
+- Output must start with {{
+- Output must end with }}
+
+Resume Type:
+{resume_type}
+
+Job Description:
+{job_description}
+
+Skills:
+{skills}
+
+Experience:
+{experience}
+
+Required fields:
+
+summary
+
+technical_skills:
+- languages
+- backend
+- ai_ml
+- databases
+- tools
+
+experience:
+- company
+- role
+- duration
+- location
+- bullets
+
+projects:
+- title
+- tech
+- github
+- bullets
+"""
+
+        async with httpx.AsyncClient(timeout=180) as client:
             response = await client.post(
                 f"{settings.NEURAL_GENERATOR_URL}/generate",
                 json={
                     "prompt": prompt,
-                    "max_tokens": 800,
+                    "max_tokens": 400,
                     "temperature": 0.0,
                     "top_k": 1,
                     "top_p": 0.1,
                 }
             )
+
             response.raise_for_status()
             output = response.json()
 
         text = output.get("text", "").strip()
-        text = text.replace("```json", "").replace("```", "").strip()
 
-        print("\nRAW MODEL OUTPUT:\n")
+        # Remove markdown code fences and stray backticks
+        text = (
+            text.replace("```json", "")
+            .replace("```", "")
+            .replace("`", "")
+            .strip()
+        )
+
+        # If the model includes an "Example" and then "Answer:", discard everything before "Answer:"
+        if "Answer:" in text:
+            text = text.split("Answer:", 1)[1].strip()
+        # Also handle "Now, generate a valid JSON" variations
+        if "Now, generate a valid JSON" in text:
+            text = text.split("Now, generate a valid JSON", 1)[-1].strip()
+
+        print("\nRAW MODEL OUTPUT (after cleaning):\n")
         print(text)
         print("\nEND RAW OUTPUT\n")
 
@@ -88,84 +115,69 @@ class ResumeAIService:
         print(json_text)
         print("\nEND JSON\n")
 
-        try:
-            parsed_json = json.loads(json_text)
-            self._validate_and_repair_json(parsed_json)
-            return parsed_json
-        except Exception as exc:
-            print("\nFAILED JSON:\n")
-            print(json_text)
-            raise Exception(f"JSON parsing failed: {str(exc)}")
+        parsed_json = json.loads(json_text)
+        self._validate_and_repair_json(parsed_json)
+
+        return parsed_json
 
     def _extract_first_json(self, text: str):
-        start = text.find('{')
+        """
+        Extract the first valid JSON object from the given text.
+        Uses the standard json.JSONDecoder to find a complete JSON object.
+        """
+        decoder = json.JSONDecoder()
+        # Find the first '{' position
+        start = text.find("{")
         if start == -1:
             return None
 
-        decoder = json.JSONDecoder()
+        # Try to decode from that position
         try:
             obj, end = decoder.raw_decode(text[start:])
-            return text[start:start+end]
+            # Return the exact JSON substring
+            return text[start:start + end]
         except json.JSONDecodeError:
-            pass
-
-        depth = 0
-        in_string = False
-        escape = False
-        for i in range(start, len(text)):
-            ch = text[i]
-            if escape:
-                escape = False
-                continue
-            if ch == '\\':
-                escape = True
-                continue
-            if ch == '"':
-                in_string = not in_string
-                continue
-            if not in_string:
-                if ch == '{':
-                    depth += 1
-                elif ch == '}':
-                    depth -= 1
-                    if depth == 0:
-                        candidate = text[start:i+1]
-                        repaired = self._repair_json(candidate)
-                        try:
-                            json.loads(repaired)
-                            return repaired
-                        except json.JSONDecodeError:
-                            continue
-        return None
-
-    def _repair_json(self, text: str) -> str:
-        text = re.sub(r'([\{\s,])([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', text)
-        text = re.sub(r',\s*}', '}', text)
-        text = re.sub(r',\s*]', ']', text)
-        text = re.sub(r':\s*([^"{\[][^,}\]]*?)(,|})', r': "\1"\2', text)
-        text = re.sub(r'"\s+', '" ', text)
-        text = re.sub(r'\s+"', ' "', text)
-        text = re.sub(r'}\s*}\s*]', '}]', text)
-        text = re.sub(r'}\s*}\s*}', '}}', text)
-        return text
+            # If the first '{' didn't yield valid JSON, scan further
+            for i in range(start + 1, len(text)):
+                if text[i] == "{":
+                    try:
+                        obj, end = decoder.raw_decode(text[i:])
+                        return text[i:i + end]
+                    except json.JSONDecodeError:
+                        continue
+            return None
 
     def _validate_and_repair_json(self, data):
+        """Ensure all required fields exist and have correct types (no syntax repair)."""
         if "summary" not in data:
             raise Exception("Missing required key: summary")
-        if "technical_skills" not in data:
-            raise Exception("Missing required key: technical_skills")
-        if "experience" not in data:
-            data["experience"] = []
-        if "projects" not in data:
-            data["projects"] = []
 
-        tech_skills = data.get("technical_skills", {})
+        # Handle technical_skills: it could be a dict or a list containing one dict
+        tech_skills = data.get("technical_skills")
+        if tech_skills is None:
+            raise Exception("Missing required key: technical_skills")
+        
+        # Convert list of one dict -> dict
+        if isinstance(tech_skills, list) and len(tech_skills) == 1 and isinstance(tech_skills[0], dict):
+            tech_skills = tech_skills[0]
+            data["technical_skills"] = tech_skills
+        elif not isinstance(tech_skills, dict):
+            # If it's some other type, replace with empty dict
+            tech_skills = {}
+            data["technical_skills"] = tech_skills
+
         required_tech = ["languages", "backend", "ai_ml", "databases", "tools"]
         for key in required_tech:
             if key not in tech_skills:
                 tech_skills[key] = ""
             if isinstance(tech_skills[key], list):
                 tech_skills[key] = ", ".join(tech_skills[key])
+
+        # Ensure experience and projects exist and are lists
+        if "experience" not in data:
+            data["experience"] = []
+        if "projects" not in data:
+            data["projects"] = []
 
         if not isinstance(data["experience"], list):
             data["experience"] = []
@@ -187,10 +199,18 @@ class ResumeAIService:
             proj.setdefault("tech", "")
             proj.setdefault("github", "")
             proj.setdefault("bullets", [])
+            # If tech is a list, convert to comma-separated string
+            if isinstance(proj.get("tech"), list):
+                proj["tech"] = ", ".join(proj["tech"])
+
+        # Optional: remove any extra "skills" field that might confuse downstream
+        if "skills" in data:
+            del data["skills"]
 
         self._split_misplaced_items(data)
 
     def _split_misplaced_items(self, data):
+        """Move items that look like projects out of the experience list."""
         fixed_experience = []
         for exp in data["experience"]:
             if "company" in exp and exp["company"]:
