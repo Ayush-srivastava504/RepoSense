@@ -13,8 +13,8 @@ if [ -z "$DATABASE_URL" ]; then
 fi
 
 # Run all migration .sql files in /app/migrations
-if [ -d /app/migrations ]; then
-  for sql_file in /app/migrations/*.sql; do
+if [ -d /app/database/migrations ]; then
+  for sql_file in /app/database/migrations/*.sql; do
     if [ -f "$sql_file" ]; then
       echo "Running migration: $sql_file"
       psql "$DATABASE_URL" -f "$sql_file"
