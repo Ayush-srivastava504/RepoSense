@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
-import AppShell from '../components/AppShell';
+import AppShell from '../../components/AppShell';
 
 const tools = [
   {

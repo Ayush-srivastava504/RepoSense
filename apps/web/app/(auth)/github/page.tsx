@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
-import AppShell from '../components/AppShell';
+import AppShell from '../../components/AppShell';
 
 export default function GitHubPage() {
   const { user, logout, refresh } = useAuth();

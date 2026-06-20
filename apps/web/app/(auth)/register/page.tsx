@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import Link from 'next/link';
-import Logo from '../components/Logo';
+import Logo from '../../components/Logo';
 
 export default function Register() {
   const [email, setEmail] = useState('');
