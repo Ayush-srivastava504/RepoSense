@@ -28,20 +28,13 @@ RUN pip install \
         --with-deps \
         2>/dev/null || true
 
-
 FROM public.ecr.aws/lambda/python:3.11 AS final
 
 LABEL maintainer="platform-team"
-
 LABEL description="Job aggregator crawler Lambda"
 
-COPY --from=builder \
-    /build/packages \
-    ${LAMBDA_TASK_ROOT}
-
-COPY --from=builder \
-    /root/.cache/ms-playwright \
-    /root/.cache/ms-playwright
+COPY --from=builder /build/packages ${LAMBDA_TASK_ROOT}
+COPY --from=builder /root/.cache/ms-playwright /root/.cache/ms-playwright
 
 RUN dnf install -y \
         chromium \
@@ -66,7 +59,6 @@ HEALTHCHECK \
     CMD python -c "import index; print('ok')"
 
 CMD ["index.lambda_handler"]
-
 
 FROM python:3.11-slim AS dev
 
@@ -98,4 +90,4 @@ ENV PYTHONPATH=/app/src
 
 COPY src/ /app/src/
 
-CMD ["python", "src/index.py", "--dry-run", "--max-pages", "2"]
+CMD ["python", "src/index.py", "--max-pages", "2"]

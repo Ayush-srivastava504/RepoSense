@@ -145,6 +145,17 @@ services:
       target: dev
     container_name: job-crawler
     restart: unless-stopped
+
+    command:
+      [
+        "python",
+        "src/index.py",
+        "--scrapers",
+        "linkedin,internshala,unstop",
+        "--max-pages",
+        "2"
+      ]
+
     environment:
       HEADLESS: "true"
       PG_HOST: postgres
@@ -153,9 +164,11 @@ services:
       PG_USER: postgres
       PG_PASSWORD: password
       AWS_REGION: us-east-1
+
     depends_on:
       postgres:
         condition: service_healthy
+
     mem_limit: 2048m
     cpus: 1.5
 
