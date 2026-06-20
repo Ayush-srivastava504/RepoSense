@@ -11,7 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../../sql:/docker-entrypoint-initdb.d   # runs *.sql once on first db creation
+      - ../../sql:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -130,13 +130,34 @@ services:
       rag:
         condition: service_healthy
     mem_limit: 512m
-    entrypoint: ["/app/entrypoint.sh"]   # runs migrations → then uvicorn
+    entrypoint: ["/app/entrypoint.sh"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  crawler:
+    build:
+      context: ../../services/api/crawler
+      dockerfile: Dockerfile
+      target: dev
+    container_name: job-crawler
+    restart: unless-stopped
+    environment:
+      HEADLESS: "true"
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_DB: internship_db
+      PG_USER: postgres
+      PG_PASSWORD: password
+      AWS_REGION: us-east-1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 2048m
+    cpus: 1.5
 
 volumes:
   postgres_data:
