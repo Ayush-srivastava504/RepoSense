@@ -1,3 +1,4 @@
+import os
 import re
 from typing import Dict, List, Optional
 
@@ -118,12 +119,15 @@ class WellfoundScraper(BaseScraper):
 
             return []
 
-        with open(
-            "wellfound_debug.html",
-            "w",
-            encoding="utf-8",
-        ) as f:
-            f.write(html)
+        # BUG FIX: was writing HTML to disk unconditionally, filling
+        # Lambda's /tmp (512 MB). Now guarded by SCRAPER_DEBUG env var.
+        if os.getenv("SCRAPER_DEBUG"):
+            with open(
+                "wellfound_debug.html",
+                "w",
+                encoding="utf-8",
+            ) as f:
+                f.write(html)
 
         soup = BeautifulSoup(
             html,

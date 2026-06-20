@@ -1,3 +1,4 @@
+import os
 import random
 import re
 import time
@@ -104,12 +105,16 @@ class InternshalaScaper(BaseScraper):
 
                 continue
 
-            with open(
-                f"internshala_{category}_{page}.html",
-                "w",
-                encoding="utf-8",
-            ) as f:
-                f.write(html)
+            # BUG FIX: was writing HTML to disk unconditionally on every
+            # page, which would fill Lambda's /tmp (512 MB) quickly.
+            # Now guarded by SCRAPER_DEBUG env var, same as other scrapers.
+            if os.getenv("SCRAPER_DEBUG"):
+                with open(
+                    f"internshala_{category}_{page}.html",
+                    "w",
+                    encoding="utf-8",
+                ) as f:
+                    f.write(html)
 
             soup = BeautifulSoup(
                 html,

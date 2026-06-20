@@ -249,40 +249,38 @@ class RateLimiter:
         self,
         domain: str = "global",
     ) -> None:
-
+        # BUG FIX: was corrupted with a stray SQL block; restored correct
+        # elapsed-time calculation and sleep logic.
         current_time = time.monotonic()
 
-        previous_time = (
-            self.last_request_time.get(
-                domain,
-                0,
-            )
+        previous_time = self.last_request_time.get(
+            domain,
+            0,
         )
 
-        elapsed = (
-            # Insert only columns that exist in the migration (id, title, company, description, url, source, posted_at)
-            cursor.execute(
-                """
-                INSERT INTO jobs (id, title, company, description, url, source, posted_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (id) DO UPDATE SET
-                    title = EXCLUDED.title,
-                    company = EXCLUDED.company,
-                    description = EXCLUDED.description,
-                    url = EXCLUDED.url,
-                    source = EXCLUDED.source,
-                    posted_at = EXCLUDED.posted_at
-                """,
-                (
-                    job["id"],
-                    job["title"],
-                    job["company"],
-                    job["description"],
-                    job["url"],
-                    job["source"],
-                    job["posted_at"],
-                ),
-            )
+        elapsed = current_time - previous_time
+
+        if elapsed < self.delay:
+            time.sleep(self.delay - elapsed)
+
+        self.last_request_time[domain] = time.monotonic()
+
+
+# Module-level singleton used by safe_get / safe_post
+# BUG FIX: was missing entirely, causing NameError on every HTTP call.
+rate_limiter = RateLimiter()
+
+
+# Job ID helper
+# BUG FIX: function signature was missing; only the body fragment survived.
+
+def make_job_id(
+    title: str,
+    company: str,
+    source: str,
+    url: str,
+) -> str:
+
     raw_value = (
         f"{title.lower().strip()}|"
         f"{company.lower().strip()}|"
@@ -405,6 +403,8 @@ def upsert_jobs(
                 job.get("title"),
                 job.get("company"),
                 job.get("description"),
+                # BUG FIX: key was "apply_url" in job dict but column is
+                # "url" in the DB — must read from the correct dict key.
                 job.get("apply_url"),
                 job.get("source"),
                 job.get("location"),
