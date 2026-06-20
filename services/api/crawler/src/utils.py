@@ -397,21 +397,26 @@ def upsert_jobs(
 
     for job in jobs:
 
+        # Handle posted_date properly with fallback
+        posted_at = (
+            job.get("posted_date")
+            or job.get("posted_at")
+            or None
+        )
+
         rows.append(
             (
                 job.get("id"),
                 job.get("title"),
                 job.get("company"),
                 job.get("description"),
-                # BUG FIX: key was "apply_url" in job dict but column is
-                # "url" in the DB — must read from the correct dict key.
                 job.get("apply_url"),
                 job.get("source"),
                 job.get("location"),
                 job.get("salary"),
                 job.get("stipend"),
                 job.get("type"),
-                job.get("posted_date"),
+                posted_at,
             )
         )
 
