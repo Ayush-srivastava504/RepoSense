@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
-import AppShell from '../../components/AppShell';
+import AppShell from '../../../components/AppShell';
 
 export default function ResumeBuilder() {
   const { user, logout } = useAuth();

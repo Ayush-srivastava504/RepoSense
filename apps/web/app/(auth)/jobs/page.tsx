@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import AppShell from '../components/AppShell';
+import AppShell from '../../components/AppShell';
 
 interface Job {
   id: string;

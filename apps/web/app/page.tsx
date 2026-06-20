@@ -4,8 +4,8 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
-import Logo from './components/Logo';
-import HeroGraph from './components/HeroGraph';
+import Logo from '@/app/components/Logo';
+import HeroGraph from '@/app/components/HeroGraph';
 
 const features = [
   {

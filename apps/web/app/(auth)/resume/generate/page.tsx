@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import AppShell from '../../components/AppShell';
+import AppShell from '../../../components/AppShell';
 
 export default function ResumeGenerate() {
   const { user, logout } = useAuth();
