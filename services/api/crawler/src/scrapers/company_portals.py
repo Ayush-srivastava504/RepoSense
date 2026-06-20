@@ -1,3 +1,4 @@
+# these one are not running because they ar efixed scraper some css issue means i am scraping by old way these website have change css now new css to check
 import json
 import os
 import random

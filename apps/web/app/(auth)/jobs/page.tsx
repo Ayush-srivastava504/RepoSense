@@ -29,7 +29,7 @@ export default function JobsPage() {
   const fetchJobs = async () => {
     try {
       setLoading(true);
-      const data = await api.get('/jobs?limit=50');
+      const data = await api.get('/jobs/?limit=50');  
       setJobs(data);
       setError('');
     } catch (err: any) {
