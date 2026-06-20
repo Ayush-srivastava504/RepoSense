@@ -3,9 +3,10 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
+import AppShell from '../components/AppShell';
 
 export default function GitHubPage() {
-  const { user } = useAuth();
+  const { user, logout, refresh } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -20,6 +21,7 @@ export default function GitHubPage() {
   const [generatedReadme, setGeneratedReadme] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showReadme, setShowReadme] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -27,10 +29,11 @@ export default function GitHubPage() {
     const urlToken = searchParams.get('token');
     if (urlToken) {
       localStorage.setItem('token', urlToken);
+      refresh();
       setConnected(true);
       router.replace('/github');
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, refresh]);
 
   useEffect(() => {
     if (!user) return;
@@ -41,7 +44,8 @@ export default function GitHubPage() {
     setConnected(true);
     setLoadingRepos(true);
 
-    api.get('/github/repos')
+    api
+      .get('/github/repos')
       .then(setRepos)
       .catch(() => setRepos([]))
       .finally(() => setLoadingRepos(false));
@@ -50,7 +54,8 @@ export default function GitHubPage() {
   useEffect(() => {
     if (!selectedRepo) return;
 
-    api.get(`/github/contents?repo=${selectedRepo}&path=${currentPath}`)
+    api
+      .get(`/github/contents?repo=${selectedRepo}&path=${currentPath}`)
       .then(setFiles)
       .catch(() => setFiles([]));
   }, [selectedRepo, currentPath]);
@@ -63,25 +68,26 @@ export default function GitHubPage() {
     if (file.type === 'dir') {
       setCurrentPath(file.path);
     } else {
-      api.get(`/github/file?repo=${selectedRepo}&path=${file.path}`)
-        .then((res) => setCode(res.content));
+      api.get(`/github/file?repo=${selectedRepo}&path=${file.path}`).then((res) => setCode(res.content));
     }
   };
 
   const runReview = async () => {
-    const result = await api.post('/v1/review', {
-      code,
-      language: 'python',
-    });
-    setReview(result);
+    setReviewing(true);
+    try {
+      const result = await api.post('/v1/review', { code, language: 'python' });
+      setReview(result);
+    } finally {
+      setReviewing(false);
+    }
   };
 
   const generateReadme = async () => {
     if (!selectedRepo) {
-      alert('Please select a repository first');
+      alert('Select a repository first.');
       return;
     }
-    
+
     setIsGenerating(true);
     try {
       const result = await api.post(`/github/${selectedRepo}/auto-setup`, {});
@@ -89,36 +95,53 @@ export default function GitHubPage() {
       setShowReadme(true);
     } catch (error) {
       console.error('Error generating README:', error);
-      alert('Failed to generate README. Please try again.');
+      alert("Couldn't generate the README. Try again.");
     } finally {
       setIsGenerating(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-900 via-gray-900 to-black text-gray-200 p-6">
-      <h1 className="text-3xl font-bold mb-6 text-gray-100">GitHub Integration</h1>
+    <AppShell user={user} onLogout={logout}>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="eyebrow eyebrow-accent">// code review</p>
+          <h1 className="display mt-2 text-3xl font-medium">GitHub</h1>
+        </div>
+        {connected && (
+          <span className="chip chip-green">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--green)' }} />
+            connected
+          </span>
+        )}
+      </div>
 
       {!connected ? (
-        <button
-          onClick={connectGitHub}
-          className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-white"
-        >
-          Connect GitHub Account
-        </button>
+        <div className="panel mt-8 max-w-md p-8">
+          <p className="text-[0.9375rem]" style={{ color: 'var(--ink-soft)' }}>
+            Connect a GitHub account to browse repositories and run reviews on real code.
+          </p>
+          <button onClick={connectGitHub} className="btn btn-primary mt-5">
+            Connect GitHub account
+          </button>
+        </div>
       ) : loadingRepos ? (
-        <p>Loading...</p>
+        <p className="mt-8 eyebrow">loading repositories…</p>
       ) : (
-        <>
+        <div className="mt-8">
           <select
-            className="bg-gray-800 border border-gray-700 p-2 rounded mb-4 w-full text-gray-200"
+            className="field max-w-md"
             onChange={(e) => {
               setSelectedRepo(e.target.value);
               setCurrentPath('');
               setCode('');
+              setReview(null);
             }}
+            defaultValue=""
           >
-            <option>Select a repo</option>
+            <option value="" disabled>
+              Select a repository
+            </option>
             {repos.map((repo: any) => (
               <option key={repo.id} value={repo.full_name}>
                 {repo.full_name}
@@ -126,69 +149,83 @@ export default function GitHubPage() {
             ))}
           </select>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-gray-900 border border-gray-700 p-2 h-96 overflow-auto rounded">
-              {files.map((file: any) => (
-                <div
-                  key={file.path}
-                  className="cursor-pointer p-1 hover:bg-red-800 rounded"
-                  onClick={() => openFile(file)}
-                >
-                  {file.name}
-                </div>
-              ))}
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className="panel">
+              <div className="border-b px-4 py-3" style={{ borderColor: 'var(--line)' }}>
+                <p className="eyebrow">files {currentPath ? `/ ${currentPath}` : ''}</p>
+              </div>
+              <div className="h-80 overflow-auto p-2">
+                {currentPath && (
+                  <button
+                    onClick={() => setCurrentPath(currentPath.split('/').slice(0, -1).join('/'))}
+                    className="w-full rounded-[var(--radius-sm)] p-2 text-left text-sm hover:bg-[var(--paper-dim)]"
+                  >
+                    .. back
+                  </button>
+                )}
+                {files.map((file: any) => (
+                  <button
+                    key={file.path}
+                    onClick={() => openFile(file)}
+                    className="block w-full rounded-[var(--radius-sm)] p-2 text-left text-sm hover:bg-[var(--paper-dim)]"
+                  >
+                    {file.type === 'dir' ? '📁 ' : '📄 '}
+                    {file.name}
+                  </button>
+                ))}
+                {!files.length && <p className="p-2 text-sm" style={{ color: 'var(--muted)' }}>No files to show.</p>}
+              </div>
             </div>
 
-            <div className="bg-black border border-gray-700 p-3 h-96 overflow-auto rounded">
-              <pre className="text-sm whitespace-pre-wrap text-green-400 font-mono">
-                {code}
+            <div className="panel-dark overflow-hidden">
+              <div className="border-b px-4 py-3" style={{ borderColor: '#2a2d35' }}>
+                <p className="eyebrow" style={{ color: '#9ea3ab' }}>
+                  preview
+                </p>
+              </div>
+              <pre className="h-80 overflow-auto p-4 text-[0.8125rem] leading-relaxed" style={{ fontFamily: 'var(--font-mono)', color: '#d7d6cf' }}>
+                {code || '// select a file to preview it here'}
               </pre>
             </div>
           </div>
 
-          <div className="mt-6 flex gap-4">
-            <button
-              onClick={runReview}
-              className="bg-red-600 hover:bg-red-700 text-white p-2 rounded"
-            >
-              Review Code
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button onClick={runReview} disabled={!code || reviewing} className="btn btn-primary">
+              {reviewing ? 'Reviewing…' : 'Review this file'}
             </button>
-            
             <button
               onClick={generateReadme}
               disabled={isGenerating || !selectedRepo}
-              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white p-2 rounded"
+              className="btn btn-secondary"
             >
-              {isGenerating ? 'Generating README...' : 'Generate README'}
+              {isGenerating ? 'Generating README…' : 'Generate README'}
             </button>
           </div>
 
           {review && (
-            <pre className="bg-gray-900 border border-gray-700 p-4 mt-4 overflow-auto rounded text-gray-300">
-              {JSON.stringify(review, null, 2)}
-            </pre>
+            <div className="panel mt-6 p-5">
+              <p className="eyebrow eyebrow-accent mb-3">// review result</p>
+              <pre className="overflow-auto text-[0.8125rem] leading-relaxed" style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)' }}>
+                {JSON.stringify(review, null, 2)}
+              </pre>
+            </div>
           )}
 
           {showReadme && generatedReadme && (
-            <div className="mt-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-100">Generated README</h2>
-                <button
-                  onClick={() => setShowReadme(false)}
-                  className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm"
-                >
+            <div className="panel mt-6 p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <p className="eyebrow eyebrow-accent">// generated readme</p>
+                <button onClick={() => setShowReadme(false)} className="btn btn-ghost !px-2 !py-1 text-sm">
                   Close
                 </button>
               </div>
-              <div className="bg-gray-900 border border-gray-700 p-4 rounded prose prose-invert max-w-none">
-                <pre className="text-gray-300 whitespace-pre-wrap text-sm overflow-auto max-h-96">
-                  {generatedReadme}
-                </pre>
-              </div>
+              <pre className="max-h-96 overflow-auto whitespace-pre-wrap text-[0.875rem] leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+                {generatedReadme}
+              </pre>
             </div>
           )}
-        </>
+        </div>
       )}
-    </div>
+    </AppShell>
   );
 }

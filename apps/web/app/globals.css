@@ -2,12 +2,236 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer components {
-  .btn-primary {
-    @apply bg-primary-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-primary-600 transition;
+:root {
+  --paper: #faf9f6;
+  --paper-dim: #f2f0e9;
+  --ink: #15171c;
+  --ink-soft: #4a4d55;
+  --muted: #6b6f76;
+  --line: #e2ddcd;
+  --line-strong: #cfc8b2;
+  --green: #2e6f4f;
+  --green-soft: #e3efe7;
+  --indigo: #3a3ad6;
+  --indigo-soft: #e8e8fb;
+  --rust: #b5482a;
+  --rust-soft: #f6e7e1;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --shadow-card: 0 1px 2px rgba(21, 23, 28, 0.04), 0 8px 24px -12px rgba(21, 23, 28, 0.10);
+}
+
+html {
+  background: var(--paper);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+@layer base {
+  ::selection {
+    background: var(--indigo-soft);
+    color: var(--indigo);
   }
 
-  .card {
-    @apply bg-white rounded-xl shadow-md border border-gray-200;
+  *:focus-visible {
+    outline: 2px solid var(--indigo);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+
+  /* Layout shell */
+  .shell {
+    background: var(--paper);
+    min-height: 100vh;
+  }
+
+  .container-xl {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  /* Eyebrow / mono labels — used the way commit hashes & line
+     numbers are used in a real diff, never decorative */
+  .eyebrow {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .eyebrow-accent {
+    color: var(--green);
+  }
+
+  /* Display headings */
+  .display {
+    font-family: var(--font-display), serif;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  /* Hairline divider */
+  .hr-line {
+    border: none;
+    border-top: 1px solid var(--line);
+  }
+
+  /* Cards / panels styled like terminal or diff panes */
+  .panel {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+  }
+
+  .panel-dark {
+    background: var(--ink);
+    border: 1px solid #2a2d35;
+    border-radius: var(--radius-md);
+    color: #e7e6e1;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    border-radius: var(--radius-sm);
+    padding: 0.625rem 1.25rem;
+    transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease, transform 100ms ease;
+    white-space: nowrap;
+  }
+
+  .btn:active {
+    transform: translateY(1px);
+  }
+
+  .btn-primary {
+    background: var(--indigo);
+    color: #fff;
+  }
+
+  .btn-primary:hover {
+    background: #2f2fb8;
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line-strong);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--ink);
+    background: var(--paper-dim);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink-soft);
+  }
+
+  .btn-ghost:hover {
+    color: var(--ink);
+  }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--rust);
+  }
+
+  .btn-danger:hover {
+    background: var(--rust-soft);
+  }
+
+  /* Inputs */
+  .field {
+    width: 100%;
+    background: #fff;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    padding: 0.625rem 0.875rem;
+    font-size: 0.9375rem;
+    color: var(--ink);
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  .field::placeholder {
+    color: #9a9d9f;
+  }
+
+  .field:focus {
+    outline: none;
+    border-color: var(--indigo);
+    box-shadow: 0 0 0 3px var(--indigo-soft);
+  }
+
+  .field-label {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    margin-bottom: 0.375rem;
+  }
+
+  /* Status chips — additions / deletions vocabulary, used where
+     it genuinely maps to state (connected/error/pending) */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 999px;
+  }
+
+  .chip-green {
+    background: var(--green-soft);
+    color: var(--green);
+  }
+
+  .chip-rust {
+    background: var(--rust-soft);
+    color: var(--rust);
+  }
+
+  .chip-muted {
+    background: var(--paper-dim);
+    color: var(--muted);
+  }
+
+  /* Nav */
+  .nav-link {
+    font-size: 0.9375rem;
+    color: var(--ink-soft);
+    transition: color 150ms ease;
+  }
+
+  .nav-link:hover {
+    color: var(--ink);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

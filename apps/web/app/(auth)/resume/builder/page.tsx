@@ -1,181 +1,79 @@
 'use client';
 
 import { useState } from 'react';
-
+import Link from 'next/link';
+import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
+import AppShell from '../../components/AppShell';
 
 export default function ResumeBuilder() {
+  const { user, logout } = useAuth();
 
-  const [resumeType, setResumeType] =
-    useState('internship');
+  const [title, setTitle] = useState('');
+  const [summary, setSummary] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const [jobDescription, setJobDescription] =
-    useState('');
-
-  const [skills, setSkills] =
-    useState('');
-
-  const [experience, setExperience] =
-    useState('');
-
-  const [title, setTitle] =
-    useState('');
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const generateResume = async () => {
-
-    if (!jobDescription.trim()) {
-
-      alert(
-        'Paste job description first'
-      );
-
-      return;
-    }
-
-    setLoading(true);
-
+  const saveResume = async () => {
     try {
+      setLoading(true);
 
-      const pdfBlob = await api.post(
-        '/resume/generate',
-        {
-          resume_type: resumeType,
-          job_description: jobDescription,
-          skills,
-          experience,
-        }
-      );
+      const payload = {
+        title,
+        content: {
+          summary,
+          experience: [],
+        },
+      };
 
-      const url =
-        window.URL.createObjectURL(
-          pdfBlob
-        );
-
-      const a =
-        document.createElement('a');
-
-      a.href = url;
-
-      a.download =
-        `${title || 'resume'}.pdf`;
-
-      document.body.appendChild(a);
-
-      a.click();
-
-      a.remove();
-
-      window.URL.revokeObjectURL(url);
-
-    } catch (err) {
-
+      await api.post('/resume/create', payload);
+      alert('Resume saved.');
+    } catch (err: any) {
       console.error(err);
-
-      alert(
-        'Resume generation failed'
-      );
-
+      alert(err?.message || "Couldn't save the resume.");
     } finally {
-
       setLoading(false);
-
     }
   };
 
   return (
+    <AppShell user={user} onLogout={logout}>
+      <p className="eyebrow eyebrow-accent">// resume</p>
+      <h1 className="display mt-2 text-3xl font-medium">Resume builder</h1>
 
-    <div className="container mx-auto p-6 max-w-4xl">
-
-      <h1 className="text-4xl font-bold mb-6">
-        AI Resume Builder
-      </h1>
-
-      <div className="space-y-4">
-
-        <input
-          type="text"
-          placeholder="Resume Title"
-          value={title}
-          onChange={(e) =>
-            setTitle(
-              e.target.value
-            )
-          }
-          className="w-full border p-3 rounded"
-        />
-
-        <select
-          value={resumeType}
-          onChange={(e) =>
-            setResumeType(
-              e.target.value
-            )
-          }
-          className="w-full border p-3 rounded"
-        >
-
-          <option value="internship">
-            Internship Resume
-          </option>
-
-          <option value="full-time">
-            Full-Time Resume
-          </option>
-
-        </select>
-
-        <textarea
-          placeholder="Paste complete job description..."
-          value={jobDescription}
-          onChange={(e) =>
-            setJobDescription(
-              e.target.value
-            )
-          }
-          className="w-full h-64 border p-3 rounded"
-        />
-
-        <textarea
-          placeholder="Skills (Python, FastAPI, React, SQL...)"
-          value={skills}
-          onChange={(e) =>
-            setSkills(
-              e.target.value
-            )
-          }
-          className="w-full h-32 border p-3 rounded"
-        />
-
-        <textarea
-          placeholder="Experience / projects / internships..."
-          value={experience}
-          onChange={(e) =>
-            setExperience(
-              e.target.value
-            )
-          }
-          className="w-full h-48 border p-3 rounded"
-        />
-
-        <button
-          onClick={generateResume}
-          disabled={loading}
-          className="bg-purple-600 text-white px-5 py-3 rounded"
-        >
-
-          {
-            loading
-              ? 'Generating...'
-              : 'Generate Resume PDF'
-          }
-
-        </button>
-
+      <div className="mt-6 flex gap-2 border-b" style={{ borderColor: 'var(--line)' }}>
+        <span className="border-b-2 pb-2 text-sm font-semibold" style={{ borderColor: 'var(--indigo)', color: 'var(--ink)' }}>
+          Write by hand
+        </span>
+        <Link href="/resume/generate" className="nav-link pb-2 text-sm">
+          Generate from a job
+        </Link>
       </div>
 
-    </div>
+      <div className="panel mt-6 max-w-2xl p-6">
+        <div className="mb-5">
+          <label className="field-label">Resume title</label>
+          <input
+            className="field"
+            placeholder="Frontend Developer Resume"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </div>
+
+        <div className="mb-6">
+          <label className="field-label">Professional summary</label>
+          <textarea
+            className="field h-48 resize-none"
+            placeholder="Write a 2–3 sentence summary of who you are and what you build."
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
+          />
+        </div>
+
+        <button onClick={saveResume} disabled={loading} className="btn btn-primary">
+          {loading ? 'Saving…' : 'Save resume'}
+        </button>
+      </div>
+    </AppShell>
   );
 }

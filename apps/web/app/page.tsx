@@ -4,6 +4,26 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
+import Logo from './components/Logo';
+import HeroGraph from './components/HeroGraph';
+
+const features = [
+  {
+    tag: 'review',
+    title: 'AI code review',
+    body: 'Every push gets a real review: bugs, security gaps, and style — explained in plain language, not just flagged.',
+  },
+  {
+    tag: 'github',
+    title: 'A terminal on your repos',
+    body: 'Browse files and run commands against your connected repositories without leaving the browser.',
+  },
+  {
+    tag: 'resume',
+    title: 'Resume from real work',
+    body: 'Turn the commits and reviews you already have into a resume bullet, tuned to a specific job description.',
+  },
+];
 
 export default function LandingPage() {
   const { user, loading } = useAuth();
@@ -16,53 +36,100 @@ export default function LandingPage() {
   }, [user, loading, router]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-
-      <div className="bg-red-500 text-white p-4 text-center">
-        Tailwind Test
-      </div>
-
-      <nav className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="text-2xl font-bold text-gray-800">InternFlow</div>
-          <div className="space-x-4">
-            <Link href="/login" className="text-gray-600 hover:text-gray-900">Login</Link>
-            <Link href="/register" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-              Get Started
+    <div className="shell">
+      <nav className="border-b" style={{ borderColor: 'var(--line)' }}>
+        <div className="container-xl flex h-16 items-center justify-between">
+          <Logo />
+          <div className="flex items-center gap-3">
+            <Link href="/login" className="nav-link">
+              Sign in
+            </Link>
+            <Link href="/register" className="btn btn-primary text-sm">
+              Get started
             </Link>
           </div>
         </div>
       </nav>
 
-      <section className="container mx-auto px-6 py-20 text-center">
-        <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 mb-6">
-          AI-Powered Code Review & Internship Platform
-        </h1>
-        <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-12">
-          Automate code reviews, connect GitHub, build your resume, and find internships – all in one place.
-        </p>
-        <Link href="/register" className="bg-blue-600 text-white text-lg px-8 py-3 rounded-lg hover:bg-blue-700">
-          Start Free Trial
-        </Link>
-      </section>
+      {/* Hero */}
+      <section className="container-xl grid items-center gap-10 py-16 md:grid-cols-2 md:py-24">
+        <div>
+          <p className="eyebrow eyebrow-accent mb-4">// for students shipping real code</p>
+          <h1 className="display text-4xl font-medium leading-[1.08] sm:text-5xl">
+            Get reviewed like a senior engineer is watching your branch.
+          </h1>
+          <p className="mt-5 max-w-md text-[1.0625rem] leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+            Connect a repo, push code, and get an AI review on the diff — then turn that work
+            into a resume built for the internship you actually want.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center gap-4">
+            <Link href="/register" className="btn btn-primary">
+              Start free
+            </Link>
+            <Link href="/login" className="btn btn-secondary">
+              Sign in
+            </Link>
+          </div>
+          <div className="mt-10 flex gap-8 border-t pt-6" style={{ borderColor: 'var(--line)' }}>
+            <div>
+              <p className="display text-2xl font-medium">2 min</p>
+              <p className="eyebrow mt-1">to connect a repo</p>
+            </div>
+            <div>
+              <p className="display text-2xl font-medium">3</p>
+              <p className="eyebrow mt-1">tools, one workspace</p>
+            </div>
+          </div>
+        </div>
 
-      <section className="container mx-auto px-6 py-16">
-        <div className="grid md:grid-cols-3 gap-8">
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h3 className="text-xl font-semibold mb-2">AI Code Review</h3>
-            <p className="text-gray-600">Real-time bug detection, security scanning, and quality metrics.</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h3 className="text-xl font-semibold mb-2">GitHub Terminal</h3>
-            <p className="text-gray-600">Live bash terminal connected to your repositories.</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h3 className="text-xl font-semibold mb-2">Resume Builder</h3>
-            <p className="text-gray-600">ATS-optimised templates with AI suggestions.</p>
-          </div>
+        <div className="relative h-[320px] md:h-[420px]">
+          <div
+            className="absolute inset-0 rounded-[var(--radius-lg)]"
+            style={{
+              background: 'radial-gradient(circle at 60% 35%, var(--indigo-soft), transparent 60%)',
+            }}
+          />
+          <HeroGraph />
         </div>
       </section>
 
+      {/* Features as diff-styled panels */}
+      <section className="container-xl py-16">
+        <hr className="hr-line mb-12" />
+        <div className="grid gap-6 md:grid-cols-3">
+          {features.map((f) => (
+            <div key={f.tag} className="panel p-6">
+              <p className="eyebrow eyebrow-accent">// {f.tag}</p>
+              <h3 className="display mt-3 text-xl font-medium">{f.title}</h3>
+              <p className="mt-2 text-[0.9375rem] leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+                {f.body}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Closing CTA */}
+      <section className="container-xl pb-24">
+        <div className="panel-dark flex flex-col items-start justify-between gap-6 p-8 sm:flex-row sm:items-center">
+          <div>
+            <p className="eyebrow" style={{ color: '#9ea3ab' }}>
+              // ready when you are
+            </p>
+            <p className="display mt-2 text-2xl font-medium text-white">
+              Push your next commit somewhere it gets read.
+            </p>
+          </div>
+          <Link href="/register" className="btn btn-primary whitespace-nowrap">
+            Create your account
+          </Link>
+        </div>
+      </section>
+
+      <footer className="container-xl flex items-center justify-between border-t py-8" style={{ borderColor: 'var(--line)' }}>
+        <Logo />
+        <p className="eyebrow">built for students, not enterprises</p>
+      </footer>
     </div>
   );
 }
