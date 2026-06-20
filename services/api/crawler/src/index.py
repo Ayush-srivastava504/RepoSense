@@ -223,9 +223,18 @@ def run_pipeline(
 
     registry = _load_scrapers()
 
+    enabled_scrapers = [
+        s.strip()
+        for s in os.getenv(
+            "ENABLED_SCRAPERS",
+            ",".join(ENABLED_SCRAPERS),
+        ).split(",")
+        if s.strip()
+    ]
+
     active_scrapers = [
         scraper
-        for scraper in ENABLED_SCRAPERS
+        for scraper in enabled_scrapers
         if scraper in registry
     ]
 
@@ -360,15 +369,24 @@ def run_pipeline(
 
         try:
 
+            log.info(
+                "Attempting to insert %d jobs into PostgreSQL",
+                len(enriched),
+            )
+
             written = upsert_jobs(
                 enriched
             )
 
-        except Exception as exc:
+            log.info(
+                "Successfully inserted %d jobs into PostgreSQL",
+                written,
+            )
 
-            log.error(
-                "DynamoDB write failed: %s",
-                exc,
+        except Exception:
+
+            log.exception(
+                "PostgreSQL write failed"
             )
 
     elif dry_run:
@@ -433,7 +451,11 @@ def lambda_handler(
         os.environ[
             "ENABLED_SCRAPERS"
         ] = ",".join(
-            event["scrapers"]
+            [
+                s.strip()
+                for s in event["scrapers"]
+                if s.strip()
+            ]
         )
 
         import importlib
@@ -507,10 +529,29 @@ if __name__ == "__main__":
 
     if args.scrapers:
 
+        scraper_list = []
+
+        for item in args.scrapers:
+
+            scraper_list.extend(
+                [
+                    s.strip()
+                    for s in item.split(",")
+                    if s.strip()
+                ]
+            )
+
         os.environ[
             "ENABLED_SCRAPERS"
         ] = ",".join(
-            args.scrapers
+            scraper_list
+        )
+
+        log.info(
+            "Using scrapers: %s",
+            os.environ[
+                "ENABLED_SCRAPERS"
+            ],
         )
 
     summary = run_pipeline(
