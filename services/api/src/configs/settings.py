@@ -1,49 +1,70 @@
-from pydantic_settings import BaseSettings
 from typing import List
 import json
 
-class Settings(BaseSettings):
-    # Default to a local PostgreSQL instance. Users can override via .env.
-    DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/internship_db"
+from pydantic_settings import BaseSettings
+import os
 
-    REDIS_URL: str = "redis://redis:6379"
+
+class Settings(BaseSettings):
+    HOST: str = "0.0.0.0"
+
+    PORT: int = 8000
+
+    ENVIRONMENT: str = "development"
+
+    DATABASE_URL: str = (
+        "postgresql://postgres:password@postgres:5432/internship_db"
+    )
+
+    REDIS_URL: str = (
+        "redis://redis:6379"
+    )
 
     GITHUB_CLIENT_ID: str = ""
     GITHUB_CLIENT_SECRET: str = ""
 
-    STRIPE_SECRET_KEY: str = ""
-    STRIPE_WEBHOOK_SECRET: str = ""
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
 
     JWT_SECRET: str = ""
+
     GITHUB_TOKEN_ENCRYPTION_KEY: str = ""
 
-    AWS_ACCESS_KEY: str = ""
-    AWS_SECRET_KEY: str = ""
+    # Renamed from AWS_ACCESS_KEY / AWS_SECRET_KEY to match .env and boto3 defaults
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
+    AWS_REGION: str = "us-east-1"
 
     S3_BUCKET: str = "resume-storage"
 
-    # Allowed origins for CORS. Include both API and frontend URLs.
     CORS_ORIGINS: List[str] = [
-        "https://intern-flow.in",
-        "https://www.intern-flow.in",
-        "https://repo-sense-chi.vercel.app"
+        "http://localhost:3000",
+        "http://localhost:8000",
     ]
 
-    # Default redirect URI for GitHub OAuth flow.
-    GITHUB_REDIRECT_URI: str = "https://api.intern-flow.in/api/github/callback"
+    GITHUB_REDIRECT_URI: str = ""
 
-    # Base URL of the frontend application used for redirects after login failures.
-    FRONTEND_URL: str = "https://www.intern-flow.in"
+    FRONTEND_URL: str = ""
 
-    RAG_SERVICE_URL: str = "http://rag:8001"
+    RAG_SERVICE_URL: str = (
+        "http://localhost:8001"
+    )
+
+    NEURAL_GENERATOR_URL: str = (
+        "http://localhost:8002"
+    )
 
     class Config:
-        env_file = ".env"
+        env_file = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "../../../../.env")
+        )
+        extra = "ignore"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         if isinstance(self.CORS_ORIGINS, str):
             self.CORS_ORIGINS = json.loads(self.CORS_ORIGINS)
+
 
 settings = Settings()
