@@ -12,8 +12,6 @@
 import base64
 import json
 import secrets
-import sys
-from pathlib import Path
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
@@ -365,20 +363,19 @@ Generate the README now.
 """
 
     try:
-        api_root = Path(__file__).resolve().parents[2]
-        sys.path.append(str(api_root))
-        from neural_generator.src.app import llm
-
-        output = llm(
-            prompt,
-            max_tokens=2500,
-            temperature=0.55,
-            top_k=50,
-            top_p=0.92,
-            repeat_penalty=1.2,
-            stop=["</s>"],
-        )
-        readme = output.get("choices", [{}])[0].get("text", "").strip()
+        async with httpx.AsyncClient(timeout=httpx.Timeout(300.0, connect=30.0)) as client:
+            resp = await client.post(
+                f"{settings.NEURAL_GENERATOR_URL}/generate",
+                json={
+                    "prompt": prompt,
+                    "max_tokens": 2500,
+                    "temperature": 0.55,
+                    "top_k": 50,
+                    "top_p": 0.92,
+                },
+            )
+            resp.raise_for_status()
+            readme = resp.json().get("text", "").strip()
     except Exception as exc:
         import traceback
         traceback.print_exc()
