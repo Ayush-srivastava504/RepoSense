@@ -1,14 +1,3 @@
-# routes/github.py  (relevant changed sections shown in full)
-#
-# KEY FIXES and  changes :
-#  1. /callback  → issues a short-lived one-time CODE, not the raw JWT in the URL
-#  2. /exchange  → swaps the code for the JWT (already existed, kept as-is)
-#  3. /disconnect → new: clears github_token so re-connect starts fresh
-#  4. /login     → unchanged
-#  5. /repos 500 fix → the 500 was caused by a missing github_token column for
-#     users who connected via email-OTP (they never went through GitHub OAuth).
-#     We now return 401 instead of crashing.
-
 import base64
 import json
 import secrets
@@ -16,14 +5,7 @@ from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
-    Request,
-    WebSocket,
-    WebSocketDisconnect,
-)
+from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import RedirectResponse
 from jose import jwt
 
@@ -34,13 +16,8 @@ from middleware.auth import verify_token
 from services.github_service import GithubService
 from utils.crypto import decrypt_token, encrypt_token
 
-router = APIRouter(
-    prefix="/api/github",
-    tags=["github"],
-)
+router = APIRouter(prefix="/api/github", tags=["github"])
 
-
-#OAuth: initiate 
 
 @router.get("/login")
 async def github_login(request: Request):
@@ -56,14 +33,11 @@ async def github_login(request: Request):
         "state": state,
     }
     await redis.setex(f"github_oauth_state:{state}", 600, "pending")
-
     return RedirectResponse(
         "https://github.com/login/oauth/authorize?" + urlencode(params),
         status_code=302,
     )
 
-
-# OAuth: callback 
 
 @router.get("/callback")
 async def github_callback(request: Request, code: str, state: str):
@@ -71,18 +45,14 @@ async def github_callback(request: Request, code: str, state: str):
     if redis is None:
         raise HTTPException(503, "Redis unavailable")
 
-    # Validate state (CSRF protection)
     stored = await redis.get(f"github_oauth_state:{state}")
     if not stored:
-        # State missing or expired — send user back with an error flag
         return RedirectResponse(f"{settings.FRONTEND_URL}/github?error=state_mismatch")
-
     await redis.delete(f"github_oauth_state:{state}")
 
     timeout = httpx.Timeout(60.0, connect=30.0)
 
     async with httpx.AsyncClient(timeout=timeout) as client:
-        # Exchange code for GitHub access token
         resp = await client.post(
             "https://github.com/login/oauth/access_token",
             data={
@@ -96,18 +66,12 @@ async def github_callback(request: Request, code: str, state: str):
         data = resp.json()
         gh_error = data.get("error")
         if gh_error:
-            # e.g. "bad_verification_code" on a replayed/expired code
-            return RedirectResponse(
-                f"{settings.FRONTEND_URL}/github?error={gh_error}"
-            )
+            return RedirectResponse(f"{settings.FRONTEND_URL}/github?error={gh_error}")
 
         access_token = data.get("access_token")
         if not access_token:
-            return RedirectResponse(
-                f"{settings.FRONTEND_URL}/github?error=no_access_token"
-            )
+            return RedirectResponse(f"{settings.FRONTEND_URL}/github?error=no_access_token")
 
-        # Fetch GitHub user profile
         user_resp = await client.get(
             "https://api.github.com/user",
             headers={"Authorization": f"token {access_token}"},
@@ -115,7 +79,6 @@ async def github_callback(request: Request, code: str, state: str):
         github_user = user_resp.json()
         email = github_user.get("email")
 
-        # GitHub may hide the primary email — fetch it explicitly
         if not email:
             emails_resp = await client.get(
                 "https://api.github.com/user/emails",
@@ -132,20 +95,16 @@ async def github_callback(request: Request, code: str, state: str):
     if pool is None:
         raise HTTPException(503, "Database unavailable")
 
-    # Upsert user — same pattern as auth.py so email-OTP and GitHub-OAuth
-    # users share the same row.
     user_row = await pool.fetchrow(
         """
         INSERT INTO users (email, subscription_tier)
         VALUES ($1, 'free')
-        ON CONFLICT (email) DO UPDATE
-            SET email = EXCLUDED.email
+        ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
         RETURNING id, email, subscription_tier
         """,
         email,
     )
 
-    # Store the encrypted GitHub token on the user row
     encrypted_token = encrypt_token(access_token)
     await pool.execute(
         "UPDATE users SET github_token = $1 WHERE id = $2",
@@ -153,8 +112,6 @@ async def github_callback(request: Request, code: str, state: str):
         user_row["id"],
     )
 
-    # Issue a short-lived one-time code instead of putting the JWT in the URL.
-    # The frontend calls /exchange to swap this code for the real JWT.
     jwt_token = jwt.encode(
         {
             "sub": str(user_row["id"]),
@@ -168,21 +125,14 @@ async def github_callback(request: Request, code: str, state: str):
 
     one_time_code = secrets.token_urlsafe(32)
     await redis.setex(f"auth_code:{one_time_code}", 60, jwt_token)
-
     return RedirectResponse(
         f"{settings.FRONTEND_URL}/github?code={one_time_code}",
         status_code=302,
     )
 
 
-#Exchange one-time code for JWT
-
 @router.get("/exchange")
 async def exchange_code(code: str):
-    """
-    Swap a one-time auth code (from the OAuth callback redirect) for a JWT.
-    The code is valid for 60 seconds and is deleted on first use.
-    """
     redis = await get_redis()
     if redis is None:
         raise HTTPException(503, "Redis unavailable")
@@ -195,14 +145,8 @@ async def exchange_code(code: str):
     return {"access_token": token, "token_type": "bearer"}
 
 
-# Disconnect GitHub 
-
 @router.post("/disconnect")
 async def disconnect_github(user=Depends(verify_token)):
-    """
-    Remove the stored GitHub OAuth token from the user's account.
-    The user keeps their InternFlow session — only the GitHub link is removed.
-    """
     pool = await get_db_pool()
     if pool is None:
         raise HTTPException(503, "Database unavailable")
@@ -214,8 +158,6 @@ async def disconnect_github(user=Depends(verify_token)):
     return {"message": "GitHub disconnected"}
 
 
-#Repos
-
 @router.get("/repos")
 async def get_repos(user=Depends(verify_token)):
     pool = await get_db_pool()
@@ -226,8 +168,6 @@ async def get_repos(user=Depends(verify_token)):
         "SELECT github_token FROM users WHERE id = $1",
         user["sub"],
     )
-
-    # Return 401 (not 500) when GitHub isn't connected yet
     if not user_row or not user_row["github_token"]:
         raise HTTPException(401, "GitHub not connected")
 
@@ -237,7 +177,6 @@ async def get_repos(user=Depends(verify_token)):
     try:
         repos = await service.get_repos()
     except Exception:
-        # Encrypted token may be stale (e.g. user revoked on GitHub side)
         raise HTTPException(401, "GitHub token invalid. Please reconnect.")
 
     return [
@@ -250,10 +189,7 @@ async def get_repos(user=Depends(verify_token)):
     ]
 
 
-# Contents / file 
-
 async def _get_github_token(user_id: str, pool) -> str:
-    """Shared helper — fetch and decrypt the stored GitHub token."""
     user_row = await pool.fetchrow(
         "SELECT github_token FROM users WHERE id = $1",
         user_id,
@@ -297,8 +233,6 @@ async def get_file_content(repo: str, path: str, user=Depends(verify_token)):
         return {"content": resp.text}
 
 
-# ─── Auto-setup / README ─────────────────────────────────────────────────────
-
 @router.post("/{owner}/{repo}/auto-setup")
 async def auto_setup(owner: str, repo: str, user=Depends(verify_token)):
     pool = await get_db_pool()
@@ -329,9 +263,11 @@ async def auto_setup(owner: str, repo: str, user=Depends(verify_token)):
             "package.json",
             "requirements.txt",
             "pyproject.toml",
+            "main.py",
+            "app.py",
+            "next.config.js",
             "Dockerfile",
             "docker-compose.yml",
-            "README.md",
             ".env.example",
         ]:
             try:
@@ -343,24 +279,58 @@ async def auto_setup(owner: str, repo: str, user=Depends(verify_token)):
                     },
                 )
                 if resp.status_code == 200:
-                    important_files.append(f"\n===== {file_name} =====\n{resp.text[:1800]}")
+                    important_files.append(f"\n===== {file_name} =====\n{resp.text[:1500]}")
             except Exception:
                 pass
 
-    prompt = f"""
-You are a senior software architect and elite technical documentation engineer.
-Your task is to generate a REALISTIC, HIGH-QUALITY, production-grade GitHub README.md.
+    dir_snippets = []
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        for dir_name in ["src", "app", "backend", "frontend", "api"]:
+            try:
+                dir_resp = await client.get(
+                    f"https://api.github.com/repos/{repo_name}/contents/{dir_name}",
+                    headers={
+                        "Authorization": f"token {github_token}",
+                        "Accept": "application/vnd.github.v3+json",
+                    },
+                )
+                if dir_resp.status_code == 200:
+                    dir_items = dir_resp.json()
+                    for entry in dir_items:
+                        if entry["type"] == "file" and entry["name"].split(".")[-1] in (
+                            "py", "ts", "tsx", "js", "jsx"
+                        ):
+                            file_resp = await client.get(
+                                f"https://api.github.com/repos/{repo_name}/contents/{entry['path']}",
+                                headers={
+                                    "Authorization": f"token {github_token}",
+                                    "Accept": "application/vnd.github.v3.raw",
+                                },
+                            )
+                            if file_resp.status_code == 200:
+                                dir_snippets.append(
+                                    f"\n===== {entry['path']} =====\n{file_resp.text[:1500]}"
+                                )
+                            break
+            except Exception:
+                pass
 
-Repository Name: {repo_name}
+    prompt = f"""You are a senior software architect and technical documentation engineer.
+Generate a production-grade GitHub README.md for the repository below.
+
+Repository: {repo_name}
 ROOT FILES: {chr(10).join(file_names)}
 ROOT FOLDERS: {chr(10).join(folder_names)}
-IMPORTANT PROJECT FILES: {chr(10).join(important_files)}
+PROJECT FILES: {chr(10).join(important_files)}
+DIRECTORY SNIPPETS: {chr(10).join(dir_snippets)}
 
-RULES:
-- Only mention technologies actually present in the repository
-- No placeholder text, no generic AI fluff
-- No repeated sections
-- Output raw markdown only — no triple backtick wrappers around the whole document
+CRITICAL:
+Never mention a technology unless it appears explicitly in the provided files.
+If unsure, omit it.
+Return EXACTLY ONE README.
+Do not repeat sections.
+Do not output multiple versions.
+
 Generate a complete README with:
 1. Project title
 2. Overview
@@ -372,10 +342,7 @@ Generate a complete README with:
 8. API endpoints (if detected)
 9. Environment variables (if detected)
 10. License
-Only use information that can be inferred from the repository.
-Do not invent technologies or features.
-Output raw markdown only.
-"""
+Output raw markdown only."""
 
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(900.0, connect=60.0)) as client:
@@ -396,17 +363,14 @@ Output raw markdown only.
         traceback.print_exc()
         raise HTTPException(500, f"LLM generation failed: {str(exc)}")
 
-    # Strip any LLM reasoning leakage
     for marker in ["Final Answer", "Alright, I've thoroughly analyzed"]:
         if marker in readme:
-            parts = readme.split(marker, 1)
-            readme = parts[-1]
+            readme = readme.split(marker, 1)[-1]
 
     readme = readme.replace("```markdown", "").replace("```", "").strip()
     if not readme:
         readme = f"# {repo}\n\nREADME generation failed.\n"
 
-    # Push to GitHub
     async with httpx.AsyncClient(timeout=timeout) as client:
         encoded_content = base64.b64encode(readme.encode()).decode()
 
@@ -437,8 +401,6 @@ Output raw markdown only.
 
     return {"success": True, "repo": repo_name, "readme": readme}
 
-
-# WebSocket terminal
 
 @router.post("/terminal/token")
 async def get_ws_token(user=Depends(verify_token)):
