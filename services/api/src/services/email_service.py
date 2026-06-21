@@ -9,6 +9,7 @@ _ses = boto3.client(
     aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
 )
 
+
 async def send_otp_email(to_email: str, otp: str) -> None:
     await asyncio.to_thread(
         _ses.send_email,
@@ -21,3 +22,16 @@ async def send_otp_email(to_email: str, otp: str) -> None:
             },
         },
     )
+
+
+def _html(otp: str) -> str:
+    return f"""
+    <div style="font-family:sans-serif;max-width:480px;margin:auto">
+      <h2 style="color:#1a1a2e">Your InternFlow verification code</h2>
+      <p style="font-size:2rem;letter-spacing:.3em;font-weight:700;color:#4f46e5">{otp}</p>
+      <p style="color:#6b7280">Expires in 10 minutes. Single use only.</p>
+      <p style="color:#6b7280;font-size:.875rem">
+        If you didn't request this, you can safely ignore this email.
+      </p>
+    </div>
+    """
