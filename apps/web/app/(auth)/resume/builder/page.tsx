@@ -55,6 +55,17 @@ function ResumeContent() {
   const [aiExperience, setAiExperience] = useState('');
   const [generating, setGenerating] = useState(false);
 
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
   const updateExp = (i: number, field: keyof ExperienceEntry, value: string) =>
     setExperience((p) => p.map((e, idx) => idx === i ? { ...e, [field]: value } : e));
   const updateExpBullet = (ei: number, bi: number, value: string) =>
@@ -89,15 +100,8 @@ function ResumeContent() {
     try {
       const blob = await api.post('/resume/generate-structured', {
         title, summary, githubUrl, websiteUrl, skills, experience, education, projects,
-      });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${title || 'resume'}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      }) as Blob;
+      downloadBlob(blob, `${title || 'resume'}.pdf`);
     } catch (err: any) {
       alert(err?.message || "Couldn't generate PDF.");
     } finally {
@@ -107,30 +111,20 @@ function ResumeContent() {
 
   const generateResume = async () => {
     setGenerating(true);
-    setGenerated(null);
     try {
       const blob = await api.post('/resume/generate', {
         resume_type: resumeType,
         job_description: jobDescription,
         skills: aiSkills,
         experience: aiExperience,
-      });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'resume.pdf';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      }) as Blob;
+      downloadBlob(blob, 'resume.pdf');
     } catch (err: any) {
       alert(err?.message || "Couldn't generate resume.");
     } finally {
       setGenerating(false);
     }
   };
-
-
 
   return (
     <AppShell user={user} onLogout={logout}>
@@ -155,7 +149,6 @@ function ResumeContent() {
 
       {tab === 'handwritten' && (
         <div className="panel mt-6 max-w-2xl space-y-6 p-6">
-
           <div>
             <label className="field-label">Resume title</label>
             <input className="field" placeholder="Frontend Developer Resume" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -340,8 +333,6 @@ function ResumeContent() {
           <button onClick={generateResume} disabled={generating} className="btn btn-primary">
             {generating ? 'Generating PDF…' : 'Generate resume PDF'}
           </button>
-
-
         </div>
       )}
     </AppShell>
