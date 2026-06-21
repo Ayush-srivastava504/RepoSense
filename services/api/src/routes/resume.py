@@ -1,4 +1,3 @@
-
 from fastapi import (
     APIRouter,
     Depends,
@@ -45,7 +44,7 @@ async def test():
 
 class ResumeData(BaseModel):
     title: str
-    content: str
+    content: dict  # accepts structured JSON from both handwritten and AI tabs
 
 
 class GenerateResumeRequest(BaseModel):
@@ -130,10 +129,12 @@ async def create_resume(
 
         service = ResumeService()
 
+        import json
+        content_str = json.dumps(data.content) if isinstance(data.content, dict) else data.content
         return await service.create_resume(
             user["sub"],
             data.title,
-            data.content,
+            content_str,
         )
 
     except Exception as exc:

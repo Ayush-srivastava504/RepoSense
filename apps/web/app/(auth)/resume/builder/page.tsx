@@ -1,37 +1,129 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import AppShell from '../../../components/AppShell';
+import AuthGuard from '../../../components/AuthGuard';
 
-export default function ResumeBuilder() {
+type Tab = 'handwritten' | 'ai';
+
+interface ExperienceEntry {
+  company: string;
+  role: string;
+  start: string;
+  end: string;
+  bullets: string[];
+}
+
+interface EducationEntry {
+  institution: string;
+  degree: string;
+  year: string;
+}
+
+interface ProjectEntry {
+  title: string;
+  tech: string;
+  github: string;
+  bullets: string[];
+}
+
+function ResumeContent() {
   const { user, logout } = useAuth();
+  const [tab, setTab] = useState<Tab>('handwritten');
 
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [githubUrl, setGithubUrl] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [skills, setSkills] = useState('');
+  const [experience, setExperience] = useState<ExperienceEntry[]>([
+    { company: '', role: '', start: '', end: '', bullets: [''] },
+  ]);
+  const [education, setEducation] = useState<EducationEntry[]>([
+    { institution: '', degree: '', year: '' },
+  ]);
+  const [projects, setProjects] = useState<ProjectEntry[]>([
+    { title: '', tech: '', github: '', bullets: [''] },
+  ]);
+  const [saving, setSaving] = useState(false);
+
+  const [resumeType, setResumeType] = useState('');
+  const [jobDescription, setJobDescription] = useState('');
+  const [aiSkills, setAiSkills] = useState('');
+  const [aiExperience, setAiExperience] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [generated, setGenerated] = useState<any>(null);
+
+  const updateExp = (i: number, field: keyof ExperienceEntry, value: string) =>
+    setExperience((p) => p.map((e, idx) => idx === i ? { ...e, [field]: value } : e));
+  const updateExpBullet = (ei: number, bi: number, value: string) =>
+    setExperience((p) => p.map((e, idx) => {
+      if (idx !== ei) return e;
+      const bullets = [...e.bullets]; bullets[bi] = value; return { ...e, bullets };
+    }));
+  const addExp = () => setExperience((p) => [...p, { company: '', role: '', start: '', end: '', bullets: [''] }]);
+  const removeExp = (i: number) => setExperience((p) => p.filter((_, idx) => idx !== i));
+  const addExpBullet = (i: number) => setExperience((p) => p.map((e, idx) => idx === i ? { ...e, bullets: [...e.bullets, ''] } : e));
+  const removeExpBullet = (ei: number, bi: number) => setExperience((p) => p.map((e, idx) => idx !== ei ? e : { ...e, bullets: e.bullets.filter((_, i) => i !== bi) }));
+
+  const updateEdu = (i: number, field: keyof EducationEntry, value: string) =>
+    setEducation((p) => p.map((e, idx) => idx === i ? { ...e, [field]: value } : e));
+  const addEdu = () => setEducation((p) => [...p, { institution: '', degree: '', year: '' }]);
+  const removeEdu = (i: number) => setEducation((p) => p.filter((_, idx) => idx !== i));
+
+  const updateProj = (i: number, field: keyof ProjectEntry, value: string) =>
+    setProjects((p) => p.map((proj, idx) => idx === i ? { ...proj, [field]: value } : proj));
+  const updateProjBullet = (pi: number, bi: number, value: string) =>
+    setProjects((p) => p.map((proj, idx) => {
+      if (idx !== pi) return proj;
+      const bullets = [...proj.bullets]; bullets[bi] = value; return { ...proj, bullets };
+    }));
+  const addProj = () => setProjects((p) => [...p, { title: '', tech: '', github: '', bullets: [''] }]);
+  const removeProj = (i: number) => setProjects((p) => p.filter((_, idx) => idx !== i));
+  const addProjBullet = (i: number) => setProjects((p) => p.map((proj, idx) => idx === i ? { ...proj, bullets: [...proj.bullets, ''] } : proj));
+  const removeProjBullet = (pi: number, bi: number) => setProjects((p) => p.map((proj, idx) => idx !== pi ? proj : { ...proj, bullets: proj.bullets.filter((_, i) => i !== bi) }));
 
   const saveResume = async () => {
+    setSaving(true);
     try {
-      setLoading(true);
-
-      const payload = {
+      await api.post('/resume/create', {
         title,
-        content: {
-          summary,
-          experience: [],
-        },
-      };
-
-      await api.post('/resume/create', payload);
+        content: { summary, githubUrl, websiteUrl, skills, experience, education, projects },
+      });
       alert('Resume saved.');
     } catch (err: any) {
-      console.error(err);
       alert(err?.message || "Couldn't save the resume.");
     } finally {
-      setLoading(false);
+      setSaving(false);
+    }
+  };
+
+  const generateResume = async () => {
+    setGenerating(true);
+    setGenerated(null);
+    try {
+      const result = await api.post('/resume/generate', {
+        resume_type: resumeType,
+        job_description: jobDescription,
+        skills: aiSkills,
+        experience: aiExperience,
+      });
+      setGenerated(result);
+    } catch (err: any) {
+      alert(err?.message || "Couldn't generate resume.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const saveGenerated = async () => {
+    try {
+      await api.post('/resume/create', { title: 'AI Generated Resume', content: generated });
+      alert('Saved.');
+    } catch {
+      alert('Could not save.');
     }
   };
 
@@ -40,40 +132,291 @@ export default function ResumeBuilder() {
       <p className="eyebrow eyebrow-accent">// resume</p>
       <h1 className="display mt-2 text-3xl font-medium">Resume builder</h1>
 
-      <div className="mt-6 flex gap-2 border-b" style={{ borderColor: 'var(--line)' }}>
-        <span className="border-b-2 pb-2 text-sm font-semibold" style={{ borderColor: 'var(--indigo)', color: 'var(--ink)' }}>
-          Write by hand
-        </span>
-        <Link href="/resume/generate" className="nav-link pb-2 text-sm">
-          Generate from a job
-        </Link>
+      <div className="mt-6 flex gap-4 border-b" style={{ borderColor: 'var(--line)' }}>
+        {(['handwritten', 'ai'] as Tab[]).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className="pb-2 text-sm font-medium border-b-2 transition-colors"
+            style={{
+              borderColor: tab === t ? 'var(--indigo)' : 'transparent',
+              color: tab === t ? 'var(--ink)' : 'var(--ink-soft)',
+            }}
+          >
+            {t === 'handwritten' ? 'Write by hand' : 'Generate with AI'}
+          </button>
+        ))}
       </div>
 
-      <div className="panel mt-6 max-w-2xl p-6">
-        <div className="mb-5">
-          <label className="field-label">Resume title</label>
-          <input
-            className="field"
-            placeholder="Frontend Developer Resume"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </div>
+      {tab === 'handwritten' && (
+        <div className="panel mt-6 max-w-2xl space-y-6 p-6">
 
-        <div className="mb-6">
-          <label className="field-label">Professional summary</label>
-          <textarea
-            className="field h-48 resize-none"
-            placeholder="Write a 2–3 sentence summary of who you are and what you build."
-            value={summary}
-            onChange={(e) => setSummary(e.target.value)}
-          />
-        </div>
+          <div>
+            <label className="field-label">Resume title</label>
+            <input className="field" placeholder="Frontend Developer Resume" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
 
-        <button onClick={saveResume} disabled={loading} className="btn btn-primary">
-          {loading ? 'Saving…' : 'Save resume'}
-        </button>
-      </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="field-label">GitHub profile</label>
+              <input className="field" placeholder="https://github.com/username" value={githubUrl} onChange={(e) => setGithubUrl(e.target.value)} />
+            </div>
+            <div>
+              <label className="field-label">Website / portfolio</label>
+              <input className="field" placeholder="https://yoursite.com" value={websiteUrl} onChange={(e) => setWebsiteUrl(e.target.value)} />
+            </div>
+          </div>
+
+          <div>
+            <label className="field-label">Professional summary</label>
+            <textarea className="field h-28 resize-none" placeholder="2–3 sentences about who you are and what you build." value={summary} onChange={(e) => setSummary(e.target.value)} />
+          </div>
+
+          <div>
+            <label className="field-label">Skills</label>
+            <input className="field" placeholder="Python, React, PostgreSQL, Docker…" value={skills} onChange={(e) => setSkills(e.target.value)} />
+          </div>
+
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <label className="field-label mb-0">Experience</label>
+              <button onClick={addExp} className="btn btn-ghost !py-1 text-xs">+ Add</button>
+            </div>
+            <div className="space-y-4">
+              {experience.map((exp, ei) => (
+                <div key={ei} className="rounded-[var(--radius)] border p-4 space-y-3" style={{ borderColor: 'var(--line)' }}>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="field-label">Company</label>
+                      <input className="field" placeholder="Acme Corp" value={exp.company} onChange={(e) => updateExp(ei, 'company', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="field-label">Role</label>
+                      <input className="field" placeholder="Software Engineer" value={exp.role} onChange={(e) => updateExp(ei, 'role', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="field-label">Start</label>
+                      <input className="field" placeholder="Jun 2023" value={exp.start} onChange={(e) => updateExp(ei, 'start', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="field-label">End</label>
+                      <input className="field" placeholder="Present" value={exp.end} onChange={(e) => updateExp(ei, 'end', e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mb-2 flex items-center justify-between">
+                      <label className="field-label mb-0">Bullets</label>
+                      <button onClick={() => addExpBullet(ei)} className="btn btn-ghost !py-0.5 text-xs">+ Add bullet</button>
+                    </div>
+                    {exp.bullets.map((b, bi) => (
+                      <div key={bi} className="mb-2 flex gap-2">
+                        <input className="field" placeholder="Built X that improved Y by Z%" value={b} onChange={(e) => updateExpBullet(ei, bi, e.target.value)} />
+                        {exp.bullets.length > 1 && (
+                          <button onClick={() => removeExpBullet(ei, bi)} className="btn btn-ghost !px-2 text-xs" style={{ color: 'var(--rust)' }}>✕</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {experience.length > 1 && (
+                    <button onClick={() => removeExp(ei)} className="text-xs" style={{ color: 'var(--rust)' }}>Remove experience</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <label className="field-label mb-0">Education</label>
+              <button onClick={addEdu} className="btn btn-ghost !py-1 text-xs">+ Add</button>
+            </div>
+            <div className="space-y-3">
+              {education.map((edu, i) => (
+                <div key={i} className="rounded-[var(--radius)] border p-4" style={{ borderColor: 'var(--line)' }}>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div>
+                      <label className="field-label">Institution</label>
+                      <input className="field" placeholder="MIT" value={edu.institution} onChange={(e) => updateEdu(i, 'institution', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="field-label">Degree</label>
+                      <input className="field" placeholder="B.Tech Computer Science" value={edu.degree} onChange={(e) => updateEdu(i, 'degree', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="field-label">Year</label>
+                      <input className="field" placeholder="2024" value={edu.year} onChange={(e) => updateEdu(i, 'year', e.target.value)} />
+                    </div>
+                  </div>
+                  {education.length > 1 && (
+                    <button onClick={() => removeEdu(i)} className="mt-3 text-xs" style={{ color: 'var(--rust)' }}>Remove</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <label className="field-label mb-0">Projects</label>
+              <button onClick={addProj} className="btn btn-ghost !py-1 text-xs">+ Add</button>
+            </div>
+            <div className="space-y-4">
+              {projects.map((proj, pi) => (
+                <div key={pi} className="rounded-[var(--radius)] border p-4 space-y-3" style={{ borderColor: 'var(--line)' }}>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="field-label">Title</label>
+                      <input className="field" placeholder="RepoSense" value={proj.title} onChange={(e) => updateProj(pi, 'title', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="field-label">Tech stack</label>
+                      <input className="field" placeholder="Next.js, FastAPI, PostgreSQL" value={proj.tech} onChange={(e) => updateProj(pi, 'tech', e.target.value)} />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="field-label">GitHub link</label>
+                      <input className="field" placeholder="https://github.com/username/repo" value={proj.github} onChange={(e) => updateProj(pi, 'github', e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mb-2 flex items-center justify-between">
+                      <label className="field-label mb-0">Bullets</label>
+                      <button onClick={() => addProjBullet(pi)} className="btn btn-ghost !py-0.5 text-xs">+ Add bullet</button>
+                    </div>
+                    {proj.bullets.map((b, bi) => (
+                      <div key={bi} className="mb-2 flex gap-2">
+                        <input className="field" placeholder="What it does and its impact" value={b} onChange={(e) => updateProjBullet(pi, bi, e.target.value)} />
+                        {proj.bullets.length > 1 && (
+                          <button onClick={() => removeProjBullet(pi, bi)} className="btn btn-ghost !px-2 text-xs" style={{ color: 'var(--rust)' }}>✕</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {projects.length > 1 && (
+                    <button onClick={() => removeProj(pi)} className="text-xs" style={{ color: 'var(--rust)' }}>Remove project</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button onClick={saveResume} disabled={saving} className="btn btn-primary">
+            {saving ? 'Saving…' : 'Save resume'}
+          </button>
+        </div>
+      )}
+
+      {tab === 'ai' && (
+        <div className="panel mt-6 max-w-2xl space-y-5 p-6">
+          <div>
+            <label className="field-label">Resume type</label>
+            <select className="field" value={resumeType} onChange={(e) => setResumeType(e.target.value)}>
+              <option value="">Select type</option>
+              <option value="fresher">Fresher</option>
+              <option value="experienced">Experienced</option>
+              <option value="senior">Senior</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="field-label">Job description</label>
+            <textarea className="field h-32 resize-none" placeholder="Paste the job description here…" value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} />
+          </div>
+
+          <div>
+            <label className="field-label">Your skills</label>
+            <input className="field" placeholder="Python, React, PostgreSQL, Docker…" value={aiSkills} onChange={(e) => setAiSkills(e.target.value)} />
+          </div>
+
+          <div>
+            <label className="field-label">Your experience</label>
+            <textarea className="field h-28 resize-none" placeholder="Briefly describe your work experience and projects…" value={aiExperience} onChange={(e) => setAiExperience(e.target.value)} />
+          </div>
+
+          <button onClick={generateResume} disabled={generating} className="btn btn-primary">
+            {generating ? 'Generating…' : 'Generate resume'}
+          </button>
+
+          {generated && (
+            <div className="mt-2 space-y-5 border-t pt-6" style={{ borderColor: 'var(--line)' }}>
+              <p className="eyebrow eyebrow-accent">// generated output</p>
+
+              {generated.summary && (
+                <div>
+                  <p className="field-label">Summary</p>
+                  <p className="text-sm" style={{ color: 'var(--ink-soft)' }}>{generated.summary}</p>
+                </div>
+              )}
+
+              {generated.technical_skills && (
+                <div>
+                  <p className="field-label">Technical skills</p>
+                  <div className="grid gap-2 sm:grid-cols-2 text-sm" style={{ color: 'var(--ink-soft)' }}>
+                    {Object.entries(generated.technical_skills).map(([k, v]) => (
+                      <div key={k}>
+                        <span className="font-medium capitalize">{k.replace('_', ' ')}: </span>
+                        <span>{v as string}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {generated.experience?.length > 0 && (
+                <div>
+                  <p className="field-label">Experience</p>
+                  <div className="space-y-3">
+                    {generated.experience.map((exp: any, i: number) => (
+                      <div key={i} className="rounded-[var(--radius)] border p-3" style={{ borderColor: 'var(--line)' }}>
+                        <p className="text-sm font-medium">{exp.role} — {exp.company}</p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--ink-soft)' }}>{exp.duration} · {exp.location}</p>
+                        {exp.bullets?.length > 0 && (
+                          <ul className="mt-2 space-y-1 list-disc list-inside text-sm" style={{ color: 'var(--ink-soft)' }}>
+                            {exp.bullets.map((b: string, bi: number) => <li key={bi}>{b}</li>)}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {generated.projects?.length > 0 && (
+                <div>
+                  <p className="field-label">Projects</p>
+                  <div className="space-y-3">
+                    {generated.projects.map((proj: any, i: number) => (
+                      <div key={i} className="rounded-[var(--radius)] border p-3" style={{ borderColor: 'var(--line)' }}>
+                        <p className="text-sm font-medium">{proj.title}</p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--ink-soft)' }}>{proj.tech}</p>
+                        {proj.github && (
+                          <a href={proj.github} target="_blank" rel="noopener noreferrer" className="text-xs" style={{ color: 'var(--indigo)' }}>{proj.github}</a>
+                        )}
+                        {proj.bullets?.length > 0 && (
+                          <ul className="mt-2 space-y-1 list-disc list-inside text-sm" style={{ color: 'var(--ink-soft)' }}>
+                            {proj.bullets.map((b: string, bi: number) => <li key={bi}>{b}</li>)}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <button onClick={saveGenerated} className="btn btn-secondary">
+                Save this resume
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </AppShell>
+  );
+}
+
+export default function ResumePage() {
+  return (
+    <AuthGuard>
+      <ResumeContent />
+    </AuthGuard>
   );
 }
