@@ -1,6 +1,6 @@
 # routes/github.py  (relevant changed sections shown in full)
 #
-# KEY FIXES vs the original:
+# KEY FIXES and  changes :
 #  1. /callback  → issues a short-lived one-time CODE, not the raw JWT in the URL
 #  2. /exchange  → swaps the code for the JWT (already existed, kept as-is)
 #  3. /disconnect → new: clears github_token so re-connect starts fresh
@@ -40,7 +40,7 @@ router = APIRouter(
 )
 
 
-# ─── OAuth: initiate ─────────────────────────────────────────────────────────
+#OAuth: initiate 
 
 @router.get("/login")
 async def github_login(request: Request):
@@ -63,7 +63,7 @@ async def github_login(request: Request):
     )
 
 
-# ─── OAuth: callback ─────────────────────────────────────────────────────────
+# OAuth: callback 
 
 @router.get("/callback")
 async def github_callback(request: Request, code: str, state: str):
@@ -175,7 +175,7 @@ async def github_callback(request: Request, code: str, state: str):
     )
 
 
-# ─── Exchange one-time code for JWT ──────────────────────────────────────────
+#Exchange one-time code for JWT
 
 @router.get("/exchange")
 async def exchange_code(code: str):
@@ -195,7 +195,7 @@ async def exchange_code(code: str):
     return {"access_token": token, "token_type": "bearer"}
 
 
-# ─── Disconnect GitHub ────────────────────────────────────────────────────────
+# Disconnect GitHub 
 
 @router.post("/disconnect")
 async def disconnect_github(user=Depends(verify_token)):
@@ -214,7 +214,7 @@ async def disconnect_github(user=Depends(verify_token)):
     return {"message": "GitHub disconnected"}
 
 
-# ─── Repos ───────────────────────────────────────────────────────────────────
+#Repos
 
 @router.get("/repos")
 async def get_repos(user=Depends(verify_token)):
@@ -250,7 +250,7 @@ async def get_repos(user=Depends(verify_token)):
     ]
 
 
-# ─── Contents / file ─────────────────────────────────────────────────────────
+# Contents / file 
 
 async def _get_github_token(user_id: str, pool) -> str:
     """Shared helper — fetch and decrypt the stored GitHub token."""
@@ -328,8 +328,10 @@ async def auto_setup(owner: str, repo: str, user=Depends(verify_token)):
         for file_name in [
             "package.json",
             "requirements.txt",
-            "README.md",
+            "pyproject.toml",
+            "Dockerfile",
             "docker-compose.yml",
+            "README.md",
             ".env.example",
         ]:
             try:
@@ -341,7 +343,7 @@ async def auto_setup(owner: str, repo: str, user=Depends(verify_token)):
                     },
                 )
                 if resp.status_code == 200:
-                    important_files.append(f"\n===== {file_name} =====\n{resp.text[:4000]}")
+                    important_files.append(f"\n===== {file_name} =====\n{resp.text[:1800]}")
             except Exception:
                 pass
 
@@ -359,16 +361,29 @@ RULES:
 - No placeholder text, no generic AI fluff
 - No repeated sections
 - Output raw markdown only — no triple backtick wrappers around the whole document
-Generate the README now.
+Generate a complete README with:
+1. Project title
+2. Overview
+3. Key features
+4. Technology stack
+5. Installation
+6. Usage
+7. Project structure
+8. API endpoints (if detected)
+9. Environment variables (if detected)
+10. License
+Only use information that can be inferred from the repository.
+Do not invent technologies or features.
+Output raw markdown only.
 """
 
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(300.0, connect=30.0)) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(900.0, connect=60.0)) as client:
             resp = await client.post(
                 f"{settings.NEURAL_GENERATOR_URL}/generate",
                 json={
                     "prompt": prompt,
-                    "max_tokens": 2500,
+                    "max_tokens": 1200,
                     "temperature": 0.55,
                     "top_k": 50,
                     "top_p": 0.92,
@@ -423,7 +438,7 @@ Generate the README now.
     return {"success": True, "repo": repo_name, "readme": readme}
 
 
-# ─── WebSocket terminal ───────────────────────────────────────────────────────
+# WebSocket terminal
 
 @router.post("/terminal/token")
 async def get_ws_token(user=Depends(verify_token)):
