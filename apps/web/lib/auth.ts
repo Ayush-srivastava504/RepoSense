@@ -30,27 +30,19 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Re-reads the token from localStorage and syncs React state.
-  // Call this any time something writes to localStorage directly
-  // outside of login()/logout() — e.g. the GitHub OAuth callback
-  // page, which stores a token it received via a redirect query
-  // param rather than through the login() flow.
   const refresh = useCallback(() => {
     const stored = localStorage.getItem('token');
-
     if (!stored) {
       setToken(null);
       setUser(null);
       return;
     }
-
     const decoded = decodeUser(stored);
     if (!decoded) {
       setToken(null);
       setUser(null);
       return;
     }
-
     setToken(stored);
     setUser(decoded);
   }, []);
@@ -58,8 +50,6 @@ export function useAuth() {
   useEffect(() => {
     refresh();
     setLoading(false);
-
-    // Keep state in sync if the token changes in another tab/window.
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'token') refresh();
     };
@@ -67,8 +57,19 @@ export function useAuth() {
     return () => window.removeEventListener('storage', onStorage);
   }, [refresh]);
 
-  const login = async (email: string, password: string) => {
-    const data = await api.post('/auth/login', { email, password });
+  /**
+   * Step 1: Request OTP sent to email.
+   * Returns nothing — just triggers the email.
+   */
+  const requestOtp = async (email: string) => {
+    await api.post('/auth/otp/request', { email });
+  };
+
+  /**
+   * Step 2: Verify OTP and get JWT.
+   */
+  const verifyOtp = async (email: string, otp: string) => {
+    const data = await api.post('/auth/otp/verify', { email, otp });
     localStorage.setItem('token', data.access_token);
     refresh();
   };
@@ -79,5 +80,5 @@ export function useAuth() {
     setUser(null);
   };
 
-  return { token, user, loading, login, logout, refresh };
+  return { token, user, loading, requestOtp, verifyOtp, logout, refresh };
 }

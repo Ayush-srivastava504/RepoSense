@@ -4,8 +4,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import AppShell from '../../components/AppShell';
+import AuthGuard from '../../components/AuthGuard';
 
-export default function GitHubPage() {
+function GitHubContent() {
   const { user, logout, refresh } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -18,42 +19,75 @@ export default function GitHubPage() {
   const [review, setReview] = useState(null);
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [connected, setConnected] = useState(false);
+  const [githubConnecting, setGithubConnecting] = useState(false);
   const [generatedReadme, setGeneratedReadme] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showReadme, setShowReadme] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [connectError, setConnectError] = useState('');
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+  // ─── Handle GitHub OAuth callback ────────────────────────────────────────
+  // The callback now passes a short-lived one-time `code`, NOT the JWT directly.
+  // We exchange the code for the JWT here, keeping the JWT out of browser history.
   useEffect(() => {
-    const urlToken = searchParams.get('token');
-    if (urlToken) {
-      localStorage.setItem('token', urlToken);
-      refresh();
-      setConnected(true);
+    const urlCode = searchParams.get('code');
+    const urlError = searchParams.get('error');
+
+    if (urlError) {
+      setConnectError('GitHub connection was cancelled or failed. Please try again.');
       router.replace('/github');
+      return;
     }
+
+    if (!urlCode) return;
+
+    // Remove the code from the URL immediately so it can't be replayed via refresh.
+    router.replace('/github');
+
+    setGithubConnecting(true);
+    api
+      .get(`/github/exchange?code=${urlCode}`)
+      .then((data: { access_token: string }) => {
+        // Only store the JWT — never the GitHub OAuth token
+        localStorage.setItem('token', data.access_token);
+        refresh();
+        setConnected(true);
+      })
+      .catch(() => {
+        setConnectError('Could not complete GitHub connection. Please try again.');
+      })
+      .finally(() => {
+        setGithubConnecting(false);
+      });
   }, [searchParams, router, refresh]);
 
+  // ─── Load repos when user is authed and GitHub is connected ──────────────
   useEffect(() => {
     if (!user) return;
 
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    setConnected(true);
+    // Check whether the current user actually has GitHub connected
+    // by attempting to load repos. If 401, show "connect" UI.
     setLoadingRepos(true);
-
     api
       .get('/github/repos')
-      .then(setRepos)
-      .catch(() => setRepos([]))
+      .then((data) => {
+        setRepos(data);
+        setConnected(true);
+      })
+      .catch((err) => {
+        // 401 means GitHub not connected for this account — show connect UI
+        if (err?.status === 401) {
+          setConnected(false);
+        }
+        setRepos([]);
+      })
       .finally(() => setLoadingRepos(false));
   }, [user]);
 
   useEffect(() => {
     if (!selectedRepo) return;
-
     api
       .get(`/github/contents?repo=${selectedRepo}&path=${currentPath}`)
       .then(setFiles)
@@ -61,14 +95,32 @@ export default function GitHubPage() {
   }, [selectedRepo, currentPath]);
 
   const connectGitHub = () => {
+    // Clear any stale GitHub connection state — NOT the user's login token
+    setConnectError('');
     window.location.href = `${API_URL}/api/github/login`;
+  };
+
+  const disconnectGitHub = async () => {
+    try {
+      await api.post('/github/disconnect', {});
+    } catch {
+      // Best-effort
+    }
+    setConnected(false);
+    setRepos([]);
+    setSelectedRepo('');
+    setFiles([]);
+    setCode('');
+    setReview(null);
   };
 
   const openFile = (file: any) => {
     if (file.type === 'dir') {
       setCurrentPath(file.path);
     } else {
-      api.get(`/github/file?repo=${selectedRepo}&path=${file.path}`).then((res) => setCode(res.content));
+      api
+        .get(`/github/file?repo=${selectedRepo}&path=${file.path}`)
+        .then((res) => setCode(res.content));
     }
   };
 
@@ -87,7 +139,6 @@ export default function GitHubPage() {
       alert('Select a repository first.');
       return;
     }
-
     setIsGenerating(true);
     try {
       const result = await api.post(`/github/${selectedRepo}/auto-setup`, {});
@@ -108,15 +159,30 @@ export default function GitHubPage() {
           <p className="eyebrow eyebrow-accent">// code review</p>
           <h1 className="display mt-2 text-3xl font-medium">GitHub</h1>
         </div>
-        {connected && (
-          <span className="chip chip-green">
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--green)' }} />
-            connected
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {connected && (
+            <>
+              <span className="chip chip-green">
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--green)' }} />
+                connected
+              </span>
+              <button onClick={disconnectGitHub} className="btn btn-ghost text-sm">
+                Disconnect
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
-      {!connected ? (
+      {connectError && (
+        <p className="chip chip-rust mt-4 !inline-block !justify-start" role="alert">
+          {connectError}
+        </p>
+      )}
+
+      {githubConnecting ? (
+        <p className="mt-8 eyebrow">completing GitHub connection...</p>
+      ) : !connected ? (
         <div className="panel mt-8 max-w-md p-8">
           <p className="text-[0.9375rem]" style={{ color: 'var(--ink-soft)' }}>
             Connect a GitHub account to browse repositories and run reviews on real code.
@@ -126,7 +192,7 @@ export default function GitHubPage() {
           </button>
         </div>
       ) : loadingRepos ? (
-        <p className="mt-8 eyebrow">loading repositories…</p>
+        <p className="mt-8 eyebrow">loading repositories...</p>
       ) : (
         <div className="mt-8">
           <select
@@ -157,7 +223,9 @@ export default function GitHubPage() {
               <div className="h-80 overflow-auto p-2">
                 {currentPath && (
                   <button
-                    onClick={() => setCurrentPath(currentPath.split('/').slice(0, -1).join('/'))}
+                    onClick={() =>
+                      setCurrentPath(currentPath.split('/').slice(0, -1).join('/'))
+                    }
                     className="w-full rounded-[var(--radius-sm)] p-2 text-left text-sm hover:bg-[var(--paper-dim)]"
                   >
                     .. back
@@ -173,7 +241,11 @@ export default function GitHubPage() {
                     {file.name}
                   </button>
                 ))}
-                {!files.length && <p className="p-2 text-sm" style={{ color: 'var(--muted)' }}>No files to show.</p>}
+                {!files.length && (
+                  <p className="p-2 text-sm" style={{ color: 'var(--muted)' }}>
+                    No files to show.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -183,7 +255,10 @@ export default function GitHubPage() {
                   preview
                 </p>
               </div>
-              <pre className="h-80 overflow-auto p-4 text-[0.8125rem] leading-relaxed" style={{ fontFamily: 'var(--font-mono)', color: '#d7d6cf' }}>
+              <pre
+                className="h-80 overflow-auto p-4 text-[0.8125rem] leading-relaxed"
+                style={{ fontFamily: 'var(--font-mono)', color: '#d7d6cf' }}
+              >
                 {code || '// select a file to preview it here'}
               </pre>
             </div>
@@ -191,21 +266,24 @@ export default function GitHubPage() {
 
           <div className="mt-6 flex flex-wrap gap-3">
             <button onClick={runReview} disabled={!code || reviewing} className="btn btn-primary">
-              {reviewing ? 'Reviewing…' : 'Review this file'}
+              {reviewing ? 'Reviewing...' : 'Review this file'}
             </button>
             <button
               onClick={generateReadme}
               disabled={isGenerating || !selectedRepo}
               className="btn btn-secondary"
             >
-              {isGenerating ? 'Generating README…' : 'Generate README'}
+              {isGenerating ? 'Generating README...' : 'Generate README'}
             </button>
           </div>
 
           {review && (
             <div className="panel mt-6 p-5">
               <p className="eyebrow eyebrow-accent mb-3">// review result</p>
-              <pre className="overflow-auto text-[0.8125rem] leading-relaxed" style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)' }}>
+              <pre
+                className="overflow-auto text-[0.8125rem] leading-relaxed"
+                style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink-soft)' }}
+              >
                 {JSON.stringify(review, null, 2)}
               </pre>
             </div>
@@ -215,11 +293,17 @@ export default function GitHubPage() {
             <div className="panel mt-6 p-5">
               <div className="mb-4 flex items-center justify-between">
                 <p className="eyebrow eyebrow-accent">// generated readme</p>
-                <button onClick={() => setShowReadme(false)} className="btn btn-ghost !px-2 !py-1 text-sm">
+                <button
+                  onClick={() => setShowReadme(false)}
+                  className="btn btn-ghost !px-2 !py-1 text-sm"
+                >
                   Close
                 </button>
               </div>
-              <pre className="max-h-96 overflow-auto whitespace-pre-wrap text-[0.875rem] leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+              <pre
+                className="max-h-96 overflow-auto whitespace-pre-wrap text-[0.875rem] leading-relaxed"
+                style={{ color: 'var(--ink-soft)' }}
+              >
                 {generatedReadme}
               </pre>
             </div>
@@ -227,5 +311,13 @@ export default function GitHubPage() {
         </div>
       )}
     </AppShell>
+  );
+}
+
+export default function GitHubPage() {
+  return (
+    <AuthGuard>
+      <GitHubContent />
+    </AuthGuard>
   );
 }
