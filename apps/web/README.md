@@ -1,507 +1,239 @@
-#  Repo Sense Frontend
+# InternFlow Frontend
 
-> Modern Next.js web application for the RepoSense AI Platform. Provides a comprehensive dashboard for code reviews, job discovery, resume analysis, and GitHub repository management.
+> Next.js web application for the InternFlow platform — a dashboard for AI-powered code review, internship discovery, and resume building.
 
 ## Overview
 
-The RepoSense frontend is a full-featured Next.js 14+ application built with TypeScript and Tailwind CSS. It connects users with intelligent job matching, AI-powered resume analysis, GitHub repository browsing, and real-time code review insights through an intuitive, responsive interface.
+InternFlow is a Next.js 14+ application built with TypeScript and Tailwind CSS. It provides students with GitHub repository browsing, AI code review, a live internship feed, and a resume builder through a clean, custom-themed interface.
 
 ## Features
 
 ### User Management
-- **GitHub OAuth 2.0 Login**: Single sign-on via GitHub
-- **User Dashboard**: Personalized workspace with quick actions
-- **Subscription Tiers**: Free and Premium feature access
-- **Profile Management**: Update preferences and account settings
-
-### Job Discovery & Matching
-- **Job Search**: Filter across 9+ aggregated job boards
-- **Smart Matching**: AI-powered job recommendations based on resume
-- **Job Details**: Full job descriptions with company info
-- **One-Click Application**: Direct links to apply
-
-### Resume Intelligence
-- **Resume Upload**: Support for PDF, DOC, DOCX formats
-- **Resume Parsing**: AI extracts skills, experience, education
-- **Resume Matching**: Compare resume against job listings
-- **Resume Analytics**: Skill gap analysis & suggestions
+- **Email / Password Auth**: Register and sign in with JWT-based sessions
+- **Persistent Sessions**: Token stored in `localStorage`, sent as `Authorization: Bearer` on every request
+- **Protected Dashboard**: All app pages sit behind `AppShell`, which redirects unauthenticated users
 
 ### GitHub Integration
-- **Repository Browser**: Browse connected GitHub repositories
-- **File Viewer**: View source code with syntax highlighting
-- **Auto-README Generation**: AI-powered README creation using RAG
-- **WebSocket Terminal**: Execute code in sandboxed environment
+- **GitHub OAuth**: Connect a GitHub account via backend OAuth flow; token returned in the redirect URL
+- **Repository Browser**: Select a repo, navigate directories, preview file contents
+- **AI Code Review**: Send any open file to the backend for an instant review
+- **README Generation**: Auto-generate a README for the selected repo using RAG
 
-### Code Review
-- **Submit for Review**: Send code snippets or files
-- **AI Analysis**: Instant bug detection & quality issues
-- **Auto-Fix Suggestions**: Generated fixes with confidence scores
-- **Historical Reviews**: View past code analysis results
+### Internship Feed
+- **Live Listings**: Pulls up to 50 postings from the backend (`/jobs/`), refreshed daily
+- **Multi-source**: Aggregates jobs across multiple boards, displayed with source and date
+- **One-click Apply**: Direct links to each posting
 
-### Payments & Subscriptions
-- **Razorpay Integration**: Secure payment processing
-- **Free Tier**: Limited reviews and features
-- **Premium Tier**: Unlimited access with priority support
-- **Subscription Management**: Upgrade/downgrade anytime
+### Resume Builder
+- **Write by hand**: Title + professional summary saved to `/resume/create`
+- **Generate from a job**: Paste a job description plus your skills and experience; downloads a PDF from the backend
+- **Tabbed UI**: Both modes share the same `/resume` route, switching between `/resume/builder` and `/resume/generate`
 
 ## Tech Stack
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| **Next.js** | 14+ | React framework with SSR/SSG |
-| **React** | 18+ | UI component library |
-| **TypeScript** | 5+ | Static typing for JavaScript |
-| **Tailwind CSS** | 3+ | Utility-first CSS framework |
-| **Next/Auth** | 5+ | Authentication & session management |
-| **Axios / Fetch API** | - | HTTP client for API communication |
-| **Razorpay** | - | Payment integration |
-| **WS (WebSocket)** | - | Real-time terminal communication |
+| **Next.js** | 14+ | React framework (App Router) |
+| **React** | 18+ | UI components |
+| **TypeScript** | 5+ | Static typing |
+| **Tailwind CSS** | 3+ | Utility-first styling (+ custom CSS vars) |
+| **Three.js / R3F** | 0.160 / 8.15 | 3D commit graph on the landing page |
+| **Razorpay** | 2.8 | Payment integration |
+| **xterm.js** | 5.3 | WebSocket terminal |
 
-##  Project Structure
+## Project Structure
 
 ```
 apps/web/
-├── README.md                          # Frontend documentation (this file)
-├── package.json                       # Dependencies & scripts
-├── tsconfig.json                      # TypeScript configuration
-├── next.config.js                     # Next.js configuration
-├── tailwind.config.js                 # Tailwind CSS config
-├── postcss.config.js                  # PostCSS plugins
+├── app/
+│   ├── page.tsx                  # Landing page (HeroGraph + marketing copy)
+│   ├── login/page.tsx            # Email/password sign-in
+│   ├── register/page.tsx         # Account creation
+│   ├── dashboard/page.tsx        # Overview with links to all tools
+│   ├── github/page.tsx           # Repo browser + code review + README gen
+│   ├── jobs/page.tsx             # Internship feed
+│   └── resume/
+│       ├── builder/page.tsx      # Write resume by hand
+│       └── generate/page.tsx     # AI-generate resume from job description
 │
-├── app/                               # Next.js App Router (v13+)
-│   ├── layout.tsx                     # Root layout with providers
-│   ├── page.tsx                       # Home landing page
-│   ├── globals.css                    # Global styles
-│   │
-│   └── (auth)/                        # Protected route group
-│       ├── dashboard/
-│       │   ├── page.tsx               # Main dashboard
-│       │   └── layout.tsx             # Dashboard layout
-│       ├── github/
-│       │   ├── page.tsx               # GitHub repos & browser
-│       │   └── layout.tsx             # GitHub context layout
-│       ├── jobs/
-│       │   ├── page.tsx               # Job search & listings
-│       │   └── [id]/
-│       │       └── page.tsx           # Job details page
-│       ├── resume/
-│       │   ├── page.tsx               # Resume upload & management
-│       │   └── [id]/
-│       │       └── page.tsx           # Resume details & analysis
-│       ├── login/
-│       │   └── page.tsx               # GitHub OAuth login
-│       ├── register/
-│       │   └── page.tsx               # User registration
-│       └── profile/
-│           └── page.tsx               # User profile settings
+├── components/
+│   ├── AppShell.tsx              # Sticky nav, layout wrapper for all app pages
+│   ├── Logo.tsx                  # InternFlow wordmark + icon
+│   ├── HeroGraph.tsx             # Lazy-loads CommitGraph3D with SVG fallback
+│   └── CommitGraph3D.tsx         # Rotating 3D git graph (Three.js / R3F)
 │
-├── components/                        # Reusable React components
-│   ├── github/
-│   │   ├── Terminal.tsx               # WebSocket terminal
-│   │   ├── RepoSelector.tsx           # Repo browser dropdown
-│   │   └── FileViewer.tsx             # Source code viewer
-│   ├── jobs/
-│   │   ├── JobCard.tsx                # Individual job card
-│   │   ├── JobFilter.tsx              # Search filters
-│   │   └── MatchingScore.tsx          # Match percentage display
-│   ├── resume/
-│   │   ├── ResumeUpload.tsx           # Drag-and-drop uploader
-│   │   ├── ResumePreview.tsx          # Resume display
-│   │   └── SkillsAnalysis.tsx         # Skills breakdown
-│   ├── auth/
-│   │   ├── AuthProvider.tsx           # Context provider for auth
-│   │   ├── ProtectedRoute.tsx         # Route protection wrapper
-│   │   └── LoginButton.tsx            # GitHub login button
-│   ├── common/
-│   │   ├── Header.tsx                 # Navigation header
-│   │   ├── Footer.tsx                 # Footer component
-│   │   ├── Sidebar.tsx                # Side navigation
-│   │   ├── Loading.tsx                # Spinner/skeleton
-│   │   ├── ErrorBoundary.tsx          # Error handling
-│   │   └── Modal.tsx                  # Modal dialog
-│   └── review/
-│       ├── CodeReviewForm.tsx         # Submit code for review
-│       ├── ReviewResults.tsx          # Display analysis results
-│       └── AutofixPreview.tsx         # Show generated fixes
-│
-├── lib/                               # Utility functions & hooks
-│   ├── api.ts                         # API client instance
-│   │   ├── authenticate()             # Auth with JWT
-│   │   ├── submitCode()               # Submit review request
-│   │   ├── searchJobs()               # Search jobs
-│   │   ├── uploadResume()             # Upload resume
-│   │   └── ...
-│   ├── auth.ts                        # Auth utilities
-│   │   ├── signIn()                   # GitHub OAuth flow
-│   │   ├── signOut()                  # Clear session
-│   │   ├── getToken()                 # Retrieve JWT
-│   │   └── isAuthenticated()          # Check auth status
-│   ├── stripe.ts                      # Stripe integration
-│   │   ├── createCheckoutSession()    # Create Stripe session
-│   │   ├── getCustomerPortal()        # Billing management
-│   │   └── validateSubscription()     # Check tier
-│   ├── hooks/
-│   │   ├── useAuth.ts                 # Auth context hook
-│   │   ├── useJob.ts                  # Job search hook
-│   │   ├── useResume.ts               # Resume management hook
-│   │   ├── useFetch.ts                # Generic fetch hook
-│   │   └── useLocalStorage.ts         # Browser storage hook
-│   └── constants.ts                   # API URLs, constants
-│
-├── public/                            # Static assets
-│   ├── logo.svg
-│   ├── favicon.ico
-│   └── images/
-│       └── ...
-│
-└── styles/                            # Additional stylesheets
-    ├── globals.css                    # Global Tailwind
-    └── animations.css                 # Custom animations
+└── lib/
+    ├── api.ts                    # Fetch wrapper (attaches JWT, throws on errors)
+    ├── auth.ts                   # useAuth hook — user, token, login, logout, refresh
+    └── stripe.ts                 # Razorpay helpers — loadRazorpay, initializeRazorpayCheckout
 ```
 
 ## Getting Started
 
 ### Prerequisites
 
-- **Node.js** 18+
-- **npm** 8+ or **yarn**
-- **Backend API** running on `http://localhost:8000`
+- Node.js 18+
+- npm 8+ or yarn
+- Backend API running (default `http://localhost:8000`)
 
 ### Installation
 
 ```bash
-# Navigate to frontend directory
 cd apps/web
-
-# Install dependencies
 npm install
 
 # Create environment file
 cat > .env.local << EOF
 NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_STRIPE_PUBLIC_KEY=pk_test_xxx
-GITHUB_CLIENT_ID=your_github_app_id
-GITHUB_CLIENT_SECRET=your_github_app_secret
 EOF
 
-# Start development server
 npm run dev
 ```
 
-**Application running at:** http://localhost:3000
+App runs at **http://localhost:3000**.
 
-### Available Scripts
+### Scripts
 
 ```bash
-npm run dev       # Start development server
-npm run build     # Build for production
-npm start         # Start production server
-npm run lint      # Run ESLint
-npm run type-check # TypeScript type checking
-npm run format    # Format code with Prettier
+npm run dev    # Development server
+npm run build  # Production build
+npm start      # Start production server
 ```
 
 ## Authentication Flow
 
 ```
-User clicks "Login with GitHub"
-         ↓
-Browser redirects to /api/auth/github/login (backend)
-         ↓
-Backend exchanges code for GitHub token
-         ↓
-Backend creates JWT token
-         ↓
-Frontend receives token in URL: http://localhost:3000/github?token=xxx
-         ↓
+User fills in email + password → POST /auth/register or /auth/login
+        ↓
+Backend returns JWT
+        ↓
 Token stored in localStorage
-         ↓
-All API requests include: Authorization: Bearer {token}
+        ↓
+All API requests: Authorization: Bearer {token}
+
+GitHub OAuth (for the GitHub page):
+User clicks "Connect GitHub account"
+        ↓
+Redirect to {API_URL}/api/github/login
+        ↓
+Backend completes OAuth, redirects to /github?token=xxx
+        ↓
+Token written to localStorage; page replaces URL
 ```
 
-## API Integration
+## API Endpoints Used
 
-### Base Configuration
+All requests go to `{NEXT_PUBLIC_API_URL}/api{endpoint}`.
 
-```typescript
-// lib/api.ts
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+```
+Authentication
+  POST /api/auth/register              Create account
+  POST /api/auth/login                 Sign in → returns { access_token }
 
-export const apiClient = {
-  async request(endpoint, options = {}) {
-    const token = localStorage.getItem('auth_token');
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
-      ...options.headers
-    };
-    
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      ...options,
-      headers
-    });
-    
-    if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
-    return response.json();
-  }
-};
+GitHub
+  GET  /api/github/login               Start OAuth flow (browser redirect)
+  GET  /api/github/repos               List connected repositories
+  GET  /api/github/contents            Browse repo directory
+  GET  /api/github/file                Fetch file content
+  POST /api/github/{repo}/auto-setup   Generate README (RAG)
+
+Code Review
+  POST /api/v1/review                  Submit code for AI review
+
+Jobs
+  GET  /api/jobs/                      List internship postings
+
+Resume
+  POST /api/resume/create              Save manual resume
+  POST /api/resume/generate            Generate resume → returns PDF blob
 ```
 
-### Example API Calls
-
-```typescript
-// Submit code for review
-const reviewResults = await apiClient.request('/api/review/submit', {
-  method: 'POST',
-  body: JSON.stringify({ code, language: 'python' })
-});
-
-// Search jobs
-const jobs = await apiClient.request('/api/jobs/search?query=python&location=Bangalore');
-
-// Upload resume
-const formData = new FormData();
-formData.append('file', resumeFile);
-const resume = await apiClient.request('/api/resume/upload', {
-  method: 'POST',
-  body: formData
-});
-```
-
-## Styling
-
-### Tailwind CSS
-
-The project uses Tailwind CSS for styling. All components use utility classes:
-
-```tsx
-export default function Button() {
-  return (
-    <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">
-      Click me
-    </button>
-  );
-}
-```
-
-### Custom Styles
-
-Add custom CSS to `styles/globals.css`:
-
-```css
-@layer components {
-  .btn-primary {
-    @apply px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700;
-  }
-}
-```
-
-## Testing
+## Environment Variables
 
 ```bash
-# Run tests (if configured)
-npm run test
-
-# With coverage
-npm run test:coverage
-
-# Watch mode
-npm run test:watch
+# .env.local
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_xxxx
 ```
 
-## Docker
+## Library Modules
 
-```bash
-# Build image
-docker build -t repo-sense-web .
+### `lib/api.ts`
 
-# Run container
-docker run -p 3000:3000 -e NEXT_PUBLIC_API_URL=http://api:8000 repo-sense-web
+Thin fetch wrapper. Every call prepends `/api` to the endpoint and attaches `Authorization: Bearer {token}` from `localStorage`. On non-2xx responses it parses FastAPI's `{ detail }` / `{ message }` error shapes and throws a plain `Error` with the human-readable message. PDF responses are returned as a `Blob`; everything else is parsed as JSON.
+
+```typescript
+import { api } from '@/lib/api';
+
+await api.get('/jobs/?limit=50');
+await api.post('/auth/login', { email, password });
 ```
 
-## Key Pages & Workflows
+### `lib/auth.ts`
 
-### Dashboard
-- Welcome message with quick actions
-- Recent reviews summary
-- Job recommendations
-- Profile quick links
+`useAuth()` hook. The JWT is decoded client-side (no `/me` round-trip) — expiry is checked on every read and the token is removed automatically if it has expired. Exposes:
 
-### GitHub Integration
-- List connected repositories
-- Browse repository files
-- View code with syntax highlighting
-- Execute code in WebSocket terminal
-- Generate README with RAG
+| Field | Type | Description |
+|-------|------|-------------|
+| `user` | `{ id, email, subscription_tier }` \| `null` | Decoded JWT payload |
+| `token` | `string` \| `null` | Raw JWT |
+| `loading` | `boolean` | True during initial localStorage read |
+| `login(email, password)` | `Promise<void>` | POSTs credentials, stores token, syncs state |
+| `logout()` | `void` | Clears token from localStorage and state |
+| `refresh()` | `void` | Re-reads localStorage — call after writing a token directly (e.g. GitHub OAuth callback) |
 
-### Job Search
-- Full-text search across 9+ boards
-- Filters: Location, salary, experience level
-- AI-powered match score with resume
-- One-click application links
+`subscription_tier` values: `'free'` \| `'pro'` \| `'enterprise'`.
 
-### Resume Management
-- Upload multiple resume versions
-- Automatic parsing & skill extraction
-- Match analysis against jobs
-- Download parsed resume as JSON
+State is also kept in sync across browser tabs via the `storage` event.
 
-### Code Review
-- Paste or upload code
-- Select programming language
-- View AI analysis results
-- Review auto-fix suggestions
-- Save reviews to history
+### `lib/stripe.ts` (Razorpay)
 
-### Subscription
-- Display current tier (Free/Premium)
-- Premium upgrade button
-- Stripe checkout integration
-- Manage subscription via Stripe portal
+Despite the filename, this module wraps **Razorpay** (not Stripe). It lazy-loads the Razorpay checkout script and opens the payment modal:
+
+```typescript
+import { loadRazorpay, initializeRazorpayCheckout } from '@/lib/stripe';
+
+await loadRazorpay(); // injects <script> tag once
+initializeRazorpayCheckout({
+  key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+  order_id: '...',
+  handler: (response) => { /* verify server-side */ },
+  modal: { ondismiss: () => {} },
+});
+```
+
+## Design System (defined in `globals.css`) rather than raw Tailwind colours. Key tokens:
+
+| Variable | Use |
+|----------|-----|
+| `--paper` / `--paper-dim` | Page and card backgrounds |
+| `--ink` / `--ink-soft` | Primary and secondary text |
+| `--indigo` | Brand accent (links, active tab indicator) |
+| `--green` | Success / connected status |
+| `--line` | Borders and dividers |
+| `--font-mono` | Code previews |
+
+Utility classes like `panel`, `panel-dark`, `btn`, `btn-primary`, `btn-secondary`, `btn-ghost`, `field`, `field-label`, `eyebrow`, `eyebrow-accent`, `chip`, `chip-green`, `chip-rust`, `chip-muted`, `display`, `nav-link`, and `shell` / `container-xl` are defined in the global stylesheet.
 
 ## Contributing
 
-1. Create a feature branch: `git checkout -b feature/amazing-feature`
-2. Commit changes: `git commit -m 'Add amazing feature'`
-3. Push to branch: `git push origin feature/amazing-feature`
+1. Branch: `git checkout -b feature/your-feature`
+2. Commit: `git commit -m 'Add your feature'`
+3. Push: `git push origin feature/your-feature`
 4. Open a Pull Request
 
 ### Code Style
 
-- Follow TypeScript strict mode
-- Use functional components with hooks
-- Implement proper error handling
-- Add TypeScript types to functions
-- Write clean, readable code
+- Functional components with hooks
+- TypeScript strict mode
+- Errors surfaced to the user via inline `chip chip-rust` alerts or `alert()` — no silent failures
+- API calls go through `lib/api.ts`; auth state lives in `lib/auth.ts`
 
 ## License
 
-MIT License – see [LICENSE](../../LICENSE)
+MIT — see [LICENSE](../../LICENSE)
 
 ---
 
-**For backend API documentation**, see [services/api/README.md](../../services/api/README.md)  
-**For deployment instructions**, see [docs/DEPLOYMENT_GUIDE.md](../../docs/DEPLOYMENT_GUIDE.md)
-Authentication
-  POST /api/auth/register              Register new user
-  POST /api/auth/login                 Login (email/password)
-  GET  /api/github/login               OAuth login
-  GET  /api/github/callback            OAuth callback
-
-GitHub Integration
-  GET  /api/github/repos               List repositories
-  GET  /api/github/contents            Get repo file structure
-  GET  /api/github/file                Get file content
-  POST /api/github/index-repo          Index repo for RAG
-  POST /api/github/{repo}/auto-setup   Generate README
-
-Code Review
-  POST /api/review                     Submit code for review
-  GET  /api/review/{id}                Get review results
-
-Resumes
-  POST /api/resume/upload              Upload resume
-  GET  /api/resume/analyze             AI analysis
-
-Jobs
-  GET  /api/jobs                       List jobs
-  POST /api/jobs/apply                 Apply for job
-
-Subscriptions
-  GET  /api/subscription/status        Check subscription
-  POST /api/subscription/upgrade       Upgrade plan
-```
-
-##  Environment Variables
-
-Create `.env.local`:
-
-```bash
-# Backend API
-NEXT_PUBLIC_API_URL=http://localhost:8000
-
-# Stripe (for payments)
-NEXT_PUBLIC_STRIPE_PUBLIC_KEY=pk_test_xxxx
-
-# GitHub OAuth (optional)
-NEXT_PUBLIC_GITHUB_CLIENT_ID=xxxx
-NEXT_PUBLIC_GITHUB_REDIRECT_URI=http://localhost:3000/api/github/callback
-```
-
-##  Key Components
-
-### Terminal Component (`components/github/Terminal.tsx`)
-
-WebSocket-based terminal for sandboxed code execution:
-
-```typescript
-<Terminal 
-  repoId="owner/repo"
-  sessionId="session-123"
-/>
-```
-
-### Auth Context
-
-Wraps entire app with authentication:
-
-```typescript
-// In layout.tsx
-<AuthProvider>
-  {children}
-</AuthProvider>
-```
-
-Provides:
-- Current user info
-- JWT token management
-- Login/logout
-- Protected routes
-
-##  Styling
-
-Uses **Tailwind CSS** with custom theme (see `tailwind.config.js`)
-
-##  Page Routes
-
-| Route | Purpose |
-|-------|---------|
-| `/` | Home page |
-| `/login` | GitHub OAuth login |
-| `/register` | User registration |
-| `/github/callback` | OAuth callback |
-| `/dashboard` | Main dashboard |
-| `/jobs` | Job listings |
-| `/resume` | Resume upload |
-
-##  Building for Production
-
-```bash
-# Build the app
-npm run build
-
-# Start production server
-npm start
-
-# Or deploy to Vercel
-vercel deploy
-```
-
-##  Documentation
-
-- [Next.js Docs](https://nextjs.org/docs)
-- [React Docs](https://react.dev)
-- [Tailwind CSS](https://tailwindcss.com)
-- [TypeScript](https://www.typescriptlang.org)
-
-##  Support
-
-Check:
-1. Backend API logs (`http://localhost:8000/docs`)
-2. Browser console (F12)
-3. Network tab in DevTools
-4. `.env.local` configuration
-
-##  License
-
-Part of Repo Sense project
+**Backend API docs:** [services/api/README.md](../../services/api/README.md)  
+**Deployment guide:** [docs/DEPLOYMENT_GUIDE.md](../../docs/DEPLOYMENT_GUIDE.md)
