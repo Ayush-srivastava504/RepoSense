@@ -54,7 +54,6 @@ function ResumeContent() {
   const [aiSkills, setAiSkills] = useState('');
   const [aiExperience, setAiExperience] = useState('');
   const [generating, setGenerating] = useState(false);
-  const [generated, setGenerated] = useState<any>(null);
 
   const updateExp = (i: number, field: keyof ExperienceEntry, value: string) =>
     setExperience((p) => p.map((e, idx) => idx === i ? { ...e, [field]: value } : e));
@@ -88,13 +87,19 @@ function ResumeContent() {
   const saveResume = async () => {
     setSaving(true);
     try {
-      await api.post('/resume/create', {
-        title,
-        content: { summary, githubUrl, websiteUrl, skills, experience, education, projects },
+      const blob = await api.post('/resume/generate-structured', {
+        title, summary, githubUrl, websiteUrl, skills, experience, education, projects,
       });
-      alert('Resume saved.');
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${title || 'resume'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
     } catch (err: any) {
-      alert(err?.message || "Couldn't save the resume.");
+      alert(err?.message || "Couldn't generate PDF.");
     } finally {
       setSaving(false);
     }
@@ -104,13 +109,20 @@ function ResumeContent() {
     setGenerating(true);
     setGenerated(null);
     try {
-      const result = await api.post('/resume/generate', {
+      const blob = await api.post('/resume/generate', {
         resume_type: resumeType,
         job_description: jobDescription,
         skills: aiSkills,
         experience: aiExperience,
       });
-      setGenerated(result);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'resume.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
     } catch (err: any) {
       alert(err?.message || "Couldn't generate resume.");
     } finally {
@@ -118,14 +130,7 @@ function ResumeContent() {
     }
   };
 
-  const saveGenerated = async () => {
-    try {
-      await api.post('/resume/create', { title: 'AI Generated Resume', content: generated });
-      alert('Saved.');
-    } catch {
-      alert('Could not save.');
-    }
-  };
+
 
   return (
     <AppShell user={user} onLogout={logout}>
@@ -300,7 +305,7 @@ function ResumeContent() {
           </div>
 
           <button onClick={saveResume} disabled={saving} className="btn btn-primary">
-            {saving ? 'Saving…' : 'Save resume'}
+            {saving ? 'Generating PDF…' : 'Save as PDF'}
           </button>
         </div>
       )}
@@ -333,80 +338,10 @@ function ResumeContent() {
           </div>
 
           <button onClick={generateResume} disabled={generating} className="btn btn-primary">
-            {generating ? 'Generating…' : 'Generate resume'}
+            {generating ? 'Generating PDF…' : 'Generate resume PDF'}
           </button>
 
-          {generated && (
-            <div className="mt-2 space-y-5 border-t pt-6" style={{ borderColor: 'var(--line)' }}>
-              <p className="eyebrow eyebrow-accent">// generated output</p>
 
-              {generated.summary && (
-                <div>
-                  <p className="field-label">Summary</p>
-                  <p className="text-sm" style={{ color: 'var(--ink-soft)' }}>{generated.summary}</p>
-                </div>
-              )}
-
-              {generated.technical_skills && (
-                <div>
-                  <p className="field-label">Technical skills</p>
-                  <div className="grid gap-2 sm:grid-cols-2 text-sm" style={{ color: 'var(--ink-soft)' }}>
-                    {Object.entries(generated.technical_skills).map(([k, v]) => (
-                      <div key={k}>
-                        <span className="font-medium capitalize">{k.replace('_', ' ')}: </span>
-                        <span>{v as string}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {generated.experience?.length > 0 && (
-                <div>
-                  <p className="field-label">Experience</p>
-                  <div className="space-y-3">
-                    {generated.experience.map((exp: any, i: number) => (
-                      <div key={i} className="rounded-[var(--radius)] border p-3" style={{ borderColor: 'var(--line)' }}>
-                        <p className="text-sm font-medium">{exp.role} — {exp.company}</p>
-                        <p className="text-xs mt-0.5" style={{ color: 'var(--ink-soft)' }}>{exp.duration} · {exp.location}</p>
-                        {exp.bullets?.length > 0 && (
-                          <ul className="mt-2 space-y-1 list-disc list-inside text-sm" style={{ color: 'var(--ink-soft)' }}>
-                            {exp.bullets.map((b: string, bi: number) => <li key={bi}>{b}</li>)}
-                          </ul>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {generated.projects?.length > 0 && (
-                <div>
-                  <p className="field-label">Projects</p>
-                  <div className="space-y-3">
-                    {generated.projects.map((proj: any, i: number) => (
-                      <div key={i} className="rounded-[var(--radius)] border p-3" style={{ borderColor: 'var(--line)' }}>
-                        <p className="text-sm font-medium">{proj.title}</p>
-                        <p className="text-xs mt-0.5" style={{ color: 'var(--ink-soft)' }}>{proj.tech}</p>
-                        {proj.github && (
-                          <a href={proj.github} target="_blank" rel="noopener noreferrer" className="text-xs" style={{ color: 'var(--indigo)' }}>{proj.github}</a>
-                        )}
-                        {proj.bullets?.length > 0 && (
-                          <ul className="mt-2 space-y-1 list-disc list-inside text-sm" style={{ color: 'var(--ink-soft)' }}>
-                            {proj.bullets.map((b: string, bi: number) => <li key={bi}>{b}</li>)}
-                          </ul>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <button onClick={saveGenerated} className="btn btn-secondary">
-                Save this resume
-              </button>
-            </div>
-          )}
         </div>
       )}
     </AppShell>

@@ -1,50 +1,25 @@
-from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
-)
+import json
+import traceback
+from typing import List, Optional
 
-from fastapi.responses import (
-    FileResponse,
-)
-
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-import traceback
-
 from middleware.auth import verify_token
+from services.resume_service import ResumeService
+from services.resume_ai_service import ResumeAIService
+from services.resume_template_service import ResumeTemplateService
+from services.resume_pdf_service import ResumePDFService
 
-from services.resume_service import (
-    ResumeService,
-)
-
-from services.resume_ai_service import (
-    ResumeAIService,
-)
-
-from services.resume_template_service import (
-    ResumeTemplateService,
-)
-
-from services.resume_pdf_service import (
-    ResumePDFService,
-)
+router = APIRouter(prefix="/api/resume", tags=["resume"])
 
 
-router = APIRouter(
-    prefix="/api/resume",
-    tags=["resume"],
-)
-
-
-@router.get("/test")
-async def test():
-    return {"ok": True}
-
+# ── schemas ───────────────────────────────────────────────────────────────────
 
 class ResumeData(BaseModel):
     title: str
-    content: dict  # accepts structured JSON from both handwritten and AI tabs
+    content: dict
 
 
 class GenerateResumeRequest(BaseModel):
@@ -54,117 +29,135 @@ class GenerateResumeRequest(BaseModel):
     experience: str
 
 
+class ExperienceEntry(BaseModel):
+    company: str
+    role: str
+    start: str
+    end: str
+    location: Optional[str] = ""
+    bullets: List[str] = []
+
+
+class EducationEntry(BaseModel):
+    institution: str
+    degree: str
+    year: str
+
+
+class ProjectEntry(BaseModel):
+    title: str
+    tech: str
+    github: Optional[str] = ""
+    bullets: List[str] = []
+
+
+class GenerateStructuredRequest(BaseModel):
+    title: str
+    summary: str
+    githubUrl: Optional[str] = ""
+    websiteUrl: Optional[str] = ""
+    skills: str
+    experience: List[ExperienceEntry] = []
+    education: List[EducationEntry] = []
+    projects: List[ProjectEntry] = []
+
+
+# ── endpoints ─────────────────────────────────────────────────────────────────
+
+@router.get("/test")
+async def test():
+    return {"ok": True}
+
+
 @router.post("/generate")
-async def generate_resume(
-    data: GenerateResumeRequest,
-    user=Depends(verify_token),
-):
-
+async def generate_resume(data: GenerateResumeRequest, user=Depends(verify_token)):
     try:
+        ai_service = ResumeAIService()
+        template_service = ResumeTemplateService()
+        pdf_service = ResumePDFService()
 
-        ai_service = (
-            ResumeAIService()
+        structured_data = await ai_service.generate_resume_data(
+            data.resume_type,
+            data.job_description,
+            data.skills,
+            data.experience,
         )
 
-        template_service = (
-            ResumeTemplateService()
-        )
+        latex_resume = template_service.render_resume(structured_data)
+        pdf_path = await pdf_service.compile_latex("generated_resume", latex_resume)
 
-        pdf_service = (
-            ResumePDFService()
-        )
-
-        structured_data = (
-            await ai_service.generate_resume_data(
-                data.resume_type,
-                data.job_description,
-                data.skills,
-                data.experience,
-            )
-        )
-
-        latex_resume = (
-            template_service.render_resume(
-                structured_data
-            )
-        )
-
-        pdf_path = (
-            await pdf_service.compile_latex(
-                "generated_resume",
-                latex_resume,
-            )
-        )
-
-        return FileResponse(
-            pdf_path,
-            media_type="application/pdf",
-            filename="resume.pdf",
-        )
+        return FileResponse(pdf_path, media_type="application/pdf", filename="resume.pdf")
 
     except Exception as exc:
-        # Log the full traceback for debugging purposes.
         traceback.print_exc()
-
-        # Provide a more specific error response when the AI service fails to produce valid JSON.
         if "No JSON found" in str(exc) or "JSON parsing failed" in str(exc):
-            raise HTTPException(
-                400,
-                f"Invalid AI output: {str(exc)}"
-            )
-        else:
-            raise HTTPException(
-                500,
-                f"Resume generation failed: {str(exc)}"
-            )
+            raise HTTPException(400, f"Invalid AI output: {str(exc)}")
+        raise HTTPException(500, f"Resume generation failed: {str(exc)}")
+
+
+@router.post("/generate-structured")
+async def generate_structured_resume(data: GenerateStructuredRequest, user=Depends(verify_token)):
+    try:
+        template_service = ResumeTemplateService()
+        pdf_service = ResumePDFService()
+
+        # Map handwritten fields to the shape the template expects
+        structured_data = {
+            "summary": data.summary,
+            "technical_skills": {
+                "languages": data.skills,
+                "backend": "",
+                "ai_ml": "",
+                "databases": "",
+                "tools": "",
+            },
+            "experience": [
+                {
+                    "company": exp.company,
+                    "role": exp.role,
+                    "duration": f"{exp.start} – {exp.end}".strip(" –") if exp.start or exp.end else "",
+                    "location": exp.location or "",
+                    "bullets": [b for b in exp.bullets if b.strip()],
+                }
+                for exp in data.experience
+            ],
+            "projects": [
+                {
+                    "title": proj.title,
+                    "tech": proj.tech,
+                    "github": proj.github or "",
+                    "bullets": [b for b in proj.bullets if b.strip()],
+                }
+                for proj in data.projects
+            ],
+        }
+
+        latex_resume = template_service.render_resume(structured_data)
+        pdf_path = await pdf_service.compile_latex("structured_resume", latex_resume)
+
+        return FileResponse(pdf_path, media_type="application/pdf", filename="resume.pdf")
+
+    except Exception as exc:
+        traceback.print_exc()
+        raise HTTPException(500, f"PDF generation failed: {str(exc)}")
 
 
 @router.post("/create")
-async def create_resume(
-    data: ResumeData,
-    user=Depends(verify_token),
-):
-
+async def create_resume(data: ResumeData, user=Depends(verify_token)):
     try:
-
         service = ResumeService()
-
-        import json
         content_str = json.dumps(data.content) if isinstance(data.content, dict) else data.content
-        return await service.create_resume(
-            user["sub"],
-            data.title,
-            content_str,
-        )
-
+        return await service.create_resume(user["sub"], data.title, content_str)
     except Exception as exc:
-
         traceback.print_exc()
-
-        raise HTTPException(
-            503,
-            f"Database unavailable: {str(exc)}",
-        )
+        raise HTTPException(503, f"Database unavailable: {str(exc)}")
 
 
 @router.get("/list")
-async def list_resumes(
-    user=Depends(verify_token),
-):
-
+async def list_resumes(user=Depends(verify_token)):
     try:
-
         service = ResumeService()
-
-        return await service.list_resumes(
-            user["sub"]
-        )
-
+        return await service.list_resumes(user["sub"])
     except Exception as exc:
-
         traceback.print_exc()
-
-        raise HTTPException(
-            503,
-            f"Database unavailable: {str(exc)}",
-        )
+        raise HTTPException(503, f"Database unavailable: {str(exc)}")
