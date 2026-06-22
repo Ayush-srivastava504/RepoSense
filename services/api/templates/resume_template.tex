@@ -26,12 +26,13 @@
   [\titlerule]
 \titlespacing{\section}{0pt}{10pt}{6pt}
 
+% ---- custom list macros ----
 \newcommand{\resumeItem}[1]{\item #1}
 
-\newenvironment{resumeItems}{
-  \begin{itemize}[leftmargin=*, itemsep=2pt, topsep=2pt, parsep=0pt]
-}{
-  \end{itemize}
+\newenvironment{resumeItems}{%
+  \begin{itemize}[leftmargin=*, itemsep=2pt, topsep=2pt, parsep=0pt]%
+}{%
+  \end{itemize}%
 }
 
 \begin{document}
@@ -39,9 +40,9 @@
 % ---------- HEADER ----------
 \begin{center}
     {\fontsize{28}{32}\selectfont \bfseries \VAR{name} } \\[6pt]
-    \BLOCK{ if email }\faEnvelope\ \href{mailto:\VAR{email}}{\VAR{email}} \quad \BLOCK{ endif }
-    \BLOCK{ if phone }\faPhone\ \VAR{phone} \quad \BLOCK{ endif }
-    \BLOCK{ if github_url }\faGithub\ \href{\VAR{github_url}}{\VAR{github_display}} \quad \BLOCK{ endif }
+    \BLOCK{ if email }\faEnvelope\ \href{mailto:\VAR{email}}{\VAR{email}} \quad \BLOCK{ endif }%
+    \BLOCK{ if phone }\faPhone\ \VAR{phone} \quad \BLOCK{ endif }%
+    \BLOCK{ if github_url }\faGithub\ \href{\VAR{github_url}}{\VAR{github_display}} \quad \BLOCK{ endif }%
     \BLOCK{ if website_url }\faGlobe\ \href{\VAR{website_url}}{\VAR{website_display}} \BLOCK{ endif }
 \end{center}
 
@@ -55,11 +56,11 @@
 \BLOCK{ if technical_skills }
 \section*{Technical Skills}
 \begin{tabularx}{\textwidth}{@{}l X@{}}
-\BLOCK{ if technical_skills.languages }\textbf{Languages:} & \VAR{technical_skills.languages} \\\BLOCK{ endif }
-\BLOCK{ if technical_skills.backend }\textbf{Backend:} & \VAR{technical_skills.backend} \\\BLOCK{ endif }
-\BLOCK{ if technical_skills.ai_ml }\textbf{AI/ML:} & \VAR{technical_skills.ai_ml} \\\BLOCK{ endif }
-\BLOCK{ if technical_skills.databases }\textbf{Databases:} & \VAR{technical_skills.databases} \\\BLOCK{ endif }
-\BLOCK{ if technical_skills.tools }\textbf{Tools:} & \VAR{technical_skills.tools} \\\BLOCK{ endif }
+\BLOCK{ if technical_skills.languages }\textbf{Languages:} & \VAR{technical_skills.languages | latex} \\\BLOCK{ endif }
+\BLOCK{ if technical_skills.backend }\textbf{Backend:} & \VAR{technical_skills.backend | latex} \\\BLOCK{ endif }
+\BLOCK{ if technical_skills.ai_ml }\textbf{AI/ML:} & \VAR{technical_skills.ai_ml | latex} \\\BLOCK{ endif }
+\BLOCK{ if technical_skills.databases }\textbf{Databases:} & \VAR{technical_skills.databases | latex} \\\BLOCK{ endif }
+\BLOCK{ if technical_skills.tools }\textbf{Tools:} & \VAR{technical_skills.tools | latex} \\\BLOCK{ endif }
 \end{tabularx}
 \BLOCK{ endif }
 
@@ -67,13 +68,15 @@
 \BLOCK{ if experience }
 \section*{Experience}
 \BLOCK{ for job in experience }
-\textbf{\VAR{job.role}} \hfill \VAR{job.duration} \\
-\textit{\VAR{job.company}}\BLOCK{ if job.location } \hfill \textit{\VAR{job.location}}\BLOCK{ endif }
+\textbf{\VAR{job.role | latex}} \hfill \VAR{job.duration | latex} \\
+\textit{\VAR{job.company | latex}}\BLOCK{ if job.location } \hfill \textit{\VAR{job.location | latex}}\BLOCK{ endif }
+\BLOCK{ if job.bullets }
 \begin{resumeItems}
 \BLOCK{ for bullet in job.bullets }
-    \resumeItem{\VAR{bullet}}
+    \resumeItem{\VAR{bullet | latex}}
 \BLOCK{ endfor }
 \end{resumeItems}
+\BLOCK{ endif }
 \BLOCK{ endfor }
 \BLOCK{ endif }
 
@@ -81,8 +84,8 @@
 \BLOCK{ if education }
 \section*{Education}
 \BLOCK{ for edu in education }
-\textbf{\VAR{edu.institution}} \hfill \VAR{edu.year} \\
-\textit{\VAR{edu.degree}} \\[4pt]
+\textbf{\VAR{edu.institution | latex}} \hfill \VAR{edu.year | latex} \\
+\textit{\VAR{edu.degree | latex}} \\[4pt]
 \BLOCK{ endfor }
 \BLOCK{ endif }
 
@@ -90,13 +93,16 @@
 \BLOCK{ if projects }
 \section*{Projects}
 \BLOCK{ for project in projects }
-\textbf{\VAR{project.title}}\BLOCK{ if project.tech } \quad \textit{\VAR{project.tech}}\BLOCK{ endif }
+\noindent\textbf{\VAR{project.title | latex}}%
+\BLOCK{ if project.tech } \quad \textit{\VAR{project.tech | latex}}\BLOCK{ endif }%
 \BLOCK{ if project.github } \hfill \faGithub\ \href{\VAR{project.github}}{Repo}\BLOCK{ endif }
+\BLOCK{ if project.bullets }
 \begin{resumeItems}
 \BLOCK{ for bullet in project.bullets }
-    \resumeItem{\VAR{bullet}}
+    \resumeItem{\VAR{bullet | latex}}
 \BLOCK{ endfor }
 \end{resumeItems}
+\BLOCK{ endif }
 \BLOCK{ endfor }
 \BLOCK{ endif }
 
@@ -105,7 +111,7 @@
 \section*{Achievements}
 \begin{resumeItems}
 \BLOCK{ for achievement in achievements }
-    \resumeItem{\VAR{achievement}}
+    \resumeItem{\VAR{achievement | latex}}
 \BLOCK{ endfor }
 \end{resumeItems}
 \BLOCK{ endif }
@@ -115,7 +121,7 @@
 \section*{Certifications}
 \begin{resumeItems}
 \BLOCK{ for cert in certifications }
-    \resumeItem{\VAR{cert.name}\BLOCK{ if cert.issuer } --- \VAR{cert.issuer}\BLOCK{ endif }\BLOCK{ if cert.year } (\VAR{cert.year})\BLOCK{ endif }}
+    \resumeItem{\VAR{cert.name | latex}\BLOCK{ if cert.issuer } --- \VAR{cert.issuer | latex}\BLOCK{ endif }\BLOCK{ if cert.year } (\VAR{cert.year | latex})\BLOCK{ endif }}
 \BLOCK{ endfor }
 \end{resumeItems}
 \BLOCK{ endif }

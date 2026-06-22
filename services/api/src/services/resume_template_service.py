@@ -1,323 +1,89 @@
 from pathlib import Path
-import os
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 
 class ResumeTemplateService:
 
-    def latex_escape(
-        self,
-        text: str
-    ) -> str:
+    # Special characters that must be escaped in LaTeX text mode.
+    # Order matters: backslash must come first so we don't double-escape
+    # the backslashes we introduce for other replacements.
+    _LATEX_REPLACEMENTS = [
+        ("\\", r"\textbackslash{}"),
+        ("&",  r"\&"),
+        ("%",  r"\%"),
+        ("$",  r"\$"),
+        ("#",  r"\#"),
+        ("_",  r"\_"),
+        ("{",  r"\{"),
+        ("}",  r"\}"),
+        ("~",  r"\textasciitilde{}"),
+        ("^",  r"\textasciicircum{}"),
+    ]
 
+    def latex_escape(self, text: str) -> str:
+        """Escape a plain-text string for safe inclusion in LaTeX."""
         if not text:
             return ""
-
         text = str(text)
-
-        replacements = {
-            "&": r"\&",
-            "%": r"\%",
-            "$": r"\$",
-            "#": r"\#",
-            "_": r"\_",
-            "{": r"\{",
-            "}": r"\}",
-            "~": r"\textasciitilde{}",
-            "^": r"\textasciicircum{}",
-        }
-
-        for old, new in replacements.items():
-            text = text.replace(old, new)
-
+        for char, escaped in self._LATEX_REPLACEMENTS:
+            text = text.replace(char, escaped)
         return text
 
-    def render_resume(
-        self,
-        data: dict,
-    ):
-        # FIXED: correct number of parents to reach project root
-        # From /app/src/services/resume_template_service.py
-        # .parent -> /app/src/services
-        # .parent -> /app/src
-        # .parent -> /app
-        template_path = (
-            Path(__file__).resolve().parent.parent.parent
-            / "templates"
-            / "resume_template.tex"
+    def _make_env(self, template_dir: Path) -> Environment:
+        """
+        Build a Jinja2 Environment whose delimiters don't clash with LaTeX.
+
+        Delimiters match what the template uses:
+          variables : \\VAR{ ... }
+          blocks    : \\BLOCK{ ... }
+          comments  : \\#{ ... }
+        """
+        env = Environment(
+            loader=FileSystemLoader(str(template_dir)),
+            block_start_string=r"\BLOCK{",
+            block_end_string="}",
+            variable_start_string=r"\VAR{",
+            variable_end_string="}",
+            comment_start_string=r"\#{",
+            comment_end_string="}",
+            trim_blocks=True,
+            lstrip_blocks=True,
+            # autoescape=False because this is LaTeX, not HTML
+            autoescape=False,
+        )
+        # Register our escaper as a template filter: \VAR{value | latex}
+        env.filters["latex"] = self.latex_escape
+        return env
+
+    def render_resume(self, data: dict) -> str:
+        """
+        Render resume_template.tex with *data* and return the filled LaTeX source.
+
+        Expected top-level keys in *data*:
+          name, email, phone, github_url, github_display,
+          website_url, website_display, summary,
+          technical_skills (dict), experience (list), education (list),
+          projects (list), achievements (list), certifications (list)
+        """
+        # Resolve template directory regardless of where this file lives.
+        # File is at  <root>/src/services/resume_template_service.py
+        # Template is at <root>/templates/resume_template.tex
+        template_dir = (
+            Path(__file__).resolve().parent.parent.parent / "templates"
         )
 
-        with open(
-            template_path,
-            "r",
-            encoding="utf-8"
-        ) as f:
+        env = self._make_env(template_dir)
+        template = env.get_template("resume_template.tex")
 
-            template = f.read()
+        # Normalise list-valued skill fields to comma-joined strings
+        # so the template receives plain strings everywhere.
+        technical = dict(data.get("technical_skills") or {})
+        for key in ("languages", "backend", "ai_ml", "databases", "tools"):
+            val = technical.get(key, "")
+            if isinstance(val, list):
+                technical[key] = ", ".join(str(v) for v in val)
 
-        technical = data.get(
-            "technical_skills",
-            {}
-        )
+        context = dict(data)
+        context["technical_skills"] = technical or None   # falsy → \BLOCK{if} skips section
 
-        def format_skill(value):
-
-            if isinstance(value, list):
-
-                value = ", ".join(
-                    str(v)
-                    for v in value
-                )
-
-            return self.latex_escape(
-                str(value)
-            ) if value else ""
-
-        template = template.replace(
-            "{{SUMMARY}}",
-            self.latex_escape(
-                data.get(
-                    "summary",
-                    ""
-                )
-            )
-        )
-
-        template = template.replace(
-            "{{TECH_LANGUAGES}}",
-            format_skill(
-                technical.get(
-                    "languages",
-                    ""
-                )
-            )
-        )
-
-        template = template.replace(
-            "{{TECH_BACKEND}}",
-            format_skill(
-                technical.get(
-                    "backend",
-                    ""
-                )
-            )
-        )
-
-        template = template.replace(
-            "{{TECH_AI}}",
-            format_skill(
-                technical.get(
-                    "ai_ml",
-                    ""
-                )
-            )
-        )
-
-        template = template.replace(
-            "{{TECH_DATABASES}}",
-            format_skill(
-                technical.get(
-                    "databases",
-                    ""
-                )
-            )
-        )
-
-        template = template.replace(
-            "{{TECH_TOOLS}}",
-            format_skill(
-                technical.get(
-                    "tools",
-                    ""
-                )
-            )
-        )
-
-        experience_section = ""
-
-        for exp in data.get(
-            "experience",
-            []
-        ):
-
-            bullets = ""
-
-            for bullet in exp.get(
-                "bullets",
-                []
-            ):
-
-                bullets += (
-                    f"\\resumeItem{{{self.latex_escape(bullet)}}}\n"
-                )
-
-            bullets_section = ""
-
-            if bullets.strip():
-
-                bullets_section = (
-                    f"\n\\resumeItemListStart\n"
-                    f"{bullets}"
-                    f"\\resumeItemListEnd"
-                )
-
-            company = self.latex_escape(
-                exp.get(
-                    "company",
-                    ""
-                )
-            )
-
-            location = self.latex_escape(
-                exp.get(
-                    "location",
-                    ""
-                )
-            )
-
-            role = self.latex_escape(
-                exp.get(
-                    "role",
-                    ""
-                )
-            )
-
-            duration = self.latex_escape(
-                exp.get(
-                    "duration",
-                    ""
-                )
-            )
-
-            experience_section += (
-                f"\\resumeSubheading"
-                f"{{{company}}}"
-                f"{{{location}}}"
-                f"{{{role}}}"
-                f"{{{duration}}}"
-                f"{bullets_section}\n"
-            )
-
-        project_section = ""
-
-        for proj in data.get(
-            "projects",
-            []
-        ):
-
-            bullets = ""
-
-            for bullet in proj.get(
-                "bullets",
-                []
-            ):
-
-                bullets += (
-                    f"\\resumeItem{{{self.latex_escape(bullet)}}}\n"
-                )
-
-            bullets_section = ""
-
-            if bullets.strip():
-
-                bullets_section = (
-                    f"\n\\resumeItemListStart\n"
-                    f"{bullets}"
-                    f"\\resumeItemListEnd"
-                )
-
-            title = self.latex_escape(
-                proj.get(
-                    "title",
-                    ""
-                )
-            )
-
-            tech = self.latex_escape(
-                proj.get(
-                    "tech",
-                    ""
-                )
-            )
-
-            github_link = proj.get(
-                "github",
-                ""
-            )
-
-            heading = (
-                f"\\textbf{{{title}}} "
-                f"$\\mid$ "
-                f"\\emph{{{tech}}}"
-            )
-
-            if github_link:
-
-                github_tex = (
-                    f"\\href{{{github_link}}}{{GitHub}}"
-                )
-
-                project_section += (
-                    f"\\resumeProjectHeading"
-                    f"{{{heading}}}"
-                    f"{{{github_tex}}}"
-                    f"{bullets_section}\n"
-                )
-
-            else:
-
-                project_section += (
-                    f"\\resumeProjectHeading"
-                    f"{{{heading}}}"
-                    f"{{}}"
-                    f"{bullets_section}\n"
-                )
-
-        experience_content = (
-            experience_section.strip()
-        )
-
-        if not experience_content:
-
-            experience_section_replacement = (
-                "\\noindent\\textit"
-                "{No experience data provided.}"
-            )
-
-        else:
-
-            experience_section_replacement = (
-                "\\begin{itemize}[leftmargin=0pt]\n"
-                f"{experience_section}"
-                "\\end{itemize}"
-            )
-
-        project_content = (
-            project_section.strip()
-        )
-
-        if not project_content:
-
-            project_section_replacement = (
-                "\\noindent\\textit"
-                "{No projects data provided.}"
-            )
-
-        else:
-
-            project_section_replacement = (
-                "\\begin{itemize}[leftmargin=0pt]\n"
-                f"{project_section}"
-                "\\end{itemize}"
-            )
-
-        template = template.replace(
-            "{{EXPERIENCE_SECTION}}",
-            experience_section_replacement
-        )
-
-        template = template.replace(
-            "{{PROJECT_SECTION}}",
-            project_section_replacement
-        )
-
-        return template
+        return template.render(context)

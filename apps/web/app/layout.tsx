@@ -1,6 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter, Fraunces, IBM_Plex_Mono } from 'next/font/google';
+import { GoogleAnalytics } from '@next/third-parties/google';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-body' });
 
@@ -27,9 +28,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className={`${inter.variable} ${fraunces.variable} ${plexMono.variable} font-sans antialiased`}>
-        {/* AuthProvider wraps the entire app to provide authentication context */}
         {children}
       </body>
+
+      <GoogleAnalytics gaId="G-2SC90HTR7G" />
     </html>
   );
 }
