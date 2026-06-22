@@ -1,88 +1,123 @@
-\documentclass[11pt]{article}
-\usepackage[letterpaper]{geometry}
+\documentclass[10pt,letterpaper]{article}
+
+\usepackage[margin=0.6in]{geometry}
 \usepackage{fontawesome5}
-\usepackage{xcolor}
 \usepackage{hyperref}
-\usepackage{titlesec}
 \usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage[T1]{fontenc}
+\usepackage{xcolor}
+\usepackage{tabularx}
 
-% Page margins
-\geometry{top=0.5in, bottom=0.5in, left=0.75in, right=0.75in}
+\definecolor{accent}{HTML}{2A4D69}
 
-% Color definitions
-\definecolor{darkblue}{HTML}{0066CC}
-\definecolor{gray}{HTML}{555555}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
 
-% Hyperlink setup
-\hypersetup{colorlinks=true, linkcolor=darkblue, urlcolor=darkblue}
-
-% Title formatting
-\titleformat{\section}{\large\bfseries\color{darkblue}}{}{0em}{}[\titlerule]
-\titlespacing{\section}{0pt}{12pt}{6pt}
-
-% Custom commands
-\newcommand{\resumeItem}[1]{
-  \item\small{#1}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=accent,
+    urlcolor=accent
 }
 
-\newcommand{\resumeItemListStart}{
-  \begin{itemize}[leftmargin=0.2in, label={--}]
-}
+\titleformat{\section}
+  {\large\bfseries\color{accent}}
+  {}{0em}{}
+  [\titlerule]
+\titlespacing{\section}{0pt}{10pt}{6pt}
 
-\newcommand{\resumeItemListEnd}{
-  \end{itemize}\vspace{-8pt}
-}
+\newcommand{\resumeItem}[1]{\item #1}
 
-\newcommand{\resumeSubheading}[4]{
-  \vspace{-2pt}\item
-    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
-      \textbf{#1} & \textit{\small #2} \\
-      \small#3 & \small #4 \\
-    \end{tabular*}\vspace{-8pt}
+\newenvironment{resumeItems}{
+  \begin{itemize}[leftmargin=*, itemsep=2pt, topsep=2pt, parsep=0pt]
+}{
+  \end{itemize}
 }
-
-\newcommand{\resumeProjectHeading}[2]{
-  \vspace{-2pt}\item
-    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
-      #1 & #2 \\
-    \end{tabular*}\vspace{-8pt}
-}
-
-% Remove default indentation
-\setlist[itemize]{leftmargin=0.2in}
 
 \begin{document}
 
-% Header with summary
+% ---------- HEADER ----------
 \begin{center}
-    \large{\textbf{AI ENGINEER}}
+    {\fontsize{28}{32}\selectfont \bfseries \VAR{name} } \\[6pt]
+    \BLOCK{ if email }\faEnvelope\ \href{mailto:\VAR{email}}{\VAR{email}} \quad \BLOCK{ endif }
+    \BLOCK{ if phone }\faPhone\ \VAR{phone} \quad \BLOCK{ endif }
+    \BLOCK{ if github_url }\faGithub\ \href{\VAR{github_url}}{\VAR{github_display}} \quad \BLOCK{ endif }
+    \BLOCK{ if website_url }\faGlobe\ \href{\VAR{website_url}}{\VAR{website_display}} \BLOCK{ endif }
 \end{center}
 
-\vspace{-12pt}
+% ---------- SUMMARY ----------
+\BLOCK{ if summary }
+\section*{Summary}
+\VAR{summary}
+\BLOCK{ endif }
 
-\noindent\textcolor{gray}{{{SUMMARY}}}
+% ---------- SKILLS ----------
+\BLOCK{ if technical_skills }
+\section*{Technical Skills}
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\BLOCK{ if technical_skills.languages }\textbf{Languages:} & \VAR{technical_skills.languages} \\\BLOCK{ endif }
+\BLOCK{ if technical_skills.backend }\textbf{Backend:} & \VAR{technical_skills.backend} \\\BLOCK{ endif }
+\BLOCK{ if technical_skills.ai_ml }\textbf{AI/ML:} & \VAR{technical_skills.ai_ml} \\\BLOCK{ endif }
+\BLOCK{ if technical_skills.databases }\textbf{Databases:} & \VAR{technical_skills.databases} \\\BLOCK{ endif }
+\BLOCK{ if technical_skills.tools }\textbf{Tools:} & \VAR{technical_skills.tools} \\\BLOCK{ endif }
+\end{tabularx}
+\BLOCK{ endif }
 
-\vspace{8pt}
+% ---------- EXPERIENCE ----------
+\BLOCK{ if experience }
+\section*{Experience}
+\BLOCK{ for job in experience }
+\textbf{\VAR{job.role}} \hfill \VAR{job.duration} \\
+\textit{\VAR{job.company}}\BLOCK{ if job.location } \hfill \textit{\VAR{job.location}}\BLOCK{ endif }
+\begin{resumeItems}
+\BLOCK{ for bullet in job.bullets }
+    \resumeItem{\VAR{bullet}}
+\BLOCK{ endfor }
+\end{resumeItems}
+\BLOCK{ endfor }
+\BLOCK{ endif }
 
-% Technical Skills Section
-\section{Technical Skills}
+% ---------- EDUCATION ----------
+\BLOCK{ if education }
+\section*{Education}
+\BLOCK{ for edu in education }
+\textbf{\VAR{edu.institution}} \hfill \VAR{edu.year} \\
+\textit{\VAR{edu.degree}} \\[4pt]
+\BLOCK{ endfor }
+\BLOCK{ endif }
 
-\begin{itemize}[leftmargin=0.2in]
-    \resumeItem{\textbf{Languages:} {{TECH_LANGUAGES}}}
-    \resumeItem{\textbf{Backend \& DevOps:} {{TECH_BACKEND}}}
-    \resumeItem{\textbf{AI/ML:} {{TECH_AI}}}
-    \resumeItem{\textbf{Databases:} {{TECH_DATABASES}}}
-    \resumeItem{\textbf{Tools \& Frameworks:} {{TECH_TOOLS}}}
-\end{itemize}
+% ---------- PROJECTS ----------
+\BLOCK{ if projects }
+\section*{Projects}
+\BLOCK{ for project in projects }
+\textbf{\VAR{project.title}}\BLOCK{ if project.tech } \quad \textit{\VAR{project.tech}}\BLOCK{ endif }
+\BLOCK{ if project.github } \hfill \faGithub\ \href{\VAR{project.github}}{Repo}\BLOCK{ endif }
+\begin{resumeItems}
+\BLOCK{ for bullet in project.bullets }
+    \resumeItem{\VAR{bullet}}
+\BLOCK{ endfor }
+\end{resumeItems}
+\BLOCK{ endfor }
+\BLOCK{ endif }
 
-% Experience Section
-\section{Experience}
+% ---------- ACHIEVEMENTS ----------
+\BLOCK{ if achievements }
+\section*{Achievements}
+\begin{resumeItems}
+\BLOCK{ for achievement in achievements }
+    \resumeItem{\VAR{achievement}}
+\BLOCK{ endfor }
+\end{resumeItems}
+\BLOCK{ endif }
 
-{{EXPERIENCE_SECTION}}
-
-% Projects Section
-\section{Projects}
-
-{{PROJECT_SECTION}}
+% ---------- CERTIFICATIONS ----------
+\BLOCK{ if certifications }
+\section*{Certifications}
+\begin{resumeItems}
+\BLOCK{ for cert in certifications }
+    \resumeItem{\VAR{cert.name}\BLOCK{ if cert.issuer } --- \VAR{cert.issuer}\BLOCK{ endif }\BLOCK{ if cert.year } (\VAR{cert.year})\BLOCK{ endif }}
+\BLOCK{ endfor }
+\end{resumeItems}
+\BLOCK{ endif }
 
 \end{document}

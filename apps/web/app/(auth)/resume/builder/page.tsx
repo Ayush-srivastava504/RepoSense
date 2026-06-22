@@ -29,13 +29,19 @@ interface ProjectEntry {
   bullets: string[];
 }
 
+interface CertificationEntry {
+  name: string;
+  issuer: string;
+  year: string;
+}
+
 function ResumeContent() {
   const { user, logout } = useAuth();
   const [tab, setTab] = useState<Tab>('handwritten');
 
   const [title, setTitle] = useState('');
-  const [name, setName] = useState('');     // NEW — feeds structured_data.name in resume.py
-  const [phone, setPhone] = useState('');    // NEW — feeds structured_data.phone in resume.py
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [summary, setSummary] = useState('');
   const [githubUrl, setGithubUrl] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
@@ -48,6 +54,10 @@ function ResumeContent() {
   ]);
   const [projects, setProjects] = useState<ProjectEntry[]>([
     { title: '', tech: '', github: '', bullets: [''] },
+  ]);
+  const [achievements, setAchievements] = useState<string[]>(['']);  // NEW
+  const [certifications, setCertifications] = useState<CertificationEntry[]>([  // NEW
+    { name: '', issuer: '', year: '' },
   ]);
   const [saving, setSaving] = useState(false);
 
@@ -98,11 +108,24 @@ function ResumeContent() {
   const addProjBullet = (i: number) => setProjects((p) => p.map((proj, idx) => idx === i ? { ...proj, bullets: [...proj.bullets, ''] } : proj));
   const removeProjBullet = (pi: number, bi: number) => setProjects((p) => p.map((proj, idx) => idx !== pi ? proj : { ...proj, bullets: proj.bullets.filter((_, i) => i !== bi) }));
 
+  // NEW — Achievements helpers
+  const updateAchievement = (i: number, value: string) =>
+    setAchievements((p) => p.map((a, idx) => idx === i ? value : a));
+  const addAchievement = () => setAchievements((p) => [...p, '']);
+  const removeAchievement = (i: number) => setAchievements((p) => p.filter((_, idx) => idx !== i));
+
+  // NEW — Certifications helpers
+  const updateCert = (i: number, field: keyof CertificationEntry, value: string) =>
+    setCertifications((p) => p.map((c, idx) => idx === i ? { ...c, [field]: value } : c));
+  const addCert = () => setCertifications((p) => [...p, { name: '', issuer: '', year: '' }]);
+  const removeCert = (i: number) => setCertifications((p) => p.filter((_, idx) => idx !== i));
+
   const saveResume = async () => {
     setSaving(true);
     try {
       const blob = await api.post('/resume/generate-structured', {
-        title, name, phone, summary, githubUrl, websiteUrl, skills, experience, education, projects,
+        title, name, phone, summary, githubUrl, websiteUrl, skills,
+        experience, education, projects, achievements, certifications,  // NEW fields added
       }) as Blob;
       downloadBlob(blob, `${title || 'resume'}.pdf`);
     } catch (err: any) {
@@ -167,7 +190,6 @@ function ResumeContent() {
             <input className="field" placeholder="Frontend Developer Resume" value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
 
-          {/* NEW — Name / Phone, needed for the resume header */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="field-label">Full name</label>
@@ -316,6 +338,60 @@ function ResumeContent() {
                   </div>
                   {projects.length > 1 && (
                     <button onClick={() => removeProj(pi)} className="text-xs" style={{ color: 'var(--rust)' }}>Remove project</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* NEW — Achievements */}
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <label className="field-label mb-0">Achievements</label>
+              <button onClick={addAchievement} className="btn btn-ghost !py-1 text-xs">+ Add</button>
+            </div>
+            <div className="space-y-2">
+              {achievements.map((a, i) => (
+                <div key={i} className="flex gap-2">
+                  <input
+                    className="field"
+                    placeholder="Won 1st place at XYZ Hackathon"
+                    value={a}
+                    onChange={(e) => updateAchievement(i, e.target.value)}
+                  />
+                  {achievements.length > 1 && (
+                    <button onClick={() => removeAchievement(i)} className="btn btn-ghost !px-2 text-xs" style={{ color: 'var(--rust)' }}>✕</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* NEW — Certifications */}
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <label className="field-label mb-0">Certifications</label>
+              <button onClick={addCert} className="btn btn-ghost !py-1 text-xs">+ Add</button>
+            </div>
+            <div className="space-y-3">
+              {certifications.map((c, i) => (
+                <div key={i} className="rounded-[var(--radius)] border p-4" style={{ borderColor: 'var(--line)' }}>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div>
+                      <label className="field-label">Certification name</label>
+                      <input className="field" placeholder="AWS Certified Developer" value={c.name} onChange={(e) => updateCert(i, 'name', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="field-label">Issuer</label>
+                      <input className="field" placeholder="Amazon Web Services" value={c.issuer} onChange={(e) => updateCert(i, 'issuer', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="field-label">Year</label>
+                      <input className="field" placeholder="2025" value={c.year} onChange={(e) => updateCert(i, 'year', e.target.value)} />
+                    </div>
+                  </div>
+                  {certifications.length > 1 && (
+                    <button onClick={() => removeCert(i)} className="mt-3 text-xs" style={{ color: 'var(--rust)' }}>Remove</button>
                   )}
                 </div>
               ))}

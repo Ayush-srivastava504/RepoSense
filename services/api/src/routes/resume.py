@@ -46,11 +46,16 @@ class ProjectEntry(BaseModel):
     github: Optional[str] = ""
     bullets: List[str] = []
 
+class CertificationEntry(BaseModel):  # NEW
+    name: str
+    issuer: Optional[str] = ""
+    year: Optional[str] = ""
+
 class GenerateStructuredRequest(BaseModel):
     title: str
-    name: Optional[str] = ""          # NEW — header needs a name
-    email: Optional[str] = ""         # NEW — falls back to JWT email if blank
-    phone: Optional[str] = ""         # NEW
+    name: Optional[str] = ""
+    email: Optional[str] = ""
+    phone: Optional[str] = ""
     summary: str
     githubUrl: Optional[str] = ""
     websiteUrl: Optional[str] = ""
@@ -58,6 +63,8 @@ class GenerateStructuredRequest(BaseModel):
     experience: List[ExperienceEntry] = []
     education: List[EducationEntry] = []
     projects: List[ProjectEntry] = []
+    achievements: List[str] = []                    # NEW
+    certifications: List[CertificationEntry] = []    # NEW
 
 
 @router.get("/test")
@@ -103,16 +110,16 @@ async def generate_structured_resume(data: GenerateStructuredRequest, user=Depen
         template_service = ResumeTemplateService()
         pdf_service = ResumePDFService()
 
-        email = data.email or user.get("email", "")  # NEW — fallback to authenticated user's email
+        email = data.email or user.get("email", "")
 
         structured_data = {
-            "name": data.name or data.title,  # NEW — falls back to title if no name given
-            "email": email,                    # NEW
-            "phone": data.phone,                # NEW
+            "name": data.name or data.title,
+            "email": email,
+            "phone": data.phone,
             "github_url": data.githubUrl,
-            "github_display": _strip_protocol(data.githubUrl),   # NEW
+            "github_display": _strip_protocol(data.githubUrl),
             "website_url": data.websiteUrl,
-            "website_display": _strip_protocol(data.websiteUrl), # NEW
+            "website_display": _strip_protocol(data.websiteUrl),
             "summary": data.summary,
             "technical_skills": {
                 "languages": data.skills,
@@ -131,8 +138,8 @@ async def generate_structured_resume(data: GenerateStructuredRequest, user=Depen
                 }
                 for exp in data.experience
             ],
-            "education": [  # NEW — was missing entirely; template's Education section
-                {                                                    # was always rendering blank
+            "education": [
+                {
                     "institution": edu.institution,
                     "degree": edu.degree,
                     "year": edu.year,
@@ -147,6 +154,12 @@ async def generate_structured_resume(data: GenerateStructuredRequest, user=Depen
                     "bullets": [b for b in proj.bullets if b.strip()],
                 }
                 for proj in data.projects
+            ],
+            "achievements": [a for a in data.achievements if a.strip()],  # NEW
+            "certifications": [                                            # NEW
+                {"name": c.name, "issuer": c.issuer or "", "year": c.year or ""}
+                for c in data.certifications
+                if c.name.strip()
             ],
         }
         latex_resume = template_service.render_resume(structured_data)
