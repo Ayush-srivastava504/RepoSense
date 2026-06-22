@@ -14,8 +14,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install fontawesome5 LaTeX package manually (avoids the ~400MB texlive-fonts-extra collection).
-# pdflatex needs the Type1 (.pfb) + tfm/vf metric files, NOT just the .otf fonts,
-# since ResumePDFService shells out to pdflatex specifically (not xelatex/lualatex).
+# pdflatex needs Type1 (.pfb) + tfm/vf metric files, plus the .def mapping files
+# that fontawesome5.sty loads for icon-name lookups (e.g. fontawesome5-mapping.def).
 RUN mkdir -p /tmp/fa5 \
     && curl -fsSL https://mirrors.ctan.org/fonts/fontawesome5.zip -o /tmp/fa5.zip \
     && unzip -q /tmp/fa5.zip -d /tmp/fa5 \
@@ -26,6 +26,7 @@ RUN mkdir -p /tmp/fa5 \
                /usr/share/texmf/fonts/vf/public/fontawesome5 \
                /usr/share/texmf/fonts/map/dvips/fontawesome5 \
     && find /tmp/fa5 -name "*.sty" -exec cp {} /usr/share/texmf/tex/latex/fontawesome5/ \; \
+    && find /tmp/fa5 -name "*.def" -exec cp {} /usr/share/texmf/tex/latex/fontawesome5/ \; \
     && find /tmp/fa5 -name "*.otf" -exec cp {} /usr/share/texmf/fonts/opentype/public/fontawesome5/ \; \
     && find /tmp/fa5 -name "*.pfb" -exec cp {} /usr/share/texmf/fonts/type1/public/fontawesome5/ \; \
     && find /tmp/fa5 -name "*.tfm" -exec cp {} /usr/share/texmf/fonts/tfm/public/fontawesome5/ \; \
