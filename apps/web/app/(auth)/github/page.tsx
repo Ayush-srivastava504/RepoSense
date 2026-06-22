@@ -22,15 +22,13 @@ function GitHubContent() {
   const [githubConnecting, setGithubConnecting] = useState(false);
   const [generatedReadme, setGeneratedReadme] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generatingStatus, setGeneratingStatus] = useState('');
   const [showReadme, setShowReadme] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const [connectError, setConnectError] = useState('');
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-  // ─── Handle GitHub OAuth callback ────────────────────────────────────────
-  // The callback now passes a short-lived one-time `code`, NOT the JWT directly.
-  // We exchange the code for the JWT here, keeping the JWT out of browser history.
   useEffect(() => {
     const urlCode = searchParams.get('code');
     const urlError = searchParams.get('error');
@@ -43,14 +41,12 @@ function GitHubContent() {
 
     if (!urlCode) return;
 
-    // Remove the code from the URL immediately so it can't be replayed via refresh.
     router.replace('/github');
 
     setGithubConnecting(true);
     api
       .get(`/github/exchange?code=${urlCode}`)
       .then((data: { access_token: string }) => {
-        // Only store the JWT — never the GitHub OAuth token
         localStorage.setItem('token', data.access_token);
         refresh();
         setConnected(true);
@@ -63,12 +59,9 @@ function GitHubContent() {
       });
   }, [searchParams, router, refresh]);
 
-  // ─── Load repos when user is authed and GitHub is connected ──────────────
   useEffect(() => {
     if (!user) return;
 
-    // Check whether the current user actually has GitHub connected
-    // by attempting to load repos. If 401, show "connect" UI.
     setLoadingRepos(true);
     api
       .get('/github/repos')
@@ -77,7 +70,6 @@ function GitHubContent() {
         setConnected(true);
       })
       .catch((err) => {
-        // 401 means GitHub not connected for this account — show connect UI
         if (err?.status === 401) {
           setConnected(false);
         }
@@ -91,11 +83,10 @@ function GitHubContent() {
     api
       .get(`/github/contents?repo=${selectedRepo}&path=${currentPath}`)
       .then(setFiles)
-      .catch(() => setFiles([]));
+      .catch(() => setFiles([])); // NEW — was unhandled before? (already had this one, kept as-is)
   }, [selectedRepo, currentPath]);
 
   const connectGitHub = () => {
-    // Clear any stale GitHub connection state — NOT the user's login token
     setConnectError('');
     window.location.href = `${API_URL}/api/github/login`;
   };
@@ -120,7 +111,8 @@ function GitHubContent() {
     } else {
       api
         .get(`/github/file?repo=${selectedRepo}&path=${file.path}`)
-        .then((res) => setCode(res.content));
+        .then((res) => setCode(res.content))
+        .catch(() => alert("Couldn't load that file. Try reconnecting GitHub.")); // NEW
     }
   };
 
@@ -140,15 +132,20 @@ function GitHubContent() {
       return;
     }
     setIsGenerating(true);
+    setGeneratingStatus('Starting…');
     try {
-      const result = await api.post(`/github/${selectedRepo}/auto-setup`, {});
+      const { job_id } = await api.post(`/github/${selectedRepo}/auto-setup`, {});
+      const result = await api.pollJob(job_id, (status) => {
+        setGeneratingStatus(status === 'running' ? 'Generating README…' : status);
+      });
       setGeneratedReadme(result.readme);
       setShowReadme(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating README:', error);
-      alert("Couldn't generate the README. Try again.");
+      alert(error?.message || "Couldn't generate the README. Try again.");
     } finally {
       setIsGenerating(false);
+      setGeneratingStatus('');
     }
   };
 
@@ -273,7 +270,9 @@ function GitHubContent() {
               disabled={isGenerating || !selectedRepo}
               className="btn btn-secondary"
             >
-              {isGenerating ? 'Generating README...' : 'Generate README'}
+              {isGenerating
+                ? generatingStatus || 'Generating README...'
+                : 'Generate README'}
             </button>
           </div>
 

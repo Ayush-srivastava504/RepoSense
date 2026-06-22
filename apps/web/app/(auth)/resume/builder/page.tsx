@@ -54,6 +54,7 @@ function ResumeContent() {
   const [aiSkills, setAiSkills] = useState('');
   const [aiExperience, setAiExperience] = useState('');
   const [generating, setGenerating] = useState(false);
+  const [generatingStatus, setGeneratingStatus] = useState('');
 
   const downloadBlob = (blob: Blob, filename: string) => {
     const url = window.URL.createObjectURL(blob);
@@ -111,18 +112,28 @@ function ResumeContent() {
 
   const generateResume = async () => {
     setGenerating(true);
+    setGeneratingStatus('Starting…');
     try {
-      const blob = await api.post('/resume/generate', {
+      const { job_id } = await api.post('/resume/generate', {
         resume_type: resumeType,
         job_description: jobDescription,
         skills: aiSkills,
         experience: aiExperience,
-      }) as Blob;
+      });
+      const result = await api.pollJob(job_id, (status) => {
+        setGeneratingStatus(status === 'running' ? 'Generating resume…' : status);
+      });
+      if (!result?.pdf_b64) throw new Error('No PDF data returned.');
+      const byteChars = atob(result.pdf_b64);
+      const bytes = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'application/pdf' });
       downloadBlob(blob, 'resume.pdf');
     } catch (err: any) {
       alert(err?.message || "Couldn't generate resume.");
     } finally {
       setGenerating(false);
+      setGeneratingStatus('');
     }
   };
 
@@ -331,7 +342,9 @@ function ResumeContent() {
           </div>
 
           <button onClick={generateResume} disabled={generating} className="btn btn-primary">
-            {generating ? 'Generating PDF…' : 'Generate resume PDF'}
+            {generating
+              ? generatingStatus || 'Generating PDF…'
+              : 'Generate resume PDF'}
           </button>
         </div>
       )}

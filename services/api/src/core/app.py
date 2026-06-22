@@ -23,6 +23,7 @@ from routes import (
     subscription,
     webhooks,
 )
+from routes.async_jobs import router as async_jobs_router  # NEW — job polling endpoint
 
 from api.routes import router as review_router
 from api.routes_self_healing import (
@@ -36,7 +37,7 @@ logger = setup_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan context manager.
-    
+
     Handles startup tasks (DB/Redis connection, AI service initialization)
     and graceful shutdown (closing connections). Sets monitoring keys in Redis
     to track application uptime and restart count.
@@ -109,7 +110,7 @@ def create_application() -> FastAPI:
     @app.middleware("http")
     async def request_logging_middleware(request: Request, call_next):
         """Log HTTP requests and responses as structured JSON.
-        
+
         Captures request ID, method, path, and client IP from X-Forwarded-For
         or direct connection. Measures response time and status code.
         """
@@ -153,6 +154,7 @@ def create_application() -> FastAPI:
     app.include_router(jobs.router)
     app.include_router(subscription.router)
     app.include_router(webhooks.router)
+    app.include_router(async_jobs_router)  # NEW — must be mounted or /api/async-jobs/{id} 404s
 
     app.include_router(review_router)
 
@@ -174,7 +176,7 @@ def create_application() -> FastAPI:
     @app.get("/health")
     async def health():
         """Basic health check endpoint.
-        
+
         Returns OK if the API is running. Used by container orchestrators
         and load balancers for liveness checks.
         """
@@ -183,10 +185,10 @@ def create_application() -> FastAPI:
     @app.get("/health/detailed")
     async def health_detailed():
         """Detailed health check with dependency status.
-        
+
         Checks connectivity to database and Redis. Returns overall status
         and individual service status. Used for readiness checks and monitoring.
-        
+
         Returns:
             Dictionary with overall 'status' (ok/degraded/error) and per-service
             'services' dict showing status of each dependency.

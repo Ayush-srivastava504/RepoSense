@@ -1,3 +1,4 @@
+import asyncio
 import json
 import traceback
 from typing import List, Optional
@@ -11,23 +12,20 @@ from services.resume_service import ResumeService
 from services.resume_ai_service import ResumeAIService
 from services.resume_template_service import ResumeTemplateService
 from services.resume_pdf_service import ResumePDFService
+from services.job_queue import create_job, run_resume_job
 
 router = APIRouter(prefix="/api/resume", tags=["resume"])
 
 
-# ── schemas ───────────────────────────────────────────────────────────────────
-
 class ResumeData(BaseModel):
     title: str
     content: dict
-
 
 class GenerateResumeRequest(BaseModel):
     resume_type: str
     job_description: str
     skills: str
     experience: str
-
 
 class ExperienceEntry(BaseModel):
     company: str
@@ -37,19 +35,16 @@ class ExperienceEntry(BaseModel):
     location: Optional[str] = ""
     bullets: List[str] = []
 
-
 class EducationEntry(BaseModel):
     institution: str
     degree: str
     year: str
-
 
 class ProjectEntry(BaseModel):
     title: str
     tech: str
     github: Optional[str] = ""
     bullets: List[str] = []
-
 
 class GenerateStructuredRequest(BaseModel):
     title: str
@@ -62,8 +57,6 @@ class GenerateStructuredRequest(BaseModel):
     projects: List[ProjectEntry] = []
 
 
-# ── endpoints ─────────────────────────────────────────────────────────────────
-
 @router.get("/test")
 async def test():
     return {"ok": True}
@@ -71,28 +64,27 @@ async def test():
 
 @router.post("/generate")
 async def generate_resume(data: GenerateResumeRequest, user=Depends(verify_token)):
-    try:
-        ai_service = ResumeAIService()
-        template_service = ResumeTemplateService()
-        pdf_service = ResumePDFService()
-
-        structured_data = await ai_service.generate_resume_data(
-            data.resume_type,
-            data.job_description,
-            data.skills,
-            data.experience,
+    job_id = await create_job(
+        user_id=user["sub"],
+        job_type="resume",
+        payload={
+            "resume_type": data.resume_type,
+            "job_description": data.job_description,
+            "skills": data.skills,
+            "experience": data.experience,
+        },
+    )
+    asyncio.create_task(
+        run_resume_job(
+            job_id=job_id,
+            user_id=user["sub"],
+            resume_type=data.resume_type,
+            job_description=data.job_description,
+            skills=data.skills,
+            experience=data.experience,
         )
-
-        latex_resume = template_service.render_resume(structured_data)
-        pdf_path = await pdf_service.compile_latex("generated_resume", latex_resume)
-
-        return FileResponse(pdf_path, media_type="application/pdf", filename="resume.pdf")
-
-    except Exception as exc:
-        traceback.print_exc()
-        if "No JSON found" in str(exc) or "JSON parsing failed" in str(exc):
-            raise HTTPException(400, f"Invalid AI output: {str(exc)}")
-        raise HTTPException(500, f"Resume generation failed: {str(exc)}")
+    )
+    return {"job_id": job_id, "status": "pending"}
 
 
 @router.post("/generate-structured")
@@ -100,8 +92,6 @@ async def generate_structured_resume(data: GenerateStructuredRequest, user=Depen
     try:
         template_service = ResumeTemplateService()
         pdf_service = ResumePDFService()
-
-        # Map handwritten fields to the shape the template expects
         structured_data = {
             "summary": data.summary,
             "technical_skills": {
@@ -131,12 +121,9 @@ async def generate_structured_resume(data: GenerateStructuredRequest, user=Depen
                 for proj in data.projects
             ],
         }
-
         latex_resume = template_service.render_resume(structured_data)
         pdf_path = await pdf_service.compile_latex("structured_resume", latex_resume)
-
         return FileResponse(pdf_path, media_type="application/pdf", filename="resume.pdf")
-
     except Exception as exc:
         traceback.print_exc()
         raise HTTPException(500, f"PDF generation failed: {str(exc)}")

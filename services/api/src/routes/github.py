@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 import secrets
@@ -14,6 +15,7 @@ from configs.db import get_db_pool
 from configs.redis import get_redis
 from middleware.auth import verify_token
 from services.github_service import GithubService
+from services.job_queue import create_job, run_readme_job
 from utils.crypto import decrypt_token, encrypt_token
 
 router = APIRouter(prefix="/api/github", tags=["github"])
@@ -241,165 +243,23 @@ async def auto_setup(owner: str, repo: str, user=Depends(verify_token)):
 
     github_token = await _get_github_token(user["sub"], pool)
     repo_name = f"{owner}/{repo}"
-    timeout = httpx.Timeout(60.0, connect=30.0)
 
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        contents_resp = await client.get(
-            f"https://api.github.com/repos/{repo_name}/contents",
-            headers={
-                "Authorization": f"token {github_token}",
-                "Accept": "application/vnd.github.v3+json",
-            },
+    job_id = await create_job(
+        user_id=user["sub"],
+        job_type="readme",
+        payload={"repo": repo_name},
+    )
+
+    asyncio.create_task(
+        run_readme_job(
+            job_id=job_id,
+            user_id=user["sub"],
+            github_token=github_token,
+            repo_name=repo_name,
         )
-        contents_resp.raise_for_status()
-        contents = contents_resp.json()
+    )
 
-    file_names = [item["name"] for item in contents]
-    folder_names = [item["name"] for item in contents if item["type"] == "dir"]
-
-    important_files = []
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        for file_name in [
-            "package.json",
-            "requirements.txt",
-            "pyproject.toml",
-            "main.py",
-            "app.py",
-            "next.config.js",
-            "Dockerfile",
-            "docker-compose.yml",
-            ".env.example",
-        ]:
-            try:
-                resp = await client.get(
-                    f"https://api.github.com/repos/{repo_name}/contents/{file_name}",
-                    headers={
-                        "Authorization": f"token {github_token}",
-                        "Accept": "application/vnd.github.v3.raw",
-                    },
-                )
-                if resp.status_code == 200:
-                    important_files.append(f"\n===== {file_name} =====\n{resp.text[:1500]}")
-            except Exception:
-                pass
-
-    dir_snippets = []
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        for dir_name in ["src", "app", "backend", "frontend", "api"]:
-            try:
-                dir_resp = await client.get(
-                    f"https://api.github.com/repos/{repo_name}/contents/{dir_name}",
-                    headers={
-                        "Authorization": f"token {github_token}",
-                        "Accept": "application/vnd.github.v3+json",
-                    },
-                )
-                if dir_resp.status_code == 200:
-                    dir_items = dir_resp.json()
-                    for entry in dir_items:
-                        if entry["type"] == "file" and entry["name"].split(".")[-1] in (
-                            "py", "ts", "tsx", "js", "jsx"
-                        ):
-                            file_resp = await client.get(
-                                f"https://api.github.com/repos/{repo_name}/contents/{entry['path']}",
-                                headers={
-                                    "Authorization": f"token {github_token}",
-                                    "Accept": "application/vnd.github.v3.raw",
-                                },
-                            )
-                            if file_resp.status_code == 200:
-                                dir_snippets.append(
-                                    f"\n===== {entry['path']} =====\n{file_resp.text[:1500]}"
-                                )
-                            break
-            except Exception:
-                pass
-
-    prompt = f"""You are a senior software architect and technical documentation engineer.
-Generate a production-grade GitHub README.md for the repository below.
-
-Repository: {repo_name}
-ROOT FILES: {chr(10).join(file_names)}
-ROOT FOLDERS: {chr(10).join(folder_names)}
-PROJECT FILES: {chr(10).join(important_files)}
-DIRECTORY SNIPPETS: {chr(10).join(dir_snippets)}
-
-CRITICAL:
-Never mention a technology unless it appears explicitly in the provided files.
-If unsure, omit it.
-Return EXACTLY ONE README.
-Do not repeat sections.
-Do not output multiple versions.
-
-Generate a complete README with:
-1. Project title
-2. Overview
-3. Key features
-4. Technology stack
-5. Installation
-6. Usage
-7. Project structure
-8. API endpoints (if detected)
-9. Environment variables (if detected)
-10. License
-Output raw markdown only."""
-
-    try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(900.0, connect=60.0)) as client:
-            resp = await client.post(
-                f"{settings.NEURAL_GENERATOR_URL}/generate",
-                json={
-                    "prompt": prompt,
-                    "max_tokens": 1200,
-                    "temperature": 0.55,
-                    "top_k": 50,
-                    "top_p": 0.92,
-                },
-            )
-            resp.raise_for_status()
-            readme = resp.json().get("text", "").strip()
-    except Exception as exc:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(500, f"LLM generation failed: {str(exc)}")
-
-    for marker in ["Final Answer", "Alright, I've thoroughly analyzed"]:
-        if marker in readme:
-            readme = readme.split(marker, 1)[-1]
-
-    readme = readme.replace("```markdown", "").replace("```", "").strip()
-    if not readme:
-        readme = f"# {repo}\n\nREADME generation failed.\n"
-
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        encoded_content = base64.b64encode(readme.encode()).decode()
-
-        existing_resp = await client.get(
-            f"https://api.github.com/repos/{repo_name}/contents/README.md",
-            headers={
-                "Authorization": f"token {github_token}",
-                "Accept": "application/vnd.github.v3+json",
-            },
-        )
-        payload: dict = {
-            "message": "Add AI-generated README",
-            "content": encoded_content,
-        }
-        if existing_resp.status_code == 200:
-            payload["sha"] = existing_resp.json().get("sha")
-
-        create_resp = await client.put(
-            f"https://api.github.com/repos/{repo_name}/contents/README.md",
-            headers={
-                "Authorization": f"token {github_token}",
-                "Accept": "application/vnd.github.v3+json",
-            },
-            json=payload,
-        )
-        if create_resp.status_code not in [200, 201]:
-            raise HTTPException(500, f"Failed to create README: {create_resp.text}")
-
-    return {"success": True, "repo": repo_name, "readme": readme}
+    return {"job_id": job_id, "status": "pending"}
 
 
 @router.post("/terminal/token")
