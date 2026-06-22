@@ -34,6 +34,8 @@ function ResumeContent() {
   const [tab, setTab] = useState<Tab>('handwritten');
 
   const [title, setTitle] = useState('');
+  const [name, setName] = useState('');     // NEW — feeds structured_data.name in resume.py
+  const [phone, setPhone] = useState('');    // NEW — feeds structured_data.phone in resume.py
   const [summary, setSummary] = useState('');
   const [githubUrl, setGithubUrl] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
@@ -100,7 +102,7 @@ function ResumeContent() {
     setSaving(true);
     try {
       const blob = await api.post('/resume/generate-structured', {
-        title, summary, githubUrl, websiteUrl, skills, experience, education, projects,
+        title, name, phone, summary, githubUrl, websiteUrl, skills, experience, education, projects,
       }) as Blob;
       downloadBlob(blob, `${title || 'resume'}.pdf`);
     } catch (err: any) {
@@ -163,6 +165,18 @@ function ResumeContent() {
           <div>
             <label className="field-label">Resume title</label>
             <input className="field" placeholder="Frontend Developer Resume" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+
+          {/* NEW — Name / Phone, needed for the resume header */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="field-label">Full name</label>
+              <input className="field" placeholder="Jane Doe" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div>
+              <label className="field-label">Phone</label>
+              <input className="field" placeholder="+1 555 555 5555" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

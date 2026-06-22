@@ -48,6 +48,9 @@ class ProjectEntry(BaseModel):
 
 class GenerateStructuredRequest(BaseModel):
     title: str
+    name: Optional[str] = ""          # NEW — header needs a name
+    email: Optional[str] = ""         # NEW — falls back to JWT email if blank
+    phone: Optional[str] = ""         # NEW
     summary: str
     githubUrl: Optional[str] = ""
     websiteUrl: Optional[str] = ""
@@ -87,12 +90,29 @@ async def generate_resume(data: GenerateResumeRequest, user=Depends(verify_token
     return {"job_id": job_id, "status": "pending"}
 
 
+def _strip_protocol(url: str) -> str:
+    """Turn https://github.com/foo into github.com/foo for display text."""
+    if not url:
+        return ""
+    return url.replace("https://", "").replace("http://", "").rstrip("/")
+
+
 @router.post("/generate-structured")
 async def generate_structured_resume(data: GenerateStructuredRequest, user=Depends(verify_token)):
     try:
         template_service = ResumeTemplateService()
         pdf_service = ResumePDFService()
+
+        email = data.email or user.get("email", "")  # NEW — fallback to authenticated user's email
+
         structured_data = {
+            "name": data.name or data.title,  # NEW — falls back to title if no name given
+            "email": email,                    # NEW
+            "phone": data.phone,                # NEW
+            "github_url": data.githubUrl,
+            "github_display": _strip_protocol(data.githubUrl),   # NEW
+            "website_url": data.websiteUrl,
+            "website_display": _strip_protocol(data.websiteUrl), # NEW
             "summary": data.summary,
             "technical_skills": {
                 "languages": data.skills,
@@ -110,6 +130,14 @@ async def generate_structured_resume(data: GenerateStructuredRequest, user=Depen
                     "bullets": [b for b in exp.bullets if b.strip()],
                 }
                 for exp in data.experience
+            ],
+            "education": [  # NEW — was missing entirely; template's Education section
+                {                                                    # was always rendering blank
+                    "institution": edu.institution,
+                    "degree": edu.degree,
+                    "year": edu.year,
+                }
+                for edu in data.education
             ],
             "projects": [
                 {

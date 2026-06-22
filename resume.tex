@@ -1,0 +1,102 @@
+\documentclass[10pt,letterpaper]{article}
+
+\usepackage[margin=0.65in]{geometry}
+\usepackage{fontawesome5}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage[T1]{fontenc}
+\usepackage{xcolor}
+
+\definecolor{accent}{HTML}{2A4D69}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=accent,
+    urlcolor=accent
+}
+
+\titleformat{\section}
+  {\large\bfseries\color{accent}}
+  {}{0em}{}
+  [\titlerule]
+\titlespacing{\section}{0pt}{10pt}{6pt}
+
+\newcommand{\resumeItem}[1]{\item #1}
+
+\newenvironment{resumeItems}{
+  \begin{itemize}[leftmargin=*, itemsep=2pt, topsep=2pt, parsep=0pt]
+}{
+  \end{itemize}
+}
+
+\begin{document}
+
+% ---------- HEADER ----------
+\begin{center}
+    {\Huge \bfseries \VAR{name} } \\[4pt]
+    \BLOCK{ if email }\faEnvelope\ \href{mailto:\VAR{email}}{\VAR{email}} \quad \BLOCK{ endif }
+    \BLOCK{ if phone }\faPhone\ \VAR{phone} \quad \BLOCK{ endif }
+    \BLOCK{ if github_url }\faGithub\ \href{\VAR{github_url}}{\VAR{github_display}} \quad \BLOCK{ endif }
+    \BLOCK{ if website_url }\faGlobe\ \href{\VAR{website_url}}{\VAR{website_display}} \BLOCK{ endif }
+\end{center}
+
+% ---------- SUMMARY ----------
+\BLOCK{ if summary }
+\section*{Summary}
+\VAR{summary}
+\BLOCK{ endif }
+
+% ---------- SKILLS ----------
+\BLOCK{ if technical_skills }
+\section*{Technical Skills}
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\BLOCK{ if technical_skills.languages }\textbf{Languages:} & \VAR{technical_skills.languages} \\\BLOCK{ endif }
+\BLOCK{ if technical_skills.backend }\textbf{Backend:} & \VAR{technical_skills.backend} \\\BLOCK{ endif }
+\BLOCK{ if technical_skills.ai_ml }\textbf{AI/ML:} & \VAR{technical_skills.ai_ml} \\\BLOCK{ endif }
+\BLOCK{ if technical_skills.databases }\textbf{Databases:} & \VAR{technical_skills.databases} \\\BLOCK{ endif }
+\BLOCK{ if technical_skills.tools }\textbf{Tools:} & \VAR{technical_skills.tools} \\\BLOCK{ endif }
+\end{tabularx}
+\BLOCK{ endif }
+
+% ---------- EXPERIENCE ----------
+\BLOCK{ if experience }
+\section*{Experience}
+\BLOCK{ for job in experience }
+\textbf{\VAR{job.role}} \hfill \VAR{job.duration} \\
+\textit{\VAR{job.company}}\BLOCK{ if job.location } \hfill \textit{\VAR{job.location}}\BLOCK{ endif }
+\begin{resumeItems}
+\BLOCK{ for bullet in job.bullets }
+    \resumeItem{\VAR{bullet}}
+\BLOCK{ endfor }
+\end{resumeItems}
+\BLOCK{ endfor }
+\BLOCK{ endif }
+
+% ---------- PROJECTS ----------
+\BLOCK{ if projects }
+\section*{Projects}
+\BLOCK{ for project in projects }
+\textbf{\VAR{project.title}}\BLOCK{ if project.tech } \quad \textit{\VAR{project.tech}}\BLOCK{ endif }
+\BLOCK{ if project.github } \hfill \faGithub\ \href{\VAR{project.github}}{Repo}\BLOCK{ endif }
+\begin{resumeItems}
+\BLOCK{ for bullet in project.bullets }
+    \resumeItem{\VAR{bullet}}
+\BLOCK{ endfor }
+\end{resumeItems}
+\BLOCK{ endfor }
+\BLOCK{ endif }
+
+% ---------- EDUCATION ----------
+\BLOCK{ if education }
+\section*{Education}
+\BLOCK{ for edu in education }
+\textbf{\VAR{edu.institution}} \hfill \VAR{edu.year} \\
+\textit{\VAR{edu.degree}}
+\BLOCK{ endfor }
+\BLOCK{ endif }
+
+\end{document}

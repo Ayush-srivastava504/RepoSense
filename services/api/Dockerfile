@@ -7,10 +7,32 @@ RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
     postgresql-client \
+    unzip \
     texlive-latex-base \
     texlive-latex-extra \
     texlive-fonts-recommended \
     && rm -rf /var/lib/apt/lists/*
+
+# Install fontawesome5 LaTeX package manually (avoids the ~400MB texlive-fonts-extra collection).
+# pdflatex needs the Type1 (.pfb) + tfm/vf metric files, NOT just the .otf fonts,
+# since ResumePDFService shells out to pdflatex specifically (not xelatex/lualatex).
+RUN mkdir -p /tmp/fa5 \
+    && curl -fsSL https://mirrors.ctan.org/fonts/fontawesome5.zip -o /tmp/fa5.zip \
+    && unzip -q /tmp/fa5.zip -d /tmp/fa5 \
+    && mkdir -p /usr/share/texmf/tex/latex/fontawesome5 \
+               /usr/share/texmf/fonts/opentype/public/fontawesome5 \
+               /usr/share/texmf/fonts/type1/public/fontawesome5 \
+               /usr/share/texmf/fonts/tfm/public/fontawesome5 \
+               /usr/share/texmf/fonts/vf/public/fontawesome5 \
+               /usr/share/texmf/fonts/map/dvips/fontawesome5 \
+    && find /tmp/fa5 -name "*.sty" -exec cp {} /usr/share/texmf/tex/latex/fontawesome5/ \; \
+    && find /tmp/fa5 -name "*.otf" -exec cp {} /usr/share/texmf/fonts/opentype/public/fontawesome5/ \; \
+    && find /tmp/fa5 -name "*.pfb" -exec cp {} /usr/share/texmf/fonts/type1/public/fontawesome5/ \; \
+    && find /tmp/fa5 -name "*.tfm" -exec cp {} /usr/share/texmf/fonts/tfm/public/fontawesome5/ \; \
+    && find /tmp/fa5 -name "*.vf" -exec cp {} /usr/share/texmf/fonts/vf/public/fontawesome5/ \; \
+    && find /tmp/fa5 -name "*.map" -exec cp {} /usr/share/texmf/fonts/map/dvips/fontawesome5/ \; \
+    && texhash \
+    && rm -rf /tmp/fa5 /tmp/fa5.zip
 
 COPY requirements.txt .
 
@@ -34,4 +56,3 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
 
 ENTRYPOINT ["/app/entrypoint.sh"]
-
