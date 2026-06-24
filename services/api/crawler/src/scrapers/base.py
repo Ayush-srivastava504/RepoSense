@@ -119,40 +119,70 @@ class BaseScraper(ABC):
             "scraped_at": None,
         }
 
+    def _find_chromium(self) -> Optional[str]:
+        """Find Chromium executable in all possible locations."""
+        
+        # 1. Try pyppeteer's built-in detection
+        try:
+            if check_chromium():
+                path = chromium_executable()
+                if path and os.path.exists(path):
+                    self.log.info("Chromium found by pyppeteer: %s", path)
+                    return path
+        except Exception as e:
+            self.log.debug("Pyppeteer detection failed: %s", e)
+        
+        # 2. Try Lambda Layer path
+        layer_paths = [
+            "/opt/chromium/chromium",
+            "/opt/chrome/chrome",
+        ]
+        for path in layer_paths:
+            if os.path.exists(path):
+                self.log.info("Chromium found in Lambda Layer: %s", path)
+                return path
+        
+        # 3. Try /tmp/pyppeteer (download location)
+        try:
+            tmp_path = "/tmp/pyppeteer/local-chromium"
+            if os.path.exists(tmp_path):
+                # Find the actual chrome binary
+                for root, dirs, files in os.walk(tmp_path):
+                    if "chrome" in files and os.path.exists(os.path.join(root, "chrome")):
+                        path = os.path.join(root, "chrome")
+                        self.log.info("Chromium found in /tmp/pyppeteer: %s", path)
+                        return path
+        except Exception as e:
+            self.log.debug("Search in /tmp/pyppeteer failed: %s", e)
+        
+        # 4. Try environment variable
+        env_path = os.getenv("CHROMIUM_PATH")
+        if env_path and os.path.exists(env_path):
+            self.log.info("Chromium from CHROMIUM_PATH: %s", env_path)
+            return env_path
+        
+        # 5. Try system paths
+        system_paths = [
+            "/usr/bin/google-chrome",
+            "/usr/bin/chromium-browser",
+            "/usr/bin/chromium",
+            "/usr/bin/chrome",
+        ]
+        for path in system_paths:
+            if os.path.exists(path):
+                self.log.info("Chromium found at system path: %s", path)
+                return path
+        
+        self.log.warning("No Chromium found in any location!")
+        return None
+
     def _render_page(self, url: str, wait_ms: int = 7000, scroll_passes: int = 3) -> str:
         """
         Render a page using pyppeteer with Chromium.
-        Uses pyppeteer's built-in Chromium detection.
+        Uses comprehensive Chromium detection.
         """
-        # Use pyppeteer's built-in Chromium detection
-        chromium_path = None
-        
-        try:
-            if check_chromium():
-                chromium_path = chromium_executable()
-                self.log.info("Chromium found at: %s", chromium_path)
-            else:
-                self.log.warning("Chromium not found by pyppeteer detection")
-        except Exception as e:
-            self.log.warning("Chromium detection failed: %s", e)
-            
-        # Fallback to environment variables if pyppeteer detection fails
-        if not chromium_path or not os.path.exists(chromium_path):
-            env_path = os.getenv("CHROMIUM_PATH", "/opt/chromium/chromium")
-            if os.path.exists(env_path):
-                chromium_path = env_path
-                self.log.info("Using Chromium from CHROMIUM_PATH: %s", chromium_path)
-            else:
-                # Try other common paths
-                for alt_path in [
-                    "/usr/bin/google-chrome",
-                    "/usr/bin/chromium-browser",
-                    "/usr/bin/chromium",
-                ]:
-                    if os.path.exists(alt_path):
-                        chromium_path = alt_path
-                        self.log.info("Using Chromium at: %s", chromium_path)
-                        break
+        # Find Chromium
+        chromium_path = self._find_chromium()
 
         # Create event loop if not exists
         try:
@@ -190,12 +220,16 @@ class BaseScraper(ABC):
                 "--disable-extensions",
                 "--disable-background-networking",
                 "--window-size=1440,900",
+                "--disable-blink-features=AutomationControlled",
+                "--disable-features=IsolateOrigins,site-per-process",
+                "--disable-site-isolation-trials",
+                "--disable-web-security",
             ]
         }
 
         if chromium_path and os.path.exists(chromium_path):
             launch_options["executablePath"] = chromium_path
-            self.log.info("Using executable: %s", chromium_path)
+            self.log.info("Using Chromium executable: %s", chromium_path)
         else:
             self.log.warning("No Chromium executable found, letting pyppeteer find it")
 
