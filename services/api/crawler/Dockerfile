@@ -1,6 +1,4 @@
-# ==========================================
-# Builder Stage
-# ==========================================
+
 FROM public.ecr.aws/lambda/python:3.11 AS builder
 
 WORKDIR /build
@@ -45,7 +43,7 @@ COPY --from=builder /build/packages ${LAMBDA_TASK_ROOT}
 
 RUN pip install --no-cache-dir psycopg2-binary==2.9.9
 
-# Download Chromium using Pyppeteer
+# Download Chromium using Pyppeteer to /tmp (writable on Lambda)
 ENV PYPPETEER_HOME=/tmp/pyppeteer
 
 RUN python -c "from pyppeteer.chromium_downloader import download_chromium; download_chromium()"

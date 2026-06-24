@@ -6,6 +6,10 @@ import time
 import asyncio
 
 from pyppeteer import launch
+from pyppeteer.chromium_downloader import (
+    chromium_executable,
+    check_chromium,
+)
 
 from utils import (
     get_logger,
@@ -117,19 +121,38 @@ class BaseScraper(ABC):
 
     def _render_page(self, url: str, wait_ms: int = 7000, scroll_passes: int = 3) -> str:
         """
-        Render a page using pyppeteer with sparticuz Chromium (compatible with Amazon Linux 2).
-        Uses the Lambda layer path /opt/chromium for the executable.
+        Render a page using pyppeteer with Chromium.
+        Uses pyppeteer's built-in Chromium detection.
         """
-        # Get chromium path
-        chromium_path = os.getenv("CHROMIUM_PATH", "/opt/chromium/chromium")
+        # Use pyppeteer's built-in Chromium detection
+        chromium_path = None
         
-        # Fallback to system chromium if available (for local dev)
-        if not os.path.exists(chromium_path):
-            chromium_path = os.getenv("CHROME_BINARY", "/usr/bin/google-chrome")
-            if not os.path.exists(chromium_path):
-                chromium_path = os.getenv("CHROME_PATH", "/usr/bin/chromium")
-                if not os.path.exists(chromium_path):
-                    chromium_path = None
+        try:
+            if check_chromium():
+                chromium_path = chromium_executable()
+                self.log.info("Chromium found at: %s", chromium_path)
+            else:
+                self.log.warning("Chromium not found by pyppeteer detection")
+        except Exception as e:
+            self.log.warning("Chromium detection failed: %s", e)
+            
+        # Fallback to environment variables if pyppeteer detection fails
+        if not chromium_path or not os.path.exists(chromium_path):
+            env_path = os.getenv("CHROMIUM_PATH", "/opt/chromium/chromium")
+            if os.path.exists(env_path):
+                chromium_path = env_path
+                self.log.info("Using Chromium from CHROMIUM_PATH: %s", chromium_path)
+            else:
+                # Try other common paths
+                for alt_path in [
+                    "/usr/bin/google-chrome",
+                    "/usr/bin/chromium-browser",
+                    "/usr/bin/chromium",
+                ]:
+                    if os.path.exists(alt_path):
+                        chromium_path = alt_path
+                        self.log.info("Using Chromium at: %s", chromium_path)
+                        break
 
         # Create event loop if not exists
         try:
@@ -172,7 +195,9 @@ class BaseScraper(ABC):
 
         if chromium_path and os.path.exists(chromium_path):
             launch_options["executablePath"] = chromium_path
-            self.log.info("Using Chromium at: %s", chromium_path)
+            self.log.info("Using executable: %s", chromium_path)
+        else:
+            self.log.warning("No Chromium executable found, letting pyppeteer find it")
 
         browser = None
 
