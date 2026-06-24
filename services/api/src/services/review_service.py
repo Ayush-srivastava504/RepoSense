@@ -1,101 +1,146 @@
+# services/review_service.py
+
 import time
 import asyncio
-from typing import List, Dict, Any
-from app.schemas.models import ReviewRequest, ReviewResponse, Issue, QualityMetrics, Severity
-from app.core.dependencies import get_model_loader
-from app.utils.logger import setup_logger
-from ml.preprocessing.code_preprocessor import CodePreprocessor
-from services.api.src.services.analysis_engine import CodeAnalysisEngine
-from ml.inference.postprocessor import Postprocessor
-from configs.config import settings
 import uuid
+from typing import List, Dict, Any, Optional
+
+from src.schemas.models import ReviewRequest, ReviewResponse, Issue, QualityMetrics, Severity
+from src.core.dependencies import get_model_loader
+from src.utils.logger import setup_logger
+from services.api.src.services.postprocessor import Postprocessor
+from services.api.src.services.analysis_engine import CodeAnalysisEngine
+from services.api.src.services.postprocessor import Postprocessor
+from configs.config import settings
 
 logger = setup_logger(__name__)
 
+_BATCH_CONCURRENCY = 5  # max parallel reviews
+
+
 class ReviewService:
-    def __init__(self):
-        self.model_loader = get_model_loader()
-        self.preprocessor = CodePreprocessor()
-        self.postprocessor = Postprocessor()
-        self.analysis_engine = None
-    
-    def _ensure_engine(self):
-        if self.analysis_engine is None:
-            model, tokenizer = self.model_loader.get_model()
-            device = self.model_loader.device
-            self.analysis_engine = CodeAnalysisEngine(model, tokenizer, device)
-    
+    """
+    Orchestrates single and batch code reviews.
+
+    The analysis engine is initialised lazily on first use so the service
+    can be constructed cheaply (e.g. during DI container setup).
+    """
+
+    def __init__(self) -> None:
+        self._model_loader  = get_model_loader()
+        self._preprocessor  = CodePreprocessor()
+        self._postprocessor = Postprocessor()
+        self._engine: Optional[CodeAnalysisEngine] = None
+        self._engine_lock = asyncio.Lock()
+
+    # ── Engine lifecycle ──────────────────────────────────────────────────────
+
+    async def _get_engine(self) -> CodeAnalysisEngine:
+        """Thread-safe lazy initialisation of the analysis engine."""
+        if self._engine is not None:
+            return self._engine
+        async with self._engine_lock:
+            # Double-checked locking: another coroutine may have initialised
+            if self._engine is None:
+                model, tokenizer = await asyncio.to_thread(self._model_loader.get_model)
+                self._engine = CodeAnalysisEngine(model, tokenizer, self._model_loader.device)
+                logger.info("Analysis engine initialised (model=%s)", settings.model.MODEL_NAME)
+        return self._engine
+
+    # ── Public API ────────────────────────────────────────────────────────────
+
     async def review_single(self, request: ReviewRequest) -> ReviewResponse:
-        start_time = time.time()
-        request_id = str(uuid.uuid4())[:8]
-        
-        try:
-            self._ensure_engine()
-            
-            code_length = len(request.code.split('\n'))
-            
-            loop = asyncio.get_event_loop()
-            raw_issues = await loop.run_in_executor(
-                None,
-                self.analysis_engine.analyze,
-                request.code,
-                request.language.value,
-                request.focus_areas
-            )
-            
-            processed = self.postprocessor.process(raw_issues, code_length)
-            
-            issues = [
-                Issue(
-                    line=issue.get('line'),
-                    column=issue.get('column'),
-                    severity=Severity(issue['severity']),
-                    category=issue['category'],
-                    message=issue['message'],
-                    suggestion=issue['suggestion'],
-                    confidence=issue['confidence']
-                )
-                for issue in processed['issues']
-            ]
-            
-            quality_metrics = None
-            if request.include_metrics:
-                quality_metrics = QualityMetrics(**processed['quality_metrics'])
-            
-            processing_time = (time.time() - start_time) * 1000
-            
-            return ReviewResponse(
-                request_id=request_id,
-                code_length=code_length,
-                issues_found=len(issues),
-                issues=issues,
-                quality_metrics=quality_metrics,
-                summary=processed['summary'],
-                processing_time_ms=round(processing_time, 2),
-                model_version=settings.model.MODEL_NAME
-            )
-            
-        except Exception as e:
-            logger.error(f"Review failed for {request_id}: {e}")
-            raise
-    
-    async def review_batch(self, requests: List[ReviewRequest]) -> Dict[str, Any]:
-        tasks = [self.review_single(req) for req in requests]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        successful = []
-        failed = []
-        
-        for result in results:
-            if isinstance(result, Exception):
-                failed.append({'error': str(result)})
+        request_id = uuid.uuid4().hex[:8]
+        start_ms   = time.monotonic()
+
+        logger.info("review_single start id=%s lang=%s", request_id, request.language.value)
+
+        engine     = await self._get_engine()
+        code_lines = request.code.splitlines()
+        code_length = len(code_lines)
+
+        raw_issues: List[Dict[str, Any]] = await asyncio.to_thread(
+            engine.analyze,
+            request.code,
+            request.language.value,
+            request.focus_areas,
+        )
+
+        processed = self._postprocessor.process(raw_issues, code_length)
+
+        issues = self._build_issues(processed["issues"])
+        quality_metrics = (
+            QualityMetrics(**processed["quality_metrics"]) if request.include_metrics else None
+        )
+
+        elapsed_ms = round((time.monotonic() - start_ms) * 1000, 2)
+        logger.info("review_single done id=%s issues=%d ms=%s", request_id, len(issues), elapsed_ms)
+
+        return ReviewResponse(
+            request_id=request_id,
+            code_length=code_length,
+            issues_found=len(issues),
+            issues=issues,
+            quality_metrics=quality_metrics,
+            summary=processed["summary"],
+            processing_time_ms=elapsed_ms,
+            model_version=settings.model.MODEL_NAME,
+        )
+
+    async def review_batch(
+        self,
+        requests: List[ReviewRequest],
+        concurrency: int = _BATCH_CONCURRENCY,
+    ) -> Dict[str, Any]:
+        """
+        Review multiple files concurrently, bounded by *concurrency* semaphore.
+        Never raises — failed items are captured in 'errors'.
+        """
+        semaphore = asyncio.Semaphore(concurrency)
+
+        async def _guarded(req: ReviewRequest) -> ReviewResponse:
+            async with semaphore:
+                return await self.review_single(req)
+
+        results = await asyncio.gather(
+            *(_guarded(r) for r in requests),
+            return_exceptions=True,
+        )
+
+        successful: List[ReviewResponse] = []
+        failed: List[Dict[str, str]]     = []
+
+        for idx, result in enumerate(results):
+            if isinstance(result, BaseException):
+                logger.error("Batch item %d failed: %s", idx, result)
+                failed.append({"index": idx, "error": str(result)})
             else:
                 successful.append(result)
-        
+
         return {
-            'total_items': len(requests),
-            'successful': len(successful),
-            'failed': len(failed),
-            'results': successful,
-            'errors': failed
+            "total_items":  len(requests),
+            "successful":   len(successful),
+            "failed":       len(failed),
+            "results":      successful,
+            "errors":       failed,
         }
+
+    # ── Helpers ───────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _build_issues(raw: List[Dict[str, Any]]) -> List[Issue]:
+        issues = []
+        for item in raw:
+            try:
+                issues.append(Issue(
+                    line=item.get("line"),
+                    column=item.get("col"),
+                    severity=Severity(item["severity"]),
+                    category=item["category"],
+                    message=item["message"],
+                    suggestion=item["suggestion"],
+                    confidence=item["confidence"],
+                ))
+            except (KeyError, ValueError) as exc:
+                logger.warning("Skipping malformed issue: %s — %s", item, exc)
+        return issues

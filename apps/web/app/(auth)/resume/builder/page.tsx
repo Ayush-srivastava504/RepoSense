@@ -406,6 +406,10 @@ function ResumeContent() {
 
       {tab === 'ai' && (
         <div className="panel mt-6 max-w-2xl space-y-5 p-6">
+          <p className="chip chip-accent !inline-block w-full !justify-start text-xs">
+            Heads up: generating your resume takes about 2–3 minutes.
+          </p>
+
           <div>
             <label className="field-label">Resume type</label>
             <select className="field" value={resumeType} onChange={(e) => setResumeType(e.target.value)}>
