@@ -143,77 +143,84 @@ class BaseScraper(ABC):
         )
 
     async def _async_render_page(
-        self, 
-        chromium_path: Optional[str], 
-        url: str, 
-        wait_ms: int, 
+        self,
+        chromium_path: Optional[str],
+        url: str,
+        wait_ms: int,
         scroll_passes: int
     ) -> str:
-        """Async implementation of page rendering."""
+        """Async implementation of page rendering optimized for Lambda."""
         
+        # Lambda can only write to /tmp
+        os.makedirs("/tmp/pyppeteer-profile", exist_ok=True)
+
         launch_options = {
             "headless": True,
+            "userDataDir": "/tmp/pyppeteer-profile",
             "args": [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--disable-gpu',
-                '--window-size=1440,900',
-                '--disable-blink-features=AutomationControlled',
-                '--disable-web-security',
-                '--disable-features=IsolateOrigins,site-per-process',
-                '--disable-site-isolation-trials'
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--single-process",
+                "--no-zygote",
+                "--disable-extensions",
+                "--disable-background-networking",
+                "--window-size=1440,900",
             ]
         }
-        
+
         if chromium_path and os.path.exists(chromium_path):
             launch_options["executablePath"] = chromium_path
             self.log.info("Using Chromium at: %s", chromium_path)
 
         browser = None
+
         try:
             browser = await launch(**launch_options)
+
             page = await browser.newPage()
-            
-            # Set user agent
+
             await page.setUserAgent(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
                 "Chrome/124.0.0.0 Safari/537.36"
             )
-            
-            # Set viewport
+
             await page.setViewport({
                 "width": 1440,
                 "height": 900
             })
-            
-            # Go to URL
-            await page.goto(url, {
-                "waitUntil": "domcontentloaded",
-                "timeout": 60000
-            })
-            
-            # Wait for page to load
+
+            await page.goto(
+                url,
+                {
+                    "waitUntil": "networkidle2",
+                    "timeout": 60000
+                }
+            )
+
             await page.waitFor(wait_ms)
-            
-            # Scroll to trigger lazy loading
-            try:
-                for _ in range(scroll_passes):
-                    await page.mouse.wheel(0, 3500)
-                    await page.waitFor(random.randint(1000, 2500))
-            except Exception:
-                pass
-            
-            # Get page content
+
+            for _ in range(scroll_passes):
+                try:
+                    await page.evaluate(
+                        "window.scrollBy(0, document.body.scrollHeight)"
+                    )
+                    await page.waitFor(1500)
+                except Exception:
+                    pass
+
             html = await page.content()
-            
+
             return html
-            
+
         except Exception as e:
-            self.log.error(f"Error rendering page {url}: {str(e)}")
+            self.log.error(
+                f"Error rendering page {url}: {str(e)}"
+            )
             raise
+
         finally:
             if browser:
                 await browser.close()
