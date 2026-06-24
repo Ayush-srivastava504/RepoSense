@@ -37,14 +37,13 @@ RUN pip install --no-cache-dir \
     playwright==1.44.0
 
 # Install sparticuz chromium (compiled for Amazon Linux 2)
-ENV CHROMIUM_VERSION=119.0.0
+# Using the correct URL format from sparticuz/chromium releases
 RUN mkdir -p /opt/chromium && \
-    curl -L "https://github.com/Sparticuz/chromium/releases/download/v${CHROMIUM_VERSION}/chromium-v${CHROMIUM_VERSION}-linux-x64.zip" \
+    curl -L "https://github.com/Sparticuz/chromium/releases/download/v119.0.0/chromium-v119.0.0-linux-x64.zip" \
         -o /tmp/chromium.zip && \
     unzip /tmp/chromium.zip -d /opt/chromium/ && \
     chmod +x /opt/chromium/chromium && \
-    rm /tmp/chromium.zip && \
-    ls -la /opt/chromium/
+    rm /tmp/chromium.zip
 
 # Stage 2: Final Lambda image
 FROM public.ecr.aws/lambda/python:3.11 AS final
@@ -106,7 +105,6 @@ RUN apt-get update && \
 
 COPY requirements.txt .
 
-# For dev, install playwright with its bundled browser (works on Debian/Ubuntu)
 RUN pip install \
         --no-cache-dir \
         -r requirements.txt && \
