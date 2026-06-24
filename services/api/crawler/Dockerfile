@@ -33,20 +33,17 @@ RUN pip install --no-cache-dir \
 RUN find /build/packages/playwright -name "node" -type f -exec rm -f {} \; 2>/dev/null || true && \
     rm -rf /build/packages/playwright/driver 2>/dev/null || true
 
-# Install sparticuz chromium
-RUN mkdir -p /opt/chromium && \
-    curl -L "https://github.com/Sparticuz/chromium/releases/download/v119.0.0/chromium-v119.0.0-linux-x64.zip" \
-        -o /tmp/chromium.zip && \
-    unzip /tmp/chromium.zip -d /opt/chromium/ && \
-    chmod +x /opt/chromium/chromium && \
-    rm /tmp/chromium.zip
-
 FROM public.ecr.aws/lambda/python:3.11 AS final
 
 COPY --from=builder /build/packages ${LAMBDA_TASK_ROOT}
-COPY --from=builder /opt/chromium /opt/chromium
 
 RUN pip install --no-cache-dir psycopg2-binary==2.9.9
+
+# Install chromium from Amazon Linux repository
+RUN amazon-linux-extras install -y chromium && \
+    mkdir -p /opt/chromium && \
+    cp /usr/bin/chromium-browser /opt/chromium/chromium && \
+    chmod +x /opt/chromium/chromium
 
 # IMPORTANT: Remove Playwright's driver to force using custom Chromium
 RUN rm -rf ${LAMBDA_TASK_ROOT}/playwright/driver 2>/dev/null || true
