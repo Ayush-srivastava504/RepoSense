@@ -15,7 +15,8 @@ datasketch==1.6.4
 selenium==4.20.0
 webdriver-manager==4.0.1
 
-playwright==1.44.0
+pyppeteer==2.0.0
+
 
 python-dateutil==2.9.0
 pytz==2024.1
