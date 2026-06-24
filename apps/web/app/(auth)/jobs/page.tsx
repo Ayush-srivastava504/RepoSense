@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import AppShell from '../../components/AppShell';
+import { trackEvent } from '@/lib/analytics';
 
 interface Job {
   id: string;
@@ -22,6 +23,9 @@ export default function JobsPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Track page visit
+    trackEvent('jobs_page_view');
+    
     if (!token) return;
     fetchJobs();
   }, [token]);
@@ -32,15 +36,37 @@ export default function JobsPage() {
       const data = await api.get('/jobs/?limit=50');  
       setJobs(data);
       setError('');
+      
+      trackEvent('jobs_loaded', {
+        count: data.length,
+      });
     } catch (err: any) {
       setError(err.message || "Couldn't load internships.");
+      trackEvent('jobs_load_error', {
+        error: err.message,
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  const handleApplyClick = (job: Job) => {
+    trackEvent('job_apply_clicked', {
+      job_id: job.id,
+      title: job.title,
+      company: job.company,
+      source: job.source,
+    });
+  };
+
   return (
-    <AppShell user={user} onLogout={logout}>
+    <AppShell
+      user={user}
+      onLogout={() => {
+        trackEvent('logout');
+        logout();
+      }}
+    >
       <p className="eyebrow eyebrow-accent">// internships</p>
       <h1 className="display mt-2 text-3xl font-medium">Latest postings</h1>
       <p className="mt-2" style={{ color: 'var(--ink-soft)' }}>
@@ -52,6 +78,15 @@ export default function JobsPage() {
       {!loading && error && (
         <div className="panel mt-8 p-6">
           <p className="chip chip-rust !inline-block">{error}</p>
+          <button 
+            onClick={() => {
+              trackEvent('jobs_retry_clicked');
+              fetchJobs();
+            }}
+            className="btn btn-ghost ml-4 text-sm"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -74,6 +109,7 @@ export default function JobsPage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-primary mt-4 self-start text-sm"
+                onClick={() => handleApplyClick(job)}
               >
                 Apply
               </a>

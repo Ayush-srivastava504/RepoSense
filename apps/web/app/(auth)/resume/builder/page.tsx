@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import AppShell from '../../../components/AppShell';
 import AuthGuard from '../../../components/AuthGuard';
+import { trackEvent } from '@/lib/analytics';
 
 type Tab = 'handwritten' | 'ai';
 
@@ -55,8 +56,8 @@ function ResumeContent() {
   const [projects, setProjects] = useState<ProjectEntry[]>([
     { title: '', tech: '', github: '', bullets: [''] },
   ]);
-  const [achievements, setAchievements] = useState<string[]>(['']);  // NEW
-  const [certifications, setCertifications] = useState<CertificationEntry[]>([  // NEW
+  const [achievements, setAchievements] = useState<string[]>(['']);
+  const [certifications, setCertifications] = useState<CertificationEntry[]>([
     { name: '', issuer: '', year: '' },
   ]);
   const [saving, setSaving] = useState(false);
@@ -108,13 +109,11 @@ function ResumeContent() {
   const addProjBullet = (i: number) => setProjects((p) => p.map((proj, idx) => idx === i ? { ...proj, bullets: [...proj.bullets, ''] } : proj));
   const removeProjBullet = (pi: number, bi: number) => setProjects((p) => p.map((proj, idx) => idx !== pi ? proj : { ...proj, bullets: proj.bullets.filter((_, i) => i !== bi) }));
 
-  // NEW — Achievements helpers
   const updateAchievement = (i: number, value: string) =>
     setAchievements((p) => p.map((a, idx) => idx === i ? value : a));
   const addAchievement = () => setAchievements((p) => [...p, '']);
   const removeAchievement = (i: number) => setAchievements((p) => p.filter((_, idx) => idx !== i));
 
-  // NEW — Certifications helpers
   const updateCert = (i: number, field: keyof CertificationEntry, value: string) =>
     setCertifications((p) => p.map((c, idx) => idx === i ? { ...c, [field]: value } : c));
   const addCert = () => setCertifications((p) => [...p, { name: '', issuer: '', year: '' }]);
@@ -122,14 +121,24 @@ function ResumeContent() {
 
   const saveResume = async () => {
     setSaving(true);
+    trackEvent('resume_handwritten_save_started', {
+      title: title || 'Untitled',
+    });
     try {
       const blob = await api.post('/resume/generate-structured', {
         title, name, phone, summary, githubUrl, websiteUrl, skills,
-        experience, education, projects, achievements, certifications,  // NEW fields added
+        experience, education, projects, achievements, certifications,
       }) as Blob;
       downloadBlob(blob, `${title || 'resume'}.pdf`);
+      trackEvent('resume_handwritten_save_success', {
+        title: title || 'Untitled',
+      });
     } catch (err: any) {
       alert(err?.message || "Couldn't generate PDF.");
+      trackEvent('resume_handwritten_save_error', {
+        title: title || 'Untitled',
+        error: err?.message,
+      });
     } finally {
       setSaving(false);
     }
@@ -138,6 +147,9 @@ function ResumeContent() {
   const generateResume = async () => {
     setGenerating(true);
     setGeneratingStatus('Starting…');
+    trackEvent('resume_ai_generation_started', {
+      resume_type: resumeType,
+    });
     try {
       const { job_id } = await api.post('/resume/generate', {
         resume_type: resumeType,
@@ -154,16 +166,36 @@ function ResumeContent() {
       for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
       const blob = new Blob([bytes], { type: 'application/pdf' });
       downloadBlob(blob, 'resume.pdf');
+      trackEvent('resume_ai_generation_success', {
+        resume_type: resumeType,
+      });
     } catch (err: any) {
       alert(err?.message || "Couldn't generate resume.");
+      trackEvent('resume_ai_generation_error', {
+        resume_type: resumeType,
+        error: err?.message,
+      });
     } finally {
       setGenerating(false);
       setGeneratingStatus('');
     }
   };
 
+  const handleTabSwitch = (tab: Tab) => {
+    trackEvent('resume_tab_switched', {
+      tab: tab,
+    });
+    setTab(tab);
+  };
+
   return (
-    <AppShell user={user} onLogout={logout}>
+    <AppShell
+      user={user}
+      onLogout={() => {
+        trackEvent('logout');
+        logout();
+      }}
+    >
       <p className="eyebrow eyebrow-accent">// resume</p>
       <h1 className="display mt-2 text-3xl font-medium">Resume builder</h1>
 
@@ -171,7 +203,7 @@ function ResumeContent() {
         {(['handwritten', 'ai'] as Tab[]).map((t) => (
           <button
             key={t}
-            onClick={() => setTab(t)}
+            onClick={() => handleTabSwitch(t)}
             className="pb-2 text-sm font-medium border-b-2 transition-colors"
             style={{
               borderColor: tab === t ? 'var(--indigo)' : 'transparent',
@@ -344,7 +376,7 @@ function ResumeContent() {
             </div>
           </div>
 
-          {/* NEW — Achievements */}
+          {/* Achievements */}
           <div>
             <div className="mb-3 flex items-center justify-between">
               <label className="field-label mb-0">Achievements</label>
@@ -367,7 +399,7 @@ function ResumeContent() {
             </div>
           </div>
 
-          {/* NEW — Certifications */}
+          {/* Certifications */}
           <div>
             <div className="mb-3 flex items-center justify-between">
               <label className="field-label mb-0">Certifications</label>

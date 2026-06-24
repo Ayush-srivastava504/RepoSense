@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import AppShell from '../../components/AppShell';
 import AuthGuard from '../../components/AuthGuard';
+import { trackEvent } from '@/lib/analytics';
 
 type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 
@@ -77,6 +78,11 @@ function GitHubContent() {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+  // ── Track page visit ──────────────────────────────────────────────────────
+  useEffect(() => {
+    trackEvent('github_page_view');
+  }, []);
+
   // ── OAuth callback ────────────────────────────────────────────────────────
   useEffect(() => {
     const urlCode  = searchParams.get('code');
@@ -98,10 +104,13 @@ function GitHubContent() {
         localStorage.setItem('token', data.access_token);
         refresh();
         setConnected(true);
+        trackEvent('github_connected', {
+          email: user?.email,
+        });
       })
       .catch(() => setConnectError('Could not complete GitHub connection. Please try again.'))
       .finally(() => setGithubConnecting(false));
-  }, [searchParams, router, refresh]);
+  }, [searchParams, router, refresh, user]);
 
   // ── Load repos on login ───────────────────────────────────────────────────
   useEffect(() => {
@@ -126,11 +135,13 @@ function GitHubContent() {
   // ── Actions ───────────────────────────────────────────────────────────────
 
   const connectGitHub = () => {
+    trackEvent('github_connect_clicked');
     setConnectError('');
     window.location.href = `${API_URL}/api/github/login`;
   };
 
   const disconnectGitHub = async () => {
+    trackEvent('github_disconnected');
     try { await api.post('/github/disconnect', {}); } catch { /* best-effort */ }
     setConnected(false);
     setRepos([]);
@@ -145,6 +156,10 @@ function GitHubContent() {
     if (file.type === 'dir') {
       setCurrentPath(file.path);
     } else {
+      trackEvent('file_opened', {
+        repository: selectedRepo,
+        file: file.path,
+      });
       api
         .get(`/github/file?repo=${selectedRepo}&path=${file.path}`)
         .then((res) => {
@@ -157,11 +172,19 @@ function GitHubContent() {
   };
 
   const runReview = async () => {
+    trackEvent('review_started', {
+      repository: selectedRepo,
+    });
     setReviewing(true);
     setFixResult(null);
     try {
       const result = await api.post('/v1/review', { code, language: 'python' });
       setReview(result);
+      trackEvent('review_completed', {
+        repository: selectedRepo,
+        score: result.quality_metrics.quality_score,
+        issues: result.issues.length,
+      });
     } catch (err: any) {
       alert(err?.message || 'Review failed. Please try again.');
     } finally {
@@ -171,6 +194,7 @@ function GitHubContent() {
 
   const runFix = async () => {
     if (!review) return;
+    trackEvent('auto_fix_started');
     setFixing(true);
     try {
       const result: FixResult = await api.post('/v1/fix', {
@@ -182,6 +206,9 @@ function GitHubContent() {
       if (result.success) {
         setCode(result.fixed_code);
         setReview(null);
+        trackEvent('auto_fix_completed', {
+          fixes: result.fix_count,
+        });
       }
     } catch (err: any) {
       alert(err?.message || 'Auto-fix failed. Please try again.');
@@ -192,6 +219,9 @@ function GitHubContent() {
 
   const generateReadme = async () => {
     if (!selectedRepo) { alert('Select a repository first.'); return; }
+    trackEvent('readme_generation_started', {
+      repository: selectedRepo,
+    });
     setIsGenerating(true);
     setGeneratingStatus('Starting…');
     try {
@@ -201,6 +231,9 @@ function GitHubContent() {
       });
       setGeneratedReadme(result.readme);
       setShowReadme(true);
+      trackEvent('readme_generation_completed', {
+        repository: selectedRepo,
+      });
     } catch (error: any) {
       alert(error?.message || "Couldn't generate the README. Try again.");
     } finally {
@@ -220,7 +253,13 @@ function GitHubContent() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <AppShell user={user} onLogout={logout}>
+    <AppShell
+      user={user}
+      onLogout={() => {
+        trackEvent('logout');
+        logout();
+      }}
+    >
 
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -273,7 +312,11 @@ function GitHubContent() {
           <select
             className="field max-w-md"
             onChange={(e) => {
-              setSelectedRepo(e.target.value);
+              const repo = e.target.value;
+              trackEvent('repository_selected', {
+                repository: repo,
+              });
+              setSelectedRepo(repo);
               setCurrentPath('');
               setCode('');
               setReview(null);

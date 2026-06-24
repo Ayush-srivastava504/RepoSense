@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
 import Logo from '../../components/Logo';
+import { trackEvent } from '@/lib/analytics';
 
 type Step = 'email' | 'otp';
 
@@ -20,11 +21,23 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setLoading(true);
+    
+    trackEvent('login_email_submitted', {
+      email: email,
+    });
+    
     try {
       await requestOtp(email);
       setStep('otp');
+      trackEvent('login_otp_sent', {
+        email: email,
+      });
     } catch (err: any) {
       setError(err?.message || "Couldn't send OTP. Check your email address.");
+      trackEvent('login_email_error', {
+        email: email,
+        error: err?.message,
+      });
     } finally {
       setLoading(false);
     }
@@ -34,14 +47,35 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setLoading(true);
+    
+    trackEvent('login_otp_submitted', {
+      email: email,
+    });
+    
     try {
       await verifyOtp(email, otp);
+      trackEvent('login_success', {
+        email: email,
+      });
       router.push('/dashboard');
     } catch (err: any) {
       setError(err?.message || 'Invalid or expired code. Try again.');
+      trackEvent('login_otp_error', {
+        email: email,
+        error: err?.message,
+      });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDifferentEmail = () => {
+    trackEvent('login_different_email_clicked', {
+      email: email,
+    });
+    setStep('email');
+    setOtp('');
+    setError('');
   };
 
   return (
@@ -121,7 +155,7 @@ export default function Login() {
               </button>
               <button
                 type="button"
-                onClick={() => { setStep('email'); setOtp(''); setError(''); }}
+                onClick={handleDifferentEmail}
                 className="btn btn-ghost w-full"
               >
                 Use a different email
@@ -132,7 +166,14 @@ export default function Login() {
 
         <p className="mt-6 text-center text-sm" style={{ color: 'var(--ink-soft)' }}>
           New here?{' '}
-          <Link href="/register" className="font-semibold" style={{ color: 'var(--indigo)' }}>
+          <Link 
+            href="/register" 
+            className="font-semibold" 
+            style={{ color: 'var(--indigo)' }}
+            onClick={() => {
+              trackEvent('login_register_clicked');
+            }}
+          >
             Create an account
           </Link>
         </p>
