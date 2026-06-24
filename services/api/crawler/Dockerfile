@@ -2,99 +2,48 @@ FROM public.ecr.aws/lambda/python:3.11 AS builder
 
 WORKDIR /build
 
-RUN yum install -y \
-    gcc \
-    gcc-c++ \
-    make \
-    tar \
-    unzip \
-    curl \
-    wget \
-    xz \
-    && yum clean all \
-    && rm -rf /var/cache/yum
+RUN dnf install -y \
+        gcc \
+        gcc-c++ \
+        libxml2-devel \
+        libxslt-devel \
+    && dnf clean all
 
 COPY requirements.txt .
 
 RUN pip install --upgrade pip && \
-    grep -ivE 'psycopg2-binary' requirements.txt > requirements_filtered.txt || true && \
-    if [ -s requirements_filtered.txt ]; then \
-        pip install \
+    pip install \
+        --retries 5 \
+        --default-timeout 1000 \
         --no-cache-dir \
         --target /build/packages \
-        -r requirements_filtered.txt; \
-    fi
+        -r requirements.txt
 
+RUN pip install \
+        --retries 5 \
+        --default-timeout 1000 \
+        --no-cache-dir \
+        playwright==1.44.0 && \
+    playwright install chromium \
+        --with-deps \
+        2>/dev/null || true
 
-# ==========================================
-# Final Stage
-# ==========================================
 FROM public.ecr.aws/lambda/python:3.11 AS final
 
-# Chromium/Playwright runtime deps. Lambda's base image is minimal;
-# headless Chromium needs these shared libs or it fails to even launch
-# (separate from, and in addition to, the network/path issues).
-RUN yum install -y \
-    unzip \
-    curl \
-    wget \
-    atk \
-    cups-libs \
-    gtk3 \
-    libXcomposite \
-    libXcursor \
-    libXdamage \
-    libXext \
-    libXi \
-    libXrandr \
-    libXScrnSaver \
-    libXtst \
-    pango \
-    alsa-lib \
-    at-spi2-atk \
-    at-spi2-core \
-    mesa-libgbm \
-    nss \
-    nspr \
-    && yum clean all \
-    && rm -rf /var/cache/yum
+LABEL maintainer="platform-team"
+LABEL description="Job aggregator crawler Lambda"
 
 COPY --from=builder /build/packages ${LAMBDA_TASK_ROOT}
+COPY --from=builder /root/.cache/ms-playwright /root/.cache/ms-playwright
 
-RUN pip install --no-cache-dir psycopg2-binary==2.9.9 playwright==1.45.0
+RUN dnf install -y \
+        chromium \
+        chromium-headless \
+        chromedriver \
+    && dnf clean all || true
 
-# ------------------------------------------------------------------
-# IMPORTANT: everything below installs into /opt, NEVER /tmp.
-# Lambda mounts a fresh, EMPTY ephemeral volume over /tmp on every
-# cold start of every execution environment. Anything baked into
-# /tmp at `docker build` time is invisible at runtime. /opt (and the
-# rest of the image filesystem) persists correctly and is read-only
-# at runtime, which is fine since we only need to read the binaries.
-# ------------------------------------------------------------------
-
-ENV PYPPETEER_HOME=/opt/pyppeteer
-ENV PYPPETEER_CHROMIUM_REVISION=899643
-
-RUN python -c "import os; os.environ['PYPPETEER_HOME']='/opt/pyppeteer'; from pyppeteer.chromium_downloader import download_chromium; download_chromium()" \
-    && find /opt/pyppeteer -maxdepth 4 -iname "*chrome*" -print
-
-# Resolve and bake the exact executable path so the app never has to
-# probe /tmp or guess at runtime.
-RUN CHROME_BIN=$(find /opt/pyppeteer -maxdepth 4 -iname "chrome" -type f | head -n1) && \
-    echo "Resolved pyppeteer chrome at: ${CHROME_BIN}" && \
-    test -x "${CHROME_BIN}" && \
-    echo "${CHROME_BIN}" > /opt/pyppeteer/chrome_path.txt
-
-ENV PYPPETEER_CHROMIUM_PATH=/opt/pyppeteer/local-chromium/899643/chrome-linux/chrome
-
-# Playwright browsers (used by LinkedInScraper) -- separate from
-# pyppeteer, must be installed independently.
-ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
-
-RUN python -m playwright install chromium \
-    && python -m playwright install-deps chromium || true \
-    && find /opt/playwright-browsers -maxdepth 3 -iname "*chrome*" -print
-
+ENV CHROME_BINARY=/usr/bin/chromium-browser
+ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
 ENV HEADLESS=true
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -103,4 +52,42 @@ WORKDIR ${LAMBDA_TASK_ROOT}
 
 COPY src/ .
 
+HEALTHCHECK \
+    --interval=60s \
+    --timeout=10s \
+    --retries=2 \
+    CMD python -c "import index; print('ok')"
+
 CMD ["index.lambda_handler"]
+
+FROM python:3.11-slim AS dev
+
+WORKDIR /app
+
+RUN apt-get update && \
+    apt-get install -y \
+        --no-install-recommends \
+        gcc \
+        libxml2-dev \
+        libxslt-dev \
+        curl \
+        chromium \
+        chromium-driver \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+
+RUN pip install \
+        --no-cache-dir \
+        -r requirements.txt && \
+    playwright install chromium \
+        2>/dev/null || true
+
+ENV CHROME_BINARY=/usr/bin/chromium
+ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
+ENV HEADLESS=true
+ENV PYTHONPATH=/app/src
+
+COPY src/ /app/src/
+
+CMD ["python", "src/index.py", "--max-pages", "2"]

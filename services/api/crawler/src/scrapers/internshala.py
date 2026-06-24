@@ -1,10 +1,12 @@
 import os
 import random
 import re
+import time
 from typing import Dict, List, Optional
 from urllib.parse import quote, urljoin
 
 from bs4 import BeautifulSoup
+from playwright.sync_api import sync_playwright
 
 from scrapers.base import BaseScraper
 
@@ -89,7 +91,10 @@ class InternshalaScaper(BaseScraper):
 
             try:
 
-                html = self._render_page(url)
+                html = self._render_page(
+                    url,
+                    page,
+                )
 
             except Exception as e:
 
@@ -100,6 +105,9 @@ class InternshalaScaper(BaseScraper):
 
                 continue
 
+            # BUG FIX: was writing HTML to disk unconditionally on every
+            # page, which would fill Lambda's /tmp (512 MB) quickly.
+            # Now guarded by SCRAPER_DEBUG env var, same as other scrapers.
             if os.getenv("SCRAPER_DEBUG"):
                 with open(
                     f"internshala_{category}_{page}.html",
@@ -158,6 +166,66 @@ class InternshalaScaper(BaseScraper):
             )
 
         return results
+
+    def _render_page(
+        self,
+        url: str,
+        page_number: int,
+    ) -> str:
+
+        with sync_playwright() as p:
+
+            browser = p.chromium.launch(
+                headless=True,
+            )
+
+            context = browser.new_context(
+                viewport={
+                    "width": 1400,
+                    "height": 900,
+                },
+                user_agent=(
+                    "Mozilla/5.0 "
+                    "(Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) "
+                    "Chrome/124.0.0.0 "
+                    "Safari/537.36"
+                ),
+            )
+
+            page = context.new_page()
+
+            if page_number > 1:
+
+                url += f"/page-{page_number}"
+
+            page.goto(
+                url,
+                wait_until="domcontentloaded",
+                timeout=60000,
+            )
+
+            page.wait_for_timeout(7000)
+
+            try:
+
+                for _ in range(3):
+
+                    page.mouse.wheel(0, 3000)
+
+                    page.wait_for_timeout(
+                        random.randint(1000, 2500)
+                    )
+
+            except Exception:
+                pass
+
+            html = page.content()
+
+            browser.close()
+
+            return html
 
     def _parse_card(
         self,

@@ -246,12 +246,6 @@ def run_pipeline(
         max_pages,
     )
 
-    if not active_scrapers:
-        return {
-            "status": "error",
-            "message": "No scrapers available",
-        }
-
     raw_jobs: List[Dict] = []
 
     source_counts: Dict[str, int] = {}
@@ -259,7 +253,7 @@ def run_pipeline(
     with ThreadPoolExecutor(
         max_workers=min(
             MAX_WORKERS,
-            max(1, len(active_scrapers)),
+            len(active_scrapers),
         )
     ) as pool:
 
