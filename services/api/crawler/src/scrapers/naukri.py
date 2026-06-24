@@ -5,7 +5,6 @@ from typing import Dict, List, Optional
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
 
 from scrapers.base import BaseScraper
 from utils import safe_get
@@ -111,19 +110,7 @@ class NaukriScraper(BaseScraper):
         self.log.info("Naukri Playwright scrape: %s", url)
 
         try:
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                context = browser.new_context(
-                    user_agent=(
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-                    )
-                )
-                page_obj = context.new_page()
-                page_obj.goto(url, wait_until="networkidle", timeout=60000)
-                page_obj.wait_for_timeout(5000)
-                html = page_obj.content()
-                browser.close()
+            html = self._render_page(url, wait_ms=5000)
         except Exception as e:
             self.log.warning("Naukri Playwright error: %s", str(e))
             return []

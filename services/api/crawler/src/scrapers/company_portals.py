@@ -7,7 +7,6 @@ from typing import Dict, List, Optional
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
 
 from scrapers.base import BaseScraper
 from config import COMPANY_PORTALS
@@ -88,35 +87,22 @@ class CompanyPortalsScraper(BaseScraper):
 
         return results
 
-    def _render_page(self, url: str, params: Dict) -> str:
+    def _render_page_with_params(self, url: str, params: Dict) -> str:
+        """Helper to render a page with query params using the base render_page."""
         final_url = url
         if params:
             query = "&".join(f"{k}={v}" for k, v in params.items())
             final_url = f"{url}?{query}"
+        return self._render_page(final_url, wait_ms=8000, scroll_passes=4)
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            context = browser.new_context(
-                viewport={"width": 1440, "height": 900},
-                user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-                ),
-            )
-            page = context.new_page()
-            page.goto(final_url, wait_until="domcontentloaded", timeout=60000)
-            page.wait_for_timeout(8000)
-
-            try:
-                for _ in range(4):
-                    page.mouse.wheel(0, 3500)
-                    page.wait_for_timeout(random.randint(1000, 2500))
-            except Exception:
-                pass
-
-            html = page.content()
-            browser.close()
-            return html
+    # Override the base _render_page to use our param-aware version
+    def _render_page(self, url: str, params: Dict = None, wait_ms: int = 8000, scroll_passes: int = 4) -> str:
+        if params:
+            query = "&".join(f"{k}={v}" for k, v in params.items())
+            final_url = f"{url}?{query}"
+        else:
+            final_url = url
+        return super()._render_page(final_url, wait_ms=wait_ms, scroll_passes=scroll_passes)
 
     def _extract_jsonld_jobs(self, soup, config) -> List[Dict]:
         results = []

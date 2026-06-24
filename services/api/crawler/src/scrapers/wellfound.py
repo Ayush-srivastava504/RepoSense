@@ -3,7 +3,6 @@ import re
 from typing import Dict, List, Optional
 
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
 
 from scrapers.base import BaseScraper
 
@@ -79,36 +78,7 @@ class WellfoundScraper(BaseScraper):
 
         try:
 
-            with sync_playwright() as p:
-
-                browser = p.chromium.launch(
-                    headless=True,
-                )
-
-                context = browser.new_context(
-                    user_agent=(
-                        "Mozilla/5.0 "
-                        "(Windows NT 10.0; Win64; x64) "
-                        "AppleWebKit/537.36 "
-                        "(KHTML, like Gecko) "
-                        "Chrome/124.0.0.0 "
-                        "Safari/537.36"
-                    )
-                )
-
-                page_obj = context.new_page()
-
-                page_obj.goto(
-                    url,
-                    timeout=60000,
-                    wait_until="networkidle",
-                )
-
-                page_obj.wait_for_timeout(5000)
-
-                html = page_obj.content()
-
-                browser.close()
+            html = self._render_page(url)
 
         except Exception as e:
 
@@ -119,8 +89,6 @@ class WellfoundScraper(BaseScraper):
 
             return []
 
-        # BUG FIX: was writing HTML to disk unconditionally, filling
-        # Lambda's /tmp (512 MB). Now guarded by SCRAPER_DEBUG env var.
         if os.getenv("SCRAPER_DEBUG"):
             with open(
                 "wellfound_debug.html",
