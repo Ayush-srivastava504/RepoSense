@@ -1,13 +1,6 @@
-FROM public.ecr.aws/lambda/python:3.11 AS builder
+FROM mcr.microsoft.com/playwright/python:v1.44.0-jammy AS builder
 
 WORKDIR /build
-
-RUN yum install -y \
-        gcc \
-        gcc-c++ \
-        libxml2-devel \
-        libxslt-devel \
-    && yum clean all
 
 COPY requirements.txt .
 
@@ -21,12 +14,7 @@ RUN pip install --upgrade pip && \
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-RUN pip install \
-        --retries 5 \
-        --default-timeout 1000 \
-        --no-cache-dir \
-        playwright==1.44.0 && \
-    playwright install chromium
+RUN playwright install chromium
 
 FROM public.ecr.aws/lambda/python:3.11 AS final
 
@@ -35,11 +23,6 @@ LABEL description="Job aggregator crawler Lambda"
 
 COPY --from=builder /build/packages ${LAMBDA_TASK_ROOT}
 COPY --from=builder /ms-playwright /ms-playwright
-
-RUN yum install -y \
-        chromium \
-        chromedriver \
-    && yum clean all || true
 
 ENV CHROME_BINARY=/usr/bin/chromium-browser
 ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
