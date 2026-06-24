@@ -5,13 +5,13 @@ WORKDIR /build
 COPY requirements.txt .
 
 RUN pip install --upgrade pip && \
-    grep -iv 'psycopg2' requirements.txt > requirements_no_psycopg2.txt && \
+    grep -ivE 'psycopg2|playwright' requirements.txt > requirements_filtered.txt && \
     pip install \
         --retries 5 \
         --default-timeout 1000 \
         --no-cache-dir \
         --target /build/packages \
-        -r requirements_no_psycopg2.txt
+        -r requirements_filtered.txt
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV PYTHONPATH=/build/packages
@@ -26,7 +26,9 @@ LABEL description="Job aggregator crawler Lambda"
 COPY --from=builder /build/packages ${LAMBDA_TASK_ROOT}
 COPY --from=builder /ms-playwright /ms-playwright
 
-RUN pip install --no-cache-dir psycopg2-binary==2.9.9
+RUN pip install --no-cache-dir \
+    psycopg2-binary==2.9.9 \
+    playwright==1.44.0
 
 ENV CHROME_BINARY=/usr/bin/chromium-browser
 ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
