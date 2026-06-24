@@ -3,19 +3,27 @@ import type { Metadata } from 'next';
 import { Inter, Fraunces, IBM_Plex_Mono } from 'next/font/google';
 import { GoogleAnalytics } from '@next/third-parties/google';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-body' });
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-body',
+  display: 'swap',
+});
 
 const fraunces = Fraunces({
   subsets: ['latin'],
   weight: ['500', '600'],
   style: ['normal', 'italic'],
   variable: '--font-display',
+  preload: false,
+  display: 'swap',
 });
 
 const plexMono = IBM_Plex_Mono({
   subsets: ['latin'],
   weight: ['400', '500'],
   variable: '--font-mono',
+  preload: false,
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -29,9 +37,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${inter.variable} ${fraunces.variable} ${plexMono.variable} font-sans antialiased`}>
         {children}
+        <GoogleAnalytics gaId="G-2SC90HTR7G" />
       </body>
-
-      <GoogleAnalytics gaId="G-2SC90HTR7G" />
     </html>
   );
 }
