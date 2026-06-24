@@ -2,12 +2,12 @@ FROM public.ecr.aws/lambda/python:3.11 AS builder
 
 WORKDIR /build
 
-RUN dnf install -y \
+RUN yum install -y \
         gcc \
         gcc-c++ \
         libxml2-devel \
         libxslt-devel \
-    && dnf clean all
+    && yum clean all
 
 COPY requirements.txt .
 
@@ -36,11 +36,10 @@ LABEL description="Job aggregator crawler Lambda"
 COPY --from=builder /build/packages ${LAMBDA_TASK_ROOT}
 COPY --from=builder /ms-playwright /ms-playwright
 
-RUN dnf install -y \
+RUN yum install -y \
         chromium \
-        chromium-headless \
         chromedriver \
-    && dnf clean all || true
+    && yum clean all || true
 
 ENV CHROME_BINARY=/usr/bin/chromium-browser
 ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
