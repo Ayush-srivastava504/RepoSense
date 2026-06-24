@@ -115,7 +115,6 @@ services:
       - .env
     environment:
       PYTHONPATH: /app/src
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/internship_db
       REDIS_URL: redis://redis:6379
       RAG_SERVICE_URL: http://rag:8001
       NEURAL_GENERATOR_URL: http://neural-generator:8002
@@ -145,7 +144,6 @@ services:
       target: dev
     container_name: job-crawler
     restart: unless-stopped
-
     command:
       [
         "python",
@@ -155,20 +153,14 @@ services:
         "--max-pages",
         "2"
       ]
-
+    env_file:
+      - .env
     environment:
       HEADLESS: "true"
-      PG_HOST: postgres
-      PG_PORT: 5432
-      PG_DB: internship_db
-      PG_USER: postgres
-      PG_PASSWORD: password
       AWS_REGION: us-east-1
-
     depends_on:
       postgres:
         condition: service_healthy
-
     mem_limit: 2048m
     cpus: 1.5
 
