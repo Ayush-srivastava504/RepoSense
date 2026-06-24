@@ -39,11 +39,15 @@ COPY --from=builder /build/packages ${LAMBDA_TASK_ROOT}
 
 RUN pip install --no-cache-dir psycopg2-binary==2.9.9
 
-# Install chromium from Amazon Linux repository
-RUN amazon-linux-extras install -y chromium && \
+# Download Chromium from a working source (Google Chrome for Lambda)
+RUN curl -L "https://github.com/aws-samples/chromium-for-aws-lambda/releases/download/v119.0.0/chromium-v119.0.0-linux-x64.zip" \
+    -o /tmp/chromium.zip 2>/dev/null || \
+    curl -L "https://github.com/alixaxel/chrome-aws-lambda/releases/download/v119.0.0/chromium-v119.0.0-linux-x64.zip" \
+    -o /tmp/chromium.zip && \
     mkdir -p /opt/chromium && \
-    cp /usr/bin/chromium-browser /opt/chromium/chromium && \
-    chmod +x /opt/chromium/chromium
+    unzip -q /tmp/chromium.zip -d /opt/chromium/ && \
+    chmod +x /opt/chromium/chromium && \
+    rm /tmp/chromium.zip
 
 # IMPORTANT: Remove Playwright's driver to force using custom Chromium
 RUN rm -rf ${LAMBDA_TASK_ROOT}/playwright/driver 2>/dev/null || true
