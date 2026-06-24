@@ -14,7 +14,7 @@ RUN pip install --upgrade pip && \
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-RUN playwright install chromium
+RUN python -m playwright install --with-deps chromium
 
 FROM public.ecr.aws/lambda/python:3.11 AS final
 
