@@ -19,14 +19,14 @@ RUN pip install --upgrade pip && \
         --target /build/packages \
         -r requirements.txt
 
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
 RUN pip install \
         --retries 5 \
         --default-timeout 1000 \
         --no-cache-dir \
         playwright==1.44.0 && \
-    playwright install chromium \
-        --with-deps \
-        2>/dev/null || true
+    playwright install chromium
 
 FROM public.ecr.aws/lambda/python:3.11 AS final
 
@@ -34,7 +34,7 @@ LABEL maintainer="platform-team"
 LABEL description="Job aggregator crawler Lambda"
 
 COPY --from=builder /build/packages ${LAMBDA_TASK_ROOT}
-COPY --from=builder /root/.cache/ms-playwright /root/.cache/ms-playwright
+COPY --from=builder /ms-playwright /ms-playwright
 
 RUN dnf install -y \
         chromium \
@@ -44,6 +44,7 @@ RUN dnf install -y \
 
 ENV CHROME_BINARY=/usr/bin/chromium-browser
 ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV HEADLESS=true
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
