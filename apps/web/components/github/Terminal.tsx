@@ -1,8 +1,8 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Terminal as XTerm } from 'xterm';
-import { FitAddon } from 'xterm-addon-fit';
-import 'xterm/css/xterm.css';
+import { Terminal as XTerm } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
+import '@xterm/xterm/css/xterm.css';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 
@@ -79,7 +79,7 @@ export default function Terminal({ repoId }: { repoId: string }) {
       wsRef.current?.close();
       term.dispose();
     };
-  }, [repoId, WS_URL, sessionId]);
+  }, [repoId, WS_URL]);
 
   return <div className="h-96 border rounded" ref={terminalRef} />;
 }
