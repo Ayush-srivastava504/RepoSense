@@ -16,6 +16,7 @@ RUN pip install --upgrade pip && \
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV PYTHONPATH=/build/packages
 
+RUN pip install --no-cache-dir playwright==1.44.0
 RUN python -m playwright install chromium
 
 FROM public.ecr.aws/lambda/python:3.11 AS final
