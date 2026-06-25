@@ -7,11 +7,13 @@ on:
       - "services/api/**"
       - "infrastructure/docker/**"
       - ".github/workflows/backend-cicd.yml"
+      - "tests/**"  # ← ADD THIS LINE
 
   pull_request:
     branches: [master]
     paths:
       - "services/api/**"
+      - "tests/**"  # ← ADD THIS LINE
 
   # Manual trigger with optional input
   workflow_dispatch:
@@ -102,7 +104,7 @@ jobs:
 
       - name: Run pytest with coverage
         run: |
-          pytest tests/ \
+          pytest ../../tests/ \
             --tb=short \
             --cov=src \
             --cov-report=term-missing \
