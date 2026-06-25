@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /register
+Disallow: /dashboard
+Disallow: /github
+Disallow: /jobs
+Disallow: /resume
+Disallow: /api/
+
+Sitemap: https://intern-flow.in/sitemap.xml
