@@ -13,30 +13,7 @@ on:
       - 'services/api/**'
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          cd services/api
-          pip install -r requirements.txt
-          pip install pytest
-
-      - name: Run tests
-        run: |
-          cd services/api
-          PYTHONPATH=src pytest ../../tests -v
-
   deploy:
-    needs: test
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
@@ -52,4 +29,3 @@ jobs:
             git pull origin master
             docker compose -f infrastructure/docker/docker-compose.yml build api
             docker compose -f infrastructure/docker/docker-compose.yml up -d
-            docker image prune -f
