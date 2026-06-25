@@ -19,6 +19,8 @@
   --indigo-soft: #e8e8fb;
   --rust: #b5482a;
   --rust-soft: #f6e7e1;
+  --score-amber: #92400e;
+  --score-orange: #9a3412;
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -43,6 +45,8 @@
   --indigo-soft: #1e1e40;
   --rust: #d4724e;
   --rust-soft: #2d1a12;
+  --score-amber: #fbbf24;
+  --score-orange: #fb923c;
 
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px -12px rgba(0, 0, 0, 0.4);
 }
