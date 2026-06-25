@@ -6,6 +6,7 @@ import time
 import functools
 from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional
+from urllib.parse import urlparse
 
 import boto3
 import psycopg2
@@ -30,16 +31,48 @@ from config import (
     USER_AGENTS,
 )
 
-# PostgreSQL Config – read from environment with sensible defaults for local dev
+# PostgreSQL Config – read from environment
 import os
 
-# Default to localhost for local development; Docker services use the
-# hostname "postgres" which is resolved only inside containers.
-PG_HOST = os.getenv("PG_HOST", "localhost")
-PG_DB = os.getenv("PG_DB", "internship_db")
-PG_USER = os.getenv("PG_USER", "postgres")
-PG_PASSWORD = os.getenv("PG_PASSWORD", "postgres")
-PG_PORT = os.getenv("PG_PORT", "5432")
+# Use DATABASE_URL (preferred) or individual PG_* variables for backward compatibility
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Parse DATABASE_URL if provided
+PG_HOST = None
+PG_DB = None
+PG_USER = None
+PG_PASSWORD = None
+PG_PORT = "5432"
+
+if DATABASE_URL:
+    try:
+        parsed = urlparse(DATABASE_URL)
+        PG_HOST = parsed.hostname
+        PG_DB = parsed.path.lstrip('/')
+        PG_USER = parsed.username
+        PG_PASSWORD = parsed.password
+        PG_PORT = str(parsed.port or 5432)
+    except Exception as e:
+        log.error("Failed to parse DATABASE_URL: %s", e)
+else:
+    # Fallback to individual env vars
+    PG_HOST = os.getenv("PG_HOST")
+    PG_DB = os.getenv("PG_DB")
+    PG_USER = os.getenv("PG_USER")
+    PG_PASSWORD = os.getenv("PG_PASSWORD")
+    PG_PORT = os.getenv("PG_PORT", "5432")
+
+# Validate required config - fail fast if missing
+if not all([PG_HOST, PG_DB, PG_USER, PG_PASSWORD]):
+    raise ValueError(
+        "PostgreSQL configuration missing. "
+        "Please set DATABASE_URL or individual PG_HOST, PG_DB, PG_USER, and PG_PASSWORD environment variables.\n"
+        f"DATABASE_URL: {'✓' if DATABASE_URL else '✗'}\n"
+        f"PG_HOST: {'✓' if PG_HOST else '✗'}\n"
+        f"PG_DB: {'✓' if PG_DB else '✗'}\n"
+        f"PG_USER: {'✓' if PG_USER else '✗'}\n"
+        f"PG_PASSWORD: {'✓' if PG_PASSWORD else '✗'}"
+    )
 
 # Logger
 
@@ -66,6 +99,7 @@ def get_logger(name: str) -> logging.Logger:
 
 
 log = get_logger("utils")
+log.info("PostgreSQL configured for RDS: %s:%s/%s", PG_HOST, PG_PORT, PG_DB)
 
 # HTTP Session
 
@@ -249,8 +283,6 @@ class RateLimiter:
         self,
         domain: str = "global",
     ) -> None:
-        # BUG FIX: was corrupted with a stray SQL block; restored correct
-        # elapsed-time calculation and sleep logic.
         current_time = time.monotonic()
 
         previous_time = self.last_request_time.get(
@@ -267,12 +299,10 @@ class RateLimiter:
 
 
 # Module-level singleton used by safe_get / safe_post
-# BUG FIX: was missing entirely, causing NameError on every HTTP call.
 rate_limiter = RateLimiter()
 
 
 # Job ID helper
-# BUG FIX: function signature was missing; only the body fragment survived.
 
 def make_job_id(
     title: str,
@@ -360,7 +390,7 @@ def save_to_s3(
 
     return key
 
-# PostgreSQL
+# PostgreSQL (RDS)
 
 _pg_conn = None
 
@@ -370,14 +400,19 @@ def get_pg_conn():
     global _pg_conn
 
     if _pg_conn is None:
-
+        log.info("Connecting to RDS: %s:%s/%s", PG_HOST, PG_PORT, PG_DB)
+        
         _pg_conn = psycopg2.connect(
             host=PG_HOST,
             database=PG_DB,
             user=PG_USER,
             password=PG_PASSWORD,
             port=PG_PORT,
+            sslmode='require',  # Required for RDS
+            connect_timeout=10,
         )
+        
+        log.info("✅ RDS Connection successful!")
 
     return _pg_conn
 
@@ -451,8 +486,11 @@ def upsert_jobs(
     written = len(rows)
 
     log.info(
-        "Inserted %d jobs into PostgreSQL",
+        "✅ Inserted %d jobs into RDS at %s:%s/%s",
         written,
+        PG_HOST,
+        PG_PORT,
+        PG_DB,
     )
 
     return written
