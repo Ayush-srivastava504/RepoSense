@@ -15,7 +15,6 @@ on:
       - "services/api/**"
       - "tests/**"
 
-  # Manual trigger with optional input
   workflow_dispatch:
     inputs:
       deploy_env:
@@ -23,17 +22,12 @@ on:
         required: false
         default: "production"
 
-  # Scheduled health-check — runs every 15 minutes
   schedule:
     - cron: "*/15 * * * *"
 
-# ─────────────────────────────────────────────────────────────────────────────
-
 jobs:
-  # ── 1. Run the full test suite ──────────────────────────────────────────────
   test:
     name: Run Tests
-    # Skip test job when triggered by schedule (health-check only)
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
 
@@ -118,7 +112,6 @@ jobs:
           name: coverage-report
           path: services/api/coverage.xml
 
-  # ── 2. Deploy to EC2 (master push only) ─────────────────────────────────────
   deploy:
     name: Deploy to EC2
     needs: test
@@ -132,20 +125,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
+      # No AWS credentials needed - using EC2 instance role
       - name: Get EC2 Security Group ID
         id: get-sg
         run: |
+          INSTANCE_ID="${{ secrets.EC2_INSTANCE_ID }}"
+          if [ -z "$INSTANCE_ID" ]; then
+            echo "Error: EC2_INSTANCE_ID secret is not set"
+            exit 1
+          fi
+          
           SG_ID=$(aws ec2 describe-instances \
-            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+            --instance-ids $INSTANCE_ID \
             --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' \
-            --output text)
+            --output text 2>/dev/null)
+          
+          if [ -z "$SG_ID" ] || [ "$SG_ID" = "None" ]; then
+            echo "Error: Could not get Security Group ID"
+            exit 1
+          fi
+          
           echo "security_group_id=$SG_ID" >> $GITHUB_OUTPUT
           echo "Security Group ID: $SG_ID"
 
@@ -153,26 +152,43 @@ jobs:
         id: get-ip
         run: |
           RUNNER_IP=$(curl -s https://api.ipify.org)
+          if [ -z "$RUNNER_IP" ]; then
+            echo "Error: Could not get runner IP"
+            exit 1
+          fi
           echo "runner_ip=$RUNNER_IP/32" >> $GITHUB_OUTPUT
           echo "Runner IP: $RUNNER_IP"
 
       - name: Add runner IP to EC2 Security Group
+        id: add-ip
         run: |
           SG_ID="${{ steps.get-sg.outputs.security_group_id }}"
           IP="${{ steps.get-ip.outputs.runner_ip }}"
           
+          if [ -z "$SG_ID" ] || [ -z "$IP" ]; then
+            echo "Error: Missing Security Group ID or IP"
+            exit 1
+          fi
+          
           echo "Adding IP $IP to Security Group $SG_ID"
           
-          # Add the IP to security group
-          aws ec2 authorize-security-group-ingress \
-            --group-id $SG_ID \
-            --protocol tcp \
-            --port 22 \
-            --cidr $IP \
-            --output text || echo "Rule may already exist"
+          # Check if rule already exists
+          if aws ec2 describe-security-group-rules \
+            --filter Name=group-id,Values=$SG_ID \
+            --query "SecurityGroupRules[?CidrIpv4=='$IP' && IpProtocol=='tcp' && FromPort==22]" \
+            --output text 2>/dev/null | grep -q .; then
+            echo "Rule already exists, skipping"
+          else
+            aws ec2 authorize-security-group-ingress \
+              --group-id $SG_ID \
+              --protocol tcp \
+              --port 22 \
+              --cidr $IP
+            echo "Rule added successfully"
+          fi
 
       - name: Wait for security group update
-        run: sleep 5
+        run: sleep 10
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -187,26 +203,25 @@ jobs:
             set -e
             echo "Connected to EC2 instance"
             echo "Hostname: $(hostname)"
-            echo "Current directory: $(pwd)"
             
             # Navigate to project directory
-            if [ -d "~/RepoSense-master" ]; then
-              cd ~/RepoSense-master
-            elif [ -d "~/RepoSense" ]; then
-              cd ~/RepoSense
+            if [ -d "RepoSense-master" ]; then
+              cd RepoSense-master
+            elif [ -d "RepoSense" ]; then
+              cd RepoSense
             else
               echo "Project directory not found!"
               exit 1
             fi
             
+            echo "Current directory: $(pwd)"
             echo "Pulling latest code..."
-            git pull origin master
+            git pull origin master || git pull origin main
             
             echo "Building and deploying containers..."
             docker compose -f infrastructure/docker/docker-compose.yml build api
             docker compose -f infrastructure/docker/docker-compose.yml up -d
             
-            # Wait for /health to return 200 before declaring success
             echo "Waiting for API to be healthy..."
             for i in $(seq 1 12); do
               STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health || echo "000")
@@ -226,17 +241,18 @@ jobs:
           SG_ID="${{ steps.get-sg.outputs.security_group_id }}"
           IP="${{ steps.get-ip.outputs.runner_ip }}"
           
-          echo "Removing IP $IP from Security Group $SG_ID"
-          
-          # Remove the IP from security group
-          aws ec2 revoke-security-group-ingress \
-            --group-id $SG_ID \
-            --protocol tcp \
-            --port 22 \
-            --cidr $IP \
-            --output text || echo "Rule may not exist"
+          if [ -n "$SG_ID" ] && [ -n "$IP" ]; then
+            echo "Removing IP $IP from Security Group $SG_ID"
+            aws ec2 revoke-security-group-ingress \
+              --group-id $SG_ID \
+              --protocol tcp \
+              --port 22 \
+              --cidr $IP \
+              --output text 2>/dev/null || echo "Rule may not exist"
+          else
+            echo "Skipping IP removal - SG_ID or IP is empty"
+          fi
 
-  # ── 3. Post-deploy smoke test ────────────────────────────────────────────────
   smoke:
     name: Post-Deploy Smoke Test
     needs: deploy
@@ -244,20 +260,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
+      # No AWS credentials needed - using EC2 instance role
       - name: Get EC2 Security Group ID
         id: get-sg
         run: |
           SG_ID=$(aws ec2 describe-instances \
             --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
             --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' \
-            --output text)
+            --output text 2>/dev/null)
           echo "security_group_id=$SG_ID" >> $GITHUB_OUTPUT
 
       - name: Get current runner IP
@@ -271,12 +281,14 @@ jobs:
           SG_ID="${{ steps.get-sg.outputs.security_group_id }}"
           IP="${{ steps.get-ip.outputs.runner_ip }}"
           
-          aws ec2 authorize-security-group-ingress \
-            --group-id $SG_ID \
-            --protocol tcp \
-            --port 22 \
-            --cidr $IP \
-            --output text || echo "Rule may already exist"
+          if [ -n "$SG_ID" ] && [ -n "$IP" ]; then
+            aws ec2 authorize-security-group-ingress \
+              --group-id $SG_ID \
+              --protocol tcp \
+              --port 22 \
+              --cidr $IP \
+              --output text 2>/dev/null || echo "Rule may already exist"
+          fi
 
       - name: Wait for security group update
         run: sleep 5
@@ -293,7 +305,7 @@ jobs:
             set -e
             check() {
               NAME=$1; URL=$2
-              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || echo "000")
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL" 2>/dev/null || echo "000")
               if [ "$STATUS" = "200" ]; then
                 echo "  ✓ $NAME"
               else
@@ -313,14 +325,15 @@ jobs:
           SG_ID="${{ steps.get-sg.outputs.security_group_id }}"
           IP="${{ steps.get-ip.outputs.runner_ip }}"
           
-          aws ec2 revoke-security-group-ingress \
-            --group-id $SG_ID \
-            --protocol tcp \
-            --port 22 \
-            --cidr $IP \
-            --output text || echo "Rule may not exist"
+          if [ -n "$SG_ID" ] && [ -n "$IP" ]; then
+            aws ec2 revoke-security-group-ingress \
+              --group-id $SG_ID \
+              --protocol tcp \
+              --port 22 \
+              --cidr $IP \
+              --output text 2>/dev/null || echo "Rule may not exist"
+          fi
 
-  # ── 4. Scheduled health monitor (runs every 15 min) ─────────────────────────
   health_monitor:
     name: Health Monitor
     if: github.event_name == 'schedule'
@@ -338,20 +351,14 @@ jobs:
       - name: Install monitor dependencies
         run: pip install httpx aiofiles
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
+      # No AWS credentials needed - using EC2 instance role
       - name: Get EC2 Security Group ID
         id: get-sg
         run: |
           SG_ID=$(aws ec2 describe-instances \
             --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
             --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' \
-            --output text)
+            --output text 2>/dev/null)
           echo "security_group_id=$SG_ID" >> $GITHUB_OUTPUT
 
       - name: Get current runner IP
@@ -365,12 +372,14 @@ jobs:
           SG_ID="${{ steps.get-sg.outputs.security_group_id }}"
           IP="${{ steps.get-ip.outputs.runner_ip }}"
           
-          aws ec2 authorize-security-group-ingress \
-            --group-id $SG_ID \
-            --protocol tcp \
-            --port 22 \
-            --cidr $IP \
-            --output text || echo "Rule may already exist"
+          if [ -n "$SG_ID" ] && [ -n "$IP" ]; then
+            aws ec2 authorize-security-group-ingress \
+              --group-id $SG_ID \
+              --protocol tcp \
+              --port 22 \
+              --cidr $IP \
+              --output text 2>/dev/null || echo "Rule may already exist"
+          fi
 
       - name: Wait for security group update
         run: sleep 5
@@ -384,9 +393,9 @@ jobs:
           port: 22
           timeout: 30s
           script: |
-            cd ~/RepoSense-master || cd ~/RepoSense
+            cd ~/RepoSense-master || cd ~/RepoSense || exit 1
             ALERT_WEBHOOK_URL="${{ secrets.ALERT_WEBHOOK }}" \
-              python3 monitor.py
+              python3 monitor.py 2>/dev/null || echo "Monitor script not found"
 
       - name: Remove runner IP from EC2 Security Group
         if: always()
@@ -394,12 +403,14 @@ jobs:
           SG_ID="${{ steps.get-sg.outputs.security_group_id }}"
           IP="${{ steps.get-ip.outputs.runner_ip }}"
           
-          aws ec2 revoke-security-group-ingress \
-            --group-id $SG_ID \
-            --protocol tcp \
-            --port 22 \
-            --cidr $IP \
-            --output text || echo "Rule may not exist"
+          if [ -n "$SG_ID" ] && [ -n "$IP" ]; then
+            aws ec2 revoke-security-group-ingress \
+              --group-id $SG_ID \
+              --protocol tcp \
+              --port 22 \
+              --cidr $IP \
+              --output text 2>/dev/null || echo "Rule may not exist"
+          fi
 
       - name: Alert on failure
         if: failure()
