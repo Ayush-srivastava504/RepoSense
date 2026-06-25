@@ -1,8 +1,8 @@
 import re
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
-import logging
 
+import logging
 logger = logging.getLogger(__name__)
 
 
@@ -39,14 +39,14 @@ class PatternRule:
     cwe: Optional[str] = None
     pep8: Optional[str] = None
     languages: Optional[List[str]] = None   # None = all languages
+    # Special-cased rules (logic too irregular for a single regex) are
+    # handled outside the generic pattern loop. See CodeAnalyzer._SPECIAL_RULES.
+    custom: bool = False
 
 
 # ── Rule Registry ─────────────────────────────────────────────────────────────
-
 RULES: List[PatternRule] = [
-
     # ── Security ─────────────────────────────────────────────────────────────
-
     PatternRule(
         id="SEC001",
         category="security", type="hardcoded_secret", severity="critical",
@@ -137,7 +137,6 @@ RULES: List[PatternRule] = [
     ),
 
     # ── Bugs ─────────────────────────────────────────────────────────────────
-
     PatternRule(
         id="BUG001",
         category="bug", type="null_reference", severity="critical",
@@ -162,13 +161,17 @@ RULES: List[PatternRule] = [
         suggestion="Use None as default and initialise inside the function body",
         confidence=0.90,
     ),
+    # BUG004 ("open() without a context manager") needs lookback logic that
+    # can't be expressed as a fixed-width regex lookbehind. It is handled in
+    # CodeAnalyzer._check_unsafe_open() instead — see `custom=True` below.
     PatternRule(
         id="BUG004",
         category="bug", type="missing_io_error_handling", severity="high",
-        pattern=r'(?<!\bwith\b.{0,60})\bopen\s*\(',
+        pattern=r'\bopen\s*\(',
         message="File opened without a context manager or error handling",
         suggestion="Use 'with open(...) as f:' to ensure the file is always closed",
         confidence=0.80,
+        custom=True,
     ),
     PatternRule(
         id="BUG005",
@@ -205,6 +208,7 @@ RULES: List[PatternRule] = [
     PatternRule(
         id="BUG009",
         category="bug", type="string_concat_in_loop", severity="medium",
+        # NOTE: re.MULTILINE only (no DOTALL) — see CodeAnalyzer.__init__ comment.
         pattern=r'for\b.+\n(?:.*\n){0,3}.*\+=\s*["\']',
         message="String concatenation inside a loop (O(n²) complexity)",
         suggestion="Collect parts in a list and join at the end: ''.join(parts)",
@@ -212,7 +216,6 @@ RULES: List[PatternRule] = [
     ),
 
     # ── Performance ───────────────────────────────────────────────────────────
-
     PatternRule(
         id="PERF001",
         category="performance", type="nested_loop_query", severity="high",
@@ -247,7 +250,6 @@ RULES: List[PatternRule] = [
     ),
 
     # ── Quality ───────────────────────────────────────────────────────────────
-
     PatternRule(
         id="QUA001",
         category="quality", type="todo_comment", severity="info",
@@ -306,7 +308,6 @@ RULES: List[PatternRule] = [
     ),
 
     # ── Style ─────────────────────────────────────────────────────────────────
-
     PatternRule(
         id="STY001",
         category="style", type="line_too_long", severity="low",
@@ -351,20 +352,45 @@ RULES: List[PatternRule] = [
 
 
 # ── Analyser ──────────────────────────────────────────────────────────────────
-
 class CodeAnalyzer:
     """
     Pure pattern-based static analyser.
-
     Rules are data-driven (PatternRule dataclasses), making it trivial to add,
     disable, or tune individual checks without touching analysis logic.
+
+    Performance / safety notes (fixed 2026-06-25):
+      * Multiline rules use re.MULTILINE only — NOT re.DOTALL. Their patterns
+        rely on literal "\\n" tokens to delimit lines (e.g. "for\\b.+\\n(?:.*\\n){0,5}").
+        Adding DOTALL makes "." match newlines too, which creates an explosion
+        of equivalent ways to partition the same input between "." and "\\n".
+        On large inputs (or any input where the pattern ultimately fails to
+        match) this caused catastrophic backtracking and pegged the CPU at
+        ~100%. This was the root cause of the production CPU spike.
+      * All rule patterns are compiled once in __init__ instead of on every
+        analyze() call, so a bad/slow pattern only costs you once at startup
+        (and logs once), not per-request.
+      * BUG004 previously used a variable-width regex lookbehind
+        ("(?<!\\bwith\\b.{0,60})"), which Python's re module does not support
+        (lookbehind must be fixed-width). That caused a re.error on every
+        single request (silently swallowed) and meant the rule never ran.
+        It's now implemented as a small dedicated check instead of a regex.
     """
 
     def __init__(self, rules: Optional[List[PatternRule]] = None):
         self._rules = rules or RULES
+        self._compiled: Dict[str, re.Pattern] = {}
+        for rule in self._rules:
+            if rule.custom:
+                continue  # handled by a dedicated method, not a compiled regex
+            flags = rule.flags
+            if rule.multiline:
+                flags |= re.MULTILINE  # NOTE: deliberately no re.DOTALL — see class docstring
+            try:
+                self._compiled[rule.id] = re.compile(rule.pattern, flags)
+            except re.error as exc:
+                logger.warning("Rule %s has invalid pattern: %s", rule.id, exc)
 
     # ── Public API ────────────────────────────────────────────────────────────
-
     def analyze(
         self,
         code: str,
@@ -393,15 +419,16 @@ class CodeAnalyzer:
             if rule.confidence < min_confidence:
                 continue
 
-            flags = rule.flags
-            if rule.multiline:
-                flags |= re.MULTILINE | re.DOTALL
-
-            try:
-                compiled = re.compile(rule.pattern, flags)
-            except re.error as exc:
-                logger.warning("Rule %s has invalid pattern: %s", rule.id, exc)
+            if rule.custom:
+                if rule.id == "BUG004":
+                    for match in self._check_unsafe_open(code):
+                        line_no = code[: match.start()].count("\n") + 1
+                        self._add_issue(issues, seen, rule, line_no, lines, match)
                 continue
+
+            compiled = self._compiled.get(rule.id)
+            if compiled is None:
+                continue  # failed to compile at init time, already logged
 
             if rule.multiline:
                 for match in compiled.finditer(code):
@@ -432,7 +459,6 @@ class CodeAnalyzer:
         }
 
     # ── Internals ─────────────────────────────────────────────────────────────
-
     def _filter_rules(
         self, language: str, focus_areas: Optional[List[str]]
     ) -> List[PatternRule]:
@@ -444,6 +470,21 @@ class CodeAnalyzer:
                 continue
             result.append(rule)
         return result
+
+    @staticmethod
+    def _check_unsafe_open(code: str, window: int = 60) -> List[re.Match]:
+        """
+        Replacement for BUG004's old (invalid) variable-width lookbehind regex.
+        Flags `open(` calls that aren't preceded by a nearby `with` keyword
+        within `window` characters.
+        """
+        hits = []
+        for match in re.finditer(r'\bopen\s*\(', code):
+            start = max(0, match.start() - window)
+            preceding = code[start:match.start()]
+            if not re.search(r'\bwith\b', preceding):
+                hits.append(match)
+        return hits
 
     @staticmethod
     def _add_issue(
@@ -458,7 +499,6 @@ class CodeAnalyzer:
         if key in seen:
             return
         seen.add(key)
-
         snippet = lines[line_no - 1].strip() if line_no <= len(lines) else ""
         issues.append(Issue(
             category=rule.category,
