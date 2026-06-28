@@ -5,9 +5,7 @@ import time
 from typing import Dict, List, Optional
 from urllib.parse import quote, urljoin
 
-import asyncio
 from bs4 import BeautifulSoup
-from playwright.async_api import async_playwright
 
 from scrapers.base import BaseScraper
 
@@ -28,26 +26,17 @@ class InternshalaScaper(BaseScraper):
 
         jobs: List[Dict] = []
 
-        keyword_str = (
-            " ".join(keywords[:3]) if keywords else "software engineer"
-        )
-
+        keyword_str = " ".join(keywords[:3]) if keywords else "software engineer"
         location_str = locations[0] if locations else "India"
 
         jobs.extend(
-            self._scrape_category(
-                "internships", keyword_str, location_str, max_pages, "internship"
-            )
+            self._scrape_category("internships", keyword_str, location_str, max_pages, "internship")
         )
-
         jobs.extend(
-            self._scrape_category(
-                "jobs", keyword_str, location_str, max_pages, "full-time"
-            )
+            self._scrape_category("jobs", keyword_str, location_str, max_pages, "full-time")
         )
 
         self.log.info("Collected %d jobs from internshala", len(jobs))
-
         return jobs
 
     def _scrape_category(
@@ -61,26 +50,20 @@ class InternshalaScaper(BaseScraper):
 
         results = []
 
-        for page in range(1, max_pages + 1):
+        for page_num in range(1, max_pages + 1):
 
             url = f"{BASE}/{category}/keywords-{quote(keyword)}"
 
             self.log.info("Internshala scrape: %s", url)
 
             try:
-                html = asyncio.get_event_loop().run_until_complete(
-                    self._render_page(url, page)
-                )
+                html = self._render_page(url, page_num)
             except Exception as e:
                 self.log.warning("Internshala render failed: %s", str(e))
                 continue
 
             if os.getenv("SCRAPER_DEBUG"):
-                with open(
-                    f"internshala_{category}_{page}.html",
-                    "w",
-                    encoding="utf-8",
-                ) as f:
+                with open(f"internshala_{category}_{page_num}.html", "w", encoding="utf-8") as f:
                     f.write(html)
 
             soup = BeautifulSoup(html, "html.parser")
@@ -94,7 +77,6 @@ class InternshalaScaper(BaseScraper):
             ]
 
             cards = []
-
             for selector in selectors:
                 cards = soup.select(selector)
                 if cards:
@@ -117,45 +99,24 @@ class InternshalaScaper(BaseScraper):
 
         return results
 
-    async def _render_page(self, url: str, page_number: int) -> str:
+    def _render_page(self, url: str, page_number: int) -> str:
 
-        async with async_playwright() as p:
+        if page_number > 1:
+            url += f"/page-{page_number}"
 
-            browser = await p.chromium.launch(headless=True)
+        page = self.new_page()
 
-            context = await browser.new_context(
-                viewport={"width": 1400, "height": 900},
-                user_agent=(
-                    "Mozilla/5.0 "
-                    "(Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 "
-                    "(KHTML, like Gecko) "
-                    "Chrome/124.0.0.0 "
-                    "Safari/537.36"
-                ),
-            )
+        try:
+            self.goto(page, url)
+            page.wait_for_timeout(7000)
 
-            page = await context.new_page()
+            for _ in range(3):
+                page.mouse.wheel(0, 3000)
+                page.wait_for_timeout(random.randint(1000, 2500))
 
-            if page_number > 1:
-                url += f"/page-{page_number}"
-
-            await page.goto(url, wait_until="domcontentloaded", timeout=60000)
-
-            await page.wait_for_timeout(7000)
-
-            try:
-                for _ in range(3):
-                    await page.mouse.wheel(0, 3000)
-                    await page.wait_for_timeout(random.randint(1000, 2500))
-            except Exception:
-                pass
-
-            html = await page.content()
-
-            await browser.close()
-
-            return html
+            return page.content()
+        finally:
+            page.context.close()
 
     def _parse_card(self, card, job_type: str) -> Optional[Dict]:
 
@@ -210,7 +171,6 @@ class InternshalaScaper(BaseScraper):
         job["is_remote"] = "remote" in job["location"].lower()
 
         href = link_el.get("href") if link_el else ""
-
         if href:
             if href.startswith("http"):
                 job["apply_url"] = href

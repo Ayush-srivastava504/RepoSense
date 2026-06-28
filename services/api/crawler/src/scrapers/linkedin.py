@@ -5,9 +5,7 @@ import time
 from typing import Dict, List, Optional
 from urllib.parse import quote
 
-import asyncio
 from bs4 import BeautifulSoup
-from playwright.async_api import async_playwright
 
 from scrapers.base import BaseScraper
 
@@ -32,24 +30,12 @@ class LinkedInScraper(BaseScraper):
         locations = locations[:3]
 
         for keyword in keywords:
-
             for location in locations:
-
-                batch = self._search(
-                    keyword,
-                    location,
-                    max_pages,
-                )
-
+                batch = self._search(keyword, location, max_pages)
                 jobs.extend(batch)
-
                 time.sleep(random.uniform(2, 4))
 
-        self.log.info(
-            "Collected %d jobs from linkedin",
-            len(jobs),
-        )
-
+        self.log.info("Collected %d jobs from linkedin", len(jobs))
         return jobs
 
     def _search(
@@ -61,9 +47,9 @@ class LinkedInScraper(BaseScraper):
 
         results = []
 
-        for page in range(max_pages):
+        for page_num in range(max_pages):
 
-            start = page * 25
+            start = page_num * 25
 
             url = (
                 f"{BASE}/jobs/search/"
@@ -75,19 +61,13 @@ class LinkedInScraper(BaseScraper):
             self.log.info("LinkedIn scrape: %s", url)
 
             try:
-                html = asyncio.get_event_loop().run_until_complete(
-                    self._render_page(url)
-                )
+                html = self._render_page(url)
             except Exception as e:
                 self.log.warning("LinkedIn render failed: %s", str(e))
                 continue
 
             if os.getenv("SCRAPER_DEBUG"):
-                with open(
-                    f"linkedin_debug_{page}.html",
-                    "w",
-                    encoding="utf-8",
-                ) as f:
+                with open(f"linkedin_debug_{page_num}.html", "w", encoding="utf-8") as f:
                     f.write(html)
 
             soup = BeautifulSoup(html, "html.parser")
@@ -101,7 +81,6 @@ class LinkedInScraper(BaseScraper):
             ]
 
             cards = []
-
             for selector in selectors:
                 cards = soup.select(selector)
                 if cards:
@@ -124,46 +103,21 @@ class LinkedInScraper(BaseScraper):
 
         return results
 
-    async def _render_page(self, url: str) -> str:
+    def _render_page(self, url: str) -> str:
 
-        async with async_playwright() as p:
+        page = self.new_page()
 
-            browser = await p.chromium.launch(headless=True)
+        try:
+            self.goto(page, url)
+            page.wait_for_timeout(7000)
 
-            context = await browser.new_context(
-                viewport={"width": 1400, "height": 900},
-                user_agent=(
-                    "Mozilla/5.0 "
-                    "(Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 "
-                    "(KHTML, like Gecko) "
-                    "Chrome/124.0.0.0 "
-                    "Safari/537.36"
-                ),
-            )
+            for _ in range(3):
+                page.mouse.wheel(0, 4000)
+                page.wait_for_timeout(random.randint(1500, 3000))
 
-            page = await context.new_page()
-
-            await page.goto(
-                url,
-                wait_until="domcontentloaded",
-                timeout=60000,
-            )
-
-            await page.wait_for_timeout(7000)
-
-            try:
-                for _ in range(3):
-                    await page.mouse.wheel(0, 4000)
-                    await page.wait_for_timeout(random.randint(1500, 3000))
-            except Exception:
-                pass
-
-            html = await page.content()
-
-            await browser.close()
-
-            return html
+            return page.content()
+        finally:
+            page.context.close()
 
     def _parse_card(self, card) -> Optional[Dict]:
 
@@ -208,7 +162,6 @@ class LinkedInScraper(BaseScraper):
         job["is_remote"] = "remote" in job["location"].lower()
 
         href = link_el.get("href") if link_el else ""
-
         if href:
             if href.startswith("http"):
                 job["apply_url"] = href.split("?")[0]

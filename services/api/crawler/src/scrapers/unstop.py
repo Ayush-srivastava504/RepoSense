@@ -2,9 +2,7 @@ import os
 import re
 from typing import Dict, List, Optional
 
-import asyncio
 from bs4 import BeautifulSoup
-from playwright.async_api import async_playwright
 
 from scrapers.base import BaseScraper
 
@@ -30,7 +28,6 @@ class UnstopScraper(BaseScraper):
         jobs.extend(self._fetch_category("competitions", min(max_pages, 2), "hackathon"))
 
         self.log.info("Collected %d jobs from unstop", len(jobs))
-
         return jobs
 
     def _fetch_category(
@@ -42,26 +39,20 @@ class UnstopScraper(BaseScraper):
 
         results = []
 
-        for page in range(1, max_pages + 1):
+        for page_num in range(1, max_pages + 1):
 
-            url = f"{BASE}/{category}?page={page}"
+            url = f"{BASE}/{category}?page={page_num}"
 
             self.log.info("Scraping Unstop: %s", url)
 
             try:
-                html = asyncio.get_event_loop().run_until_complete(
-                    self._render_page(url)
-                )
+                html = self._render_page(url)
             except Exception as e:
                 self.log.warning("Unstop render error: %s", str(e))
                 continue
 
             if os.getenv("SCRAPER_DEBUG"):
-                with open(
-                    f"unstop_{category}_{page}.html",
-                    "w",
-                    encoding="utf-8",
-                ) as f:
+                with open(f"unstop_{category}_{page_num}.html", "w", encoding="utf-8") as f:
                     f.write(html)
 
             soup = BeautifulSoup(html, "html.parser")
@@ -75,7 +66,6 @@ class UnstopScraper(BaseScraper):
             ]
 
             cards = []
-
             for selector in selectors:
                 cards = soup.select(selector)
                 if cards:
@@ -96,34 +86,16 @@ class UnstopScraper(BaseScraper):
 
         return results
 
-    async def _render_page(self, url: str) -> str:
+    def _render_page(self, url: str) -> str:
 
-        async with async_playwright() as p:
+        page = self.new_page()
 
-            browser = await p.chromium.launch(headless=True)
-
-            context = await browser.new_context(
-                user_agent=(
-                    "Mozilla/5.0 "
-                    "(Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 "
-                    "(KHTML, like Gecko) "
-                    "Chrome/124.0.0.0 "
-                    "Safari/537.36"
-                )
-            )
-
-            page = await context.new_page()
-
-            await page.goto(url, wait_until="networkidle", timeout=60000)
-
-            await page.wait_for_timeout(5000)
-
-            html = await page.content()
-
-            await browser.close()
-
-            return html
+        try:
+            page.goto(url, wait_until="networkidle", timeout=60000)
+            page.wait_for_timeout(5000)
+            return page.content()
+        finally:
+            page.context.close()
 
     def _parse_card(self, card, job_type: str) -> Optional[Dict]:
 
@@ -165,7 +137,6 @@ class UnstopScraper(BaseScraper):
         job["is_remote"] = "remote" in job["description"].lower()
 
         href = link_el.get("href") if link_el else ""
-
         if href:
             if href.startswith("http"):
                 job["apply_url"] = href
