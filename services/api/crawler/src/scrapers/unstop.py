@@ -2,8 +2,9 @@ import os
 import re
 from typing import Dict, List, Optional
 
+import asyncio
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
+from playwright.async_api import async_playwright
 
 from scrapers.base import BaseScraper
 
@@ -24,34 +25,11 @@ class UnstopScraper(BaseScraper):
 
         jobs: List[Dict] = []
 
-        jobs.extend(
-            self._fetch_category(
-                "jobs",
-                max_pages,
-                "full-time",
-            )
-        )
+        jobs.extend(self._fetch_category("jobs", max_pages, "full-time"))
+        jobs.extend(self._fetch_category("internships", max_pages, "internship"))
+        jobs.extend(self._fetch_category("competitions", min(max_pages, 2), "hackathon"))
 
-        jobs.extend(
-            self._fetch_category(
-                "internships",
-                max_pages,
-                "internship",
-            )
-        )
-
-        jobs.extend(
-            self._fetch_category(
-                "competitions",
-                min(max_pages, 2),
-                "hackathon",
-            )
-        )
-
-        self.log.info(
-            "Collected %d jobs from unstop",
-            len(jobs),
-        )
+        self.log.info("Collected %d jobs from unstop", len(jobs))
 
         return jobs
 
@@ -66,32 +44,18 @@ class UnstopScraper(BaseScraper):
 
         for page in range(1, max_pages + 1):
 
-            url = (
-                f"{BASE}/{category}"
-                f"?page={page}"
-            )
+            url = f"{BASE}/{category}?page={page}"
 
-            self.log.info(
-                "Scraping Unstop: %s",
-                url,
-            )
+            self.log.info("Scraping Unstop: %s", url)
 
             try:
-
-                html = self._render_page(url)
-
-            except Exception as e:
-
-                self.log.warning(
-                    "Unstop render error: %s",
-                    str(e),
+                html = asyncio.get_event_loop().run_until_complete(
+                    self._render_page(url)
                 )
-
+            except Exception as e:
+                self.log.warning("Unstop render error: %s", str(e))
                 continue
 
-            # BUG FIX: was writing HTML to disk unconditionally on every
-            # page, which would fill Lambda's /tmp (512 MB) quickly.
-            # Now guarded by SCRAPER_DEBUG env var, same as other scrapers.
             if os.getenv("SCRAPER_DEBUG"):
                 with open(
                     f"unstop_{category}_{page}.html",
@@ -100,10 +64,7 @@ class UnstopScraper(BaseScraper):
                 ) as f:
                     f.write(html)
 
-            soup = BeautifulSoup(
-                html,
-                "html.parser",
-            )
+            soup = BeautifulSoup(html, "html.parser")
 
             selectors = [
                 '[class*="opportunity"]',
@@ -116,49 +77,32 @@ class UnstopScraper(BaseScraper):
             cards = []
 
             for selector in selectors:
-
                 cards = soup.select(selector)
-
                 if cards:
                     break
 
-            self.log.info(
-                "Found %d cards on Unstop",
-                len(cards),
-            )
+            self.log.info("Found %d cards on Unstop", len(cards))
 
             if not cards:
                 continue
 
             for card in cards:
-
                 try:
-
-                    job = self._parse_card(
-                        card,
-                        job_type,
-                    )
-
+                    job = self._parse_card(card, job_type)
                     if job:
                         results.append(job)
-
                 except Exception:
                     continue
 
         return results
 
-    def _render_page(
-        self,
-        url: str,
-    ) -> str:
+    async def _render_page(self, url: str) -> str:
 
-        with sync_playwright() as p:
+        async with async_playwright() as p:
 
-            browser = p.chromium.launch(
-                headless=True,
-            )
+            browser = await p.chromium.launch(headless=True)
 
-            context = browser.new_context(
+            context = await browser.new_context(
                 user_agent=(
                     "Mozilla/5.0 "
                     "(Windows NT 10.0; Win64; x64) "
@@ -169,27 +113,19 @@ class UnstopScraper(BaseScraper):
                 )
             )
 
-            page = context.new_page()
+            page = await context.new_page()
 
-            page.goto(
-                url,
-                wait_until="networkidle",
-                timeout=60000,
-            )
+            await page.goto(url, wait_until="networkidle", timeout=60000)
 
-            page.wait_for_timeout(5000)
+            await page.wait_for_timeout(5000)
 
-            html = page.content()
+            html = await page.content()
 
-            browser.close()
+            await browser.close()
 
             return html
 
-    def _parse_card(
-        self,
-        card,
-        job_type: str,
-    ) -> Optional[Dict]:
+    def _parse_card(self, card, job_type: str) -> Optional[Dict]:
 
         title_el = (
             card.select_one("h2")
@@ -200,19 +136,13 @@ class UnstopScraper(BaseScraper):
         if not title_el:
             return None
 
-        title = _clean(
-            title_el.get_text(
-                strip=True
-            )
-        )
+        title = _clean(title_el.get_text(strip=True))
 
         if not title:
             return None
 
         company_el = (
-            card.select_one(
-                '[class*="company"]'
-            )
+            card.select_one('[class*="company"]')
             or card.select_one("h4")
             or card.select_one("span")
         )
@@ -222,67 +152,30 @@ class UnstopScraper(BaseScraper):
         job = self._empty_job()
 
         job["title"] = title
-
-        job["company"] = _clean(
-            company_el.get_text(strip=True)
-            if company_el
-            else ""
-        )
-
+        job["company"] = _clean(company_el.get_text(strip=True) if company_el else "")
         job["location"] = ""
-
         job["type"] = job_type
-
         job["salary"] = ""
-
         job["stipend"] = ""
-
         job["duration"] = ""
-
-        job["description"] = _clean(
-            card.get_text(" ", strip=True)
-        )
-
+        job["description"] = _clean(card.get_text(" ", strip=True))
         job["skills"] = []
-
         job["deadline"] = ""
-
         job["posted_date"] = ""
+        job["is_remote"] = "remote" in job["description"].lower()
 
-        job["is_remote"] = (
-            "remote"
-            in job["description"].lower()
-        )
-
-        href = (
-            link_el.get("href")
-            if link_el
-            else ""
-        )
+        href = link_el.get("href") if link_el else ""
 
         if href:
-
             if href.startswith("http"):
-
                 job["apply_url"] = href
-
             else:
-
-                job["apply_url"] = (
-                    BASE + href
-                )
-
+                job["apply_url"] = BASE + href
         else:
-
             job["apply_url"] = ""
 
         return job
 
 
 def _clean(text) -> str:
-
-    return re.sub(
-        r"\s+",
-        " ",
-        str(text or ""),
-    ).strip()
+    return re.sub(r"\s+", " ", str(text or "")).strip()
