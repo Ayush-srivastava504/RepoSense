@@ -1,5 +1,9 @@
 name: Backend CI/CD
 
+permissions:
+  contents: read
+  packages: write
+
 on:
   push:
     branches: [master]
@@ -112,13 +116,60 @@ jobs:
           name: coverage-report
           path: services/api/coverage.xml
 
-  deploy:
-    name: Deploy to EC2
+  build:
+    name: Build and Push Images
     needs: test
     if: >
       github.ref == 'refs/heads/master' &&
       github.event_name == 'push' &&
       needs.test.result == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push API Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./services/api
+          file: ./services/api/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/ayush-srivastava504/reposense-api:latest
+            ghcr.io/ayush-srivastava504/reposense-api:${{ github.sha }}
+
+      - name: Build and Push RAG Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./services/api/rag
+          file: ./services/api/rag/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/ayush-srivastava504/reposense-rag:latest
+            ghcr.io/ayush-srivastava504/reposense-rag:${{ github.sha }}
+
+      - name: Build and Push Neural Generator Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./services/api/neural_generator
+          file: ./services/api/neural_generator/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/ayush-srivastava504/reposense-neural:latest
+            ghcr.io/ayush-srivastava504/reposense-neural:${{ github.sha }}
+
+  deploy:
+    name: Deploy to EC2
+    needs: build
+    if: needs.build.result == 'success'
     runs-on: ubuntu-latest
 
     steps:
@@ -133,7 +184,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           timeout: 60s
-          command_timeout: 30m
+          command_timeout: 15m
           script_stop: true
           script: |
             set -e
@@ -145,8 +196,11 @@ jobs:
             echo "Pulling latest code..."
             git pull
 
-            echo "Building and deploying containers..."
-            docker compose -f infrastructure/docker/docker-compose.yml up -d --build api
+            echo "Pulling pre-built images from GHCR..."
+            docker compose -f infrastructure/docker/docker-compose.yml pull api rag neural-generator
+
+            echo "Starting containers..."
+            docker compose -f infrastructure/docker/docker-compose.yml up -d api rag neural-generator
 
             echo "Waiting for API to be healthy..."
             for i in $(seq 1 12); do
