@@ -111,12 +111,45 @@ export const metadata: Metadata = {
   manifest: '/site.webmanifest',
 };
 
+const organizationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'InternFlow',
+  url: BASE_URL,
+  logo: `${BASE_URL}/og-image.png`,
+  sameAs: ['https://twitter.com/internflow_in'],
+  description:
+    'AI-powered platform that reviews student GitHub code and generates ATS-ready resumes.',
+};
+
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'InternFlow',
+  url: BASE_URL,
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: `${BASE_URL}/jobs?search={search_term_string}`,
+    'query-input': 'required name=search_term_string',
+  },
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className={`${inter.variable} ${fraunces.variable} ${plexMono.variable} font-sans antialiased`}>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+        />
         {children}
-        <GoogleAnalytics gaId="G-2SC90HTR7G" />
+        {process.env.NEXT_PUBLIC_GA_ID && (
+          <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+        )}
       </body>
     </html>
   );

@@ -1,35 +1,18 @@
-# intern-flow.in — robots.txt
-
 User-agent: *
 Allow: /
 Allow: /register
 Allow: /login
+Allow: /jobs
+Allow: /jobs/
+
 Disallow: /dashboard
 Disallow: /dashboard/
 Disallow: /github
 Disallow: /github/
-Disallow: /jobs
-Disallow: /jobs/
 Disallow: /resume
 Disallow: /resume/
 Disallow: /api/
 Disallow: /_next/
 Disallow: /static/
-
-# Block AI training crawlers
-User-agent: GPTBot
-Disallow: /
-
-User-agent: Google-Extended
-Disallow: /
-
-User-agent: CCBot
-Disallow: /
-
-User-agent: anthropic-ai
-Disallow: /
-
-User-agent: Claude-Web
-Disallow: /
 
 Sitemap: https://intern-flow.in/sitemap.xml

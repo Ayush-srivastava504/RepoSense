@@ -1,28 +1,24 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
-        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+// app/sitemap.ts
+import { MetadataRoute } from 'next';
+import { getActiveJobListings } from '@/lib/jobs'; // your data source
 
-  <url>
-    <loc>https://intern-flow.in</loc>
-    <lastmod>2025-06-25</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
+const BASE_URL = 'https://intern-flow.in';
 
-  <url>
-    <loc>https://intern-flow.in/register</loc>
-    <lastmod>2025-06-25</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.9</priority>
-  </url>
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const staticRoutes: MetadataRoute.Sitemap = [
+    { url: BASE_URL, lastModified: new Date(), changeFrequency: 'weekly', priority: 1.0 },
+    { url: `${BASE_URL}/register`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${BASE_URL}/login`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${BASE_URL}/jobs`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+  ];
 
-  <url>
-    <loc>https://intern-flow.in/login</loc>
-    <lastmod>2025-06-25</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
+  const jobs = await getActiveJobListings(); // [{ slug, updatedAt }, ...]
+  const jobRoutes: MetadataRoute.Sitemap = jobs.map((job) => ({
+    url: `${BASE_URL}/jobs/${job.slug}`,
+    lastModified: job.updatedAt,
+    changeFrequency: 'daily',
+    priority: 0.8,
+  }));
 
-</urlset>
+  return [...staticRoutes, ...jobRoutes];
+}
