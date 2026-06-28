@@ -32,10 +32,12 @@ async function getJob(slug: string): Promise<Job | null> {
     const res = await fetch(`${process.env.API_BASE_URL}/api/jobs/${id}`, {
       next: { revalidate: 3600 },
     });
+
     if (!res.ok) {
       console.error('Job detail API returned', res.status, 'for id', id);
       return null;
     }
+
     return res.json();
   } catch (err) {
     console.error('Failed to fetch job:', err);
@@ -49,12 +51,15 @@ export async function generateMetadata({
   params: { slug: string };
 }): Promise<Metadata> {
   const job = await getJob(params.slug);
+
   if (!job) return {};
 
   return {
     title: `${job.title} at ${job.company} — Internship`,
     description: job.description?.substring(0, 155),
-    alternates: { canonical: `${BASE_URL}/jobs/${params.slug}` },
+    alternates: {
+      canonical: `${BASE_URL}/jobs/${params.slug}`,
+    },
   };
 }
 
@@ -64,6 +69,7 @@ export default async function JobDetailPage({
   params: { slug: string };
 }) {
   const job = await getJob(params.slug);
+
   if (!job) notFound();
 
   const compensation = job.stipend || job.salary || null;
@@ -75,7 +81,10 @@ export default async function JobDetailPage({
     description: job.description,
     datePosted: job.posted_at,
     employmentType: job.type === 'internship' ? 'INTERN' : 'FULL_TIME',
-    hiringOrganization: { '@type': 'Organization', name: job.company },
+    hiringOrganization: {
+      '@type': 'Organization',
+      name: job.company,
+    },
     ...(job.location && {
       jobLocation: {
         '@type': 'Place',
@@ -93,7 +102,9 @@ export default async function JobDetailPage({
     <main className="mx-auto max-w-3xl px-4 py-12">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingSchema) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jobPostingSchema),
+        }}
       />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -103,26 +114,37 @@ export default async function JobDetailPage({
             ? new Date(job.posted_at).toLocaleDateString()
             : 'Recent'}
         </p>
+
         {job.type && (
-          <span className="chip chip-muted text-[0.65rem]">{job.type}</span>
+          <span className="chip chip-muted text-[0.65rem]">
+            {job.type}
+          </span>
         )}
       </div>
 
-      <h1 className="display mt-2 text-3xl font-medium">{job.title}</h1>
+      <h1 className="display mt-2 text-3xl font-medium">
+        {job.title}
+      </h1>
 
-      <p className="mt-1 text-sm" style={{ color: 'var(--ink-soft)' }}>
+      <p
+        className="mt-1 text-sm"
+        style={{ color: 'var(--ink-soft)' }}
+      >
         {job.company}
         {job.location && ` · ${job.location}`}
       </p>
 
       {compensation && (
-        <p className="mt-2 text-sm font-medium" style={{ color: 'var(--ink)' }}>
+        <p
+          className="mt-2 text-sm font-medium"
+          style={{ color: 'var(--ink)' }}
+        >
           {compensation}
         </p>
       )}
 
       <p
-        className="mt-6 text-sm leading-relaxed whitespace-pre-line"
+        className="mt-6 whitespace-pre-line text-sm leading-relaxed"
         style={{ color: 'var(--ink-soft)' }}
       >
         {job.description}
@@ -130,7 +152,7 @@ export default async function JobDetailPage({
 
       <div className="mt-8 flex gap-3">
         {job.url ? (
-          
+          <a
             href={job.url}
             target="_blank"
             rel="noopener noreferrer"
@@ -139,11 +161,18 @@ export default async function JobDetailPage({
             Apply now
           </a>
         ) : (
-          <a href="/register" className="btn btn-primary">
+          <a
+            href="/register"
+            className="btn btn-primary"
+          >
             Sign up to apply
           </a>
         )}
-        <a href="/jobs" className="btn">
+
+        <a
+          href="/jobs"
+          className="btn"
+        >
           ← Back to listings
         </a>
       </div>
