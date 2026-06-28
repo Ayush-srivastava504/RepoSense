@@ -26,10 +26,13 @@ async function getJob(slug: string): Promise<Job | null> {
   const id = jobIdFromSlug(slug);
 
   try {
-    const res = await fetch(`${process.env.API_BASE_URL}/public/jobs/${id}`, {
+    const res = await fetch(`${process.env.API_BASE_URL}/api/jobs/${id}`, {
       next: { revalidate: 3600 },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error('Job detail API returned', res.status);
+      return null;
+    }
     return res.json();
   } catch (err) {
     console.error('Failed to fetch job:', err);
@@ -47,7 +50,7 @@ export async function generateMetadata({
 
   return {
     title: `${job.title} at ${job.company} — Internship`,
-    description: job.description.substring(0, 155),
+    description: job.description?.substring(0, 155),
     alternates: { canonical: `${BASE_URL}/jobs/${params.slug}` },
   };
 }

@@ -31,12 +31,20 @@ async function getPublicJobs(): Promise<Job[]> {
   }
 
   try {
-    const res = await fetch(`${process.env.API_BASE_URL}/public/jobs?limit=100`, {
+    const res = await fetch(`${process.env.API_BASE_URL}/api/jobs/?limit=100`, {
       next: { revalidate: 3600 },
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.error('Jobs API returned', res.status);
+      return [];
+    }
     const data = await res.json();
-    return Array.isArray(data) ? data : data.jobs ?? [];
+    console.log('Jobs API response keys:', Object.keys(data));
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data.jobs)) return data.jobs;
+    if (Array.isArray(data.data)) return data.data;
+    if (Array.isArray(data.results)) return data.results;
+    return [];
   } catch (err) {
     console.error('Failed to fetch jobs:', err);
     return [];
@@ -94,7 +102,7 @@ export default async function PublicJobsPage() {
                 className="mt-3 flex-1 text-sm leading-relaxed"
                 style={{ color: 'var(--ink-soft)' }}
               >
-                {job.description.substring(0, 140)}…
+                {job.description?.substring(0, 140)}…
               </p>
             </Link>
           ))}
