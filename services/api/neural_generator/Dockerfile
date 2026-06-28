@@ -17,7 +17,11 @@ COPY requirements.txt .
 RUN pip install --retries 5 --default-timeout 1000 --no-cache-dir -r requirements.txt
 
 COPY src ./src
-COPY models ./models
+
+RUN mkdir -p /app/models && \
+    curl -L \
+    https://github.com/Ayush-srivastava504/RepoSense/releases/download/models/Qwen3-0.6B-Q4_K_M.gguf \
+    -o /app/models/Qwen3-0.6B-Q4_K_M.gguf
 
 EXPOSE 8002
 
