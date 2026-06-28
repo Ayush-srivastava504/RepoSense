@@ -139,23 +139,13 @@ jobs:
             echo "Connected to EC2 instance"
             echo "Hostname: $(hostname)"
 
-            # Navigate to project directory
-            if [ -d "RepoSense-master" ]; then
-              cd RepoSense-master
-            elif [ -d "RepoSense" ]; then
-              cd RepoSense
-            else
-              echo "Project directory not found!"
-              exit 1
-            fi
+            cd /home/ec2-user/RepoSense
 
-            echo "Current directory: $(pwd)"
             echo "Pulling latest code..."
-            git pull origin master || git pull origin main
+            git pull
 
             echo "Building and deploying containers..."
-            docker compose -f infrastructure/docker/docker-compose.yml build api
-            docker compose -f infrastructure/docker/docker-compose.yml up -d
+            docker compose -f infrastructure/docker/docker-compose.yml up -d --build api
 
             echo "Waiting for API to be healthy..."
             for i in $(seq 1 12); do
@@ -229,7 +219,7 @@ jobs:
           port: 22
           timeout: 30s
           script: |
-            cd ~/RepoSense-master || cd ~/RepoSense || exit 1
+            cd /home/ec2-user/RepoSense
             ALERT_WEBHOOK_URL="${{ secrets.ALERT_WEBHOOK }}" \
               python3 monitor.py 2>/dev/null || echo "Monitor script not found"
 
