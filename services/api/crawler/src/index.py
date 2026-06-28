@@ -1,10 +1,6 @@
 import json
 import os
 import time
-from concurrent.futures import (
-    ThreadPoolExecutor,
-    as_completed,
-)
 from typing import Dict, List, Set
 
 from config import (
@@ -12,7 +8,6 @@ from config import (
     DEFAULT_LOCATIONS,
     ENABLED_SCRAPERS,
     MAX_PAGES_PER_SOURCE,
-    MAX_WORKERS,
 )
 
 from processors.dedupe import (
@@ -250,56 +245,42 @@ def run_pipeline(
 
     source_counts: Dict[str, int] = {}
 
-    with ThreadPoolExecutor(
-        max_workers=min(
-            MAX_WORKERS,
-            len(active_scrapers),
-        )
-    ) as pool:
+    # Run one scraper at a time — no parallel browsers, no ThreadPoolExecutor.
+    # Each scraper gets its own single Chromium instance (see BaseScraper.run),
+    # fully closed before the next scraper starts.
+    for key in active_scrapers:
 
-        futures = {
-            pool.submit(
-                _run_scraper,
-                registry[key](),
+        try:
+
+            scraper = registry[key]()
+
+            jobs = _run_scraper(
+                scraper,
                 keywords,
                 locations,
                 max_pages,
-            ): key
-            for key in active_scrapers
-        }
+            )
 
-        for future in as_completed(
-            futures
-        ):
+            source_counts[key] = len(jobs)
 
-            key = futures[future]
+            raw_jobs.extend(jobs)
 
-            try:
+            log.info(
+                "%s -> %d raw jobs",
+                key,
+                len(jobs),
+            )
 
-                jobs = future.result()
+        except Exception as exc:
 
-                source_counts[key] = len(
-                    jobs
-                )
+            log.error(
+                "%s crashed: %s",
+                key,
+                exc,
+                exc_info=True,
+            )
 
-                raw_jobs.extend(jobs)
-
-                log.info(
-                    "%s -> %d raw jobs",
-                    key,
-                    len(jobs),
-                )
-
-            except Exception as exc:
-
-                log.error(
-                    "%s crashed: %s",
-                    key,
-                    exc,
-                    exc_info=True,
-                )
-
-                source_counts[key] = 0
+            source_counts[key] = 0
 
     log.info(
         "Total raw jobs collected: %d",

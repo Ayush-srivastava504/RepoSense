@@ -1,23 +1,33 @@
-# these one are not running because they ar efixed scraper some css issue means i am scraping by old way these website have change css now new css to check
 import os
 import random
 import re
 import time
 from typing import Dict, List, Optional
-from urllib.parse import quote, urljoin
+from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
 
 from scrapers.base import BaseScraper
 
 
 BASE = "https://cutshort.io"
 
+# Real category slugs — Cutshort no longer supports ?keyword query search,
+# it uses pre-built SEO category pages instead.
+CATEGORY_SLUGS = [
+    "internship-jobs",
+    "fullstack-developer-jobs",
+    "backend-developer-jobs",
+    "frontend-developer-jobs",
+    "datascience-jobs",
+    "devops-jobs",
+]
+
 
 class CutshortScraper(BaseScraper):
 
     source_name = "cutshort"
+    uses_browser = True  # kept True for safety; site is SSR but JS-rendered fallback is cheap insurance
 
     def scrape(
         self,
@@ -28,320 +38,109 @@ class CutshortScraper(BaseScraper):
 
         jobs: List[Dict] = []
 
-        search_queries = [
-            "software engineer",
-            "intern",
-            "machine learning",
-            "data science",
-        ]
-
-        for keyword in search_queries:
-
-            batch = self._search(
-                keyword,
-                max_pages,
-            )
-
-            jobs.extend(batch)
-
-            time.sleep(
-                random.uniform(2, 5)
-            )
-
-        self.log.info(
-            "Collected %d jobs from cutshort",
-            len(jobs),
-        )
-
-        return jobs
-
-    def _search(
-        self,
-        keyword: str,
-        max_pages: int,
-    ) -> List[Dict]:
-
-        results = []
-
-        for page in range(1, max_pages + 1):
-
-            url = (
-                f"{BASE}/jobs/"
-                f"{quote(keyword)}"
-                f"?page={page}"
-            )
-
-            self.log.info(
-                "Cutshort scrape: %s",
-                url,
-            )
-
+        for slug in CATEGORY_SLUGS:
             try:
-
-                html = self._render_page(url)
-
+                html = self._render_category(slug)
             except Exception as e:
-
-                self.log.warning(
-                    "Cutshort render failed: %s",
-                    str(e),
-                )
-
+                self.log.warning("Cutshort render failed for %s: %s", slug, str(e))
                 continue
 
-            # Write debug HTML only if SCRAPER_DEBUG is enabled
             if os.getenv("SCRAPER_DEBUG"):
-                with open(
-                    f"cutshort_debug_{page}.html",
-                    "w",
-                    encoding="utf-8",
-                ) as f:
+                with open(f"cutshort_debug_{slug}.html", "w", encoding="utf-8") as f:
                     f.write(html)
 
-            soup = BeautifulSoup(
-                html,
-                "html.parser",
-            )
-
-            selectors = [
-                ".job-card",
-                ".jobs-card",
-                '[class*="job-card"]',
-                '[class*="jobCard"]',
-                "article",
-            ]
-
-            cards = []
-
-            for selector in selectors:
-
-                cards = soup.select(selector)
-
-                if cards:
-                    break
-
-            self.log.info(
-                "Cutshort found %d cards",
-                len(cards),
-            )
-
-            if not cards:
-                continue
+            soup = BeautifulSoup(html, "html.parser")
+            cards = self._find_cards(soup)
+            self.log.info("Cutshort [%s] found %d cards", slug, len(cards))
 
             for card in cards:
-
                 try:
-
                     job = self._parse_card(card)
-
                     if job:
-                        results.append(job)
-
+                        jobs.append(job)
                 except Exception:
                     continue
 
-            time.sleep(
-                random.uniform(2, 4)
-            )
+            time.sleep(random.uniform(2, 4))
 
-        return results
+        self.log.info("Collected %d jobs from cutshort", len(jobs))
+        return jobs
 
-    def _render_page(
-        self,
-        url: str,
-    ) -> str:
+    def _render_category(self, slug: str) -> str:
+        url = f"{BASE}/jobs/{slug}"
+        self.log.info("Cutshort scrape: %s", url)
 
-        with sync_playwright() as p:
+        page = self.new_page()
+        try:
+            self.goto(page, url)
+            page.wait_for_timeout(3000)
+            # Site is mostly SSR — scroll a little in case of any lazy-loaded cards
+            for _ in range(3):
+                page.mouse.wheel(0, 3000)
+                page.wait_for_timeout(random.randint(800, 1500))
+            return page.content()
+        finally:
+            page.close()
 
-            browser = p.chromium.launch(
-                headless=True,
-            )
+    def _find_cards(self, soup: BeautifulSoup) -> List:
+        """
+        Cutshort's job cards are anchored around an <h2><a>title</a></h2>
+        followed by an <h3><a>company</a></h3>. Rather than guess a wrapper
+        class (which changes across redesigns), walk up from each h2 to its
+        nearest container with both title and company present.
+        """
+        cards = []
+        for h2 in soup.find_all("h2"):
+            title_link = h2.find("a")
+            if not title_link or not title_link.get_text(strip=True):
+                continue
+            container = h2.find_parent(["article", "div", "li"])
+            # walk up further if the immediate parent doesn't also contain an h3
+            hops = 0
+            while container and not container.find("h3") and hops < 4:
+                container = container.find_parent(["article", "div", "li"])
+                hops += 1
+            if container:
+                cards.append(container)
+        return cards
 
-            context = browser.new_context(
-                viewport={
-                    "width": 1400,
-                    "height": 900,
-                },
-                user_agent=(
-                    "Mozilla/5.0 "
-                    "(Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 "
-                    "(KHTML, like Gecko) "
-                    "Chrome/124.0.0.0 "
-                    "Safari/537.36"
-                ),
-            )
-
-            page = context.new_page()
-
-            page.goto(
-                url,
-                wait_until="domcontentloaded",
-                timeout=60000,
-            )
-
-            page.wait_for_timeout(7000)
-
-            try:
-
-                for _ in range(4):
-
-                    page.mouse.wheel(0, 3500)
-
-                    page.wait_for_timeout(
-                        random.randint(1200, 3000)
-                    )
-
-            except Exception:
-                pass
-
-            html = page.content()
-
-            browser.close()
-
-            return html
-
-    def _parse_card(
-        self,
-        card,
-    ) -> Optional[Dict]:
-
+    def _parse_card(self, card) -> Optional[Dict]:
         job = self._empty_job()
 
-        title_el = (
-            card.select_one("h2")
-            or card.select_one("h3")
-            or card.select_one("a")
-        )
-
-        company_el = (
-            card.select_one(
-                '[class*="company"]'
-            )
-            or card.select_one("h4")
-        )
-
-        location_el = (
-            card.select_one(
-                '[class*="location"]'
-            )
-        )
-
-        salary_el = (
-            card.select_one(
-                '[class*="salary"]'
-            )
-            or card.select_one(
-                '[class*="ctc"]'
-            )
-        )
-
-        exp_el = (
-            card.select_one(
-                '[class*="experience"]'
-            )
-        )
-
-        link_el = card.select_one("a")
-
-        title = _clean(
-            title_el.get_text(
-                " ",
-                strip=True,
-            )
-            if title_el
-            else ""
-        )
-
+        h2 = card.find("h2")
+        title_link = h2.find("a") if h2 else None
+        title = _clean(title_link.get_text(" ", strip=True)) if title_link else ""
         if not title:
             return None
-
         job["title"] = title
 
-        job["company"] = _clean(
-            company_el.get_text(
-                strip=True
-            )
-            if company_el
-            else ""
+        h3 = card.find("h3")
+        company_link = h3.find("a") if h3 else None
+        job["company"] = _clean(company_link.get_text(strip=True)) if company_link else (
+            _clean(h3.get_text(strip=True)) if h3 else ""
         )
 
-        job["location"] = _clean(
-            location_el.get_text(
-                strip=True
-            )
-            if location_el
-            else ""
-        )
+        text_blob = _clean(card.get_text(" ", strip=True))
 
-        job["salary"] = _clean(
-            salary_el.get_text(
-                strip=True
-            )
-            if salary_el
-            else ""
+        loc_match = re.search(
+            r"(Remote(?: only)?|Remote,\s*[\w\s]+|[\w\s]+\(?[\w\s]*\)?)\s*\d", text_blob
         )
+        job["location"] = "Remote" if "remote" in text_blob.lower() else ""
 
-        job["experience_required"] = _clean(
-            exp_el.get_text(
-                strip=True
-            )
-            if exp_el
-            else ""
-        )
+        salary_match = re.search(r"₹[\d.,LK\s\-/yrmo]+", text_blob)
+        job["salary"] = salary_match.group(0).strip() if salary_match else ""
 
-        job["description"] = _clean(
-            card.get_text(
-                " ",
-                strip=True,
-            )
-        )
-
+        job["description"] = text_blob[:1000]
         job["skills"] = []
-
-        job["type"] = (
-            "internship"
-            if "intern"
-            in job["title"].lower()
-            else "full-time"
-        )
-
-        job["is_remote"] = (
-            "remote"
-            in job["location"].lower()
-        )
-
+        job["type"] = "internship" if "intern" in title.lower() else "full-time"
+        job["is_remote"] = "remote" in text_blob.lower()
         job["posted_date"] = ""
 
-        href = (
-            link_el.get("href")
-            if link_el
-            else ""
-        )
-
-        if href:
-
-            if href.startswith("http"):
-
-                job["apply_url"] = href
-
-            else:
-
-                job["apply_url"] = (
-                    urljoin(BASE, href)
-                )
-
-        else:
-
-            job["apply_url"] = ""
+        href = title_link.get("href", "")
+        job["apply_url"] = href if href.startswith("http") else urljoin(BASE, href)
 
         return job
 
 
 def _clean(text) -> str:
-
-    return re.sub(
-        r"\s+",
-        " ",
-        str(text or ""),
-    ).strip()
+    return re.sub(r"\s+", " ", str(text or "")).strip()
