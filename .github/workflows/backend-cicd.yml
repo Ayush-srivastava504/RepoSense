@@ -133,6 +133,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           timeout: 60s
+          command_timeout: 30m
           script_stop: true
           script: |
             set -e
@@ -175,6 +176,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           timeout: 30s
+          command_timeout: 5m
           script: |
             set -e
             check() {
@@ -218,6 +220,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           timeout: 30s
+          command_timeout: 5m
           script: |
             cd /home/ec2-user/RepoSense
             ALERT_WEBHOOK_URL="${{ secrets.ALERT_WEBHOOK }}" \
