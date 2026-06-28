@@ -1,7 +1,7 @@
 import asyncio
 import json
 import traceback
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
@@ -46,10 +46,17 @@ class ProjectEntry(BaseModel):
     github: Optional[str] = ""
     bullets: List[str] = []
 
-class CertificationEntry(BaseModel):  # NEW
+class CertificationEntry(BaseModel):
     name: str
     issuer: Optional[str] = ""
     year: Optional[str] = ""
+
+class TechnicalSkills(BaseModel):
+    languages: Optional[str] = ""
+    ai_ml: Optional[str] = ""
+    backend: Optional[str] = ""
+    databases: Optional[str] = ""
+    tools: Optional[str] = ""
 
 class GenerateStructuredRequest(BaseModel):
     title: str
@@ -59,12 +66,13 @@ class GenerateStructuredRequest(BaseModel):
     summary: str
     githubUrl: Optional[str] = ""
     websiteUrl: Optional[str] = ""
-    skills: str
+    skills: Optional[str] = ""                          # kept for backward compat
+    technical_skills: Optional[TechnicalSkills] = None  # new structured skills
     experience: List[ExperienceEntry] = []
     education: List[EducationEntry] = []
     projects: List[ProjectEntry] = []
-    achievements: List[str] = []                    # NEW
-    certifications: List[CertificationEntry] = []    # NEW
+    achievements: List[str] = []
+    certifications: List[CertificationEntry] = []
 
 
 @router.get("/test")
@@ -98,7 +106,6 @@ async def generate_resume(data: GenerateResumeRequest, user=Depends(verify_token
 
 
 def _strip_protocol(url: str) -> str:
-    """Turn https://github.com/foo into github.com/foo for display text."""
     if not url:
         return ""
     return url.replace("https://", "").replace("http://", "").rstrip("/")
@@ -112,59 +119,73 @@ async def generate_structured_resume(data: GenerateStructuredRequest, user=Depen
 
         email = data.email or user.get("email", "")
 
-        structured_data = {
-            "name": data.name or data.title,
-            "email": email,
-            "phone": data.phone,
-            "github_url": data.githubUrl,
-            "github_display": _strip_protocol(data.githubUrl),
-            "website_url": data.websiteUrl,
-            "website_display": _strip_protocol(data.websiteUrl),
-            "summary": data.summary,
-            "technical_skills": {
-                "languages": data.skills,
-                "backend": "",
-                "ai_ml": "",
+        # If new structured skills provided use them, else fall back to flat skills string
+        if data.technical_skills:
+            skills_dict = {
+                "languages": data.technical_skills.languages or "",
+                "ai_ml":     data.technical_skills.ai_ml or "",
+                "backend":   data.technical_skills.backend or "",
+                "databases": data.technical_skills.databases or "",
+                "tools":     data.technical_skills.tools or "",
+            }
+        else:
+            skills_dict = {
+                "languages": data.skills or "",
+                "ai_ml":     "",
+                "backend":   "",
                 "databases": "",
-                "tools": "",
-            },
+                "tools":     "",
+            }
+
+        structured_data = {
+            "name":            data.name or data.title,
+            "email":           email,
+            "phone":           data.phone,
+            "github_url":      data.githubUrl,
+            "github_display":  _strip_protocol(data.githubUrl),
+            "website_url":     data.websiteUrl,
+            "website_display": _strip_protocol(data.websiteUrl),
+            "summary":         data.summary,
+            "technical_skills": skills_dict,
             "experience": [
                 {
-                    "company": exp.company,
-                    "role": exp.role,
+                    "company":  exp.company,
+                    "role":     exp.role,
                     "duration": f"{exp.start} – {exp.end}".strip(" –") if exp.start or exp.end else "",
                     "location": exp.location or "",
-                    "bullets": [b for b in exp.bullets if b.strip()],
+                    "bullets":  [b for b in exp.bullets if b.strip()],
                 }
                 for exp in data.experience
             ],
             "education": [
                 {
                     "institution": edu.institution,
-                    "degree": edu.degree,
-                    "year": edu.year,
+                    "degree":      edu.degree,
+                    "year":        edu.year,
                 }
                 for edu in data.education
             ],
             "projects": [
                 {
-                    "title": proj.title,
-                    "tech": proj.tech,
-                    "github": proj.github or "",
+                    "title":   proj.title,
+                    "tech":    proj.tech,
+                    "github":  proj.github or "",
                     "bullets": [b for b in proj.bullets if b.strip()],
                 }
                 for proj in data.projects
             ],
-            "achievements": [a for a in data.achievements if a.strip()],  # NEW
-            "certifications": [                                            # NEW
+            "achievements": [a for a in data.achievements if a.strip()],
+            "certifications": [
                 {"name": c.name, "issuer": c.issuer or "", "year": c.year or ""}
                 for c in data.certifications
                 if c.name.strip()
             ],
         }
+
         latex_resume = template_service.render_resume(structured_data)
         pdf_path = await pdf_service.compile_latex("structured_resume", latex_resume)
         return FileResponse(pdf_path, media_type="application/pdf", filename="resume.pdf")
+
     except Exception as exc:
         traceback.print_exc()
         raise HTTPException(500, f"PDF generation failed: {str(exc)}")

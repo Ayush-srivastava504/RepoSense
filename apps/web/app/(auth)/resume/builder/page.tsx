@@ -9,12 +9,11 @@ import { trackEvent } from '@/lib/analytics';
 
 type Tab = 'handwritten' | 'ai';
 
-interface ExperienceEntry  { company: string; role: string; start: string; end: string; bullets: string[]; }
-interface EducationEntry   { institution: string; degree: string; year: string; }
-interface ProjectEntry     { title: string; tech: string; github: string; bullets: string[]; }
+interface ExperienceEntry    { company: string; role: string; start: string; end: string; bullets: string[]; }
+interface EducationEntry     { institution: string; degree: string; year: string; }
+interface ProjectEntry       { title: string; tech: string; github: string; bullets: string[]; }
 interface CertificationEntry { name: string; issuer: string; year: string; }
 
-/* ── Progress steps shown while the AI is working ─────────────────── */
 const AI_STATUS_STEPS = [
   { at: 0,    label: 'Starting generation…' },
   { at: 0.08, label: 'Parsing your experience…' },
@@ -30,7 +29,6 @@ function calcProgress(elapsed: number, estimated: number) {
   return Math.min(0.95, 1 - Math.exp(-(elapsed / estimated) * 2.8));
 }
 
-/* ── Shared section wrapper ────────────────────────────────────────── */
 function Section({ label, onAdd, children }: { label: string; onAdd: () => void; children: React.ReactNode }) {
   return (
     <div>
@@ -43,7 +41,6 @@ function Section({ label, onAdd, children }: { label: string; onAdd: () => void;
   );
 }
 
-/* ── Entry card wrapper ────────────────────────────────────────────── */
 function EntryCard({ onRemove, children }: { onRemove?: () => void; children: React.ReactNode }) {
   return (
     <div className="space-y-3 rounded-[var(--radius-md)] border p-4" style={{ borderColor: 'var(--line)' }}>
@@ -62,13 +59,20 @@ function ResumeContent() {
   const [tab, setTab] = useState<Tab>('handwritten');
 
   // — handwritten form state —
-  const [title, setTitle]       = useState('');
-  const [name, setName]         = useState('');
-  const [phone, setPhone]       = useState('');
-  const [summary, setSummary]   = useState('');
+  const [title, setTitle]         = useState('');
+  const [name, setName]           = useState('');
+  const [phone, setPhone]         = useState('');
+  const [summary, setSummary]     = useState('');
   const [githubUrl, setGithubUrl] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
-  const [skills, setSkills]     = useState('');
+
+  // — structured skills —
+  const [skillsLanguages, setSkillsLanguages] = useState('');
+  const [skillsAiMl, setSkillsAiMl]           = useState('');
+  const [skillsBackend, setSkillsBackend]       = useState('');
+  const [skillsDatabases, setSkillsDatabases]   = useState('');
+  const [skillsTools, setSkillsTools]           = useState('');
+
   const [experience, setExperience] = useState<ExperienceEntry[]>([
     { company: '', role: '', start: '', end: '', bullets: [''] },
   ]);
@@ -78,7 +82,7 @@ function ResumeContent() {
   const [projects, setProjects] = useState<ProjectEntry[]>([
     { title: '', tech: '', github: '', bullets: [''] },
   ]);
-  const [achievements, setAchievements] = useState<string[]>(['']);
+  const [achievements, setAchievements]   = useState<string[]>(['']);
   const [certifications, setCertifications] = useState<CertificationEntry[]>([
     { name: '', issuer: '', year: '' },
   ]);
@@ -97,7 +101,6 @@ function ResumeContent() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedAt   = useRef(0);
   const ESTIMATED_MS = 150_000;
-
   const resultRef = useRef<HTMLDivElement>(null);
 
   /* ── helpers ── */
@@ -140,7 +143,7 @@ function ResumeContent() {
     setProjects((p) => p.map((proj, idx) => idx !== pi ? proj : { ...proj, bullets: proj.bullets.filter((_, i) => i !== bi) }));
 
   /* achievements / certs */
-  const updateAch = (i: number, v: string) => setAchievements((p) => p.map((a, idx) => idx === i ? v : a));
+  const updateAch  = (i: number, v: string) => setAchievements((p) => p.map((a, idx) => idx === i ? v : a));
   const updateCert = (i: number, f: keyof CertificationEntry, v: string) =>
     setCertifications((p) => p.map((c, idx) => idx === i ? { ...c, [f]: v } : c));
 
@@ -150,8 +153,24 @@ function ResumeContent() {
     trackEvent('resume_handwritten_save_started', { title: title || 'Untitled' });
     try {
       const blob = await api.post('/resume/generate-structured', {
-        title, name, phone, summary, githubUrl, websiteUrl, skills,
-        experience, education, projects, achievements, certifications,
+        title,
+        name,
+        phone,
+        summary,
+        githubUrl,
+        websiteUrl,
+        technical_skills: {
+          languages: skillsLanguages,
+          ai_ml:     skillsAiMl,
+          backend:   skillsBackend,
+          databases: skillsDatabases,
+          tools:     skillsTools,
+        },
+        experience,
+        education,
+        projects,
+        achievements,
+        certifications,
       }) as Blob;
       downloadBlob(blob, `${title || 'resume'}.pdf`);
       trackEvent('resume_handwritten_save_success', { title: title || 'Untitled' });
@@ -163,7 +182,7 @@ function ResumeContent() {
     }
   };
 
-  /* ── AI generation with progress bar ── */
+  /* ── AI generation ── */
   const startProgressTick = () => {
     startedAt.current = Date.now();
     setGenProgress(0);
@@ -188,10 +207,10 @@ function ResumeContent() {
     trackEvent('resume_ai_generation_started', { resume_type: resumeType });
     try {
       const { job_id } = await api.post('/resume/generate', {
-        resume_type: resumeType,
+        resume_type:     resumeType,
         job_description: jobDescription,
-        skills: aiSkills,
-        experience: aiExperience,
+        skills:          aiSkills,
+        experience:      aiExperience,
       });
       const result = await api.pollJob(job_id, () => {});
       if (!result?.pdf_b64) throw new Error('No PDF data returned.');
@@ -203,7 +222,6 @@ function ResumeContent() {
       setGenLabel('Done! Your PDF is downloading…');
       setGenPhase('done');
       trackEvent('resume_ai_generation_success', { resume_type: resumeType });
-      // scroll to result indicator
       setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
     } catch (err: any) {
       stopProgressTick();
@@ -231,7 +249,7 @@ function ResumeContent() {
             className="pb-2.5 text-sm font-medium transition-colors border-b-2"
             style={{
               borderColor: tab === t ? 'var(--indigo)' : 'transparent',
-              color: tab === t ? 'var(--ink)' : 'var(--ink-soft)',
+              color:       tab === t ? 'var(--ink)'    : 'var(--ink-soft)',
             }}
           >
             {t === 'handwritten' ? 'Write by hand' : 'Generate with AI'}
@@ -242,6 +260,7 @@ function ResumeContent() {
       {/* ── HANDWRITTEN TAB ── */}
       {tab === 'handwritten' && (
         <div className="panel mt-6 space-y-6 p-5 sm:p-6" style={{ maxWidth: '42rem' }}>
+
           <div>
             <label className="field-label">Resume title</label>
             <input className="field" placeholder="Frontend Developer Resume" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -274,9 +293,66 @@ function ResumeContent() {
             <textarea className="field h-28 resize-none" placeholder="2–3 sentences about who you are and what you build." value={summary} onChange={(e) => setSummary(e.target.value)} />
           </div>
 
-          <div>
-            <label className="field-label">Skills</label>
-            <input className="field" placeholder="Python, React, PostgreSQL, Docker…" value={skills} onChange={(e) => setSkills(e.target.value)} />
+          {/* ── TECHNICAL SKILLS ── */}
+          <div className="space-y-3">
+            <label className="field-label">Technical Skills</label>
+            <div className="space-y-3 rounded-[var(--radius-md)] border p-4" style={{ borderColor: 'var(--line)' }}>
+              <div>
+                <label className="field-label text-xs" style={{ color: 'var(--ink-soft)' }}>
+                  Languages &amp; Fundamentals
+                </label>
+                <input
+                  className="field"
+                  placeholder="Python, Java, C++, SQL, JavaScript, TypeScript, DSA, OOP, System Design"
+                  value={skillsLanguages}
+                  onChange={(e) => setSkillsLanguages(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="field-label text-xs" style={{ color: 'var(--ink-soft)' }}>
+                  AI / ML
+                </label>
+                <input
+                  className="field"
+                  placeholder="LLMs, RAG Pipelines, AI Agents, NLP, LangChain, LangGraph, Transformers"
+                  value={skillsAiMl}
+                  onChange={(e) => setSkillsAiMl(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="field-label text-xs" style={{ color: 'var(--ink-soft)' }}>
+                  Backend &amp; Frontend
+                </label>
+                <input
+                  className="field"
+                  placeholder="FastAPI, Flask, REST APIs, Microservices, React, Next.js, Tailwind CSS"
+                  value={skillsBackend}
+                  onChange={(e) => setSkillsBackend(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="field-label text-xs" style={{ color: 'var(--ink-soft)' }}>
+                  Databases, Cloud &amp; DevOps
+                </label>
+                <input
+                  className="field"
+                  placeholder="PostgreSQL, Vector DBs, Docker, Nginx, GitHub Actions, AWS, Cloudflare"
+                  value={skillsDatabases}
+                  onChange={(e) => setSkillsDatabases(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="field-label text-xs" style={{ color: 'var(--ink-soft)' }}>
+                  Tools &amp; Other (optional)
+                </label>
+                <input
+                  className="field"
+                  placeholder="Git, Linux, Postman, Figma…"
+                  value={skillsTools}
+                  onChange={(e) => setSkillsTools(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Experience */}
@@ -386,7 +462,6 @@ function ResumeContent() {
       {/* ── AI TAB ── */}
       {tab === 'ai' && (
         <div className="panel mt-6 space-y-5 p-5 sm:p-6" style={{ maxWidth: '42rem' }}>
-          {/* Before/after teaser */}
           <div className="rounded-[var(--radius-sm)] p-4 space-y-3" style={{ background: 'var(--paper-dim)' }}>
             <p className="eyebrow eyebrow-accent">// what you get</p>
             <div className="flex flex-col gap-2 text-sm">
@@ -426,7 +501,6 @@ function ResumeContent() {
             <textarea className="field h-28 resize-none" placeholder="Briefly describe your work experience and projects…" value={aiExperience} onChange={(e) => setAiExperience(e.target.value)} />
           </div>
 
-          {/* Generate button */}
           <div className="flex flex-col gap-3">
             <button
               onClick={generateResume}
@@ -437,7 +511,6 @@ function ResumeContent() {
               {generating ? '\u00A0' : genPhase === 'done' ? '✓ PDF downloaded' : 'Generate resume PDF'}
             </button>
 
-            {/* Progress bar */}
             {genPhase === 'running' && (
               <div className="gen-status" role="status" aria-live="polite">
                 <span className="gen-label">Generating · {pct}%</span>

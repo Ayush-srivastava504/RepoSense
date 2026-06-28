@@ -26,7 +26,6 @@
   [\titlerule]
 \titlespacing{\section}{0pt}{10pt}{6pt}
 
-% ---- custom list macros ----
 \newcommand{\resumeItem}[1]{\item #1}
 
 \newenvironment{resumeItems}{%
@@ -53,77 +52,77 @@
 \BLOCK{ endif }
 
 % ---------- SKILLS ----------
-\BLOCK{ if technical_skills }
+\BLOCK{ if technical_skills %}
 \section*{Technical Skills}
-\begin{tabularx}{\textwidth}{@{}l X@{}}
-\BLOCK{ if technical_skills.languages }\textbf{Languages:} & \VAR{technical_skills.languages | latex} \\\BLOCK{ endif }
-\BLOCK{ if technical_skills.backend }\textbf{Backend:} & \VAR{technical_skills.backend | latex} \\\BLOCK{ endif }
-\BLOCK{ if technical_skills.ai_ml }\textbf{AI/ML:} & \VAR{technical_skills.ai_ml | latex} \\\BLOCK{ endif }
-\BLOCK{ if technical_skills.databases }\textbf{Databases:} & \VAR{technical_skills.databases | latex} \\\BLOCK{ endif }
-\BLOCK{ if technical_skills.tools }\textbf{Tools:} & \VAR{technical_skills.tools | latex} \\\BLOCK{ endif }
+\begin{tabularx}{\textwidth}{@{}p{2.4cm} X@{}}
+\BLOCK{ if technical_skills.languages %}\textbf{Languages} & \VAR{technical_skills.languages | latex} \\[3pt]\BLOCK{ endif %}
+\BLOCK{ if technical_skills.ai_ml %}\textbf{AI / ML} & \VAR{technical_skills.ai_ml | latex} \\[3pt]\BLOCK{ endif %}
+\BLOCK{ if technical_skills.backend %}\textbf{Backend} & \VAR{technical_skills.backend | latex} \\[3pt]\BLOCK{ endif %}
+\BLOCK{ if technical_skills.databases %}\textbf{Databases} & \VAR{technical_skills.databases | latex} \\[3pt]\BLOCK{ endif %}
+\BLOCK{ if technical_skills.tools %}\textbf{Tools} & \VAR{technical_skills.tools | latex} \\[3pt]\BLOCK{ endif %}
 \end{tabularx}
-\BLOCK{ endif }
+\BLOCK{ endif %}
 
 % ---------- EXPERIENCE ----------
-\BLOCK{ if experience }
+\BLOCK{ if experience %}
 \section*{Experience}
-\BLOCK{ for job in experience }
+\BLOCK{ for job in experience %}
 \textbf{\VAR{job.role | latex}} \hfill \VAR{job.duration | latex} \\
-\textit{\VAR{job.company | latex}}\BLOCK{ if job.location } \hfill \textit{\VAR{job.location | latex}}\BLOCK{ endif }
-\BLOCK{ if job.bullets }
+\textit{\VAR{job.company | latex}}\BLOCK{ if job.location %} \hfill \textit{\VAR{job.location | latex}}\BLOCK{ endif %}
+\BLOCK{ if job.bullets %}
 \begin{resumeItems}
-\BLOCK{ for bullet in job.bullets }
+\BLOCK{ for bullet in job.bullets %}
     \resumeItem{\VAR{bullet | latex}}
-\BLOCK{ endfor }
+\BLOCK{ endfor %}
 \end{resumeItems}
-\BLOCK{ endif }
-\BLOCK{ endfor }
-\BLOCK{ endif }
+\BLOCK{ endif %}
+\BLOCK{ endfor %}
+\BLOCK{ endif %}
 
 % ---------- EDUCATION ----------
-\BLOCK{ if education }
+\BLOCK{ if education %}
 \section*{Education}
-\BLOCK{ for edu in education }
+\BLOCK{ for edu in education %}
 \textbf{\VAR{edu.institution | latex}} \hfill \VAR{edu.year | latex} \\
 \textit{\VAR{edu.degree | latex}} \\[4pt]
-\BLOCK{ endfor }
-\BLOCK{ endif }
+\BLOCK{ endfor %}
+\BLOCK{ endif %}
 
 % ---------- PROJECTS ----------
-\BLOCK{ if projects }
+\BLOCK{ if projects %}
 \section*{Projects}
-\BLOCK{ for project in projects }
+\BLOCK{ for project in projects %}
 \noindent\textbf{\VAR{project.title | latex}}%
-\BLOCK{ if project.tech } \quad \textit{\VAR{project.tech | latex}}\BLOCK{ endif }%
-\BLOCK{ if project.github } \hfill \faGithub\ \href{\VAR{project.github}}{Repo}\BLOCK{ endif }
-\BLOCK{ if project.bullets }
+\BLOCK{ if project.tech %} \quad \textit{\VAR{project.tech | latex}}\BLOCK{ endif %}%
+\BLOCK{ if project.github %} \hfill \faGithub\ \href{\VAR{project.github}}{Repo}\BLOCK{ endif %}
+\BLOCK{ if project.bullets %}
 \begin{resumeItems}
-\BLOCK{ for bullet in project.bullets }
+\BLOCK{ for bullet in project.bullets %}
     \resumeItem{\VAR{bullet | latex}}
-\BLOCK{ endfor }
+\BLOCK{ endfor %}
 \end{resumeItems}
-\BLOCK{ endif }
-\BLOCK{ endfor }
-\BLOCK{ endif }
+\BLOCK{ endif %}
+\BLOCK{ endfor %}
+\BLOCK{ endif %}
 
 % ---------- ACHIEVEMENTS ----------
-\BLOCK{ if achievements }
+\BLOCK{ if achievements %}
 \section*{Achievements}
 \begin{resumeItems}
-\BLOCK{ for achievement in achievements }
+\BLOCK{ for achievement in achievements %}
     \resumeItem{\VAR{achievement | latex}}
-\BLOCK{ endfor }
+\BLOCK{ endfor %}
 \end{resumeItems}
-\BLOCK{ endif }
+\BLOCK{ endif %}
 
 % ---------- CERTIFICATIONS ----------
-\BLOCK{ if certifications }
+\BLOCK{ if certifications %}
 \section*{Certifications}
 \begin{resumeItems}
-\BLOCK{ for cert in certifications }
-    \resumeItem{\VAR{cert.name | latex}\BLOCK{ if cert.issuer } --- \VAR{cert.issuer | latex}\BLOCK{ endif }\BLOCK{ if cert.year } (\VAR{cert.year | latex})\BLOCK{ endif }}
-\BLOCK{ endfor }
+\BLOCK{ for cert in certifications %}
+    \resumeItem{\VAR{cert.name | latex}\BLOCK{ if cert.issuer %} --- \VAR{cert.issuer | latex}\BLOCK{ endif %}\BLOCK{ if cert.year %} (\VAR{cert.year | latex})\BLOCK{ endif %}}
+\BLOCK{ endfor %}
 \end{resumeItems}
-\BLOCK{ endif }
+\BLOCK{ endif %}
 
 \end{document}

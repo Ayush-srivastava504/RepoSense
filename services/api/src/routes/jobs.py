@@ -18,7 +18,6 @@ async def get_jobs(
     if pool is None:
         raise HTTPException(503, "Database unavailable")
 
-    # Build dynamic WHERE clause
     conditions = ["is_active = true"]
     params: list = []
 
@@ -29,20 +28,17 @@ async def get_jobs(
     if search:
         params.append(f"%{search}%")
         n = len(params)
-        # ILIKE hits the gin_trgm_ops indexes
         conditions.append(
             f"(title ILIKE ${n} OR company ILIKE ${n} OR description ILIKE ${n})"
         )
 
     where = "WHERE " + " AND ".join(conditions)
 
-    # Total count for frontend hasMore logic
     total: int = await pool.fetchval(
         f"SELECT COUNT(*) FROM jobs {where}",
         *params,
     )
 
-    # limit and offset are the next two positional params after filter params
     limit_pos  = len(params) + 1
     offset_pos = len(params) + 2
 
@@ -74,3 +70,35 @@ async def get_jobs(
         "limit": limit,
         "offset": offset,
     }
+
+
+@router.get("/{job_id}")
+async def get_job(job_id: str):
+    pool = await get_db_pool()
+    if pool is None:
+        raise HTTPException(503, "Database unavailable")
+
+    row = await pool.fetchrow(
+        """
+        SELECT
+            id,
+            title,
+            company,
+            description,
+            url,
+            source,
+            posted_at,
+            location,
+            salary,
+            stipend,
+            type
+        FROM jobs
+        WHERE id = $1 AND is_active = true
+        """,
+        job_id,
+    )
+
+    if row is None:
+        raise HTTPException(404, "Job not found")
+
+    return dict(row)
