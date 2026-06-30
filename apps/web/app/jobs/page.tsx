@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { jobSlug } from '@/lib/slug';
+import AdSlot from '@/app/components/AdSlot';
 
 export const dynamic = 'force-dynamic';
 
@@ -164,6 +165,8 @@ export default async function PublicJobsPage({
             </p>
           )}
         </form>
+
+        <AdSlot slot="3995254749" format="auto" className="mt-10" />
 
         {jobs.length > 0 ? (
           <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">

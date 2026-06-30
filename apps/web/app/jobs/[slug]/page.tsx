@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { jobIdFromSlug } from '@/lib/slug';
+import AdSlot from '@/app/components/AdSlot';
 
 export const dynamic = 'force-dynamic';
 
@@ -149,6 +150,8 @@ export default async function JobDetailPage({
       >
         {job.description}
       </p>
+
+      <AdSlot slot="1083783857" format="autorelaxed" className="mt-8" />
 
       <div className="mt-8 flex gap-3">
         {job.url ? (
