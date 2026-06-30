@@ -33,7 +33,7 @@ class ResumePDFService:
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
-                errors="replace",  # pdflatex stdout/stderr isn't guaranteed valid UTF-8;
+                errors="replace",  # NEW — pdflatex stdout/stderr isn't guaranteed valid UTF-8;
                                    # without this, any stray byte crashes subprocess.run() itself
                                    # before you ever see the real LaTeX error
                 cwd=str(workdir),

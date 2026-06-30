@@ -137,8 +137,13 @@ async def generate_structured_resume(data: GenerateStructuredRequest, user=Depen
                 "tools":     "",
             }
 
+        # name must never be blank — an empty header line leaves LaTeX with
+        # no paragraph started before the \\[6pt] line break, which crashes
+        # pdflatex with "There's no line here to end."
+        resume_name = (data.name or data.title or "").strip() or "Resume"
+
         structured_data = {
-            "name":            data.name or data.title,
+            "name":            resume_name,
             "email":           email,
             "phone":           data.phone,
             "github_url":      data.githubUrl,

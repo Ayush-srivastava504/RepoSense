@@ -6,12 +6,12 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 class ResumeTemplateService:
 
     # Special characters that must be escaped in LaTeX text mode.
-    # NOTE: these are applied in a single regex pass (see latex_escape below),
-    # not via sequential str.replace() calls. Sequential replacement is unsafe
-    # here: e.g. once "\" becomes "\textbackslash{}", a later replacement for
-    # "{" would re-match the "{" inside the text we just introduced and
-    # corrupt it into "\textbackslash\{}". A single pass over the *original*
-    # string guarantees each source character is substituted exactly once.
+    # NOTE: applied in a single regex pass (see latex_escape below), not via
+    # sequential str.replace() calls. Sequential replacement is unsafe here:
+    # once "\" becomes "\textbackslash{}", a later replacement for "{" would
+    # re-match the "{" inside the text we just introduced and corrupt it into
+    # "\textbackslash\{}". A single pass over the *original* string guarantees
+    # each source character is substituted exactly once.
     _LATEX_REPLACEMENTS = {
         "\\": r"\textbackslash{}",
         "&":  r"\&",

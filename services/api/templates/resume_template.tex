@@ -38,12 +38,11 @@
 
 % ---------- HEADER ----------
 \begin{center}
-    {\fontsize{28}{32}\selectfont \bfseries \VAR{name | latex} }
-    \BLOCK{ if email or phone or github_url or website_url }\\[6pt]\BLOCK{ endif }
+    {\fontsize{28}{32}\selectfont \bfseries \VAR{(name | latex) if name else "~"} } \\[6pt]
     \BLOCK{ if email }\faEnvelope\ \href{mailto:\VAR{email}}{\VAR{email | latex}} \quad \BLOCK{ endif }%
     \BLOCK{ if phone }\faPhone\ \VAR{phone | latex} \quad \BLOCK{ endif }%
-    \BLOCK{ if github_url }\faGithub\ \href{\VAR{github_url}}{\VAR{github_display | latex}} \quad \BLOCK{ endif }%
-    \BLOCK{ if website_url }\faGlobe\ \href{\VAR{website_url}}{\VAR{website_display | latex}} \BLOCK{ endif }
+    \BLOCK{ if github_url }\faGithub\ \href{\VAR{github_url}}{\VAR{github_display}} \quad \BLOCK{ endif }%
+    \BLOCK{ if website_url }\faGlobe\ \href{\VAR{website_url}}{\VAR{website_display}} \BLOCK{ endif }
 \end{center}
 
 % ---------- SUMMARY ----------
@@ -85,7 +84,7 @@
 \section*{Education}
 \BLOCK{ for edu in education }
 \textbf{\VAR{edu.institution | latex}} \hfill \VAR{edu.year | latex} \\
-\textit{\VAR{edu.degree | latex}}\BLOCK{ if not loop.last } \\[4pt]\BLOCK{ endif }
+\textit{\VAR{edu.degree | latex}} \\[4pt]
 \BLOCK{ endfor }
 \BLOCK{ endif }
 
