@@ -12,6 +12,7 @@ const sections = [
   { href: '/github',         label: 'Code review' },
   { href: '/jobs',           label: 'Internships' },
   { href: '/resume/builder', label: 'Resume' },
+  { href: '/linkedin',       label: 'LinkedIn' },
 ];
 
 function ThemeToggle() {

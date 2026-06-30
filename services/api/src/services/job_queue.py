@@ -308,3 +308,39 @@ async def run_resume_job(job_id: str, user_id: str, resume_type: str,
         tb = traceback.format_exc()
         print(f"[job_queue] Resume job {job_id} failed:\n{tb}")
         await _update_job(pool, job_id, status="failed", error=tb[-2000:])
+
+async def run_linkedin_job(job_id: str, user_id: str, unlock_method: str, profile: dict):
+    """
+    Background task: run the 14-rule engine (instant) then call the LLM for
+    qualitative feedback (the slow part). Persists the result to
+    linkedin_analyses once done so /linkedin/history works.
+    """
+    pool = await get_db_pool()
+    await _update_job(pool, job_id, status="running")
+    try:
+        from services.linkedin_rules import run_rules
+        from services.linkedin_ai_service import LinkedInAIService
+        from services.linkedin_service import LinkedInService
+
+        rule_report = run_rules(profile)
+        ai_feedback = await LinkedInAIService().generate_feedback(profile, rule_report)
+        analysis_id = await LinkedInService(pool).save_analysis(
+            user_id, unlock_method, rule_report, ai_feedback
+        )
+
+        import json as _json
+        await _update_job(
+            pool,
+            job_id,
+            status="done",
+            result=_json.dumps({
+                "analysis_id": analysis_id,
+                "unlock_method": unlock_method,
+                **rule_report,
+                "ai_feedback": ai_feedback,
+            }),
+        )
+    except Exception:
+        tb = traceback.format_exc()
+        print(f"[job_queue] LinkedIn job {job_id} failed:\n{tb}")
+        await _update_job(pool, job_id, status="failed", error=tb[-2000:])
