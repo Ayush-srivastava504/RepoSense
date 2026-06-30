@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import AppShell from '../../components/AppShell';
-import AuthGuard from '../../components/AuthGuard';
 import { trackEvent } from '@/lib/analytics';
 
 interface Stats {
@@ -185,19 +184,39 @@ function DashboardContent() {
   return (
     <AppShell user={user} onLogout={handleLogout}>
 
+      {/* ── Guest banner ── */}
+      {!user && (
+        <div
+          className="panel mb-6 flex flex-col items-start justify-between gap-3 p-4 sm:flex-row sm:items-center"
+          style={{ borderColor: 'var(--indigo)', borderWidth: 1 }}
+        >
+          <div>
+            <p className="eyebrow eyebrow-accent">// preview mode</p>
+            <p className="mt-1 text-sm" style={{ color: 'var(--ink-soft)' }}>
+              You're browsing a live preview of the dashboard. Sign in to connect your GitHub and see your own data.
+            </p>
+          </div>
+          <Link href="/register" className="btn btn-primary text-sm flex-shrink-0 whitespace-nowrap">
+            Sign in to get started
+          </Link>
+        </div>
+      )}
+
       {/* ── Page header ── */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="eyebrow eyebrow-accent">// overview</p>
           <h1 className="display mt-2 text-2xl font-medium sm:text-3xl">
-            Welcome back, {firstName}
+            {user ? `Welcome back, ${firstName}` : 'See what your workspace looks like'}
           </h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--ink-soft)' }}>
-            Here's what's happening across your workspace.
+            {user
+              ? "Here's what's happening across your workspace."
+              : 'Reviews, connected repos, and resumes all in one place — sign in to make this yours.'}
           </p>
         </div>
-        <Link href="/github" className="btn btn-primary text-sm flex-shrink-0">
-          Open code review
+        <Link href={user ? '/github' : '/register'} className="btn btn-primary text-sm flex-shrink-0">
+          {user ? 'Open code review' : 'Get started free'}
         </Link>
       </div>
 
@@ -494,9 +513,5 @@ function DashboardContent() {
 }
 
 export default function DashboardPage() {
-  return (
-    <AuthGuard>
-      <DashboardContent />
-    </AuthGuard>
-  );
+  return <DashboardContent />;
 }

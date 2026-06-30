@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
 import Logo from '@/app/components/Logo';
 import HeroGraph from '@/app/components/HeroGraph';
+import Footer from '@/app/components/Footer';
 
 const features = [
   {
@@ -140,6 +141,9 @@ export default function LandingPage() {
           <Logo />
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            <Link href="/about" className="nav-link hidden sm:inline text-sm px-3 py-1.5">
+              About
+            </Link>
             <Link href="/login" className="nav-link hidden sm:inline text-sm px-3 py-1.5">
               Sign in
             </Link>
@@ -326,10 +330,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="container-xl flex flex-col gap-3 sm:flex-row sm:items-center justify-between border-t py-7" style={{ borderColor: 'var(--line)' }}>
-        <Logo />
-        <p className="eyebrow">built for students, not enterprises</p>
-      </footer>
+      <Footer />
     </div>
   );
 }

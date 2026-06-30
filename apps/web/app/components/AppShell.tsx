@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Logo from './Logo';
+import Footer from './Footer';
 
 const sections = [
   { href: '/dashboard',      label: 'Overview' },
+  { href: '/about',          label: 'About' },
   { href: '/github',         label: 'Code review' },
   { href: '/jobs',           label: 'Internships' },
   { href: '/resume/builder', label: 'Resume' },
@@ -205,7 +207,9 @@ export default function AppShell({
         )}
       </header>
 
-      <main className="container-xl py-8 sm:py-10">{children}</main>
+      <main className="container-xl flex-1 py-8 sm:py-10">{children}</main>
+
+      <Footer />
     </div>
   );
 }
