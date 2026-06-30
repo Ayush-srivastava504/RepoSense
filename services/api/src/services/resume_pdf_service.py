@@ -33,7 +33,7 @@ class ResumePDFService:
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
-                errors="replace",  # NEW — pdflatex stdout/stderr isn't guaranteed valid UTF-8;
+                errors="replace",  # pdflatex stdout/stderr isn't guaranteed valid UTF-8;
                                    # without this, any stray byte crashes subprocess.run() itself
                                    # before you ever see the real LaTeX error
                 cwd=str(workdir),
@@ -45,12 +45,22 @@ class ResumePDFService:
                 if log_path.exists():
                     with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
                         log_content = f.read()
-                        # Find lines with errors
+                        # Find lines with errors, plus several lines of context after
+                        # each match — pdflatex prints the offending line number
+                        # (e.g. "l.87 \section{Projects}") several lines after the
+                        # "! ..." error line itself (after the "Type H for help"
+                        # boilerplate), so a keyword-only filter silently drops the
+                        # one line that actually tells you where the bug is.
+                        log_lines = log_content.split("\n")
                         error_lines = []
-                        for line in log_content.split("\n"):
-                            if "Error" in line or "!" in line or "Missing" in line:
-                                error_lines.append(line)
-                            if len(error_lines) >= 20:
+                        seen_indices = set()
+                        for i, line in enumerate(log_lines):
+                            if "Error" in line or line.strip().startswith("!") or "Missing" in line:
+                                for j in range(i, min(i + 8, len(log_lines))):
+                                    if j not in seen_indices:
+                                        seen_indices.add(j)
+                                        error_lines.append(log_lines[j])
+                            if len(error_lines) >= 30:
                                 break
                         if error_lines:
                             error_details = "\n".join(error_lines)

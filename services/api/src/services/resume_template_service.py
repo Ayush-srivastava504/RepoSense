@@ -1,33 +1,41 @@
 from pathlib import Path
+import re
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 
 class ResumeTemplateService:
 
     # Special characters that must be escaped in LaTeX text mode.
-    # Order matters: backslash must come first so we don't double-escape
-    # the backslashes we introduce for other replacements.
-    _LATEX_REPLACEMENTS = [
-        ("\\", r"\textbackslash{}"),
-        ("&",  r"\&"),
-        ("%",  r"\%"),
-        ("$",  r"\$"),
-        ("#",  r"\#"),
-        ("_",  r"\_"),
-        ("{",  r"\{"),
-        ("}",  r"\}"),
-        ("~",  r"\textasciitilde{}"),
-        ("^",  r"\textasciicircum{}"),
-    ]
+    # NOTE: these are applied in a single regex pass (see latex_escape below),
+    # not via sequential str.replace() calls. Sequential replacement is unsafe
+    # here: e.g. once "\" becomes "\textbackslash{}", a later replacement for
+    # "{" would re-match the "{" inside the text we just introduced and
+    # corrupt it into "\textbackslash\{}". A single pass over the *original*
+    # string guarantees each source character is substituted exactly once.
+    _LATEX_REPLACEMENTS = {
+        "\\": r"\textbackslash{}",
+        "&":  r"\&",
+        "%":  r"\%",
+        "$":  r"\$",
+        "#":  r"\#",
+        "_":  r"\_",
+        "{":  r"\{",
+        "}":  r"\}",
+        "~":  r"\textasciitilde{}",
+        "^":  r"\textasciicircum{}",
+    }
+    _LATEX_PATTERN = re.compile(
+        "|".join(re.escape(c) for c in _LATEX_REPLACEMENTS)
+    )
 
     def latex_escape(self, text: str) -> str:
         """Escape a plain-text string for safe inclusion in LaTeX."""
         if not text:
             return ""
         text = str(text)
-        for char, escaped in self._LATEX_REPLACEMENTS:
-            text = text.replace(char, escaped)
-        return text
+        return self._LATEX_PATTERN.sub(
+            lambda m: self._LATEX_REPLACEMENTS[m.group(0)], text
+        )
 
     def _make_env(self, template_dir: Path) -> Environment:
         """
