@@ -6,7 +6,6 @@ from typing import Dict, List, Optional
 from urllib.parse import quote, urljoin
 
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
 
 from scrapers.base import BaseScraper
 
@@ -150,34 +149,11 @@ class GlassdoorScraper(BaseScraper):
         url: str,
     ) -> str:
 
-        with sync_playwright() as p:
+        page = self.new_page()
 
-            browser = p.chromium.launch(
-                headless=True,
-            )
+        try:
 
-            context = browser.new_context(
-                viewport={
-                    "width": 1400,
-                    "height": 900,
-                },
-                user_agent=(
-                    "Mozilla/5.0 "
-                    "(Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 "
-                    "(KHTML, like Gecko) "
-                    "Chrome/124.0.0.0 "
-                    "Safari/537.36"
-                ),
-            )
-
-            page = context.new_page()
-
-            page.goto(
-                url,
-                wait_until="domcontentloaded",
-                timeout=60000,
-            )
+            self.goto(page, url)
 
             page.wait_for_timeout(8000)
 
@@ -194,11 +170,11 @@ class GlassdoorScraper(BaseScraper):
             except Exception:
                 pass
 
-            html = page.content()
+            return page.content()
 
-            browser.close()
+        finally:
 
-            return html
+            page.context.close()
 
     def _parse_card(
         self,
