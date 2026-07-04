@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import AppShell from '../../components/AppShell';
 import { trackEvent } from '@/lib/analytics';
+import { featureFlags } from '@/lib/featureFlags';
 
 interface Stats {
   total_reviews: number;
@@ -39,7 +41,6 @@ interface ConnectedRepo {
   updated_at: string;
 }
 
-/* ─── Score color that works in both themes ─────────────────────────── */
 function scoreColor(score: number) {
   if (score >= 90) return 'var(--green)';
   if (score >= 75) return 'var(--score-amber, #b45309)';
@@ -47,7 +48,15 @@ function scoreColor(score: number) {
   return 'var(--rust)';
 }
 
-/* ─── Reusable components ───────────────────────────────────────────── */
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 5) return 'Still up';
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  if (h < 21) return 'Good evening';
+  return 'Good evening';
+}
+
 function StatCard({
   label,
   value,
@@ -60,9 +69,9 @@ function StatCard({
   accent?: 'green' | 'indigo' | 'rust';
 }) {
   const colorMap = {
-    green:  'var(--green)',
+    green: 'var(--green)',
     indigo: 'var(--indigo)',
-    rust:   'var(--rust)',
+    rust: 'var(--rust)',
   };
   return (
     <div className="panel p-5">
@@ -87,6 +96,24 @@ function ScoreBadge({ score }: { score: number }) {
     <span className="flex-shrink-0 tabular-nums text-sm font-semibold" style={{ color: scoreColor(score) }}>
       {score}/100
     </span>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
   );
 }
 
@@ -135,19 +162,51 @@ function SectionHeader({
   );
 }
 
-/* ─── Main dashboard ────────────────────────────────────────────────── */
+function LockedFeatureCard({
+  title,
+  body,
+  locked,
+}: {
+  title: string;
+  body: string;
+  locked: boolean;
+}) {
+  return (
+    <div className="panel relative flex flex-col gap-2 p-5">
+      {locked && (
+        <span
+          className="chip chip-muted absolute right-3 top-3 flex items-center gap-1 text-[0.65rem]"
+          style={{ color: 'var(--muted)' }}
+        >
+          <LockIcon /> Sign in
+        </span>
+      )}
+      <p className="display text-base font-medium" style={{ color: 'var(--ink)' }}>{title}</p>
+      <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{body}</p>
+    </div>
+  );
+}
+
 function DashboardContent() {
   const { user, logout } = useAuth();
+  const router = useRouter();
 
-  const [stats, setStats]               = useState<Stats | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [recentReviews, setRecentReviews] = useState<RecentReview[]>([]);
   const [recentResumes, setRecentResumes] = useState<RecentResume[]>([]);
-  const [repos, setRepos]               = useState<ConnectedRepo[]>([]);
-  const [loadingStats, setLoadingStats]     = useState(true);
+  const [repos, setRepos] = useState<ConnectedRepo[]>([]);
+  const [loadingStats, setLoadingStats] = useState(true);
   const [loadingActivity, setLoadingActivity] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     trackEvent('dashboard_viewed', { user_email: user?.email });
+
+    if (!user) {
+      setLoadingStats(false);
+      setLoadingActivity(false);
+      return;
+    }
 
     api
       .get('/dashboard/stats')
@@ -171,48 +230,72 @@ function DashboardContent() {
     ]).then(([reviewsRes, resumesRes, reposRes]) => {
       if (reviewsRes.status === 'fulfilled') setRecentReviews(reviewsRes.value ?? []);
       if (resumesRes.status === 'fulfilled') setRecentResumes(resumesRes.value ?? []);
-      if (reposRes.status === 'fulfilled')   setRepos((reposRes.value ?? []).slice(0, 4));
+      if (reposRes.status === 'fulfilled') setRepos((reposRes.value ?? []).slice(0, 4));
       setLoadingActivity(false);
     });
   }, [user]);
 
   const handleLogout = () => { trackEvent('logout'); logout(); };
   const firstName = user?.email?.split('@')[0] ?? 'there';
-
   const newUser = stats && stats.total_reviews === 0 && stats.repos_connected === 0;
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    trackEvent('dashboard_job_search', { query: searchQuery });
+    const q = searchQuery.trim();
+    router.push(q ? `/jobs?search=${encodeURIComponent(q)}` : '/jobs');
+  };
+
+  const lockedFeatures = [
+    {
+      key: 'requireAuthForSave' as const,
+      title: 'Save jobs',
+      body: 'Bookmark listings and come back to them later instead of losing the link.',
+    },
+    {
+      key: 'requireAuthForTracking' as const,
+      title: 'Track applications',
+      body: 'Keep every internship you\u2019ve applied to in one place, with status at a glance.',
+    },
+    {
+      key: 'requireAuthForRecommendations' as const,
+      title: 'Personalized picks',
+      body: 'Get roles ranked against your resume and GitHub activity instead of the full firehose.',
+    },
+  ].filter((f) => featureFlags[f.key]);
 
   return (
     <AppShell user={user} onLogout={handleLogout}>
 
-      {/* ── Guest banner ── */}
       {!user && (
         <div
           className="panel mb-6 flex flex-col items-start justify-between gap-3 p-4 sm:flex-row sm:items-center"
           style={{ borderColor: 'var(--indigo)', borderWidth: 1 }}
         >
           <div>
-            <p className="eyebrow eyebrow-accent">// preview mode</p>
+            <p className="eyebrow eyebrow-accent">// browsing as guest</p>
             <p className="mt-1 text-sm" style={{ color: 'var(--ink-soft)' }}>
-              You're browsing a live preview of the dashboard. Sign in to connect your GitHub and see your own data.
+              {featureFlags.requireAuth
+                ? 'Jobs, internships, and applying out are open to everyone. Sign in for code review, resumes, and saved jobs.'
+                : 'Everything is open right now, including code review and resume generation — no account needed.'}
             </p>
           </div>
           <Link href="/register" className="btn btn-primary text-sm flex-shrink-0 whitespace-nowrap">
-            Sign in to get started
+            Create free account
           </Link>
         </div>
       )}
 
-      {/* ── Page header ── */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="eyebrow eyebrow-accent">// overview</p>
           <h1 className="display mt-2 text-2xl font-medium sm:text-3xl">
-            {user ? `Welcome back, ${firstName}` : 'See what your workspace looks like'}
+            {user ? `${greeting()}, ${firstName}` : 'Find your next internship'}
           </h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--ink-soft)' }}>
             {user
               ? "Here's what's happening across your workspace."
-              : 'Reviews, connected repos, and resumes all in one place — sign in to make this yours.'}
+              : 'Search live listings right now — no account needed to browse or apply.'}
           </p>
         </div>
         <Link href={user ? '/github' : '/register'} className="btn btn-primary text-sm flex-shrink-0">
@@ -220,49 +303,71 @@ function DashboardContent() {
         </Link>
       </div>
 
-      {/* ── Stats row ── */}
-      <div className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {loadingStats ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="panel p-5 animate-pulse">
-              <div className="h-3 w-20 rounded" style={{ background: 'var(--line)' }} />
-              <div className="mt-4 h-8 w-14 rounded" style={{ background: 'var(--line)' }} />
-              <div className="mt-2 h-2 w-24 rounded" style={{ background: 'var(--line)' }} />
-            </div>
-          ))
-        ) : (
-          <>
-            <StatCard
-              label="// reviews"
-              value={stats?.total_reviews ?? 0}
-              sub={stats?.issues_found ? `${stats.issues_found} issues found` : 'No reviews yet'}
-            />
-            <StatCard
-              label="// quality score"
-              value={stats?.avg_quality_score != null ? `${stats.avg_quality_score}` : '—'}
-              accent={
-                stats?.avg_quality_score == null ? undefined
-                : stats.avg_quality_score >= 80 ? 'green'
-                : stats.avg_quality_score >= 60 ? 'indigo'
-                : 'rust'
-              }
-              sub="avg across files"
-            />
-            <StatCard
-              label="// resumes"
-              value={stats?.resumes_generated ?? 0}
-              sub="AI-generated PDFs"
-            />
-            <StatCard
-              label="// repos"
-              value={stats?.repos_connected ?? 0}
-              sub="connected"
-            />
-          </>
-        )}
-      </div>
+      <form onSubmit={handleSearch} className="panel mt-6 flex items-center gap-2 p-2">
+        <div className="flex flex-1 items-center gap-2 px-2" style={{ color: 'var(--muted)' }}>
+          <SearchIcon />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search internships by role, company, or skill…"
+            className="w-full bg-transparent py-2 text-sm outline-none"
+            style={{ color: 'var(--ink)' }}
+          />
+        </div>
+        <button type="submit" className="btn btn-secondary text-sm flex-shrink-0">
+          Search jobs
+        </button>
+      </form>
 
-      {/* ── Quick actions ── */}
+      {user ? (
+        <div className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {loadingStats ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="panel p-5 animate-pulse">
+                <div className="h-3 w-20 rounded" style={{ background: 'var(--line)' }} />
+                <div className="mt-4 h-8 w-14 rounded" style={{ background: 'var(--line)' }} />
+                <div className="mt-2 h-2 w-24 rounded" style={{ background: 'var(--line)' }} />
+              </div>
+            ))
+          ) : (
+            <>
+              <StatCard
+                label="// reviews"
+                value={stats?.total_reviews ?? 0}
+                sub={stats?.issues_found ? `${stats.issues_found} issues found` : 'No reviews yet'}
+              />
+              <StatCard
+                label="// quality score"
+                value={stats?.avg_quality_score != null ? `${stats.avg_quality_score}` : '—'}
+                accent={
+                  stats?.avg_quality_score == null ? undefined
+                  : stats.avg_quality_score >= 80 ? 'green'
+                  : stats.avg_quality_score >= 60 ? 'indigo'
+                  : 'rust'
+                }
+                sub="avg across files"
+              />
+              <StatCard
+                label="// resumes"
+                value={stats?.resumes_generated ?? 0}
+                sub="AI-generated PDFs"
+              />
+              <StatCard
+                label="// repos"
+                value={stats?.repos_connected ?? 0}
+                sub="connected"
+              />
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="mt-8 grid gap-3 sm:grid-cols-3">
+          <StatCard label="// listings" value="Live" sub="Refreshed daily from 9 sources" />
+          <StatCard label="// login required" value="No" sub="Browse, search, and apply freely" accent="green" />
+          <StatCard label="// sources tracked" value="9" sub="Naukri, LinkedIn, Wellfound & more" />
+        </div>
+      )}
+
       <div className="mt-10">
         <p className="eyebrow mb-4">// quick actions</p>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -273,6 +378,7 @@ function DashboardContent() {
               body: 'Open a repo, pick a file, and get line-level AI feedback.',
               href: '/github',
               action: 'review',
+              locked: featureFlags.requireAuth && !user,
             },
             {
               tag: '// resume',
@@ -280,6 +386,7 @@ function DashboardContent() {
               body: 'Turn your commits and reviews into ATS-ready bullets.',
               href: '/resume/builder',
               action: 'resume',
+              locked: featureFlags.requireAuth && !user,
             },
             {
               tag: '// internships',
@@ -287,17 +394,26 @@ function DashboardContent() {
               body: 'Daily-refreshed internship postings from multiple sources.',
               href: '/jobs',
               action: 'jobs',
+              locked: false,
             },
           ].map((item) => (
             <Link
               key={item.action}
               href={item.href}
-              className="panel flex flex-col gap-2 p-5 transition-shadow"
+              className="panel relative flex flex-col gap-2 p-5 transition-shadow"
               style={{ textDecoration: 'none' }}
               onClick={() => trackEvent('dashboard_quick_action', { action: item.action })}
               onMouseOver={(e) => (e.currentTarget.style.boxShadow = '0 4px 20px -4px rgba(0,0,0,0.12)')}
               onMouseOut={(e) => (e.currentTarget.style.boxShadow = '')}
             >
+              {item.locked && (
+                <span
+                  className="chip chip-muted absolute right-3 top-3 flex items-center gap-1 text-[0.65rem]"
+                  style={{ color: 'var(--muted)' }}
+                >
+                  <LockIcon /> Sign in
+                </span>
+              )}
               <p className="eyebrow eyebrow-accent">{item.tag}</p>
               <p className="display text-base font-medium">{item.title}</p>
               <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
@@ -308,147 +424,157 @@ function DashboardContent() {
         </div>
       </div>
 
-      {/* ── Activity grid ── */}
-      <div className="mt-10 grid gap-6 lg:grid-cols-2">
-
-        {/* Recent reviews */}
-        <div>
-          <SectionHeader label="// recent reviews" linkLabel="View all" linkHref="/github" />
-          {loadingActivity ? (
-            <div className="panel divide-y overflow-hidden" style={{ borderColor: 'var(--line)' }}>
-              {Array.from({ length: 3 }).map((_, i) => <SkeletonRow key={i} />)}
-            </div>
-          ) : recentReviews.length === 0 ? (
-            <EmptyState
-              label="No reviews yet — open a file in GitHub to start."
-              cta="Go to code review"
-              href="/github"
-            />
-          ) : (
-            <div className="panel divide-y overflow-hidden" style={{ borderColor: 'var(--line)' }}>
-              {recentReviews.map((r) => (
-                <div key={r.id} className="flex items-start justify-between gap-3 p-4">
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className="truncate text-sm font-medium"
-                      style={{ color: 'var(--ink)' }}
-                      title={r.file}
-                    >
-                      {r.file.split('/').pop()}
-                    </p>
-                    <p className="eyebrow mt-0.5 truncate" title={r.repo}>{r.repo}</p>
-                    <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
-                      {new Date(r.reviewed_at).toLocaleDateString()} · {r.issues} issue{r.issues !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-                  <ScoreBadge score={r.score} />
-                </div>
-              ))}
-            </div>
-          )}
+      {!user && lockedFeatures.length > 0 && (
+        <div className="mt-10">
+          <p className="eyebrow mb-4">// unlock with a free account</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {lockedFeatures.map((f) => (
+              <LockedFeatureCard key={f.key} title={f.title} body={f.body} locked />
+            ))}
+          </div>
         </div>
+      )}
 
-        {/* Connected repos */}
-        <div>
-          <SectionHeader label="// connected repos" linkLabel="Manage" linkHref="/github" />
-          {loadingActivity ? (
-            <div className="panel divide-y overflow-hidden" style={{ borderColor: 'var(--line)' }}>
-              {Array.from({ length: 3 }).map((_, i) => <SkeletonRow key={i} />)}
-            </div>
-          ) : repos.length === 0 ? (
-            <EmptyState
-              label="No repositories connected yet."
-              cta="Connect GitHub"
-              href="/github"
-            />
-          ) : (
-            <div className="panel divide-y overflow-hidden" style={{ borderColor: 'var(--line)' }}>
-              {repos.map((repo) => (
-                <div key={repo.id} className="flex items-center justify-between gap-3 p-4">
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className="truncate text-sm font-medium"
-                      style={{ color: 'var(--ink)' }}
-                      title={repo.full_name}
-                    >
-                      {repo.full_name}
-                    </p>
-                    <p className="mt-0.5 text-xs" style={{ color: 'var(--muted)' }}>
-                      Updated {new Date(repo.updated_at).toLocaleDateString()}
-                    </p>
+      {user && (
+        <div className="mt-10 grid gap-6 lg:grid-cols-2">
+
+          <div>
+            <SectionHeader label="// recent reviews" linkLabel="View all" linkHref="/github" />
+            {loadingActivity ? (
+              <div className="panel divide-y overflow-hidden" style={{ borderColor: 'var(--line)' }}>
+                {Array.from({ length: 3 }).map((_, i) => <SkeletonRow key={i} />)}
+              </div>
+            ) : recentReviews.length === 0 ? (
+              <EmptyState
+                label="No reviews yet — open a file in GitHub to start."
+                cta="Go to code review"
+                href="/github"
+              />
+            ) : (
+              <div className="panel divide-y overflow-hidden" style={{ borderColor: 'var(--line)' }}>
+                {recentReviews.map((r) => (
+                  <div key={r.id} className="flex items-start justify-between gap-3 p-4">
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className="truncate text-sm font-medium"
+                        style={{ color: 'var(--ink)' }}
+                        title={r.file}
+                      >
+                        {r.file.split('/').pop()}
+                      </p>
+                      <p className="eyebrow mt-0.5 truncate" title={r.repo}>{r.repo}</p>
+                      <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
+                        {new Date(r.reviewed_at).toLocaleDateString()} · {r.issues} issue{r.issues !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <ScoreBadge score={r.score} />
                   </div>
-                  {repo.language && (
-                    <span className="chip chip-muted flex-shrink-0 text-[0.65rem]">
-                      {repo.language}
-                    </span>
-                  )}
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <SectionHeader label="// connected repos" linkLabel="Manage" linkHref="/github" />
+            {loadingActivity ? (
+              <div className="panel divide-y overflow-hidden" style={{ borderColor: 'var(--line)' }}>
+                {Array.from({ length: 3 }).map((_, i) => <SkeletonRow key={i} />)}
+              </div>
+            ) : repos.length === 0 ? (
+              <EmptyState
+                label="No repositories connected yet."
+                cta="Connect GitHub"
+                href="/github"
+              />
+            ) : (
+              <div className="panel divide-y overflow-hidden" style={{ borderColor: 'var(--line)' }}>
+                {repos.map((repo) => (
+                  <div key={repo.id} className="flex items-center justify-between gap-3 p-4">
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className="truncate text-sm font-medium"
+                        style={{ color: 'var(--ink)' }}
+                        title={repo.full_name}
+                      >
+                        {repo.full_name}
+                      </p>
+                      <p className="mt-0.5 text-xs" style={{ color: 'var(--muted)' }}>
+                        Updated {new Date(repo.updated_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    {repo.language && (
+                      <span className="chip chip-muted flex-shrink-0 text-[0.65rem]">
+                        {repo.language}
+                      </span>
+                    )}
+                  </div>
+                ))}
+                {repos.length === 4 && (
+                  <div className="p-3 text-center">
+                    <Link
+                      href="/github"
+                      className="text-xs font-medium"
+                      style={{ color: 'var(--indigo)' }}
+                    >
+                      View all repositories
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {user && (
+        <div className="mt-10">
+          <SectionHeader label="// recent resumes" linkLabel="Builder" linkHref="/resume/builder" />
+          {loadingActivity ? (
+            <div className="grid gap-4 sm:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="panel p-5 animate-pulse space-y-3">
+                  <div className="h-3 w-20 rounded" style={{ background: 'var(--line)' }} />
+                  <div className="h-4 w-32 rounded" style={{ background: 'var(--line)' }} />
+                  <div className="h-3 w-16 rounded" style={{ background: 'var(--line)' }} />
                 </div>
               ))}
-              {repos.length === 4 && (
-                <div className="p-3 text-center">
-                  <Link
-                    href="/github"
-                    className="text-xs font-medium"
-                    style={{ color: 'var(--indigo)' }}
+            </div>
+          ) : recentResumes.length === 0 ? (
+            <EmptyState
+              label="No resumes generated yet."
+              cta="Generate resume"
+              href="/resume/builder"
+            />
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-3">
+              {recentResumes.map((r) => (
+                <div key={r.id} className="panel p-5">
+                  <p className="eyebrow eyebrow-accent">// {r.type || 'resume'}</p>
+                  <p
+                    className="display mt-2 truncate text-base font-medium"
+                    style={{ color: 'var(--ink)' }}
+                    title={r.title}
                   >
-                    View all repositories
+                    {r.title || 'Untitled resume'}
+                  </p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
+                    {new Date(r.created_at).toLocaleDateString()}
+                  </p>
+                  <Link
+                    href="/resume/builder"
+                    className="btn btn-secondary mt-4 w-full text-xs"
+                    onClick={() => trackEvent('dashboard_resume_regenerate', { id: r.id })}
+                  >
+                    Regenerate
                   </Link>
                 </div>
-              )}
+              ))}
             </div>
           )}
         </div>
-      </div>
+      )}
 
-      {/* ── Recent resumes ── */}
-      <div className="mt-10">
-        <SectionHeader label="// recent resumes" linkLabel="Builder" linkHref="/resume/builder" />
-        {loadingActivity ? (
-          <div className="grid gap-4 sm:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="panel p-5 animate-pulse space-y-3">
-                <div className="h-3 w-20 rounded" style={{ background: 'var(--line)' }} />
-                <div className="h-4 w-32 rounded" style={{ background: 'var(--line)' }} />
-                <div className="h-3 w-16 rounded" style={{ background: 'var(--line)' }} />
-              </div>
-            ))}
-          </div>
-        ) : recentResumes.length === 0 ? (
-          <EmptyState
-            label="No resumes generated yet."
-            cta="Generate resume"
-            href="/resume/builder"
-          />
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-3">
-            {recentResumes.map((r) => (
-              <div key={r.id} className="panel p-5">
-                <p className="eyebrow eyebrow-accent">// {r.type || 'resume'}</p>
-                <p
-                  className="display mt-2 truncate text-base font-medium"
-                  style={{ color: 'var(--ink)' }}
-                  title={r.title}
-                >
-                  {r.title || 'Untitled resume'}
-                </p>
-                <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
-                  {new Date(r.created_at).toLocaleDateString()}
-                </p>
-                <Link
-                  href="/resume/builder"
-                  className="btn btn-secondary mt-4 w-full text-xs"
-                  onClick={() => trackEvent('dashboard_resume_regenerate', { id: r.id })}
-                >
-                  Regenerate
-                </Link>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── Getting started checklist (new users only) ── */}
-      {!loadingStats && newUser && (
+      {user && !loadingStats && newUser && (
         <div className="mt-10">
           <hr className="hr-line mb-8" />
           <p className="eyebrow eyebrow-accent mb-2">// getting started</p>

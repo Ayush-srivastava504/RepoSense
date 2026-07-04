@@ -2,6 +2,7 @@ import type { Job } from '@/lib/jobs';
 import { BASE_URL } from '@/lib/jobs';
 import AdSlot from '@/app/components/AdSlot';
 import JobBadges from '@/app/components/JobBadges';
+import ApplyButton from '@/app/components/ApplyButton';
 
 /**
  * Builds JobPosting structured data following Google's guidance
@@ -150,9 +151,7 @@ export default function JobDetail({
 
       <div className="mt-8 flex gap-3">
         {job.url ? (
-          <a href={job.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
-            Apply now
-          </a>
+          <ApplyButton url={job.url} jobId={job.id} />
         ) : (
           <a href="/register" className="btn btn-primary">
             Sign up to apply
