@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import { notFound } from 'next/navigation';
 import { jobIdFromSlug } from '@/lib/slug';
-import AdSlot from '@/app/components/AdSlot';
 
 export const dynamic = 'force-dynamic';
 
@@ -100,85 +100,107 @@ export default async function JobDetailPage({
   };
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(jobPostingSchema),
-        }}
-      />
+    <>
+      {/* Monetag Vignette — Job detail page only */}
+      <Script id="monetag-vignette-job-detail" strategy="afterInteractive">
+        {`
+          (function(s) {
+            s.dataset.zone = '11238201';
+            s.src = 'https://n6wxm.com/vignette.min.js';
+          })(
+            [document.documentElement, document.body]
+              .filter(Boolean)
+              .pop()
+              .appendChild(document.createElement('script'))
+          );
+        `}
+      </Script>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="eyebrow">
-          {job.source || 'unknown'} ·{' '}
-          {job.posted_at
-            ? new Date(job.posted_at).toLocaleDateString()
-            : 'Recent'}
-        </p>
+      <main className="mx-auto max-w-3xl px-4 py-12">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(jobPostingSchema),
+          }}
+        />
 
-        {job.type && (
-          <span className="chip chip-muted text-[0.65rem]">
-            {job.type}
-          </span>
-        )}
-      </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="eyebrow">
+            {job.source || 'unknown'} ·{' '}
+            {job.posted_at
+              ? new Date(job.posted_at).toLocaleDateString()
+              : 'Recent'}
+          </p>
 
-      <h1 className="display mt-2 text-3xl font-medium">
-        {job.title}
-      </h1>
+          {job.type && (
+            <span className="chip chip-muted text-[0.65rem]">
+              {job.type}
+            </span>
+          )}
+        </div>
 
-      <p
-        className="mt-1 text-sm"
-        style={{ color: 'var(--ink-soft)' }}
-      >
-        {job.company}
-        {job.location && ` · ${job.location}`}
-      </p>
+        <h1 className="display mt-2 text-3xl font-medium">
+          {job.title}
+        </h1>
 
-      {compensation && (
         <p
-          className="mt-2 text-sm font-medium"
-          style={{ color: 'var(--ink)' }}
+          className="mt-1 text-sm"
+          style={{ color: 'var(--ink-soft)' }}
         >
-          {compensation}
+          {job.company}
+          {job.location && ` · ${job.location}`}
         </p>
-      )}
 
-      <p
-        className="mt-6 whitespace-pre-line text-sm leading-relaxed"
-        style={{ color: 'var(--ink-soft)' }}
-      >
-        {job.description}
-      </p>
-
-      <AdSlot slot="1083783857" format="autorelaxed" className="mt-8" />
-
-      <div className="mt-8 flex gap-3">
-        {job.url ? (
-          <a
-            href={job.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn btn-primary"
+        {compensation && (
+          <p
+            className="mt-2 text-sm font-medium"
+            style={{ color: 'var(--ink)' }}
           >
-            Apply now
-          </a>
-        ) : (
-          <a
-            href="/register"
-            className="btn btn-primary"
-          >
-            Sign up to apply
-          </a>
+            {compensation}
+          </p>
         )}
 
-        <a
-          href="/jobs"
-          className="btn"
+        <p
+          className="mt-6 whitespace-pre-line text-sm leading-relaxed"
+          style={{ color: 'var(--ink-soft)' }}
         >
-          ← Back to listings
-        </a>
-      </div>
-    </main>
+          {job.description}
+        </p>
+
+        {/* Banner / Native Ad */}
+        <div className="mt-8 flex w-full justify-center overflow-hidden">
+          <div id="container-0ecc31c4385791c7fa0bcc3db25e36c9" />
+        </div>
+
+        <Script
+          id="job-detail-native-ad"
+          async
+          data-cfasync="false"
+          src="https://pl30201817.effectivecpmnetwork.com/0ecc31c4385791c7fa0bcc3db25e36c9/invoke.js"
+          strategy="afterInteractive"
+        />
+
+        <div className="mt-8 flex gap-3">
+          {job.url ? (
+            <a
+              href={job.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-primary"
+            >
+              Apply now
+            </a>
+          ) : (
+            <a href="/register" className="btn btn-primary">
+              Sign up to apply
+            </a>
+          )}
+
+          <a href="/jobs" className="btn">
+            ← Back to listings
+          </a>
+        </div>
+      </main>
+    </>
   );
 }
