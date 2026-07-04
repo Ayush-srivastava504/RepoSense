@@ -163,20 +163,6 @@ export default function Login() {
             </form>
           </>
         )}
-
-        <p className="mt-6 text-center text-sm" style={{ color: 'var(--ink-soft)' }}>
-          New here?{' '}
-          <Link 
-            href="/register" 
-            className="font-semibold" 
-            style={{ color: 'var(--indigo)' }}
-            onClick={() => {
-              trackEvent('login_register_clicked');
-            }}
-          >
-            Create an account
-          </Link>
-        </p>
       </div>
     </div>
   );

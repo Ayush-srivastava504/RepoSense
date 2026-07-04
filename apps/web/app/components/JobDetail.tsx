@@ -153,8 +153,8 @@ export default function JobDetail({
         {job.url ? (
           <ApplyButton url={job.url} jobId={job.id} />
         ) : (
-          <a href="/register" className="btn btn-primary">
-            Sign up to apply
+          <a href="/login" className="btn btn-primary">
+            Sign in to apply
           </a>
         )}
 

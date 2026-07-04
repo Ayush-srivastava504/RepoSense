@@ -101,8 +101,8 @@ export default function AboutPage() {
               Connect a repo and see your first review in minutes.
             </p>
           </div>
-          <Link href="/register" className="btn btn-primary flex-shrink-0 whitespace-nowrap">
-            Create your account
+          <Link href="/dashboard" className="btn btn-primary flex-shrink-0 whitespace-nowrap">
+            Get started free
           </Link>
         </div>
       </div>
