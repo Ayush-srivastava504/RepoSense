@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import { notFound } from 'next/navigation';
 import { jobIdFromSlug } from '@/lib/slug';
 import { getJobById, BASE_URL } from '@/lib/jobs';
@@ -6,26 +7,30 @@ import JobDetail from '@/app/components/JobDetail';
 
 export const dynamic = 'force-dynamic';
 
+const NATIVE_AD_CONTAINER =
+  'container-0ecc31c4385791c7fa0bcc3db25e36c9';
+
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: {
+    slug: string;
+  };
 }): Promise<Metadata> {
-  const job = await getJobById(jobIdFromSlug(params.slug));
+  const job = await getJobById(
+    jobIdFromSlug(params.slug)
+  );
 
-  if (!job) return {};
+  if (!job) {
+    return {};
+  }
 
   return {
-    title: `${job.title} at ${job.company} | InternFlow`,
+    title: `${job.title} at ${job.company} — Job | InternFlow`,
     description: `Apply for ${job.title} at ${job.company}${
       job.location ? ` in ${job.location}` : ''
-    }. View eligibility, skills, stipend/salary, and application details.`,
+    }. View eligibility, skills, salary, and application details.`,
     alternates: {
-      // /jobs/[slug] is the single canonical detail URL for every posting,
-      // internship or not. /internships/[slug] renders the same content for
-      // internship-type jobs (useful, contextual URL for visitors arriving
-      // from the internships hub) but canonicalizes back here, so the two
-      // URLs never compete as duplicate content.
       canonical: `${BASE_URL}/jobs/${params.slug}`,
     },
   };
@@ -34,21 +39,64 @@ export async function generateMetadata({
 export default async function JobDetailPage({
   params,
 }: {
-  params: { slug: string };
+  params: {
+    slug: string;
+  };
 }) {
-  const job = await getJobById(jobIdFromSlug(params.slug));
+  const job = await getJobById(
+    jobIdFromSlug(params.slug)
+  );
 
-  // Expired / deactivated jobs return null here (API filters is_active =
-  // true) — a real 404 rather than an indexable "no longer accepting
-  // applications" page, per Google's JobPosting guidance for closed roles.
-  if (!job) notFound();
+  if (!job) {
+    notFound();
+  }
 
   return (
-    <JobDetail
-      job={job}
-      canonicalPath={`/jobs/${params.slug}`}
-      backHref="/jobs"
-      backLabel="Back to listings"
-    />
+    <>
+      {/* Monetag Vignette */}
+      <Script
+        id="job-detail-vignette"
+        strategy="afterInteractive"
+      >
+        {`
+          (function(s) {
+            s.dataset.zone = '11238201';
+            s.src = 'https://n6wxm.com/vignette.min.js';
+          })(
+            [document.documentElement, document.body]
+              .filter(Boolean)
+              .pop()
+              .appendChild(document.createElement('script'))
+          );
+        `}
+      </Script>
+
+      <JobDetail
+        job={job}
+        canonicalPath={`/jobs/${params.slug}`}
+        backHref="/jobs"
+        backLabel="Back to jobs"
+      />
+
+      {/* Native Banner */}
+      <section className="mx-auto w-full max-w-3xl px-4 pb-12">
+        <div
+          className="w-full overflow-hidden rounded-lg"
+          style={{
+            minHeight: '90px',
+          }}
+        >
+          <div id={NATIVE_AD_CONTAINER} />
+        </div>
+      </section>
+
+      <Script
+        id="job-detail-native-banner"
+        async
+        data-cfasync="false"
+        src="https://pl30201817.effectivecpmnetwork.com/0ecc31c4385791c7fa0bcc3db25e36c9/invoke.js"
+        strategy="afterInteractive"
+      />
+    </>
   );
 }
