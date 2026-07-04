@@ -29,7 +29,7 @@ export async function generateMetadata({
       job.location ? ` in ${job.location}` : ''
     }. View eligibility, skills, stipend, and application details.`,
     alternates: {
-      canonical: `${BASE_URL}/jobs/${params.slug}`,
+      canonical: `${BASE_URL}/internships/${params.slug}`,
     },
   };
 }
@@ -70,7 +70,7 @@ export default async function InternshipDetailPage({
       <div className="px-3 sm:px-4">
         <JobDetail
           job={job}
-          canonicalPath={`/jobs/${params.slug}`}
+          canonicalPath={`/internships/${params.slug}`}
           backHref="/internships"
           backLabel="Back to internships"
         />
