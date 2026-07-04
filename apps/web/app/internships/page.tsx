@@ -25,7 +25,7 @@ function SponsoredCard() {
     <div className="panel relative flex h-full flex-col p-4 sm:p-5 transition-all hover:-translate-y-1 hover:shadow-lg">
       <button
         onClick={(e) => {
-          const card = e.currentTarget.closest('.panel');
+          const card = e.currentTarget.closest('.panel') as HTMLElement | null;
           if (card) {
             card.style.display = 'none';
           }
@@ -113,7 +113,7 @@ function Pagination({
   const maxVisible = 5;
   let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
   let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-  
+
   if (endPage - startPage + 1 < maxVisible) {
     startPage = Math.max(1, endPage - maxVisible + 1);
   }
@@ -194,7 +194,7 @@ export default async function InternshipsPage({
 }) {
   const search = searchParams.search?.trim() || '';
   const currentPage = Math.max(1, parseInt(searchParams.page || '1'));
-  
+
   const [allJobs, featured] = await Promise.all([
     getJobs({
       search,
