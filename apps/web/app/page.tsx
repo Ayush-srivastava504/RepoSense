@@ -128,7 +128,7 @@ export default function LandingPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && user && !user.is_guest) {
       router.replace('/dashboard');
     }
   }, [user, loading, router]);
