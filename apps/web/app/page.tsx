@@ -23,6 +23,11 @@ const features = [
     title: 'Resume from real work',
     body: 'Turn the commits and reviews you already have into a resume bullet, tuned to a specific job description.',
   },
+  {
+    tag: 'linkedin',
+    title: 'LinkedIn optimizer',
+    body: 'A 14-point scan of your profile with AI-written fixes for your headline, summary, and experience section.',
+  },
 ];
 
 const steps = [
@@ -144,8 +149,11 @@ export default function LandingPage() {
             <Link href="/about" className="nav-link hidden sm:inline text-sm px-3 py-1.5">
               About
             </Link>
-            <Link href="/register" className="btn btn-primary text-sm px-4 py-2">
-              Get started
+            <Link
+              href="/dashboard"
+              className="btn btn-primary text-sm px-4 py-2 transition-transform duration-150 hover:scale-[1.03] active:scale-[0.98]"
+            >
+              Go to dashboard
             </Link>
           </div>
         </div>
@@ -160,7 +168,8 @@ export default function LandingPage() {
           </h1>
           <p className="mt-4 max-w-md text-base leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
             Connect a repo, push code, and get an AI review on the diff — then turn that work
-            into a resume built for the internship you actually want.
+            into a resume built for the internship you actually want. No signup wall — jump
+            straight in.
           </p>
 
           {/* Social proof */}
@@ -171,7 +180,12 @@ export default function LandingPage() {
           </div>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
-            <Link href="/register" className="btn btn-primary">Start free</Link>
+            <Link
+              href="/dashboard"
+              className="btn btn-primary transition-transform duration-150 hover:scale-[1.03] active:scale-[0.98]"
+            >
+              Try it free
+            </Link>
           </div>
         </div>
 
@@ -232,7 +246,7 @@ export default function LandingPage() {
         <hr className="hr-line mb-10" />
         <p className="eyebrow eyebrow-accent mb-2">// what's inside</p>
         <h2 className="display text-2xl font-medium mb-8">Everything in one workspace</h2>
-        <div className="grid gap-5 sm:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((f) => (
             <div key={f.tag} className="panel p-6">
               <p className="eyebrow eyebrow-accent">// {f.tag}</p>
@@ -286,7 +300,10 @@ export default function LandingPage() {
             <p className="eyebrow eyebrow-accent mb-2">// latest internships</p>
             <h2 className="display text-2xl font-medium">Refreshed daily</h2>
           </div>
-          <Link href="/register" className="btn btn-secondary text-sm">
+          <Link
+            href="/jobs"
+            className="btn btn-secondary text-sm transition-transform duration-150 hover:scale-[1.03] active:scale-[0.98]"
+          >
             See all
           </Link>
         </div>
@@ -307,7 +324,7 @@ export default function LandingPage() {
           ))}
         </div>
         <p className="mt-5 text-sm text-center" style={{ color: 'var(--muted)' }}>
-          Sign up to view full listings and apply directly
+          Browse the full feed and apply directly — no account needed.
         </p>
       </section>
 
@@ -320,8 +337,11 @@ export default function LandingPage() {
               Push your next commit somewhere it gets read.
             </p>
           </div>
-          <Link href="/register" className="btn btn-primary flex-shrink-0 whitespace-nowrap">
-            Create your account
+          <Link
+            href="/dashboard"
+            className="btn btn-primary flex-shrink-0 whitespace-nowrap transition-transform duration-150 hover:scale-[1.03] active:scale-[0.98]"
+          >
+            Get started free
           </Link>
         </div>
       </section>
