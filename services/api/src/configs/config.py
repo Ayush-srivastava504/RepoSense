@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     NEURAL_GENERATOR_URL: str = "http://localhost:8002"
     EMAIL_PROVIDER: str = "resend"
     RESEND_API_KEY: str = ""
+    REQUIRE_AUTH: bool = False
 
     class Config:
         env_file = os.path.abspath(

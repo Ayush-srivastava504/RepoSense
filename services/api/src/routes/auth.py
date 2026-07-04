@@ -1,6 +1,7 @@
 # routes/auth.py
 import random
 import string
+import uuid
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException
@@ -141,4 +142,47 @@ async def verify_otp(body: OtpVerify):
     return {
         "access_token": token,
         "token_type": "bearer",
+    }
+
+
+@router.post("/guest")
+async def create_guest_session():
+    """
+    Issues a real JWT for a freshly-created, unverified guest user row.
+    Only active while settings.REQUIRE_AUTH is False — this is the single
+    switch that lets new visitors use gated features (code review, resume
+    generation) without going through OTP signup.
+
+    Flip REQUIRE_AUTH back to True and this endpoint stops minting new
+    sessions immediately; existing guest rows and tokens are left alone,
+    nothing is deleted.
+    """
+    if settings.REQUIRE_AUTH:
+        raise HTTPException(403, "Guest sessions are disabled.")
+
+    pool = await get_db_pool()
+    if pool is None:
+        raise HTTPException(503, "Database unavailable")
+
+    guest_email = f"guest-{uuid.uuid4().hex}@guest.intern-flow.in"
+
+    user_row = await pool.fetchrow(
+        """
+        INSERT INTO users (email, subscription_tier, is_guest)
+        VALUES ($1, 'free', TRUE)
+        RETURNING id, email, subscription_tier
+        """,
+        guest_email,
+    )
+
+    token = _make_jwt(
+        user_row["id"],
+        user_row["email"],
+        user_row["subscription_tier"],
+    )
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "is_guest": True,
     }
