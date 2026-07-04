@@ -4,13 +4,15 @@ Allow: /register
 Allow: /login
 Allow: /jobs
 Allow: /jobs/
+Allow: /internships
+Allow: /internships/
+Allow: /resume
+Allow: /resume/
 
 Disallow: /dashboard
 Disallow: /dashboard/
 Disallow: /github
 Disallow: /github/
-Disallow: /resume
-Disallow: /resume/
 Disallow: /api/
 Disallow: /_next/
 Disallow: /static/

@@ -1,45 +1,6 @@
 import { MetadataRoute } from 'next';
 import { jobSlug } from '@/lib/slug';
-
-const BASE_URL = 'https://intern-flow.in';
-
-interface Job {
-  id: string;
-  title: string;
-  company: string;
-  posted_at?: string;
-}
-
-async function getActiveJobListings(): Promise<Job[]> {
-  if (!process.env.API_BASE_URL) {
-    console.error('API_BASE_URL is not set');
-    return [];
-  }
-
-  try {
-    const res = await fetch(
-      `${process.env.API_BASE_URL}/api/jobs/?limit=500`,
-      { next: { revalidate: 3600 } }
-    );
-
-    if (!res.ok) {
-      console.error('Jobs API returned', res.status);
-      return [];
-    }
-
-    const data = await res.json();
-
-    if (Array.isArray(data)) return data;
-    if (Array.isArray(data.jobs)) return data.jobs;
-    if (Array.isArray(data.data)) return data.data;
-    if (Array.isArray(data.results)) return data.results;
-
-    return [];
-  } catch (err) {
-    console.error('Failed to fetch jobs for sitemap:', err);
-    return [];
-  }
-}
+import { getJobs, BASE_URL } from '@/lib/jobs';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
@@ -48,9 +9,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/register`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.9 },
     { url: `${BASE_URL}/login`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
     { url: `${BASE_URL}/jobs`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+    { url: `${BASE_URL}/internships`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
   ];
 
-  const jobs = await getActiveJobListings();
+  // getJobs() already filters to is_active = true (expired/removed jobs are
+  // never in this list — see /api/jobs). Every job gets exactly ONE sitemap
+  // entry at its canonical URL: /jobs/[slug], even for internship-type
+  // postings, since /internships/[slug] canonicalizes back to that same
+  // URL. Listing two URLs per job here would fight Google's own duplicate
+  // content handling instead of relying on the canonical tag.
+  const jobs = await getJobs({ limit: 500 });
 
   const jobRoutes: MetadataRoute.Sitemap = jobs
     .filter((job) => job?.id)

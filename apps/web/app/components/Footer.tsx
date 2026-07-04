@@ -7,7 +7,8 @@ const columns = [
     links: [
       { label: 'Overview', href: '/dashboard' },
       { label: 'About', href: '/about' },
-      { label: 'Internships', href: '/jobs' },
+      { label: 'Jobs', href: '/jobs' },
+      { label: 'Internships', href: '/internships' },
       { label: 'Resume builder', href: '/resume/builder' },
     ],
   },

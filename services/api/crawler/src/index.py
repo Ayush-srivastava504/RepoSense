@@ -23,6 +23,10 @@ from processors.normalizer import (
     normalize_batch,
 )
 
+from processors.trust import (
+    score_batch,
+)
+
 from utils import (
     get_logger,
     save_to_s3,
@@ -323,6 +327,10 @@ def run_pipeline(
     log.info(
         "Enriched %d jobs",
         len(enriched),
+    )
+
+    enriched = score_batch(
+        enriched
     )
 
     written = 0

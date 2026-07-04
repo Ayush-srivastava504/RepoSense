@@ -439,6 +439,8 @@ def upsert_jobs(
             or None
         )
 
+        deadline = job.get("deadline") or None
+
         rows.append(
             (
                 job.get("id"),
@@ -452,6 +454,12 @@ def upsert_jobs(
                 job.get("stipend"),
                 job.get("type"),
                 posted_at,
+                job.get("confidence_score", 0),
+                job.get("confidence_label", "unverified"),
+                job.get("apply_domain"),
+                bool(job.get("is_official_domain", False)),
+                job.get("domain_similarity", 0.0),
+                deadline,
             )
         )
 
@@ -469,10 +477,17 @@ def upsert_jobs(
             salary,
             stipend,
             type,
-            posted_at
+            posted_at,
+            confidence_score,
+            confidence_label,
+            apply_domain,
+            is_official_domain,
+            domain_similarity,
+            deadline
         )
         VALUES (
             %s,%s,%s,%s,%s,
+            %s,%s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,%s
         )
         ON CONFLICT (url)

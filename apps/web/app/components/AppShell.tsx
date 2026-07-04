@@ -10,7 +10,8 @@ const sections = [
   { href: '/dashboard',      label: 'Overview' },
   { href: '/about',          label: 'About' },
   { href: '/github',         label: 'Code review' },
-  { href: '/jobs',           label: 'Internships' },
+  { href: '/jobs',           label: 'Jobs' },
+  { href: '/internships',    label: 'Internships' },
   { href: '/resume/builder', label: 'Resume' },
   { href: '/linkedin',       label: 'LinkedIn' },
 ];

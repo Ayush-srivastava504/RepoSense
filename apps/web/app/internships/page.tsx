@@ -9,15 +9,15 @@ import FeaturedJobs from '@/app/components/FeaturedJobs';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Job & Internship Listings — Refreshed Daily',
+  title: 'Internship Listings in India — Refreshed Daily',
   description:
-    'Browse the latest software, AI/ML, and data jobs and internships from companies in India. Updated daily.',
+    'Browse the latest internships in software, AI/ML, and data roles from companies in India. Updated daily.',
   alternates: {
-    canonical: `${BASE_URL}/jobs`,
+    canonical: `${BASE_URL}/internships`,
   },
 };
 
-export default async function PublicJobsPage({
+export default async function InternshipsPage({
   searchParams,
 }: {
   searchParams: {
@@ -26,14 +26,15 @@ export default async function PublicJobsPage({
 }) {
   const search = searchParams.search?.trim() || '';
 
-  // First-page ordering is boosted (top company / freshness / confidence);
-  // this only changes ORDER BY server-side, every job is still returned and
-  // the search box / result count below still reflect the same result set.
   const [jobs, featured] = await Promise.all([
-    getJobs({ search, sort: 'ranked' }),
-    search ? Promise.resolve([]) : getFeaturedJobs(),
+    getJobs({ search, type: 'internship', sort: 'ranked' }),
+    search ? Promise.resolve([]) : getFeaturedJobs({ type: 'internship' }),
   ]);
 
+  // Card links point at the contextual /internships/[slug] URL; that page
+  // canonicalizes back to /jobs/[slug] (see app/internships/[slug]/page.tsx)
+  // so this hub still passes SEO value to a single canonical destination
+  // per job rather than creating duplicate-content pages.
   const itemListSchema = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
@@ -54,20 +55,20 @@ export default async function PublicJobsPage({
           }}
         />
 
-        <p className="eyebrow eyebrow-accent">// jobs & internships</p>
+        <p className="eyebrow eyebrow-accent">// internships</p>
 
         <h1 className="display mt-2 text-3xl font-medium">
-          Latest Postings
+          Internships in India
         </h1>
 
         <p className="mt-2 text-sm" style={{ color: 'var(--ink-soft)' }}>
-          Browse opportunities aggregated from multiple platforms and refreshed daily.{' '}
-          <Link href="/internships" className="underline">
-            Looking specifically for internships?
+          Internship-only view of our job feed, aggregated from multiple platforms and refreshed daily.{' '}
+          <Link href="/jobs" className="underline">
+            See all jobs
           </Link>
         </p>
 
-        <form method="GET" action="/jobs" className="mt-8">
+        <form method="GET" action="/internships" className="mt-8">
           <div className="flex flex-col gap-3 sm:flex-row">
             <input
               type="text"
@@ -87,7 +88,7 @@ export default async function PublicJobsPage({
             </button>
 
             {search && (
-              <Link href="/jobs" className="btn px-6 py-3 text-sm">
+              <Link href="/internships" className="btn px-6 py-3 text-sm">
                 Clear
               </Link>
             )}
@@ -102,20 +103,20 @@ export default async function PublicJobsPage({
 
         <AdSlot slot="3995254749" format="auto" className="mt-10" />
 
-        <FeaturedJobs jobs={featured} basePath="/jobs" />
+        <FeaturedJobs jobs={featured} basePath="/internships" />
 
         {jobs.length > 0 ? (
           <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {jobs.map((job) => (
-              <JobCard key={job.id} job={job} basePath="/jobs" />
+              <JobCard key={job.id} job={job} basePath="/internships" />
             ))}
           </div>
         ) : (
           <div className="mt-16 text-center">
             <p className="text-sm" style={{ color: 'var(--muted)' }}>
               {search
-                ? `No jobs found for "${search}".`
-                : 'No jobs are available right now. Please check again later.'}
+                ? `No internships found for "${search}".`
+                : 'No internships are available right now. Please check again later.'}
             </p>
           </div>
         )}
