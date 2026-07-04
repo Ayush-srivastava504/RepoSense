@@ -17,9 +17,7 @@ export async function generateMetadata({
     slug: string;
   };
 }): Promise<Metadata> {
-  const job = await getJobById(
-    jobIdFromSlug(params.slug)
-  );
+  const job = await getJobById(jobIdFromSlug(params.slug));
 
   if (!job) {
     return {};
@@ -43,9 +41,7 @@ export default async function JobDetailPage({
     slug: string;
   };
 }) {
-  const job = await getJobById(
-    jobIdFromSlug(params.slug)
-  );
+  const job = await getJobById(jobIdFromSlug(params.slug));
 
   if (!job) {
     notFound();
@@ -71,19 +67,21 @@ export default async function JobDetailPage({
         `}
       </Script>
 
-      <JobDetail
-        job={job}
-        canonicalPath={`/jobs/${params.slug}`}
-        backHref="/jobs"
-        backLabel="Back to jobs"
-      />
+      <div className="px-3 sm:px-4">
+        <JobDetail
+          job={job}
+          canonicalPath={`/jobs/${params.slug}`}
+          backHref="/jobs"
+          backLabel="Back to jobs"
+        />
+      </div>
 
       {/* Native Banner */}
-      <section className="mx-auto w-full max-w-3xl px-4 pb-12">
+      <section className="mx-auto w-full max-w-3xl px-3 sm:px-4 pb-8 sm:pb-12">
         <div
           className="w-full overflow-hidden rounded-lg"
           style={{
-            minHeight: '90px',
+            minHeight: '70px',
           }}
         >
           <div id={NATIVE_AD_CONTAINER} />
