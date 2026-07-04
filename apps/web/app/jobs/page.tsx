@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { jobSlug } from '@/lib/slug';
-import AdSlot from '@/app/components/AdSlot';
 
 export const dynamic = 'force-dynamic';
 
 const BASE_URL = 'https://intern-flow.in';
+
+const MONETAG_DIRECT_LINK = 'https://omg10.com/4/11238266';
 
 interface Job {
   id: string;
@@ -36,7 +37,7 @@ async function getPublicJobs(search?: string): Promise<Job[]> {
 
   try {
     const params = new URLSearchParams({
-      limit: '500', // increased from 200
+      limit: '500',
     });
 
     if (search) {
@@ -71,6 +72,56 @@ async function getPublicJobs(search?: string): Promise<Job[]> {
   }
 }
 
+function SponsoredCard() {
+  return (
+    <a
+      href={MONETAG_DIRECT_LINK}
+      target="_blank"
+      rel="noopener noreferrer sponsored"
+      className="panel flex h-full flex-col p-5 transition-all hover:-translate-y-1 hover:shadow-lg"
+    >
+      <div className="flex items-center justify-between">
+        <p className="eyebrow eyebrow-accent">// sponsored</p>
+
+        <span className="chip chip-muted text-[11px]">
+          AD
+        </span>
+      </div>
+
+      <h2
+        className="display mt-4 text-lg font-medium leading-snug"
+        style={{
+          color: 'var(--ink)',
+        }}
+      >
+        Sponsored Opportunity
+      </h2>
+
+      <p
+        className="mt-1 text-sm"
+        style={{
+          color: 'var(--ink-soft)',
+        }}
+      >
+        InternFlow Partner
+      </p>
+
+      <p
+        className="mt-4 flex-1 text-sm leading-7"
+        style={{
+          color: 'var(--ink-soft)',
+        }}
+      >
+        Explore a sponsored offer selected for InternFlow visitors.
+      </p>
+
+      <span className="mt-5 text-sm font-medium">
+        View Sponsored Offer →
+      </span>
+    </a>
+  );
+}
+
 export default async function PublicJobsPage({
   searchParams,
 }: {
@@ -101,7 +152,9 @@ export default async function PublicJobsPage({
           }}
         />
 
-        <p className="eyebrow eyebrow-accent">// internships</p>
+        <p className="eyebrow eyebrow-accent">
+          // internships
+        </p>
 
         <h1 className="display mt-2 text-3xl font-medium">
           Latest Postings
@@ -166,66 +219,67 @@ export default async function PublicJobsPage({
           )}
         </form>
 
-        <AdSlot slot="3995254749" format="auto" className="mt-10" />
-
         {jobs.length > 0 ? (
           <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {jobs.map((job) => (
-              <Link
-                key={job.id}
-                href={`/jobs/${jobSlug(job)}`}
-                className="panel flex h-full flex-col p-5 transition-all hover:-translate-y-1 hover:shadow-lg"
-              >
-                <div className="flex items-center justify-between">
-                  <p className="eyebrow">
-                    {job.source || 'Unknown'} ·{' '}
-                    {job.posted_at
-                      ? new Date(job.posted_at).toLocaleDateString()
-                      : 'Recent'}
-                  </p>
+            {jobs.map((job, index) => (
+              <div key={job.id} className="contents">
+                <Link
+                  href={`/jobs/${jobSlug(job)}`}
+                  className="panel flex h-full flex-col p-5 transition-all hover:-translate-y-1 hover:shadow-lg"
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="eyebrow">
+                      {job.source || 'Unknown'} ·{' '}
+                      {job.posted_at
+                        ? new Date(job.posted_at).toLocaleDateString()
+                        : 'Recent'}
+                    </p>
 
-                  {job.type && (
-                    <span className="chip chip-muted text-[11px]">
-                      {job.type}
+                    {job.type && (
+                      <span className="chip chip-muted text-[11px]">
+                        {job.type}
+                      </span>
+                    )}
+                  </div>
+
+                  {job.location && (
+                    <span className="chip chip-muted mt-2 w-fit text-[11px]">
+                      {job.location}
                     </span>
                   )}
-                </div>
 
-                {job.location && (
-                  <span className="chip chip-muted mt-2 w-fit text-[11px]">
-                    {job.location}
-                  </span>
-                )}
+                  <h2
+                    className="display mt-4 text-lg font-medium leading-snug"
+                    style={{
+                      color: 'var(--ink)',
+                    }}
+                  >
+                    {job.title}
+                  </h2>
 
-                <h2
-                  className="display mt-4 text-lg font-medium leading-snug"
-                  style={{
-                    color: 'var(--ink)',
-                  }}
-                >
-                  {job.title}
-                </h2>
+                  <p
+                    className="mt-1 text-sm"
+                    style={{
+                      color: 'var(--ink-soft)',
+                    }}
+                  >
+                    {job.company}
+                  </p>
 
-                <p
-                  className="mt-1 text-sm"
-                  style={{
-                    color: 'var(--ink-soft)',
-                  }}
-                >
-                  {job.company}
-                </p>
+                  <p
+                    className="mt-4 flex-1 text-sm leading-7"
+                    style={{
+                      color: 'var(--ink-soft)',
+                    }}
+                  >
+                    {job.description
+                      ? `${job.description.substring(0, 180)}...`
+                      : 'No description available.'}
+                  </p>
+                </Link>
 
-                <p
-                  className="mt-4 flex-1 text-sm leading-7"
-                  style={{
-                    color: 'var(--ink-soft)',
-                  }}
-                >
-                  {job.description
-                    ? `${job.description.substring(0, 180)}...`
-                    : 'No description available.'}
-                </p>
-              </Link>
+                {(index + 1) % 20 === 0 && <SponsoredCard />}
+              </div>
             ))}
           </div>
         ) : (

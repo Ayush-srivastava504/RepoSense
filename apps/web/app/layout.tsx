@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     'ATS resume generator',
     'internship finder India',
     'B.Tech internship',
-    'software internship 2025',
+    'software internship 2026',
     'AI resume builder',
     'code review tool',
   ],
@@ -102,10 +102,24 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/favicon.ico' },
-      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      {
+        url: '/favicon-16x16.png',
+        sizes: '16x16',
+        type: 'image/png',
+      },
+      {
+        url: '/favicon-32x32.png',
+        sizes: '32x32',
+        type: 'image/png',
+      },
     ],
-    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
+
+    apple: [
+      {
+        url: '/apple-touch-icon.png',
+        sizes: '180x180',
+      },
+    ],
   },
 
   manifest: '/site.webmanifest',
@@ -136,9 +150,9 @@ const websiteSchema = {
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <html lang="en">
       <body
@@ -150,6 +164,7 @@ export default function RootLayout({
             __html: JSON.stringify(organizationSchema),
           }}
         />
+
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -157,6 +172,7 @@ export default function RootLayout({
           }}
         />
 
+        {/* Google AdSense */}
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3315793616023053"
@@ -164,6 +180,7 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
 
+        {/* Google Analytics */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-2SC90HTR7G"
           strategy="afterInteractive"
@@ -172,12 +189,33 @@ export default function RootLayout({
         <Script id="google-analytics" strategy="afterInteractive">
           {`
             window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
+
+            function gtag(){
+              dataLayer.push(arguments);
+            }
+
             window.gtag = gtag;
+
             gtag('js', new Date());
+
             gtag('config', 'G-2SC90HTR7G', {
               page_path: window.location.pathname,
             });
+          `}
+        </Script>
+
+        {/* Monetag Vignette */}
+        <Script id="monetag-vignette" strategy="afterInteractive">
+          {`
+            (function(s) {
+              s.dataset.zone = '11238201';
+              s.src = 'https://n6wxm.com/vignette.min.js';
+            })(
+              [document.documentElement, document.body]
+                .filter(Boolean)
+                .pop()
+                .appendChild(document.createElement('script'))
+            );
           `}
         </Script>
 
