@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Script from 'next/script';
 import { jobSlug } from '@/lib/slug';
 
 export const dynamic = 'force-dynamic';
@@ -83,9 +84,7 @@ function SponsoredCard() {
       <div className="flex items-center justify-between">
         <p className="eyebrow eyebrow-accent">// sponsored</p>
 
-        <span className="chip chip-muted text-[11px]">
-          AD
-        </span>
+        <span className="chip chip-muted text-[11px]">AD</span>
       </div>
 
       <h2
@@ -144,6 +143,21 @@ export default async function PublicJobsPage({
 
   return (
     <div className="min-h-screen">
+      {/* Monetag In-Page Push — Jobs page only */}
+      <Script id="monetag-in-page-push" strategy="afterInteractive">
+        {`
+          (function(s) {
+            s.dataset.zone = '11238200';
+            s.src = 'https://nap5k.com/tag.min.js';
+          })(
+            [document.documentElement, document.body]
+              .filter(Boolean)
+              .pop()
+              .appendChild(document.createElement('script'))
+          );
+        `}
+      </Script>
+
       <main className="mx-auto max-w-6xl px-4 py-12">
         <script
           type="application/ld+json"
@@ -152,9 +166,7 @@ export default async function PublicJobsPage({
           }}
         />
 
-        <p className="eyebrow eyebrow-accent">
-          // internships
-        </p>
+        <p className="eyebrow eyebrow-accent">// internships</p>
 
         <h1 className="display mt-2 text-3xl font-medium">
           Latest Postings
@@ -170,11 +182,7 @@ export default async function PublicJobsPage({
           platforms and refreshed daily.
         </p>
 
-        <form
-          method="GET"
-          action="/jobs"
-          className="mt-8"
-        >
+        <form method="GET" action="/jobs" className="mt-8">
           <div className="flex flex-col gap-3 sm:flex-row">
             <input
               type="text"
@@ -197,10 +205,7 @@ export default async function PublicJobsPage({
             </button>
 
             {search && (
-              <Link
-                href="/jobs"
-                className="btn px-6 py-3 text-sm"
-              >
+              <Link href="/jobs" className="btn px-6 py-3 text-sm">
                 Clear
               </Link>
             )}
@@ -214,7 +219,7 @@ export default async function PublicJobsPage({
               }}
             >
               {jobs.length} result
-              {jobs.length !== 1 ? 's' : ''} found for "{search}"
+              {jobs.length !== 1 ? 's' : ''} found for &quot;{search}&quot;
             </p>
           )}
         </form>
