@@ -144,9 +144,6 @@ export default function LandingPage() {
             <Link href="/about" className="nav-link hidden sm:inline text-sm px-3 py-1.5">
               About
             </Link>
-            <Link href="/login" className="nav-link hidden sm:inline text-sm px-3 py-1.5">
-              Sign in
-            </Link>
             <Link href="/register" className="btn btn-primary text-sm px-4 py-2">
               Get started
             </Link>
@@ -175,7 +172,6 @@ export default function LandingPage() {
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <Link href="/register" className="btn btn-primary">Start free</Link>
-            <Link href="/login" className="btn btn-secondary">Sign in</Link>
           </div>
         </div>
 

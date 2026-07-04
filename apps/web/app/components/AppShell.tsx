@@ -7,7 +7,6 @@ import Logo from './Logo';
 import Footer from './Footer';
 
 const sections = [
-  { href: '/dashboard',      label: 'Overview' },
   { href: '/about',          label: 'About' },
   { href: '/github',         label: 'Code review' },
   { href: '/jobs',           label: 'Jobs' },
