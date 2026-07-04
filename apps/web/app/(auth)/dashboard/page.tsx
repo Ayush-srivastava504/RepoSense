@@ -7,7 +7,6 @@ import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import AppShell from '../../components/AppShell';
 import { trackEvent } from '@/lib/analytics';
-import { featureFlags } from '@/lib/featureFlags';
 
 interface Stats {
   total_reviews: number;
@@ -99,15 +98,6 @@ function ScoreBadge({ score }: { score: number }) {
   );
 }
 
-function LockIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="11" width="18" height="11" rx="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  );
-}
-
 function SearchIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -158,31 +148,6 @@ function SectionHeader({
       <Link href={linkHref} className="btn btn-ghost text-xs !py-1 !px-2">
         {linkLabel}
       </Link>
-    </div>
-  );
-}
-
-function LockedFeatureCard({
-  title,
-  body,
-  locked,
-}: {
-  title: string;
-  body: string;
-  locked: boolean;
-}) {
-  return (
-    <div className="panel relative flex flex-col gap-2 p-5">
-      {locked && (
-        <span
-          className="chip chip-muted absolute right-3 top-3 flex items-center gap-1 text-[0.65rem]"
-          style={{ color: 'var(--muted)' }}
-        >
-          <LockIcon /> Sign in
-        </span>
-      )}
-      <p className="display text-base font-medium" style={{ color: 'var(--ink)' }}>{title}</p>
-      <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{body}</p>
     </div>
   );
 }
@@ -246,45 +211,8 @@ function DashboardContent() {
     router.push(q ? `/jobs?search=${encodeURIComponent(q)}` : '/jobs');
   };
 
-  const lockedFeatures = [
-    {
-      key: 'requireAuthForSave' as const,
-      title: 'Save jobs',
-      body: 'Bookmark listings and come back to them later instead of losing the link.',
-    },
-    {
-      key: 'requireAuthForTracking' as const,
-      title: 'Track applications',
-      body: 'Keep every internship you\u2019ve applied to in one place, with status at a glance.',
-    },
-    {
-      key: 'requireAuthForRecommendations' as const,
-      title: 'Personalized picks',
-      body: 'Get roles ranked against your resume and GitHub activity instead of the full firehose.',
-    },
-  ].filter((f) => featureFlags[f.key]);
-
   return (
     <AppShell user={user} onLogout={handleLogout}>
-
-      {!user && (
-        <div
-          className="panel mb-6 flex flex-col items-start justify-between gap-3 p-4 sm:flex-row sm:items-center"
-          style={{ borderColor: 'var(--indigo)', borderWidth: 1 }}
-        >
-          <div>
-            <p className="eyebrow eyebrow-accent">// browsing as guest</p>
-            <p className="mt-1 text-sm" style={{ color: 'var(--ink-soft)' }}>
-              {featureFlags.requireAuth
-                ? 'Jobs, internships, and applying out are open to everyone. Sign in for code review, resumes, and saved jobs.'
-                : 'Everything is open right now, including code review and resume generation — no account needed.'}
-            </p>
-          </div>
-          <Link href="/login" className="btn btn-primary text-sm flex-shrink-0 whitespace-nowrap">
-            Sign in
-          </Link>
-        </div>
-      )}
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -295,11 +223,11 @@ function DashboardContent() {
           <p className="mt-1 text-sm" style={{ color: 'var(--ink-soft)' }}>
             {user
               ? "Here's what's happening across your workspace."
-              : 'Search live listings right now — no account needed to browse or apply.'}
+              : 'Search live listings right now — everything is open, no account needed.'}
           </p>
         </div>
-        <Link href={user ? '/github' : '/login'} className="btn btn-primary text-sm flex-shrink-0">
-          {user ? 'Open code review' : 'Sign in'}
+        <Link href="/github" className="btn btn-primary text-sm flex-shrink-0">
+          Open code review
         </Link>
       </div>
 
@@ -378,7 +306,6 @@ function DashboardContent() {
               body: 'Open a repo, pick a file, and get line-level AI feedback.',
               href: '/github',
               action: 'review',
-              locked: featureFlags.requireAuth && !user,
             },
             {
               tag: '// resume',
@@ -386,7 +313,6 @@ function DashboardContent() {
               body: 'Turn your commits and reviews into ATS-ready bullets.',
               href: '/resume/builder',
               action: 'resume',
-              locked: featureFlags.requireAuth && !user,
             },
             {
               tag: '// internships',
@@ -394,7 +320,6 @@ function DashboardContent() {
               body: 'Daily-refreshed internship postings from multiple sources.',
               href: '/jobs',
               action: 'jobs',
-              locked: false,
             },
           ].map((item) => (
             <Link
@@ -406,14 +331,6 @@ function DashboardContent() {
               onMouseOver={(e) => (e.currentTarget.style.boxShadow = '0 4px 20px -4px rgba(0,0,0,0.12)')}
               onMouseOut={(e) => (e.currentTarget.style.boxShadow = '')}
             >
-              {item.locked && (
-                <span
-                  className="chip chip-muted absolute right-3 top-3 flex items-center gap-1 text-[0.65rem]"
-                  style={{ color: 'var(--muted)' }}
-                >
-                  <LockIcon /> Sign in
-                </span>
-              )}
               <p className="eyebrow eyebrow-accent">{item.tag}</p>
               <p className="display text-base font-medium">{item.title}</p>
               <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
@@ -423,17 +340,6 @@ function DashboardContent() {
           ))}
         </div>
       </div>
-
-      {!user && lockedFeatures.length > 0 && (
-        <div className="mt-10">
-          <p className="eyebrow mb-4">// unlock with a free account</p>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {lockedFeatures.map((f) => (
-              <LockedFeatureCard key={f.key} title={f.title} body={f.body} locked />
-            ))}
-          </div>
-        </div>
-      )}
 
       {user && (
         <div className="mt-10 grid gap-6 lg:grid-cols-2">
