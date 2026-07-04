@@ -17,7 +17,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
   redis:
     image: redis:7-alpine
     container_name: reposense-redis
@@ -29,7 +28,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
   neural-generator:
     image: ghcr.io/ayush-srivastava504/reposense-neural:latest
     container_name: neural-generator
@@ -61,7 +59,6 @@ services:
       timeout: 10s
       retries: 5
       start_period: 180s
-
   rag:
     image: ghcr.io/ayush-srivastava504/reposense-rag:latest
     container_name: rag
@@ -98,7 +95,6 @@ services:
       timeout: 10s
       retries: 5
       start_period: 180s
-
   api:
     image: ghcr.io/ayush-srivastava504/reposense-api:latest
     container_name: reposense-api
@@ -130,7 +126,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-
   crawler:
     build:
       context: ../../services/api/crawler
@@ -143,7 +138,7 @@ services:
         "python",
         "src/index.py",
         "--scrapers",
-        "linkedin,internshala,unstop",
+        "internshala,naukri,linkedin,wellfound,indeed,unstop,glassdoor,cutshort,company_portals",
         "--max-pages",
         "2"
       ]
@@ -157,7 +152,6 @@ services:
         condition: service_healthy
     mem_limit: 2048m
     cpus: 1.5
-
 volumes:
   postgres_data:
   rag_data:
