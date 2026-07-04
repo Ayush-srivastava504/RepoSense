@@ -280,8 +280,8 @@ function DashboardContent() {
                 : 'Everything is open right now, including code review and resume generation — no account needed.'}
             </p>
           </div>
-          <Link href="/register" className="btn btn-primary text-sm flex-shrink-0 whitespace-nowrap">
-            Create free account
+          <Link href="/login" className="btn btn-primary text-sm flex-shrink-0 whitespace-nowrap">
+            Sign in
           </Link>
         </div>
       )}
@@ -298,8 +298,8 @@ function DashboardContent() {
               : 'Search live listings right now — no account needed to browse or apply.'}
           </p>
         </div>
-        <Link href={user ? '/github' : '/register'} className="btn btn-primary text-sm flex-shrink-0">
-          {user ? 'Open code review' : 'Get started free'}
+        <Link href={user ? '/github' : '/login'} className="btn btn-primary text-sm flex-shrink-0">
+          {user ? 'Open code review' : 'Sign in'}
         </Link>
       </div>
 
