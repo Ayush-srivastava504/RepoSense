@@ -49,7 +49,7 @@ export default async function JobDetailPage({
 
   return (
     <>
-      {/* Monetag Vignette */}
+      {/* Monetag Vignette Ad */}
       <Script
         id="job-detail-vignette"
         strategy="afterInteractive"
@@ -76,7 +76,7 @@ export default async function JobDetailPage({
         />
       </div>
 
-      {/* Native Banner */}
+      {/* Monetag Native Banner Ad */}
       <section className="mx-auto w-full max-w-3xl px-3 sm:px-4 pb-8 sm:pb-12">
         <div
           className="w-full overflow-hidden rounded-lg"

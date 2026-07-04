@@ -49,7 +49,7 @@ export default async function InternshipDetailPage({
 
   return (
     <>
-      {/* Monetag Vignette */}
+      {/* Monetag Vignette Ad - No Google AdSense */}
       <Script
         id="internship-detail-vignette"
         strategy="afterInteractive"
@@ -76,7 +76,7 @@ export default async function InternshipDetailPage({
         />
       </div>
 
-      {/* Native Banner */}
+      {/* Monetag Native Banner Ad - No Google AdSense */}
       <section className="mx-auto w-full max-w-3xl px-3 sm:px-4 pb-8 sm:pb-12">
         <div
           className="w-full overflow-hidden rounded-lg"
