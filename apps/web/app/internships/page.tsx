@@ -1,14 +1,21 @@
+```tsx
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Script from 'next/script';
+
 import { jobSlug } from '@/lib/slug';
-import { getJobs, getFeaturedJobs, BASE_URL } from '@/lib/jobs';
+import {
+  getJobs,
+  getFeaturedJobs,
+  BASE_URL,
+} from '@/lib/jobs';
+
 import JobCard from '@/app/components/JobCard';
 import FeaturedJobs from '@/app/components/FeaturedJobs';
+import SponsoredCard from '@/app/components/SponsoredCard';
 
 export const dynamic = 'force-dynamic';
 
-const MONETAG_DIRECT_LINK = 'https://omg10.com/4/11238266';
 const JOBS_PER_PAGE = 12;
 
 export const metadata: Metadata = {
@@ -19,77 +26,6 @@ export const metadata: Metadata = {
     canonical: `${BASE_URL}/internships`,
   },
 };
-
-function SponsoredCard() {
-  return (
-    <div className="panel relative flex h-full flex-col p-4 sm:p-5 transition-all hover:-translate-y-1 hover:shadow-lg">
-      <button
-        onClick={(e) => {
-          const card = e.currentTarget.closest('.panel') as HTMLElement | null;
-          if (card) {
-            card.style.display = 'none';
-          }
-        }}
-        className="absolute right-2 top-2 rounded-full p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors touch-manipulation"
-        aria-label="Close sponsored card"
-        title="Close this sponsored content"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-        >
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-      </button>
-
-      <a
-        href={MONETAG_DIRECT_LINK}
-        target="_blank"
-        rel="noopener noreferrer sponsored"
-        className="flex h-full flex-col"
-      >
-        <div className="flex items-center justify-between">
-          <p className="eyebrow eyebrow-accent text-xs sm:text-sm">// sponsored</p>
-          <span className="chip chip-muted text-[10px] sm:text-[11px]">AD</span>
-        </div>
-
-        <h2
-          className="display mt-3 sm:mt-4 text-base sm:text-lg font-medium leading-snug"
-          style={{ color: 'var(--ink)' }}
-        >
-          Sponsored Opportunity
-        </h2>
-
-        <p
-          className="mt-1 text-xs sm:text-sm"
-          style={{ color: 'var(--ink-soft)' }}
-        >
-          InternFlow Partner
-        </p>
-
-        <p
-          className="mt-3 sm:mt-4 flex-1 text-xs sm:text-sm leading-6 sm:leading-7"
-          style={{ color: 'var(--ink-soft)' }}
-        >
-          Explore a sponsored offer selected for InternFlow visitors.
-        </p>
-
-        <span className="mt-4 sm:mt-5 text-xs sm:text-sm font-medium">
-          View Sponsored Offer →
-        </span>
-      </a>
-    </div>
-  );
-}
 
 function Pagination({
   currentPage,
@@ -102,28 +38,55 @@ function Pagination({
 }) {
   const getPageUrl = (page: number) => {
     const params = new URLSearchParams();
-    if (search) params.set('search', search);
-    if (page > 1) params.set('page', String(page));
-    return `/internships${params.toString() ? `?${params.toString()}` : ''}`;
+
+    if (search) {
+      params.set('search', search);
+    }
+
+    if (page > 1) {
+      params.set('page', String(page));
+    }
+
+    return `/internships${
+      params.toString()
+        ? `?${params.toString()}`
+        : ''
+    }`;
   };
 
-  if (totalPages <= 1) return null;
-
-  const pages = [];
-  const maxVisible = 5;
-  let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-  let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-
-  if (endPage - startPage + 1 < maxVisible) {
-    startPage = Math.max(1, endPage - maxVisible + 1);
+  if (totalPages <= 1) {
+    return null;
   }
 
-  for (let i = startPage; i <= endPage; i++) {
+  const pages: number[] = [];
+  const maxVisible = 5;
+
+  let startPage = Math.max(
+    1,
+    currentPage - Math.floor(maxVisible / 2),
+  );
+
+  const endPage = Math.min(
+    totalPages,
+    startPage + maxVisible - 1,
+  );
+
+  if (endPage - startPage + 1 < maxVisible) {
+    startPage = Math.max(
+      1,
+      endPage - maxVisible + 1,
+    );
+  }
+
+  for (let i = startPage; i <= endPage; i += 1) {
     pages.push(i);
   }
 
   return (
-    <nav className="mt-12 flex flex-wrap justify-center gap-2 px-4" aria-label="Pagination">
+    <nav
+      className="mt-12 flex flex-wrap justify-center gap-2 px-4"
+      aria-label="Pagination"
+    >
       {currentPage > 1 && (
         <Link
           href={getPageUrl(currentPage - 1)}
@@ -142,7 +105,12 @@ function Pagination({
           >
             1
           </Link>
-          {startPage > 2 && <span className="flex items-center px-2">…</span>}
+
+          {startPage > 2 && (
+            <span className="flex items-center px-2">
+              …
+            </span>
+          )}
         </>
       )}
 
@@ -151,9 +119,15 @@ function Pagination({
           key={page}
           href={getPageUrl(page)}
           className={`btn min-w-[44px] px-3 py-2 text-sm touch-manipulation ${
-            page === currentPage ? 'btn-primary' : ''
+            page === currentPage
+              ? 'btn-primary'
+              : ''
           }`}
-          aria-current={page === currentPage ? 'page' : undefined}
+          aria-current={
+            page === currentPage
+              ? 'page'
+              : undefined
+          }
         >
           {page}
         </Link>
@@ -161,7 +135,12 @@ function Pagination({
 
       {endPage < totalPages && (
         <>
-          {endPage < totalPages - 1 && <span className="flex items-center px-2">…</span>}
+          {endPage < totalPages - 1 && (
+            <span className="flex items-center px-2">
+              …
+            </span>
+          )}
+
           <Link
             href={getPageUrl(totalPages)}
             className="btn min-w-[44px] px-3 py-2 text-sm touch-manipulation"
@@ -192,8 +171,18 @@ export default async function InternshipsPage({
     page?: string;
   };
 }) {
-  const search = searchParams.search?.trim() || '';
-  const currentPage = Math.max(1, parseInt(searchParams.page || '1'));
+  const search =
+    searchParams.search?.trim() || '';
+
+  const parsedPage = Number.parseInt(
+    searchParams.page || '1',
+    10,
+  );
+
+  const requestedPage =
+    Number.isNaN(parsedPage) || parsedPage < 1
+      ? 1
+      : parsedPage;
 
   const [allJobs, featured] = await Promise.all([
     getJobs({
@@ -209,24 +198,44 @@ export default async function InternshipsPage({
   ]);
 
   const totalJobs = allJobs.length;
-  const totalPages = Math.ceil(totalJobs / JOBS_PER_PAGE);
-  const startIndex = (currentPage - 1) * JOBS_PER_PAGE;
-  const endIndex = Math.min(startIndex + JOBS_PER_PAGE, totalJobs);
-  const jobs = allJobs.slice(startIndex, endIndex);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(totalJobs / JOBS_PER_PAGE),
+  );
+
+  const currentPage = Math.min(
+    requestedPage,
+    totalPages,
+  );
+
+  const startIndex =
+    (currentPage - 1) * JOBS_PER_PAGE;
+
+  const endIndex = Math.min(
+    startIndex + JOBS_PER_PAGE,
+    totalJobs,
+  );
+
+  const jobs = allJobs.slice(
+    startIndex,
+    endIndex,
+  );
 
   const itemListSchema = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    itemListElement: jobs.map((job, index) => ({
-      '@type': 'ListItem',
-      position: (currentPage - 1) * JOBS_PER_PAGE + index + 1,
-      url: `${BASE_URL}/jobs/${jobSlug(job)}`,
-    })),
+    itemListElement: jobs.map(
+      (job, index) => ({
+        '@type': 'ListItem',
+        position: startIndex + index + 1,
+        url: `${BASE_URL}/internships/${jobSlug(job)}`,
+      }),
+    ),
   };
 
   return (
     <div className="min-h-screen">
-      {/* Monetag In-Page Push */}
       <Script
         id="internships-in-page-push"
         strategy="afterInteractive"
@@ -252,7 +261,9 @@ export default async function InternshipsPage({
           }}
         />
 
-        <p className="eyebrow eyebrow-accent text-xs sm:text-sm">// internships</p>
+        <p className="eyebrow eyebrow-accent text-xs sm:text-sm">
+          // internships
+        </p>
 
         <h1 className="display mt-2 text-2xl sm:text-3xl font-medium">
           Internships in India
@@ -260,16 +271,27 @@ export default async function InternshipsPage({
 
         <p
           className="mt-2 text-xs sm:text-sm"
-          style={{ color: 'var(--ink-soft)' }}
+          style={{
+            color: 'var(--ink-soft)',
+          }}
         >
-          Internship-only view of our job feed, aggregated from multiple
-          platforms and refreshed daily.{' '}
-          <Link href="/jobs" className="underline">
+          Internship-only view of our job feed,
+          aggregated from multiple platforms and
+          refreshed daily.{' '}
+
+          <Link
+            href="/jobs"
+            className="underline"
+          >
             See all jobs
           </Link>
         </p>
 
-        <form method="GET" action="/internships" className="mt-6 sm:mt-8">
+        <form
+          method="GET"
+          action="/internships"
+          className="mt-6 sm:mt-8"
+        >
           <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row">
             <input
               type="text"
@@ -306,22 +328,36 @@ export default async function InternshipsPage({
           {search && (
             <p
               className="mt-3 text-xs sm:text-sm"
-              style={{ color: 'var(--ink-soft)' }}
+              style={{
+                color: 'var(--ink-soft)',
+              }}
             >
-              {totalJobs} result{totalJobs !== 1 ? 's' : ''} found for &quot;{search}&quot;
+              {totalJobs} result
+              {totalJobs !== 1 ? 's' : ''}{' '}
+              found for &quot;{search}&quot;
             </p>
           )}
         </form>
 
-        <FeaturedJobs jobs={featured} basePath="/internships" />
+        <FeaturedJobs
+          jobs={featured}
+          basePath="/internships"
+        />
 
         {jobs.length > 0 ? (
           <>
             <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
               {jobs.map((job, index) => (
-                <div key={job.id} className="contents">
-                  <JobCard job={job} basePath="/internships" />
-                  {(startIndex + index + 1) % (JOBS_PER_PAGE * 2) === 0 && (
+                <div
+                  key={job.id}
+                  className="contents"
+                >
+                  <JobCard
+                    job={job}
+                    basePath="/internships"
+                  />
+
+                  {(index + 1) % 6 === 0 && (
                     <SponsoredCard />
                   )}
                 </div>
@@ -338,7 +374,9 @@ export default async function InternshipsPage({
           <div className="mt-16 text-center">
             <p
               className="text-sm"
-              style={{ color: 'var(--muted)' }}
+              style={{
+                color: 'var(--muted)',
+              }}
             >
               {search
                 ? `No internships found for "${search}".`
@@ -350,3 +388,4 @@ export default async function InternshipsPage({
     </div>
   );
 }
+```
