@@ -1,4 +1,4 @@
-```tsx
+
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Script from 'next/script';
@@ -367,4 +367,4 @@ export default async function JobsPage({
     </div>
   );
 }
-```
+
