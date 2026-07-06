@@ -31,13 +31,10 @@ from config import (
     USER_AGENTS,
 )
 
-# PostgreSQL Config – read from environment
 import os
 
-# Use DATABASE_URL (preferred) or individual PG_* variables for backward compatibility
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Parse DATABASE_URL if provided
 PG_HOST = None
 PG_DB = None
 PG_USER = None
@@ -55,14 +52,12 @@ if DATABASE_URL:
     except Exception as e:
         log.error("Failed to parse DATABASE_URL: %s", e)
 else:
-    # Fallback to individual env vars
     PG_HOST = os.getenv("PG_HOST")
     PG_DB = os.getenv("PG_DB")
     PG_USER = os.getenv("PG_USER")
     PG_PASSWORD = os.getenv("PG_PASSWORD")
     PG_PORT = os.getenv("PG_PORT", "5432")
 
-# Validate required config - fail fast if missing
 if not all([PG_HOST, PG_DB, PG_USER, PG_PASSWORD]):
     raise ValueError(
         "PostgreSQL configuration missing. "
@@ -74,7 +69,6 @@ if not all([PG_HOST, PG_DB, PG_USER, PG_PASSWORD]):
         f"PG_PASSWORD: {'✓' if PG_PASSWORD else '✗'}"
     )
 
-# Logger
 
 def get_logger(name: str) -> logging.Logger:
 
@@ -99,9 +93,13 @@ def get_logger(name: str) -> logging.Logger:
 
 
 log = get_logger("utils")
-log.info("PostgreSQL configured for RDS: %s:%s/%s", PG_HOST, PG_PORT, PG_DB)
+log.info(
+    "PostgreSQL configured: %s:%s/%s",
+    PG_HOST,
+    PG_PORT,
+    PG_DB,
+)
 
-# HTTP Session
 
 def make_session(
     retries: int = MAX_RETRIES,
@@ -193,7 +191,6 @@ def make_session(
 
     return session
 
-# Retry Decorator
 
 def retry(
     max_attempts: int = MAX_RETRIES,
@@ -263,7 +260,6 @@ def retry(
 
     return decorator
 
-# Rate Limiter
 
 class RateLimiter:
 
@@ -298,11 +294,8 @@ class RateLimiter:
         self.last_request_time[domain] = time.monotonic()
 
 
-# Module-level singleton used by safe_get / safe_post
 rate_limiter = RateLimiter()
 
-
-# Job ID helper
 
 def make_job_id(
     title: str,
@@ -322,7 +315,6 @@ def make_job_id(
         raw_value.encode()
     ).hexdigest()[:16]
 
-# UTC Time
 
 def utcnow() -> str:
 
@@ -332,7 +324,6 @@ def utcnow() -> str:
         timespec="seconds"
     )
 
-# S3 Backup
 
 _s3 = None
 
@@ -390,7 +381,6 @@ def save_to_s3(
 
     return key
 
-# PostgreSQL (RDS)
 
 _pg_conn = None
 
@@ -400,19 +390,40 @@ def get_pg_conn():
     global _pg_conn
 
     if _pg_conn is None:
-        log.info("Connecting to RDS: %s:%s/%s", PG_HOST, PG_PORT, PG_DB)
-        
+
+        is_local_postgres = PG_HOST in {
+            "postgres",
+            "localhost",
+            "127.0.0.1",
+        }
+
+        sslmode = (
+            "disable"
+            if is_local_postgres
+            else "require"
+        )
+
+        log.info(
+            "Connecting to PostgreSQL: %s:%s/%s | sslmode=%s",
+            PG_HOST,
+            PG_PORT,
+            PG_DB,
+            sslmode,
+        )
+
         _pg_conn = psycopg2.connect(
             host=PG_HOST,
             database=PG_DB,
             user=PG_USER,
             password=PG_PASSWORD,
             port=PG_PORT,
-            sslmode='require',  # Required for RDS
+            sslmode=sslmode,
             connect_timeout=10,
         )
-        
-        log.info("✅ RDS Connection successful!")
+
+        log.info(
+            "PostgreSQL connection successful"
+        )
 
     return _pg_conn
 
@@ -432,7 +443,6 @@ def upsert_jobs(
 
     for job in jobs:
 
-        # Handle posted_date properly with fallback
         posted_at = (
             job.get("posted_date")
             or job.get("posted_at")
@@ -501,7 +511,7 @@ def upsert_jobs(
     written = len(rows)
 
     log.info(
-        "✅ Inserted %d jobs into RDS at %s:%s/%s",
+        "Inserted %d jobs into PostgreSQL at %s:%s/%s",
         written,
         PG_HOST,
         PG_PORT,
@@ -534,7 +544,6 @@ def job_exists(
         is not None
     )
 
-# Safe GET
 
 def safe_get(
     session: requests.Session,
@@ -570,7 +579,6 @@ def safe_get(
 
     return None
 
-# Safe POST
 
 def safe_post(
     session: requests.Session,
