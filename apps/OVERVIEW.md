@@ -1,291 +1,292 @@
-# Repo_Sense
+# RepoSense Frontend
 
-> An intelligent job-matching platform that crawls job boards, indexes repository documentation, and generates tailored resume insights using local LLMs and retrieval-augmented generation.
+> Next.js web application for RepoSense — job/internship discovery, an AI resume builder, a LinkedIn Profile Optimizer, and a GitHub repo browser with AI code review, all in one dashboard.
 
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Services](#services)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-- [Running Tests](#running-tests)
-- [Database Migrations](#database-migrations)
-- [Deployment](#deployment)
-- [Environment Variables](#environment-variables)
-- [API Endpoints](#api-endpoints)
-- [Contributing](#contributing)
-
----
+> **Naming note:** this app was previously branded "InternFlow" in older docs. The package name in `package.json` is `internship-web` and some legacy variable/file names still reflect that history (see `lib/stripe.ts` below), but the product is RepoSense throughout the UI.
 
 ## Overview
 
-Repo_Sense is a full-stack monorepo that combines three backend microservices — a **Job Crawler**, a **RAG (Retrieval-Augmented Generation)** service, and a **Neural Generator** — with a **Next.js** frontend. Together, they power a pipeline that:
+Built with Next.js 14 (App Router), TypeScript, and Tailwind CSS. It provides public job/internship browsing plus an authenticated area (email OTP login) for the resume builder, LinkedIn optimizer, and GitHub tools.
 
-1. Scrapes job listings from boards like LinkedIn and Indeed.
-2. Stores and indexes job data alongside user resumes and repository documentation.
-3. Uses local LLMs with vector-search retrieval to generate context-aware insights, recommendations, and auto-fixes.
+## Features
 
----
+### Authentication — email OTP, not password
+- **Passwordless login**: enter an email, receive a 6-digit OTP, verify it → JWT. There is no password field anywhere in the current UI.
+- **Guest sessions**: unauthenticated visitors silently get an anonymous JWT (via `ensureGuestSession()`) so they can save/apply/track jobs before creating an account, unless `NEXT_PUBLIC_REQUIRE_AUTH=true`.
+- **Persistent sessions**: JWT stored in `localStorage`, sent as `Authorization: Bearer` on every request; state syncs across tabs via the `storage` event.
+- **Protected routes**: pages under `app/(auth)/` are gated by `AuthGuard`.
 
-## Architecture
+### GitHub Integration
+- **OAuth connect** (optional, separate from login): redirects to the backend's `/api/github/login`, which completes the flow and returns a token via redirect URL.
+- **Repository browser**: select a repo, navigate directories, preview file contents.
+- **AI Code Review**: send an open file to the backend for review.
+- **README Generation**: auto-generate a README for the selected repo via the RAG service.
+- **Live terminal**: WebSocket-backed in-browser terminal (`components/github/Terminal.tsx`, xterm.js) for the connected repo.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                     Next.js Frontend                    │
-│              (Auth, Dashboard, Resume UI)               │
-└───────────────────────┬─────────────────────────────────┘
-                        │ REST / HTTP
-┌───────────────────────▼─────────────────────────────────┐
-│                FastAPI Gateway (src/app.py)              │
-│          Routes: /crawler  /rag  /neural-generator      │
-└──────┬────────────────┬───────────────────┬─────────────┘
-       │                │                   │
-┌──────▼──────┐  ┌──────▼──────┐  ┌────────▼────────┐
-│   Crawler   │  │     RAG     │  │ Neural Generator │
-│  (FastAPI)  │  │  (FastAPI)  │  │   (FastAPI)      │
-│             │  │             │  │                  │
-│ LinkedIn    │  │ Embeddings  │  │ Local LLM        │
-│ Indeed      │  │ FAISS Index │  │ /generate        │
-│ Playwright  │  │ Chunker     │  │ /health          │
-└──────┬──────┘  └──────┬──────┘  └────────┬─────────┘
-       │                │                   │
-       └────────────────▼───────────────────┘
-                        │
-              ┌─────────▼─────────┐
-              │   PostgreSQL DB   │
-              │ users / resumes   │
-              │ jobs / repo_docs  │
-              │ subscriptions     │
-              └───────────────────┘
-```
+### Job / Internship Discovery
+- Public `jobs/` and `internships/` listing pages plus `[slug]` detail pages — no login required to browse.
+- `FeaturedJobs`, `JobCard`, `JobBadges`, `JobDetail`, `SponsoredCard`, and ad slots (`AdSlot`, `InternshipDetailAds`) compose the listing/detail UI.
+- `ApplyButton` respects the `requireAuthForApply` feature flag.
 
----
+### Resume Builder
+- `app/(auth)/resume/builder/` — write a resume by hand or generate one from a job description via the backend's AI generation endpoints.
 
-## Services
+### LinkedIn Profile Optimizer
+- `app/(auth)/linkedin/` — premium feature; scores a connected profile and generates suggestions. Gated by subscription tier / ad-unlock, mirroring the backend's quota model.
 
-### 1. Crawler
-Scrapes job listings from LinkedIn, Indeed, and other boards using Playwright and Selenium. Cleaned data is stored in DynamoDB and/or the relational database.
-
-- **Entry point:** `services/crawler/src/index.py`
-- **Scrapers:** `services/crawler/src/scrapers/`
-- **Processors:** `services/crawler/src/processors/`
-
-### 2. RAG (Retrieval-Augmented Generation)
-Indexes repository documentation and resumes as vector embeddings (via `sentence-transformers` + FAISS). Serves semantic search and context retrieval for the neural generator.
-
-- **Entry point:** `services/rag/src/app.py`
-- **Key modules:** `embedder.py`, `vector_store.py`, `chunker.py`, `generator.py`
-- **Endpoints:** `GET /health`, `GET /docs`
-
-### 3. Neural Generator
-Runs a local LLM (via HuggingFace `transformers` + `torch`) to generate resume insights, job-match summaries, and code auto-fixes based on RAG-retrieved context.
-
-- **Entry point:** `services/neural-generator/src/app.py`
-- **Endpoints:** `POST /generate`, `GET /health`
-
----
+### Payments
+- Razorpay checkout for Pro/Enterprise subscription upgrades.
 
 ## Tech Stack
 
-| Layer | Technology |
+| Tool | Notes |
 |---|---|
-| Frontend | Next.js 14, TypeScript, Tailwind CSS |
-| Backend | FastAPI, Python 3.10+ |
-| ML / NLP | HuggingFace Transformers, sentence-transformers, FAISS, PyTorch |
-| Crawling | Playwright, Selenium |
-| Database | PostgreSQL |
-| Auth | Custom auth (`lib/auth.ts`) |
-| Payments | Razorpay (`lib/razorpay.ts`) |
-| Infrastructure | Docker, Docker Compose, Railway.app |
-| Testing | Pytest |
+| **Next.js** | ^14.0.4, App Router |
+| **React** | ^18 |
+| **TypeScript** | ^5 |
+| **Tailwind CSS** | ^3, custom CSS variables in `globals.css` |
+| **three / @react-three/fiber / @react-three/drei** | 3D commit graph on the landing page |
+| **@xterm/xterm + @xterm/addon-fit** | WebSocket terminal |
+| **@next/third-parties** | Analytics/third-party script loading |
 
----
+Package name in `package.json` is `internship-web`, version `0.1.0`.
 
 ## Project Structure
 
 ```
-Repo_Sense/
-├── apps/
-│   └── web/                  # Next.js frontend
-│       ├── app/              # App Router pages & layouts
-│       ├── components/       # React components
-│       └── lib/              # api.ts, auth.ts, razorpay.ts
-├── services/
-│   ├── crawler/              # Job board scraping service
-│   ├── rag/                  # RAG service (embeddings + retrieval)
-│   └── neural-generator/     # Local LLM generation service
-├── database/
-│   └── migrations/           # SQL migration scripts (001–005)
-├── tests/                    # Pytest test suite
-├── infrastructure/
-│   ├── docker-compose.yml
-│   └── docker-compose.prod.yml
-├── run_migrations.py
-├── Makefile
-├── railway.json
-└── .env
+apps/web/
+├── app/
+│   ├── page.tsx                       # Landing page (HeroGraph + marketing copy)
+│   ├── about/page.tsx
+│   ├── sitemap.ts
+│   ├── jobs/page.tsx, jobs/[slug]/page.tsx
+│   ├── internships/page.tsx, internships/[slug]/page.tsx
+│   ├── components/                    # AdSlot, AppShell, ApplyButton, AuthGuard,
+│   │                                   # CommitGraph3D, FeaturedJobs, Footer, HeroGraph,
+│   │                                   # InternshipDetailAds, JobBadges, JobCard,
+│   │                                   # JobDetail, Logo, SponsoredCard
+│   ├── globals.css                    # Design tokens (CSS vars) + utility classes
+│   ├── layout.tsx                     # Root layout / auth context
+│   └── (auth)/                        # Routes behind AuthGuard
+│       ├── login/page.tsx             # Email OTP login (2-step: email → otp)
+│       ├── register/page.tsx          # Same OTP flow, framed as account creation
+│       ├── dashboard/page.tsx         # Authenticated overview
+│       ├── github/page.tsx            # Repo browser + code review + README gen
+│       ├── linkedin/page.tsx          # LinkedIn Profile Optimizer
+│       └── resume/builder/page.tsx    # Resume builder (single route — there is no separate /resume/generate page)
+│
+├── components/github/Terminal.tsx     # WebSocket terminal component (note: outside app/, imported directly)
+│
+└── lib/
+    ├── api.ts                         # Fetch wrapper (attaches JWT, throws on parsed error)
+    ├── auth.ts                        # useAuth hook (OTP) + ensureGuestSession()
+    ├── featureFlags.ts                # NEXT_PUBLIC_REQUIRE_AUTH* gates
+    ├── jobs.ts                        # Job-fetching helpers
+    ├── slug.ts                        # Slug generation for job/internship URLs
+    ├── analytics.ts                   # trackEvent()
+    ├── useAuthGate.ts                 # Hook wrapping featureFlags for gated actions
+    └── stripe.ts                      # Razorpay helpers, despite the filename — see below
 ```
 
----
+There is no `app/login/`, `app/register/`, `app/github/`, `app/dashboard/`, or `app/resume/generate/` at the top level of `app/` — all authenticated pages live under the `app/(auth)/` route group, and resume generation is a mode within `resume/builder/`, not a separate route.
 
 ## Getting Started
 
 ### Prerequisites
-
-- Python 3.10+
 - Node.js 18+
-- Docker & Docker Compose
-- PostgreSQL (or use the Docker Compose setup)
+- npm 8+ (matches the committed `package-lock.json`... actually there is none committed for `apps/web` — run `npm install` fresh)
+- Backend Core API running (default `http://localhost:8000`)
 
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/your-org/Repo_Sense.git
-cd Repo_Sense
-```
-
-### 2. Set up environment variables
-
-```bash
-cp .env.example .env
-# Fill in your values (DB URL, AWS keys, model paths, Stripe keys, etc.)
-```
-
-### 3. Install dependencies
-
-```bash
-# Python (backend services)
-pip install -r services/api/requirements.txt
-
-# Node (frontend)
-cd apps/web && npm install
-```
-
-Or use the Makefile shortcut:
-
-```bash
-make install
-```
-
-### 4. Run the full stack with Docker Compose
-
-```bash
-docker-compose up -d
-```
-
-### 5. Run the frontend in dev mode
+### Installation
 
 ```bash
 cd apps/web
+npm install
+
+cat > .env.local << 'EOF'
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_xxxx
+NEXT_PUBLIC_REQUIRE_AUTH=false
+EOF
+
 npm run dev
-# → http://localhost:3000
 ```
 
-### 6. Run a backend service individually
+App runs at **http://localhost:3000**.
+
+### Scripts
 
 ```bash
-cd services/rag
-uvicorn src.app:app --reload --port 8001
+npm run dev     # Development server
+npm run build   # Production build
+npm start       # Start production server
 ```
 
----
+There is no `npm test` or `npm run lint` script currently defined in `package.json` — only `dev`, `build`, and `start`. If contribution guidelines elsewhere mention linting or tests, add the scripts first.
 
-## Running Tests
+## Authentication Flow
 
-```bash
-# From the project root
-pytest -v
+```
+User enters email → POST /auth/otp/request
+        ↓
+User enters the 6-digit code → POST /auth/otp/verify
+        ↓
+Backend returns { access_token }
+        ↓
+Token stored in localStorage; useAuth() decodes it client-side (no /me round-trip)
+        ↓
+All API requests: Authorization: Bearer {token}
 
-# Or target a specific test file
-pytest tests/test_api.py -v
+Unauthenticated visitors (guest sessions):
+AuthGuard-protected pages call ensureGuestSession()
+        ↓
+POST /auth/guest → anonymous { access_token } stored the same way
+        ↓
+No-ops if NEXT_PUBLIC_REQUIRE_AUTH=true or a token already exists
+
+GitHub OAuth (separate, optional — for the GitHub page only):
+User clicks "Connect GitHub account"
+        ↓
+Redirect to {API_URL}/api/github/login
+        ↓
+Backend completes OAuth, redirects to /github?token=xxx
+        ↓
+Token written to localStorage; page replaces the URL
 ```
 
-Key test files:
+## API Endpoints Used
 
-| File | Covers |
-|---|---|
-| `test_api.py` | FastAPI endpoint integration tests |
-| `test_ml.py` | Model loading and inference |
-| `test_analysis.py` | ML analysis engine unit tests |
-| `test_self_healing_pipeline.py` | End-to-end self-healing pipeline |
-| `test_performance.py` | Latency and throughput benchmarks |
-| `validate_system.py` | Full system validation suite |
+All requests go to `{NEXT_PUBLIC_API_URL}/api{endpoint}`.
 
----
+```
+Auth
+  POST /api/auth/otp/request           Send OTP
+  POST /api/auth/otp/verify             Verify OTP → { access_token }
+  POST /api/auth/guest                  Anonymous session
 
-## Database Migrations
+GitHub
+  GET  /api/github/login                Start OAuth flow (browser redirect)
+  GET  /api/github/repos                List connected repositories
+  GET  /api/github/contents             Browse repo directory
+  GET  /api/github/file                 Fetch file content
+  POST /api/github/{owner}/{repo}/auto-setup   Generate README (RAG)
+  POST /api/github/terminal/token       Terminal session token
 
-Migrations live in `database/migrations/` and are numbered sequentially:
+Code Review
+  POST /api/v1/review                   Submit code for AI review
 
-| Migration | Table Created |
-|---|---|
-| `001_users.sql` | `users` |
-| `002_resumes.sql` | `resumes` |
-| `003_jobs.sql` | `jobs` |
-| `004_subscriptions.sql` | `subscriptions` |
-| `005_repo_docs.sql` | `repo_docs` (RAG service) |
+Jobs
+  GET  /api/jobs/                       List jobs
+  GET  /api/jobs/featured               Featured jobs
 
-Run all migrations:
+Resume
+  POST /api/resume/create               Save manual resume
+  POST /api/resume/generate             AI-generate resume content
+  POST /api/resume/generate-structured  Structured generation
 
-```bash
-python run_migrations.py
+LinkedIn
+  GET  /api/linkedin/status
+  POST /api/linkedin/analyze
+  GET  /api/linkedin/history
+
+Subscription
+  POST /api/subscription/create-checkout
 ```
 
----
-
-## Deployment
-
-Repo_Sense is configured for deployment on [Railway.app](https://railway.app) via `railway.json`.
-
-```bash
-# Production Docker Compose
-docker-compose -f infrastructure/docker-compose.prod.yml up -d
-
-# Or use the Makefile
-make docker-build
-```
-
----
+There is no `POST /api/auth/register` or `POST /api/auth/login` (password-based) call anywhere in the frontend — those referenced in older docs describe an auth system this app no longer implements.
 
 ## Environment Variables
 
-| Variable | Description |
+```bash
+# .env.local
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_xxxx
+NEXT_PUBLIC_REQUIRE_AUTH=false
+NEXT_PUBLIC_REQUIRE_AUTH_FOR_APPLY=false
+NEXT_PUBLIC_REQUIRE_AUTH_FOR_SAVE=true          # default true (gate unless explicitly disabled)
+NEXT_PUBLIC_REQUIRE_AUTH_FOR_TRACKING=true      # default true
+NEXT_PUBLIC_REQUIRE_AUTH_FOR_RECOMMENDATIONS=true  # default true
+```
+
+See `lib/featureFlags.ts` for exact default logic per flag (they aren't all "default false" — three of the five default to gated/`true`).
+
+## Library Modules
+
+### `lib/api.ts`
+Fetch wrapper. Prepends `/api` to the endpoint and attaches `Authorization: Bearer {token}` from `localStorage`. Parses FastAPI's `{ detail }` / `{ message }` error shapes into a plain `Error`. PDF responses are returned as a `Blob`; everything else is parsed as JSON.
+
+```typescript
+import { api } from '@/lib/api';
+
+await api.get('/jobs/?limit=50');
+await api.post('/auth/otp/request', { email });
+```
+
+### `lib/auth.ts`
+`useAuth()` hook exposing:
+
+| Field | Type | Description |
+|---|---|---|
+| `user` | `{ id, email, subscription_tier, is_guest? }` \| `null` | Decoded JWT payload |
+| `token` | `string` \| `null` | Raw JWT |
+| `loading` | `boolean` | True during initial `localStorage` read |
+| `requestOtp(email)` | `Promise<void>` | Step 1 — triggers the OTP email |
+| `verifyOtp(email, otp)` | `Promise<void>` | Step 2 — exchanges OTP for a JWT, stores it |
+| `logout()` | `void` | Clears token from `localStorage` and state |
+| `refresh()` | `void` | Re-reads `localStorage` — call after writing a token directly (e.g. the GitHub OAuth callback) |
+
+Also exports `ensureGuestSession()` (not part of the hook) — call it only at the point a page actually needs a token (inside `AuthGuard`), not from every page render, or every page view would mint a DB row.
+
+`subscription_tier` values: `'free'` \| `'pro'` \| `'enterprise'`.
+
+### `lib/stripe.ts` (Razorpay)
+Despite the filename, this module wraps **Razorpay**, not Stripe — a naming holdover from before migration `007_migrate_stripe_to_razorpay.sql`. Renaming the file would be a reasonable but purely cosmetic cleanup.
+
+```typescript
+import { loadRazorpay, initializeRazorpayCheckout } from '@/lib/stripe';
+
+await loadRazorpay(); // injects the Razorpay checkout <script> once
+initializeRazorpayCheckout({
+  key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+  order_id: '...',
+  handler: (response) => { /* verify server-side */ },
+  modal: { ondismiss: () => {} },
+});
+```
+
+## Design System
+
+Defined in `globals.css` as CSS custom properties rather than raw Tailwind colors:
+
+| Variable | Use |
 |---|---|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `AWS_ACCESS_KEY_ID` | AWS key for S3 / DynamoDB |
-| `AWS_SECRET_ACCESS_KEY` | AWS secret |
-| `MODEL_PATH` | Path to local LLM model files |
-| `STRIPE_SECRET_KEY` | Stripe API key |
-| `NEXT_PUBLIC_API_URL` | Backend API base URL (for the frontend) |
+| `--paper` / `--paper-dim` | Page and card backgrounds |
+| `--ink` / `--ink-soft` | Primary and secondary text |
+| `--indigo` | Brand accent (links, active tab indicator) |
+| `--green` | Success / connected status |
+| `--line` | Borders and dividers |
+| `--font-mono` | Code previews |
 
-See `.env.example` for the full list.
-
----
-
-## API Endpoints
-
-| Method | Path | Service | Description |
-|---|---|---|---|
-| `GET` | `/health` | RAG / Neural | Health check |
-| `POST` | `/generate` | Neural Generator | Generate LLM output |
-| `GET` | `/docs` | RAG | Swagger UI |
-| `GET` | `/crawler/jobs` | Crawler | Fetch scraped jobs |
-
----
+Utility classes: `panel`, `panel-dark`, `btn`, `btn-primary`, `btn-secondary`, `btn-ghost`, `field`, `field-label`, `eyebrow`, `eyebrow-accent`, `chip`, `chip-green`, `chip-rust`, `chip-muted`, `display`, `nav-link`, `shell`, `container-xl`.
 
 ## Contributing
 
-1. Fork the repository.
-2. Create a feature branch: `git checkout -b feature/your-feature`
-3. Commit your changes: `git commit -m "feat: add your feature"`
-4. Push and open a Pull Request.
+1. Branch: `git checkout -b feature/your-feature`
+2. Commit: `git commit -m 'Add your feature'`
+3. Push: `git push origin feature/your-feature`
+4. Open a Pull Request
 
-Please run `pytest` and the linter (`npm run lint` in `apps/web`) before submitting.
+### Code Style
+- Functional components with hooks
+- TypeScript strict mode
+- Errors surfaced via inline `chip chip-rust` alerts or `alert()` — no silent failures
+- API calls go through `lib/api.ts`; auth state lives in `lib/auth.ts`
+
+## License
+
+MIT — see [LICENSE](../../LICENSE)
 
 ---
 
-> Built with FastAPI, Next.js, and local LLMs — no third-party AI APIs required for core inference.
+**Backend API docs:** [services/api/README.md](../../services/api/README.md)
+**Deployment guide:** [docs/DEPLOYMENT_GUIDE.md](../../docs/DEPLOYMENT_GUIDE.md)

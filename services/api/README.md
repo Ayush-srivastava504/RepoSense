@@ -1,882 +1,270 @@
-#  RepoSense Main API Service
+# RepoSense Core API
 
-> FastAPI-based REST API serving as the central gateway for the RepoSense platform. Handles authentication, code review orchestration, job searching, resume processing, GitHub integration, and Razorpay subscription management.
+> FastAPI service that is the central backend for RepoSense: email-OTP + guest authentication, GitHub integration, AI code review/self-healing, job search, resume generation, the LinkedIn Profile Optimizer, and Razorpay subscriptions.
 
 ## Overview
 
-The Main API (`services/api/`) is the heart of RepoSense. It:
-- **Routes requests** to microservices (Crawler, RAG, Neural Generator)
-- **Manages authentication** with JWT tokens and GitHub OAuth 2.0
-- **Implements rate limiting** (100 req/min free, 500+ req/min paid)
-- **Caches responses** using Redis (optional)
-- **Handles payments** via Razorpay webhooks
-- **Provides OpenAPI documentation** via Swagger UI
+The Core API (`services/api/src`) does the following:
+- **Authenticates users** via email OTP (Resend) or anonymous guest JWT sessions — there is no password-based login and GitHub is *not* the primary sign-in method (it's an optional account connection for the repo browser/terminal features)
+- **Orchestrates AI code review** — CodeBERT static analysis, LLM-based auto-fix, and a combined "self-healing" fix-and-validate endpoint, all running in-process (no separate review microservice)
+- **Calls out to two sibling microservices** — RAG (`RAG_SERVICE_URL`) for README generation, Neural Generator (`NEURAL_GENERATOR_URL`) for LLM text generation used by resume and LinkedIn features
+- **Handles Razorpay payments** — checkout creation, HMAC-verified webhooks, subscription status
+- **Runs long jobs asynchronously** — resume generation, LinkedIn analysis, and README generation are queued and polled via `/api/async-jobs/{id}`, since local LLM inference can take 30–90s+
+- **Rate-limits and logs every request** via middleware
 
 ## Tech Stack
 
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| **Framework** | FastAPI 0.100+ | Async Python web framework |
-| **Validation** | Pydantic v2 | Data validation & serialization |
-| **Database** | PostgreSQL 12+ (asyncpg) | Async database driver |
-| **Cache** | Redis (optional) | In-memory caching |
-| **Auth** | JWT + OAuth 2.0 | Token-based auth |
-| **Encryption** | Fernet (cryptography) | Secure GitHub token storage |
-| **HTTP** | httpx | Async HTTP client |
-| **Async** | asyncio | Concurrent request handling |
-| **Monitoring** | structlog | Structured logging |
+| Component | Technology |
+|---|---|
+| Framework | FastAPI |
+| Validation | Pydantic v2 (+ `pydantic-settings`) |
+| Database | PostgreSQL, `asyncpg` |
+| Cache | Redis (optional — app degrades gracefully without it) |
+| Auth | JWT (`python-jose`) + email OTP + optional GitHub OAuth |
+| Encryption | Fernet (`cryptography`) for stored GitHub tokens |
+| Payments | `razorpay` Python SDK |
+| Code analysis | HuggingFace Transformers, CodeBERT (`microsoft/codebert-base`) |
+| Async | `asyncio`, `httpx` |
 
 ## Quick Start
 
-### Prerequisites
-
-- **Python** 3.11+
-- **PostgreSQL** 12+
-- **pip & virtualenv**
-- **Optional:** Redis, Docker
-
-### Installation (3 minutes)
-
 ```bash
-# 1. Navigate to backend
-cd services
-
-# 2. Create virtual environment
+cd services/api
 python -m venv venv
-source venv/bin/activate          # Linux/Mac
-# OR
-venv\Scripts\activate              # Windows
-
-# 3. Install dependencies
+source venv/bin/activate      # Linux/Mac
 pip install -r requirements.txt
 
-# 4. Create .env file (see Configuration section below)
-cp .env.example .env
-# Edit .env with your settings
+# Create a .env — config.py looks for it 4 directories up from
+# src/configs/, i.e. at the repo root (RepoSense-master/.env)
+# See "Configuration" below for the variable list.
 
-# 5. Initialize database
-python run_migrations.py
-
-# 6. Start the API
-python app.py
+python run_migrations.py       # runs all 12 migrations
+uvicorn src.app:app --reload --port 8000
 ```
 
-**API Running at:**
-- **HTTP API:** http://localhost:8000
-- **Swagger Docs:** http://localhost:8000/docs
+- **API:** http://localhost:8000
+- **Swagger:** http://localhost:8000/docs
 - **ReDoc:** http://localhost:8000/redoc
+
+There is no committed `.env.example` in this repo — set the variables below directly.
 
 ## Configuration
 
-### Environment Variables
+All settings are defined in `src/configs/config.py` (a Pydantic `Settings` class read from the repo-root `.env`). `src/configs/settings.py` currently defines an identical class — it appears to be leftover duplication; `config.py` is the one actually imported by the app.
 
-Create a `.env` file in the `services/` directory:
-
-```bash
-# ================= DATABASE =================
+```env
+# Core
+HOST=0.0.0.0
+PORT=8000
+ENVIRONMENT=development
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/internship_db
-DATABASE_POOL_SIZE=20                    # Connection pool size
-DATABASE_MAX_OVERFLOW=10                 # Max overflow connections
+REDIS_URL=redis://localhost:6379
 
-# ================= CACHE (Optional) =================
-REDIS_URL=redis://localhost:6379/0
-CACHE_TTL=300                            # 5 minutes
+# Auth
+JWT_SECRET=your_secret_key_minimum_32_characters
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GITHUB_REDIRECT_URI=http://localhost:8000/api/github/callback
+GITHUB_TOKEN_ENCRYPTION_KEY=          # python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+REQUIRE_AUTH=false                     # true disables guest sessions
 
-# ================= AUTHENTICATION =================
-JWT_SECRET=your_secret_key_minimum_32_characters_long_here
-JWT_ALGORITHM=HS256
-JWT_EXPIRY_HOURS=24
-
-# ================= GITHUB OAUTH =================
-GITHUB_CLIENT_ID=your_github_app_id
-GITHUB_CLIENT_SECRET=your_github_app_secret
-GITHUB_REDIRECT_URI=http://localhost:3000/api/github/callback
-GITHUB_TOKEN_ENCRYPTION_KEY=Fernet_key_from_cryptography
-
-# Generate encryption key:
-# python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-
-# ================= FRONTEND =================
+# Frontend / CORS
 FRONTEND_URL=http://localhost:3000
+CORS_ORIGINS=["http://localhost:3000","http://localhost:8000"]
 
-# ================= RAZORPAY (Optional) =================
-RAZORPAY_KEY_ID=rzp_test_your_key
-RAZORPAY_KEY_SECRET=your_razorpay_key_secret
+# Payments — Razorpay, NOT Stripe (migrated in 007_migrate_stripe_to_razorpay.sql)
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
 
-# ================= MODELS =================
-MODEL_PATH=/app/models/qwen3-codersmall-0.8b-q4_k_m.gguf
-CODEBERT_ONNX_PATH=/app/models/codebert_quantized.onnx
-MODEL_CACHE_DIR=.model_cache
+# Email (OTP delivery)
+EMAIL_PROVIDER=resend
+RESEND_API_KEY=
 
-# ================= CRAWLER =================
-SCRAPER_DEBUG=false
-MAX_WORKERS=4                            # Parallel scrapers
-REQUEST_TIMEOUT=30                       # Seconds
+# Storage
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_REGION=us-east-1
+S3_BUCKET=resume-storage
 
-# ================= LOGGING =================
-LOG_LEVEL=INFO
-SENTRY_DSN=https://your-sentry-key@sentry.io/project  # Optional
+# Sibling microservices
+RAG_SERVICE_URL=http://localhost:8001
+NEURAL_GENERATOR_URL=http://localhost:8002
 ```
 
-### Database Schema
+`CODEBERT_MODEL`, `DEVICE`, `MAX_TOKENS`, `MODEL_CACHE_DIR` (code-analysis model config) live separately in `src/configs/ml_config.py`, prefixed `MODEL_` — e.g. `MODEL_NAME`, `MODEL_CACHE_DIR`.
 
-The API creates these tables automatically via migrations:
+There is no `DATABASE_POOL_SIZE`, `JWT_EXPIRY_HOURS`, `CACHE_TTL`, `SENTRY_DSN`, or `STRIPE_*` variable read anywhere in the current code, despite appearing in older docs.
+
+## Database Schema
+
+Tables as actually defined across the 12 migrations in `database/migrations/`:
 
 ```sql
--- Users: GitHub OAuth + subscription info
+-- 001: users
 CREATE TABLE users (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT UNIQUE NOT NULL,
-    github_id INTEGER UNIQUE,
-    github_token TEXT ENCRYPTED,          -- Fernet encrypted
-    subscription_tier TEXT DEFAULT 'free', -- free | pro | enterprise
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-
--- Reviews: Code analysis history
-CREATE TABLE reviews (
-    id UUID PRIMARY KEY,
-    user_id UUID REFERENCES users(id),
-    code TEXT NOT NULL,
-    language TEXT,
-    issues JSONB,                         -- Analysis results
-    score INTEGER,
+    password_hash TEXT NOT NULL,       -- vestigial: OTP auth (008) doesn't use this
+    subscription_tier TEXT DEFAULT 'free',
+    github_token TEXT,                 -- Fernet-encrypted
     created_at TIMESTAMP DEFAULT NOW()
 );
+-- + is_guest BOOLEAN (012), OTP columns (008)
 
--- Resumes: User-uploaded resumes
-CREATE TABLE resumes (
-    id UUID PRIMARY KEY,
-    user_id UUID REFERENCES users(id),
-    filename TEXT,
-    content JSONB,                        -- Parsed resume
-    embeddings FLOAT8[],                  -- For RAG
-    created_at TIMESTAMP DEFAULT NOW()
-);
+-- 002: resumes, 003: jobs, 005: repo_docs — see individual migration files for full columns
 
--- Jobs: Scraped from 9+ sites
-CREATE TABLE jobs (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    company TEXT,
-    description TEXT,
-    source TEXT,                          -- indeed, linkedin, etc
-    url TEXT UNIQUE,
-    location TEXT,
-    salary_min INTEGER,
-    salary_max INTEGER,
-    posted_at TIMESTAMP,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Subscriptions: Stripe payment records
+-- 004 + 007: subscriptions
 CREATE TABLE subscriptions (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id),
-    stripe_subscription_id TEXT,
-    stripe_customer_id TEXT,
-    tier TEXT,
-    status TEXT,                          -- active | canceled | past_due
-    current_period_start TIMESTAMP,
+    stripe_customer_id TEXT,           -- kept for historical data, no longer written to
+    stripe_subscription_id TEXT,       -- kept for historical data, no longer written to
+    status TEXT DEFAULT 'inactive',
     current_period_end TIMESTAMP,
-    created_at TIMESTAMP DEFAULT NOW()
+    razorpay_order_id TEXT UNIQUE,     -- added in 007, this is what's actually used now
+    razorpay_payment_id TEXT,
+    plan TEXT DEFAULT 'pro'
 );
 
--- Repo Docs: GitHub repository documentation
-CREATE TABLE repo_docs (
-    id UUID PRIMARY KEY,
-    user_id UUID REFERENCES users(id),
-    repo_name TEXT,
-    repo_url TEXT,
-    readme_content TEXT,                  -- Generated README
-    embeddings FLOAT8[],                  -- For RAG search
-    created_at TIMESTAMP DEFAULT NOW()
-);
+-- 009: async_jobs table (resume/LinkedIn/README generation queue)
+-- 010: LinkedIn optimizer tables
+-- 011: job trust/ranking columns on jobs
+-- 012: is_guest on users
 ```
 
-### Environment Setup
+There is no `reviews` table — code review results are returned synchronously in the API response and are not persisted. If you need review history, that's a gap to fill, not an existing feature.
 
 ## Complete API Endpoint Reference
 
-### Authentication Endpoints
-
-#### `POST /api/auth/github/login`
-Initiate GitHub OAuth flow.
-
-**Response:**
-```json
-{
-  "login_url": "https://github.com/login/oauth/authorize?client_id=..."
-}
-```
-
-#### `GET /api/auth/github/callback?code={code}&state={state}`
-GitHub OAuth callback (handled by backend, redirects to frontend with JWT).
-
-**Redirect URL:**
-```
-http://localhost:3000/github?token=eyJhbGc...
-```
-
-#### `POST /api/auth/logout`
-Invalidate JWT token.
-
-**Headers:** `Authorization: Bearer {token}`
-
-**Response:**
-```json
-{
-  "message": "Successfully logged out"
-}
-```
-
-#### `GET /api/auth/me`
-Get current authenticated user.
-
-**Headers:** `Authorization: Bearer {token}`
-
-**Response:**
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "email": "user@example.com",
-  "github_username": "johndoe",
-  "subscription_tier": "free",
-  "created_at": "2024-01-15T10:30:00Z"
-}
-```
-
-### Code Review Endpoints
-
-#### `POST /api/review/submit`
-Submit code for AI analysis.
-
-**Headers:** `Authorization: Bearer {token}`
-
-**Request Body:**
-```json
-{
-  "code": "def calculate_sum(a, b):\n    return a+b",
-  "language": "python",
-  "focus_areas": ["security", "performance", "style"],
-  "context": "Utility function for calculations"
-}
-```
-
-**Response:**
-```json
-{
-  "review_id": "rev_550e8400e29b41d4",
-  "status": "completed",
-  "issues": [
-    {
-      "line": 1,
-      "column": 28,
-      "severity": "info",
-      "type": "style",
-      "message": "Add docstring to function",
-      "suggestion": "def calculate_sum(a, b):\n    \"\"\"Return sum of a and b.\"\"\"\n    return a+b",
-      "confidence": 0.95
-    },
-    {
-      "line": 2,
-      "column": 11,
-      "severity": "warning",
-      "type": "performance",
-      "message": "Consider type hints",
-      "suggestion": "def calculate_sum(a: int, b: int) -> int:",
-      "confidence": 0.87
-    }
-  ],
-  "quality_score": 72,
-  "analysis_time_ms": 245,
-  "analyzed_at": "2024-01-15T10:35:22Z"
-}
-```
-
-#### `GET /api/review/{review_id}`
-Retrieve a previous review.
-
-**Headers:** `Authorization: Bearer {token}`
-
-**Response:** Same as above
-
-#### `GET /api/review/history?page=1&limit=20`
-Get user's review history.
-
-**Headers:** `Authorization: Bearer {token}`
-
-**Response:**
-```json
-{
-  "total": 42,
-  "page": 1,
-  "limit": 20,
-  "reviews": [
-    {
-      "review_id": "rev_550e8400e29b41d4",
-      "language": "python",
-      "quality_score": 72,
-      "analyzed_at": "2024-01-15T10:35:22Z"
-    }
-  ]
-}
-```
-
-### Job Listing Endpoints
-
-#### `GET /api/jobs/search?query=python&location=Bangalore&page=1&limit=20`
-Search jobs with filters.
-
-**Query Parameters:**
-- `query`: Job title or keywords (required)
-- `location`: Job location
-- `source`: Filter by platform (linkedin, indeed, naukri, etc.)
-- `salary_min`: Minimum salary
-- `salary_max`: Maximum salary
-- `page`: Page number (default: 1)
-- `limit`: Results per page (default: 20)
-
-**Response:**
-```json
-{
-  "total": 567,
-  "page": 1,
-  "limit": 20,
-  "jobs": [
-    {
-      "id": "indeed_12345",
-      "title": "Senior Python Developer",
-      "company": "TechCorp",
-      "location": "Bangalore, India",
-      "description": "Looking for experienced Python developer...",
-      "salary_min": 50000,
-      "salary_max": 120000,
-      "source": "indeed",
-      "url": "https://...",
-      "posted_at": "2024-01-14T00:00:00Z",
-      "skills": ["Python", "FastAPI", "PostgreSQL"]
-    }
-  ]
-}
-```
-
-#### `GET /api/jobs/{job_id}`
-Get detailed job information.
-
-**Response:** Single job object (from search results)
-
-#### `POST /api/jobs/{job_id}/match`
-Match current user's resume to job.
-
-**Headers:** `Authorization: Bearer {token}`
-
-**Request Body:**
-```json
-{
-  "resume_id": "res_550e8400e29b41d4"
-}
-```
-
-**Response:**
-```json
-{
-  "match_score": 0.87,
-  "missing_skills": ["Kubernetes", "Docker"],
-  "matching_skills": ["Python", "PostgreSQL", "API Design"],
-  "recommendation": "Your Python and database skills are strong. Consider learning Kubernetes for better prospects."
-}
-```
-
-### Resume Endpoints
-
-#### `POST /api/resume/upload`
-Upload and parse a resume.
-
-**Headers:** `Authorization: Bearer {token}`, `Content-Type: multipart/form-data`
-
-**Form Data:**
-- `file`: Resume file (PDF, DOCX, TXT)
-- `filename`: Original filename (optional)
-
-**Response:**
-```json
-{
-  "resume_id": "res_550e8400e29b41d4",
-  "filename": "john_doe_resume.pdf",
-  "parsed": {
-    "name": "John Doe",
-    "email": "john@example.com",
-    "phone": "+91-9999-999999",
-    "skills": ["Python", "FastAPI", "PostgreSQL", "React"],
-    "experience": [
-      {
-        "title": "Senior Developer",
-        "company": "TechCorp",
-        "duration": "2 years",
-        "description": "..."
-      }
-    ],
-    "education": [
-      {
-        "degree": "B.Tech",
-        "field": "Computer Science",
-        "institution": "IIT Bombay",
-        "year": "2018"
-      }
-    ]
-  },
-  "uploaded_at": "2024-01-15T11:00:00Z"
-}
-```
-
-#### `GET /api/resume/{resume_id}`
-Get parsed resume details.
-
-**Headers:** `Authorization: Bearer {token}`
-
-**Response:** Same as upload response (parsed section)
-
-#### `POST /api/resume/{resume_id}/analyze`
-Get AI analysis and recommendations.
-
-**Headers:** `Authorization: Bearer {token}`
-
-**Response:**
-```json
-{
-  "analysis": {
-    "strengths": [
-      "Strong backend development experience",
-      "Good database design knowledge"
-    ],
-    "gaps": [
-      "Limited frontend experience",
-      "No cloud deployment experience"
-    ],
-    "recommendations": [
-      "Add React/Vue.js projects to portfolio",
-      "Learn AWS/GCP for cloud deployment"
-    ]
-  }
-}
-```
-
-### GitHub Integration Endpoints
-
-#### `GET /api/github/repos`
-List authenticated user's GitHub repositories.
-
-**Headers:** `Authorization: Bearer {token}`
-
-**Response:**
-```json
-{
-  "repos": [
-    {
-      "name": "my-awesome-project",
-      "url": "https://github.com/johndoe/my-awesome-project",
-      "description": "An awesome project",
-      "stars": 42,
-      "language": "Python",
-      "updated_at": "2024-01-10T00:00:00Z"
-    }
-  ]
-}
-```
-
-#### `GET /api/github/{owner}/{repo}/files?path=src/`
-Browse repository files.
-
-**Headers:** `Authorization: Bearer {token}`
-
-**Query Parameters:**
-- `path`: Directory path (default: root)
-
-**Response:**
-```json
-{
-  "files": [
-    {
-      "name": "app.py",
-      "type": "file",
-      "size": 2048,
-      "url": "https://raw.githubusercontent.com/.../app.py"
-    },
-    {
-      "name": "models",
-      "type": "directory",
-      "url": "https://github.com/.../tree/main/models"
-    }
-  ]
-}
-```
-
-#### `GET /api/github/{owner}/{repo}/file?path=README.md`
-Get file content (raw).
-
-**Response:**
-```
-# My Awesome Project
-
-This is my awesome project...
-```
-
-#### `POST /api/github/{owner}/{repo}/auto-setup`
-Generate README using RAG.
-
-**Headers:** `Authorization: Bearer {token}`
-
-**Response:**
-```json
-{
-  "status": "readme_generated",
-  "readme": "# My Awesome Project\n\n## Overview\n...",
-  "generated_at": "2024-01-15T11:30:00Z"
-}
-```
-
-### Subscription Endpoints
-
-#### `GET /api/subscription/status`
-Get current subscription status.
-
-**Headers:** `Authorization: Bearer {token}`
-
-**Response:**
-```json
-{
-  "tier": "free",
-  "limits": {
-    "reviews_per_month": 10,
-    "jobs_searches": 50,
-    "storage_mb": 100
-  },
-  "usage": {
-    "reviews_used": 7,
-    "jobs_searches_used": 32,
-    "storage_used": 45
-  },
-  "renewal_date": null
-}
-```
-
-#### `POST /api/subscription/upgrade`
-Upgrade to premium tier.
-
-**Headers:** `Authorization: Bearer {token}`
-
-**Request Body:**
-```json
-{
-  "plan": "pro"
-}
-```
-
-**Response:**
-```json
-{
-  "checkout_url": "https://checkout.stripe.com/...",
-  "session_id": "cs_live_..."
-}
-```
-
-#### `POST /api/webhook/stripe`
-Stripe webhook for payment events (automatic).
-
-**Headers:** `X-Stripe-Signature: {signature}`
-
-Auto-updates subscription status when payments succeed/fail.
+### Auth (`/api/auth`) — email OTP + guest, no passwords
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/otp/request` | `{ "email": "..." }` → sends 6-digit code via Resend, 10 min TTL |
+| POST | `/otp/verify` | `{ "email": "...", "otp": "..." }` → `{ "access_token": "<jwt>" }`, 7-day expiry |
+| POST | `/guest` | No body → mints an anonymous JWT; no-ops if already authed or `REQUIRE_AUTH=true` |
+
+### GitHub (`/api/github`) — optional account connection
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/login` | Starts OAuth flow |
+| GET | `/callback` | OAuth callback |
+| GET | `/exchange` | Code exchange |
+| POST | `/disconnect` | Remove stored GitHub token |
+| GET | `/repos` | List connected user's repos |
+| GET | `/contents` | Browse repo directory |
+| GET | `/file` | Fetch a single file's content |
+| POST | `/{owner}/{repo}/auto-setup` | Generates a README via the RAG service |
+| POST | `/terminal/token` | Short-lived token for the WebSocket in-browser terminal |
+
+### Code Review (`/api/v1`)
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/review` | `{ code, language, focus_areas?, include_metrics? }`, requires auth. Runs CodeBERT analysis with a 200KB payload cap and 10s analysis timeout (guardrails added 2026-06-25 alongside a ReDoS fix) |
+| POST | `/fix` | `{ code, language, issues, dry_run? }` — auto-fix using issues from `/review` |
+| POST | `/v1/self-healing/fix-and-validate` | Runs auto-fix then validates the result in one call |
+
+### Jobs (`/api/jobs`)
+| Method | Path |
+|---|---|
+| GET | `/` — search/list |
+| GET | `/featured` |
+| GET | `/{job_id}` |
+
+### Resume (`/api/resume`)
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/test` | Health/smoke endpoint |
+| POST | `/generate` | AI resume content generation |
+| POST | `/generate-structured` | Structured (section-by-section) generation |
+| POST | `/create` | Save a resume |
+| GET | `/list` | List a user's resumes |
+
+### LinkedIn Optimizer (`/api/linkedin`) — premium feature
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/status` | Free/ad/pro quota state |
+| POST | `/unlock/ad` | Redeem a rewarded-ad credit |
+| POST | `/analyze` | Scores a profile against 14 rules, returns `{ job_id }` (async) |
+| GET | `/history` | Score-over-time history |
+
+Free users get one lifetime analysis; further analyses require a Pro/Enterprise subscription or watching a rewarded ad.
+
+### Subscriptions (`/api/subscription`) — Razorpay
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/create-checkout` | `plan=pro` (₹999/mo) or `plan=enterprise` (₹2999/mo) |
+| POST | `/webhook` | HMAC-signature-verified Razorpay webhook |
+| GET | `/status` | Current tier |
+
+### Async Jobs (`/api/async-jobs`)
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/{job_id}` | Poll `status ∈ {pending, running, done, failed}`. Jobs are created inside `resume.py`/`github.py`/`linkedin.py`, not here. |
+
+### Webhooks (`/api/webhooks`)
+| Method | Path |
+|---|---|
+| POST | `/github` |
+
+### Meta
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/` | Service info |
+| GET | `/health` | Basic liveness |
+| GET | `/health/detailed` | Checks DB + Redis connectivity |
+
+**None of the following exist in the current code**, despite appearing in older docs: `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`, `GET /api/review/{id}`, `GET /api/review/history`, `POST /api/subscription/upgrade`, `POST /api/webhook/stripe`, `POST /api/jobs/{id}/apply`, `POST /api/jobs/match`.
 
 ## Authentication & Security
 
-### JWT Token Structure
-
-```
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyX2lkIiwiaWF0IjoxNjMxNTk5ODAwLCJleHAiOjE2MzE2ODYyMDB9.signature
-```
-
-### Adding JWT to Requests
+JWTs are signed with `JWT_SECRET` (HS256) and carry `sub` (user id), `email`, `subscription_tier`, and a 7-day `exp`. Send them as:
 
 ```bash
-# Bash/curl
-curl -H "Authorization: Bearer eyJhbGc..." \
-     http://localhost:8000/api/auth/me
-
-# JavaScript/Fetch
-fetch('http://localhost:8000/api/auth/me', {
-  headers: {
-    'Authorization': `Bearer ${token}`
-  }
-});
-
-# Python/Requests
-import requests
-headers = {'Authorization': f'Bearer {token}'}
-requests.get('http://localhost:8000/api/auth/me', headers=headers)
+curl -H "Authorization: Bearer <token>" http://localhost:8000/api/jobs/featured
 ```
 
-## Docker & Deployment
+`middleware/auth.py` exposes a `verify_token` FastAPI dependency used by routes that require auth. Rate limiting is applied globally via `middleware/rate_limit.py`.
 
-### Build Docker Image
+## Docker
 
 ```bash
-cd services
-docker build -t repo-sense-api:latest .
+cd services/api
+docker build -t reposense-api:latest .
 ```
 
-### Run with Docker Compose
+Or via Compose (recommended — wires up Postgres/Redis/RAG/Neural Generator too):
 
 ```bash
-docker-compose -f ../infrastructure/docker/docker-compose.yml up -d
+docker-compose -f ../../infrastructure/docker/docker-compose.yml up -d
 ```
 
-### Environment Variables for Docker
-
-```bash
-docker run -d \
-  -p 8000:8000 \
-  -e DATABASE_URL=postgresql://db:5432/internship_db \
-  -e JWT_SECRET=your_secret \
-  -e GITHUB_CLIENT_ID=your_id \
-  -e GITHUB_CLIENT_SECRET=your_secret \
-  repo-sense-api:latest
-```
+The Compose `api` service uses `entrypoint.sh` and depends on `postgres`, `redis`, and `rag` being healthy first.
 
 ## Testing
 
 ```bash
-# Run all tests
-pytest -v
-
-# Test specific endpoint
-pytest tests/test_api.py::test_review_submit -v
-
-# With coverage
-pytest --cov=src tests/
-
-# Integration tests
-pytest tests/test_api.py -m integration
+python test_imports.py     # validates every backend module imports cleanly
+cd ../.. && pytest tests/ -v
 ```
 
-## Monitoring & Logs
+There is no `tests/test_api.py`, `pytest -m integration`, or coverage tooling wired up yet beyond `test_imports.py` and the root `tests/test_basic.py`.
 
-```bash
-# View logs
-docker-compose logs -f api
-
-# Structured logs in file
-tail -f logs/app.log
-
-# Monitor with Sentry (if configured)
-# Check https://sentry.io for error tracking
-```
-
-## Related Services
-
-- **Frontend:** [apps/web/README.md](../../apps/web/README.md)
-- **Crawler:** [services/api/crawler/README.md](./crawler/README.md)
-- **RAG Service:** [services/api/rag/README.md](./rag/README.md)
-- **Neural Generator:** [services/api/neural_generator/README.md](./neural_generator/README.md)
-- **Deployment:** [docs/DEPLOYMENT_GUIDE.md](../../docs/DEPLOYMENT_GUIDE.md)
-
----
-
-**For more help:** See the [main README.md](../../README.md) or [SETUP_GUIDE.md](../../docs/SETUP_GUIDE.md)
-```
-
-##  Performance & Rate Limiting
-
-### Rate Limits (per IP/User)
-
-| Tier | Requests/min | Burst | Cache |
-|------|-------------|-------|-------|
-| **Free** | 100 | 10 | 5min |
-| **Pro** | 500 | 50 | 60min |
-| **Enterprise** | Unlimited | Unlimited | Custom |
-
-### Caching
-
-```python
-# Reviews cached for 5 minutes in Redis
-# Key: review:{user_id}:{code_hash}
-# Hit rate: ~60% for power users
-```
-
-### Concurrency
-
-```
-Max concurrent: 100+ (FastAPI async)
-DB connections: 5 (pool)
-Memory per req: ~10-50MB
-Total RAM needed: 512MB (container), 2GB (VM)
-```
-
-##  Troubleshooting
-
-### API won't start
-
-```bash
-# Check imports
-python api/test_imports.py
-
-# Check settings
-python -c "from api.src.configs.config import settings; print(settings)"
-
-# Check database connection
-python -c "import asyncio; from api.src.configs.db import create_pool; asyncio.run(create_pool())"
-```
-
-### Database connection fails
-
-```bash
-# Verify PostgreSQL running
-psql -U postgres -d internship_db -c "SELECT 1"
-
-# Check DATABASE_URL format
-# postgresql://user:pass@host:port/database
-```
-
-### JWT errors
-
-```bash
-# Regenerate JWT_SECRET (32+ chars)
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-
-# Set new secret in .env
-JWT_SECRET=<new_secret>
-```
-
-### GitHub OAuth fails
-
-```bash
-# Verify GitHub App credentials
-# Settings → Developer settings → OAuth Apps → Repo Sense
-
-# Check redirect URI matches
-GITHUB_REDIRECT_URI=http://localhost:3000/api/github/callback
-```
-
-### Rate limit issues
-
-```bash
-# Increase limits for development
-RATE_LIMIT_REQUESTS=10000
-RATE_LIMIT_PERIOD=60
-
-# Or use Pro subscription tier
-```
-
-##  Monitoring
-
-### Health Check
+## Monitoring
 
 ```bash
 curl http://localhost:8000/health
-# {"status": "ok", "db": "connected", "redis": "connected"}
+curl http://localhost:8000/health/detailed
 ```
 
-### Request Logs
-
-```
-[2024-01-15 10:30:00] POST /api/review 200 45ms
-[2024-01-15 10:30:01] GET /api/jobs 200 120ms
-```
-
-### Database Queries
-
-```python
-# Enable query logging
-export LOG_LEVEL=DEBUG
-
-# View slow queries
-SELECT query, calls, mean_time FROM pg_stat_statements
-WHERE mean_time > 100
-ORDER BY mean_time DESC;
-```
-
-##  Testing
-
-```bash
-# Run all tests
-pytest tests/
-
-# Run specific test
-pytest tests/test_api.py::test_login
-
-# With coverage
-pytest tests/ --cov=api/src
-
-# Test imports
-python api/test_imports.py
-```
+`monitor.py` in this directory is a standalone script for additional health/metrics checks outside the request path — run it directly with `python monitor.py` rather than expecting it to be wired into the API automatically.
 
 ## Deployment
 
-### Railway.app (Recommended)
+No Railway or systemd unit is currently committed for this service. The supported path today is Docker Compose. See [../../docs/DEPLOYMENT_GUIDE.md](../../docs/DEPLOYMENT_GUIDE.md).
 
-```bash
-# Link project
-railway link
+## Related Services
 
-# Deploy
-railway up
-
-# View logs
-railway logs -f
-
-# Set environment variables
-railway variables add DATABASE_URL=postgresql://...
-```
-
-### Traditional VPS (systemd)
-
-```bash
-sudo tee /etc/systemd/system/repo-sense-api.service << EOF
-[Unit]
-Description=Repo Sense API
-After=network.target postgresql.service
-
-[Service]
-Type=simple
-User=repo-sense
-WorkingDirectory=/opt/repo-sense/services
-Environment="DATABASE_URL=postgresql://..."
-Environment="JWT_SECRET=..."
-ExecStart=/usr/bin/python3 app.py
-Restart=on-failure
-RestartSec=10s
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo systemctl enable repo-sense-api
-sudo systemctl start repo-sense-api
-sudo journalctl -u repo-sense-api -f
-```
-
-### AWS EC2 (Docker)
-
-```bash
-# Push to ECR
-aws ecr get-login-password --region us-east-1 | docker login ...
-docker tag repo-sense-api:latest 123456.dkr.ecr.us-east-1.amazonaws.com/repo-sense-api:latest
-docker push 123456.dkr.ecr.us-east-1.amazonaws.com/repo-sense-api:latest
-
-# Deploy with ECS/Fargate
-```
-
-##  Related Services
-
-- **Frontend**: [apps/web/README.md](../../apps/web/README.md)
-- **Neural Generator**: [services/api/neural-generator/README.md](../neural-generator/README.md)
-- **RAG Service**: [services/api/rag/README.md](../rag/README.md)
-- **Crawler**: [services/api/crawler/README.md](../crawler/README.md)
-
-
-#   t r i g g e r   c i  
- #   t r i g g e r   c i  
- 
+- Frontend: [apps/web/README.md](../../apps/web/README.md)
+- Crawler: [services/api/crawler/README.md](./crawler/README.md)
+- RAG: [services/api/rag/README.md](./rag/README.md)
+- Neural Generator: [services/api/neural_generator/README.md](./neural_generator/README.md)

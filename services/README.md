@@ -1,506 +1,333 @@
-#  RepoSense Backend Services
+# RepoSense Backend Services
 
-> Complete microservices architecture for the AI-powered code review and job intelligence platform. Built with FastAPI, PostgreSQL, and integrated ML/NLP capabilities.
+> Backend for the AI-powered job platform, resume/LinkedIn intelligence, and code review tooling. Built with FastAPI, PostgreSQL, and local ML/NLP inference (no third-party AI APIs for core inference).
 
 ## Architecture Overview
 
-RepoSense backend comprises **4 specialized FastAPI microservices** that work together to provide intelligent code analysis, job aggregation, and AI-driven insights:
+The backend is **one Core API plus three sub-services that live inside it** (`services/api/crawler`, `services/api/rag`, `services/api/neural_generator`). The crawler is a batch job, not an always-on HTTP service; RAG and Neural Generator are persistent FastAPI microservices that the Core API calls over HTTP.
 
 ```
-┌─────────────────────────────────────────────────────┐
-│        FastAPI Gateway (Port 8000)                  │
-│    - Unified routing & rate limiting                │
-│    - Auth middleware & session management           │
-│    - Swagger/OpenAPI documentation                  │
-└──────────┬──────────────────┬──────────────────────┘
-           │                  │
-    ┌──────▼────────────┬─────▼──────────────┬──────────────────┐
-    │                   │                    │                  │
-┌───▼────────────┐ ┌──▼──────────┐ ┌────────▼──────┐ ┌──────────▼───┐
-│ Main API       │ │   Crawler   │ │     RAG       │ │ Neural Gen   │
-│ (Port 8000)    │ │  (Port 8003)│ │   (Port 8002) │ │ (Port 8001)  │
-│                │ │             │ │               │ │              │
-│ ├─ Auth        │ │ - LinkedIn  │ │ - Indexing    │ │ - LLM        │
-│ ├─ GitHub API  │ │ - Indeed    │ │ - Embeddings  │ │ - Generation │
-│ ├─ Code Review │ │ - Scrapers  │ │ - FAISS       │ │ - Inference  │
-│ ├─ Resume      │ │ - Normalization│ - Chunking  │ │              │
-│ ├─ Jobs        │ │ - Dedup     │ │ - Search      │ │              │
-│ └─ Subscribe   │ │             │ │               │ │              │
-└────┬───────────┘ └────┬────────┘ └────┬──────────┘ └──────┬───────┘
-     │                  │                │                  │
-     │                  └────────────────┴──────────────────┘
-     │
-     └─────────────────────┬──────────────────────────────
-                           │
-                ┌──────────▼──────────┐
-                │  PostgreSQL        │
-                │  ├─ users          │
-                │  ├─ jobs           │
-                │  ├─ resumes        │
-                │  ├─ subscriptions  │
-                │  └─ repo_docs      │
-                └───────────────────┘
+┌───────────────────────────────────────────────────┐
+│         Core API — FastAPI (Port 8000)            │
+│  auth · github · jobs · resume · linkedin ·        │
+│  subscription · webhooks · async-jobs ·            │
+│  /api/v1/review, /api/v1/fix, /api/v1/self-healing │
+└──────┬─────────────────────┬───────────────────────┘
+       │ HTTP                │ HTTP
+┌──────▼──────────┐   ┌──────▼──────────┐
+│ RAG (Port 8001) │   │ Neural Gen      │
+│ FAISS + embed   │──►│ (Port 8002)     │
+│                 │   │ Qwen3-0.6B GGUF │
+└─────────────────┘   └─────────────────┘
+
+┌─────────────────────────────────────────┐
+│ Crawler — batch CLI job, not an HTTP     │
+│ service. Run manually / on a schedule.   │
+└─────────────────────────────────────────┘
+
+              ┌──────────────────┐
+              │   PostgreSQL     │
+              │ users, jobs,     │
+              │ resumes, subs,   │
+              │ repo_docs, +7    │
+              │ more (12 total   │
+              │ migrations)      │
+              └──────────────────┘
 ```
 
 ## Service Overview
 
-| Service | Port | Purpose | Tech |
-|---------|------|---------|------|
-| **Main API** | 8000 | Gateway, auth, code review, jobs, resume | FastAPI, JWT |
-| **Crawler** | 8003 | Scrape job boards (9+ sites) | Playwright, BeautifulSoup |
-| **RAG** | 8002 | Semantic search & embeddings | FAISS, sentence-transformers |
-| **Neural Generator** | 8001 | Local LLM text generation | llama-cpp-python, Qwen GGUF |
+| Service | Port | Type | Purpose | Tech |
+|---|---|---|---|---|
+| **Core API** | 8000 | Persistent HTTP | Auth, jobs, resume, LinkedIn, subscriptions, code review | FastAPI, JWT |
+| **RAG** | 8001 | Persistent HTTP | Semantic search & README generation | FAISS, sentence-transformers |
+| **Neural Generator** | 8002 | Persistent HTTP | Local LLM text generation | llama-cpp-python, Qwen3-0.6B GGUF |
+| **Crawler** | — | Batch CLI job | Scrape 9+ job boards into Postgres | Playwright, httpx, BeautifulSoup |
+
+Port numbers above match `infrastructure/docker/docker-compose.yml` and `configs/config.py`'s defaults (`RAG_SERVICE_URL=http://localhost:8001`, `NEURAL_GENERATOR_URL=http://localhost:8002`). Older docs that list RAG on 8002 and Neural Generator on 8001, or the crawler on 8003, are describing a port layout that no longer matches the code.
 
 ## Quick Start
 
 ### Prerequisites
 
-```bash
-# Required
+```
+Required:
 - Python 3.11+
-- PostgreSQL 12+
+- PostgreSQL 15 (12+ works)
 - pip & virtualenv
 
-# Optional but Recommended
+Optional but recommended:
 - Docker & Docker Compose
-- Redis (for caching)
-- Git
+- Redis
 ```
 
-### Installation (5 minutes)
+### Installation
 
 ```bash
-# 1. Navigate to services directory
-cd services
+# 1. Navigate to the API service (this is the actual backend root)
+cd services/api
 
 # 2. Create virtual environment
 python -m venv venv
 source venv/bin/activate          # Linux/Mac
-# OR
-venv\Scripts\activate              # Windows
+# venv\Scripts\activate           # Windows
 
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Create .env configuration
-cat > .env << EOF
-# Database
+# 4. Create your .env — there is no committed .env.example.
+#    config.py resolves the env file from services/api/src/configs/../../../../.env,
+#    i.e. the repo root. Minimum required values:
+cat > ../../.env << 'EOF'
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/internship_db
-DATABASE_POOL_SIZE=20
-DATABASE_MAX_OVERFLOW=10
-
-# Cache (Optional)
-REDIS_URL=redis://localhost:6379/0
-
-# Authentication
+REDIS_URL=redis://localhost:6379
 JWT_SECRET=your_secret_key_minimum_32_characters_long
 GITHUB_CLIENT_ID=your_github_oauth_app_id
 GITHUB_CLIENT_SECRET=your_github_oauth_app_secret
-GITHUB_REDIRECT_URI=http://localhost:3000/api/github/callback
-
-# Encryption
-GITHUB_TOKEN_ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
-
-# Frontend
+GITHUB_REDIRECT_URI=http://localhost:8000/api/github/callback
+GITHUB_TOKEN_ENCRYPTION_KEY=REPLACE_WITH_FERNET_KEY
 FRONTEND_URL=http://localhost:3000
-
-# Models
-MODEL_PATH=/app/models/qwen3-codersmall-0.8b-q4_k_m.gguf
-CODEBERT_ONNX_PATH=/app/models/codebert_quantized.onnx
-
-# Stripe (Optional)
-STRIPE_SECRET_KEY=sk_test_xxx
-STRIPE_WEBHOOK_SECRET=whsec_xxx
-
-# Crawler
-SCRAPER_DEBUG=false
-MAX_WORKERS=4
-REQUEST_TIMEOUT=30
+RAG_SERVICE_URL=http://localhost:8001
+NEURAL_GENERATOR_URL=http://localhost:8002
+RAZORPAY_KEY_ID=rzp_test_xxx
+RAZORPAY_KEY_SECRET=xxx
+EMAIL_PROVIDER=resend
+RESEND_API_KEY=xxx
 EOF
 
-# 5. Initialize database
+# Generate a Fernet key for GITHUB_TOKEN_ENCRYPTION_KEY:
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+
+# 5. Initialize the database (runs all 12 migrations)
 python run_migrations.py
 
-# 6. Start the API server
-python app.py
+# 6. Start the Core API
+uvicorn src.app:app --reload --port 8000
 ```
 
-**API Available at:** http://localhost:8000  
-**Swagger Docs:** http://localhost:8000/docs  
-**ReDoc:** http://localhost:8000/redoc
+**API:** http://localhost:8000 · **Swagger:** http://localhost:8000/docs · **ReDoc:** http://localhost:8000/redoc
 
 ### Using Docker Compose
 
 ```bash
-# Start all services with Docker
 docker-compose -f ../infrastructure/docker/docker-compose.yml up -d
-
-# View logs
-docker-compose logs -f api
-
-# Stop services
-docker-compose down
+docker-compose -f ../infrastructure/docker/docker-compose.yml logs -f api
+docker-compose -f ../infrastructure/docker/docker-compose.yml down
 ```
+
+This also starts `postgres`, `redis`, `rag`, `neural-generator`, and runs the `crawler` once against all 9 scrapers before it exits.
 
 ## Directory Structure
 
 ```
 services/
-├── README.md                          # This file
-├── app.py                             # Main entry point
-├── entrypoint.sh                      # Docker startup script
-├── requirements.txt                   # Python dependencies
-├── Dockerfile                         # Backend container image
-├── nixpacks.toml                      # Railway deployment config
-├── .env.example                       # Environment template
+├── README.md
+├── app.py                              # Thin launcher that runs services/api
+├── Pyproject.toml
 │
-├── api/                               # 🔌 Main FastAPI Application
-│   ├── README.md                      # API documentation
-│   ├── src/
-│   │   ├── app.py                     # FastAPI instance factory
-│   │   ├── routes/
-│   │   │   ├── auth.py                # Login, GitHub OAuth
-│   │   │   ├── github.py              # GitHub API integration
-│   │   │   ├── review.py              # Code review endpoints
-│   │   │   ├── jobs.py                # Job listing search
-│   │   │   ├── resume.py              # Resume upload & parse
-│   │   │   └── subscription.py        # Stripe webhooks
-│   │   ├── services/
-│   │   │   ├── ai_service.py          # Review orchestration
-│   │   │   ├── analysis_engine.py     # CodeBERT & regex analysis
-│   │   │   ├── github_service.py      # GitHub API client
-│   │   │   ├── resume_service.py      # Resume parsing
-│   │   │   └── stripe_service.py      # Stripe integration
-│   │   ├── middleware/
-│   │   │   └── auth.py                # JWT verification
-│   │   ├── configs/
-│   │   │   ├── config.py              # Unified Pydantic settings
-│   │   │   ├── db.py                  # PostgreSQL connection pool
-│   │   │   └── redis.py               # Redis client
-│   │   ├── schemas/                   # Pydantic DTOs
-│   │   │   ├── auth.py                # Auth request/response
-│   │   │   ├── code_review.py         # Review submission DTOs
-│   │   │   ├── job.py                 # Job listing schema
-│   │   │   └── resume.py              # Resume upload schema
-│   │   ├── utils/
-│   │   │   ├── crypto.py              # Fernet token encryption
-│   │   │   ├── logger.py              # Structured logging
-│   │   │   └── validators.py          # Input validation
-│   │   └── models/                    # ML model wrappers
-│   │       ├── codebert_tokenizer/
-│   │       └── codebert_quantized.onnx
-│   │
-│   ├── crawler/                       # Job Aggregator (9+ sites)
-│   │   ├── README.md                  # Crawler documentation
-│   │   ├── src/
-│   │   │   ├── index.py               # Main orchestrator
-│   │   │   ├── config.py              # Crawler settings
-│   │   │   ├── utils.py               # Helpers & DB client
-│   │   │   ├── scrapers/
-│   │   │   │   ├── base.py            # Base scraper class
-│   │   │   │   ├── linkedin.py        # LinkedIn Jobs
-│   │   │   │   ├── indeed.py          # Indeed
-│   │   │   │   ├── naukri.py          # Naukri (India)
-│   │   │   │   ├── internshala.py     # Internshala
-│   │   │   │   ├── wellfound.py       # Wellfound
-│   │   │   │   ├── unstop.py          # Unstop
-│   │   │   │   ├── glassdoor.py       # Glassdoor
-│   │   │   │   └── cutshort.py        # Cutshort
-│   │   │   └── processors/
-│   │   │       └── normalize.py       # Data normalization
-│   │   ├── requirements.txt
-│   │   └── Dockerfile
-│   │
-│   ├── neural_generator/              # LLM Service (Port 8001)
-│   │   ├── README.md                  # LLM documentation
-│   │   ├── src/
-│   │   │   └── app.py                 # FastAPI microservice
-│   │   ├── models/
-│   │   │   └── qwen3-0.6b-q4_k_m.gguf # Quantized model (~400MB)
-│   │   ├── requirements.txt
-│   │   ├── Dockerfile
-│   │   └── nixpacks.toml
-│   │
-│   └── rag/                           #  RAG Service (Port 8002)
-│       ├── README.md                  # RAG documentation
-│       ├── src/
-│       │   ├── app.py                 # FastAPI microservice
-│       │   ├── services/
-│       │   │   ├── indexer.py         # Repository indexing
-│       │   │   ├── vector_store.py    # FAISS index management
-│       │   │   ├── embedder.py        # Sentence-transformers
-│       │   │   └── generator.py       # Neural Gen integration
-│       │   └── schemas/
-│       │       └── models.py          # Pydantic models
-│       ├── indices/                   # FAISS indices (persisted)
-│       │   ├── index.faiss
-│       │   └── metadata.pkl
-│       ├── requirements.txt
-│       ├── Dockerfile
-│       └── nixpacks.toml
-│
-├── models/                            # Cached ML Models
-│   ├── codebert_quantized.onnx        # CodeBERT (~500MB)
-│   ├── codebert_tokenizer.json        # Tokenizer config
-│   └── qwen3-codersmall-0.8b.gguf     # Qwen LLM (~400MB)
-│
-└── test_imports.py                    # Dependency validation
+└── api/                                 # The actual backend root
+    ├── README.md
+    ├── requirements.txt
+    ├── Dockerfile
+    ├── entrypoint.sh                    # Docker container startup script
+    ├── run_migrations.py                # Runs all 12 migrations in order
+    ├── monitor.py                       # Standalone health/metrics monitor
+    ├── test_imports.py                  # Validates every backend module imports cleanly
+    │
+    ├── database/migrations/             # 001_users.sql … 012_guest_users.sql
+    │
+    ├── src/
+    │   ├── core/app.py                  # create_application() — the real FastAPI factory
+    │   ├── routes/
+    │   │   ├── auth.py                  # OTP request/verify, guest sessions
+    │   │   ├── github.py                # OAuth connect, repo browser, terminal token
+    │   │   ├── jobs.py                  # Job search/listing
+    │   │   ├── resume.py                # Resume generation & CRUD
+    │   │   ├── linkedin.py              # LinkedIn Profile Optimizer (premium)
+    │   │   ├── subscription.py          # Razorpay checkout + webhook
+    │   │   ├── webhooks.py              # GitHub push webhook
+    │   │   └── async_jobs.py            # GET /api/async-jobs/{id} — poll background jobs
+    │   ├── api/
+    │   │   ├── routes.py                # /api/v1/review, /api/v1/fix
+    │   │   └── routes_self_healing.py   # /api/v1/self-healing/fix-and-validate
+    │   ├── services/
+    │   │   ├── ai_service.py            # Review/auto-fix orchestration
+    │   │   ├── analysis_engine.py       # CodeBERT-based static analysis
+    │   │   ├── auto_fixer.py            # LLM-driven auto-fix
+    │   │   ├── validation_engine.py     # Validates fixed code (self-healing)
+    │   │   ├── github_service.py        # GitHub API client
+    │   │   ├── resume_service.py, resume_ai_service.py,
+    │   │   │   resume_pdf_service.py, resume_template_service.py
+    │   │   ├── linkedin_service.py, linkedin_ai_service.py, linkedin_rules.py
+    │   │   ├── subscription_service.py  # Razorpay integration
+    │   │   ├── job_queue.py             # Async job creation/polling backing store
+    │   │   ├── email_service.py         # Resend-based OTP delivery
+    │   │   └── terminal_manager.py      # WebSocket terminal session state
+    │   ├── middleware/
+    │   │   ├── auth.py                  # JWT verification (verify_token dependency)
+    │   │   └── rate_limit.py
+    │   ├── configs/
+    │   │   ├── config.py, settings.py   # Pydantic Settings (duplicated — see note below)
+    │   │   ├── db.py                    # asyncpg connection pool
+    │   │   ├── redis.py                 # Redis client
+    │   │   └── ml_config.py             # CodeBERT model config
+    │   ├── schemas/models.py
+    │   └── utils/
+    │       ├── crypto.py                # Fernet token encryption
+    │       ├── logger.py
+    │       └── model_downloader.py      # HF Hub model download/caching
+    │
+    ├── crawler/                          # Job Aggregator (9+ sites) — see its own README
+    ├── rag/                              # RAG microservice — see its own README
+    ├── neural_generator/                 # LLM inference microservice — see its own README
+    └── templates/resume_template.tex     # LaTeX resume template
 ```
+
+> **Note:** `configs/config.py` and `configs/settings.py` currently define the exact same `Settings` class. This looks like leftover duplication from a refactor rather than an intentional split — worth consolidating, but both are imported from in different places today (`config.py` is the one actually wired into `core/app.py`).
 
 ## API Endpoints
 
-### Authentication
-- `POST /api/auth/github/login` – Initiate GitHub OAuth
-- `GET /api/auth/github/callback` – OAuth callback handler
-- `POST /api/auth/logout` – Logout & invalidate token
-- `GET /api/auth/me` – Get current user
+Full endpoint reference lives in the [root README](../README.md#core-api-endpoints). Summary:
 
-### Code Review
-- `POST /api/review/submit` – Submit code for analysis
-- `GET /api/review/{review_id}` – Retrieve review results
-- `POST /api/review/{review_id}/autofix` – Generate fixes
-- `GET /api/review/history` – List user's reviews
-
-### Jobs
-- `GET /api/jobs/search` – Search jobs with filters
-- `GET /api/jobs/{job_id}` – Get job details
-- `POST /api/jobs/match` – Match resume to jobs
-
-### Resume
-- `POST /api/resume/upload` – Upload & parse resume
-- `GET /api/resume/{resume_id}` – Get parsed resume
-- `POST /api/resume/{resume_id}/analyze` – AI analysis
+### Auth
+- `POST /api/auth/otp/request`, `POST /api/auth/otp/verify` — email OTP login (no passwords)
+- `POST /api/auth/guest` — anonymous session
 
 ### GitHub
-- `GET /api/github/repos` – List user's repositories
-- `GET /api/github/{repo}/files` – Browse repo files
-- `POST /api/github/{repo}/auto-setup` – Generate README
+- `GET /api/github/login`, `/callback`, `/exchange`, `POST /disconnect`
+- `GET /api/github/repos`, `/contents`, `/file`
+- `POST /api/github/{owner}/{repo}/auto-setup` — RAG-generated README
+- `POST /api/github/terminal/token`
 
-### Subscriptions
-- `GET /api/subscription/status` – Check tier & limits
-- `POST /api/subscription/checkout` – Create Stripe session
-- `POST /api/webhook/stripe` – Stripe webhook
+### Code Review
+- `POST /api/v1/review`, `POST /api/v1/fix`
+- `POST /api/v1/self-healing/fix-and-validate`
 
-**Full API Docs:** Visit http://localhost:8000/docs
+### Jobs
+- `GET /api/jobs/`, `/featured`, `/{job_id}`
 
-## Service Documentation
+### Resume
+- `POST /api/resume/generate`, `/generate-structured`, `/create`
+- `GET /api/resume/list`
 
-### API Service (`services/api/src/`)
+### LinkedIn Optimizer
+- `GET /api/linkedin/status`, `POST /unlock/ad`, `POST /analyze`, `GET /history`
 
-Main FastAPI application.
+### Subscriptions (Razorpay)
+- `POST /api/subscription/create-checkout`, `POST /webhook`, `GET /status`
 
-**Key Endpoints:**
+### Async Jobs
+- `GET /api/async-jobs/{job_id}`
 
-```
-AUTH
-  POST   /api/auth/register           Register user
-  POST   /api/auth/login              Email login
-  GET    /api/auth/me                 Current user
+### Webhooks
+- `POST /api/webhooks/github`
 
-GITHUB
-  GET    /api/github/login            Start OAuth
-  GET    /api/github/callback         OAuth callback
-  GET    /api/github/repos            List repos
-  GET    /api/github/file             Get file content
-  POST   /api/github/index-repo       Index for RAG
+There is no `/api/review/history`, `/api/jobs/match`, `/api/jobs/{id}/apply`, or `/api/auth/register` / `/api/auth/login` in the current code — those endpoints from earlier docs have been removed or never shipped.
 
-CODE REVIEW
-  POST   /api/review                  Submit code
-  GET    /api/review/{id}             Get results
+## Sub-Services
 
-RESUMES
-  POST   /api/resume/upload           Upload file
-  GET    /api/resume/{id}             Get resume
-  POST   /api/resume/{id}/analyze     AI analysis
-
-JOBS
-  GET    /api/jobs                    List jobs
-  POST   /api/jobs/{id}/apply         Apply
-
-SUBSCRIPTIONS
-  GET    /api/subscription/status     Check tier
-  POST   /api/subscription/upgrade    Upgrade
-```
-
-**Architecture:**
-
-- Request → Middleware (Auth, Rate Limit) → Route Handler → Service → Database
-- Async/await throughout for high performance
-- Optional Redis caching for reviews (5 min TTL)
-
-### Crawler Service (`services/api/crawler/`)
-
-Automated job scraper for 9+ job sites.
-
-**Supported Sites:**
-- LinkedIn, Indeed, Naukri, Internshala, Wellfound
-- Unstop, Glassdoor, Cutshort, Company Portals
-
-**Running:**
+### Crawler (`services/api/crawler/`)
+9+ scrapers: LinkedIn, Indeed, Naukri, Internshala, Wellfound, Unstop, Glassdoor, Cutshort, and direct company portals.
 
 ```bash
-cd services/api/crawler/src
-python index.py                                    # Default
-python index.py --scrapers linkedin indeed --max-pages 5  # Custom
+cd services/api/crawler
+python src/index.py --scrapers linkedin,indeed --max-pages 5
 ```
 
-**Pipeline:** Scrape → Normalize → Deduplicate → Enrich → Store
+Pipeline: scrape → normalize → deduplicate → enrich → trust/rank → store in Postgres. See [services/api/crawler/README.md](./api/crawler/README.md).
 
-### Neural Generator (`services/api/neural-generator/`)
-
-**llama-cpp-python** service for Qwen GGUF text generation.
-
-**Endpoints:**
-
-```
-POST /generate
-  { prompt: str, max_tokens: 512, temperature: 0.2 }
-
-GET /health
-```
-
-**Running:**
+### Neural Generator (`services/api/neural_generator/`)
+`llama-cpp-python` running **Qwen3-0.6B-Q4_K_M GGUF**, CPU-only.
 
 ```bash
-cd services/api/neural-generator
-python -m uvicorn src.app:app --host 0.0.0.0 --port 8001
+cd services/api/neural_generator
+uvicorn src.app:app --host 0.0.0.0 --port 8002
 ```
 
-**Model:** Qwen3-0.6B Q4_K_M GGUF (~400MB, CPU-only, 2 threads)
+See [services/api/neural_generator/README.md](./api/neural_generator/README.md).
 
-### RAG Service (`services/api/rag/`)
+### RAG (`services/api/rag/`)
 
-Retrieval-Augmented Generation for README generation.
-
-**Endpoints:**
-
-```
-POST /api/rag/index          Index repo files
-POST /api/rag/generate       Generate README
-GET  /api/rag/search         Search indexed files
+```bash
+cd services/api/rag
+uvicorn src.app:app --host 0.0.0.0 --port 8001
 ```
 
-**Architecture:** Files → Embeddings → FAISS Index → Retriever → LLM
+Endpoints: `POST /api/rag/index`, `POST /api/rag/generate`, `GET /health`. See [services/api/rag/README.md](./api/rag/README.md).
 
 ## Environment Variables
 
 ### Required
-
-```bash
-DATABASE_URL=postgresql://user:pass@localhost:5432/db
-GITHUB_CLIENT_ID=xxxx
-GITHUB_CLIENT_SECRET=xxxx
-JWT_SECRET=your_secret_min_32_chars
-GITHUB_TOKEN_ENCRYPTION_KEY=<Fernet key>
+```
+DATABASE_URL
+JWT_SECRET
+GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET / GITHUB_REDIRECT_URI
+GITHUB_TOKEN_ENCRYPTION_KEY
 ```
 
-### Optional
-
-```bash
-REDIS_URL=redis://localhost:6379/0
-STRIPE_SECRET_KEY=sk_test_xxx
-AWS_ACCESS_KEY=xxx
-MODEL_PATH=/app/models/qwen3-0.6b-q4_k_m.gguf
-CODEBERT_ONNX_PATH=/app/models/codebert_quantized.onnx
-SCRAPER_DEBUG=false
+### Used in practice (optional but needed for those features)
 ```
+REDIS_URL
+RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET     # NOT Stripe — migrated in 007_migrate_stripe_to_razorpay.sql
+RESEND_API_KEY / EMAIL_PROVIDER            # OTP delivery
+AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / S3_BUCKET
+RAG_SERVICE_URL / NEURAL_GENERATOR_URL
+CORS_ORIGINS
+REQUIRE_AUTH
+```
+
+No current code reads `STRIPE_SECRET_KEY`, `CODEBERT_ONNX_PATH`, or `DATABASE_POOL_SIZE`/`DATABASE_MAX_OVERFLOW` — those were either replaced (Stripe→Razorpay, ONNX→HF Transformers) or never implemented.
 
 ## Database
 
-**Tables:**
-- `users` - User accounts & GitHub tokens (encrypted)
-- `jobs` - Job postings (id, title, company, description, url, source, posted_at)
-- `resumes` - Resume uploads with AI analysis
-- `subscriptions` - Payment records
-- `repo_docs` - Generated READMEs
+**12 migrations**, run via `python services/api/run_migrations.py` (not `make migrate`, which is stale and only runs the first 4):
 
-**Migrations:** `database/migrations/*.sql`
-
-## Docker
-
-### Development
-
-```bash
-docker-compose up -d
-docker-compose logs -f api
-docker-compose down
-```
-
-### Production
-
-```bash
-docker-compose -f docker-compose.prod.yml up -d
-```
+| # | File | Adds |
+|---|---|---|
+| 001 | `001_users.sql` | `users` |
+| 002 | `002_resumes.sql` | `resumes` |
+| 003 | `003_jobs.sql` | `jobs` |
+| 004 | `004_subscriptions.sql` | `subscriptions` |
+| 005 | `005_repo_docs.sql` | `repo_docs` |
+| 006 | `006_subscriptions_unique_constraint.sql` | Unique constraint on `subscriptions` |
+| 007 | `007_migrate_stripe_to_razorpay.sql` | Stripe → Razorpay column migration |
+| 008 | `008_otp_auth.sql` | Email OTP auth columns |
+| 009 | `009_async_jobs.sql` | Async job queue table |
+| 010 | `010_linkedin_optimizer.sql` | LinkedIn optimizer tables |
+| 011 | `011_job_trust_and_ranking.sql` | Job trust/ranking columns |
+| 012 | `012_guest_users.sql` | Guest user support |
 
 ## Testing
 
 ```bash
-pytest tests/
-pytest tests/ --cov=api
-pytest tests/test_imports.py
+pytest tests/ -v                          # from repo root
+python services/api/test_imports.py       # validates backend imports
 ```
 
-## Performance
-
-| Feature | Details |
-|---------|---------|
-| **Caching** | Redis (5 min TTL for reviews) |
-| **Rate Limit** | 100 req/min per IP (500 for auth users) |
-| **Async** | All endpoints use async/await |
-| **DB Pool** | 5 max connections |
+There is no `tests/test_imports.py`, `pytest --cov=api`, `test_api.py`, or similar suite beyond `tests/test_basic.py` and `services/api/test_imports.py` today.
 
 ## Deployment
 
-### Railway.app (Free tier friendly)
-
-```bash
-railway link
-railway deploy
-```
-
-### Traditional VPS
-
-```bash
-sudo systemctl start repo-sense-api
-sudo journalctl -u repo-sense-api -f
-```
+No Railway or Terraform config is currently committed in this repo. See [docs/DEPLOYMENT_GUIDE.md](../docs/DEPLOYMENT_GUIDE.md) for the supported Docker Compose path and notes on what would be needed to add cloud deployment tooling.
 
 ## Troubleshooting
 
 | Issue | Solution |
-|-------|----------|
-| API won't start | Run: `pytest tests/test_imports.py` |
-| Database connection fails | Check `DATABASE_URL` env var |
-| Redis unavailable | Optional; app works without it |
+|---|---|
+| API won't start | Run `python services/api/test_imports.py` to isolate the failing import |
+| Database connection fails | Check `DATABASE_URL` |
+| Redis unavailable | Optional — the app degrades gracefully (`/health/detailed` reports `redis: disconnected`) |
 | Encryption key invalid | Regenerate: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
-| Migrations fail | Drop tables: `DROP TABLE ... CASCADE;` |
+| Migrations fail partway | Migrations aren't idempotent by default — check `run_migrations.py` output for which one failed before retrying |
 
 ## Related Docs
 
-- **Frontend**: [apps/web/README.md](../apps/web/README.md)
-- **Neural Generator**: [services/api/neural-generator/README.md](./api/neural-generator/README.md)
-- **RAG**: [services/api/rag/README.md](./api/rag/README.md)
-- **Crawler**: [services/api/crawler/README.md](./api/crawler/README.md)
-
-## Swagger Documentation
-
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-- **OpenAPI JSON**: http://localhost:8000/openapi.json
-
-## Features
-
-- OAuth 2.0 GitHub login
-- JWT stateless authentication
-- Code review with AI analysis
-- Auto-fix suggestions
-- 9+ job site scraping
-- RAG-powered documentation
-- Rate limiting and caching
-- Async/high performance
-- Stripe payments
-- Free tier AWS t2.micro compatible
+- Frontend: [apps/web/README.md](../apps/web/README.md)
+- Core API: [services/api/README.md](./api/README.md)
+- Crawler: [services/api/crawler/README.md](./api/crawler/README.md)
+- RAG: [services/api/rag/README.md](./api/rag/README.md)
+- Neural Generator: [services/api/neural_generator/README.md](./api/neural_generator/README.md)
 
 ## License
 
-Part of Repo Sense project
+Part of the RepoSense project — MIT, see [../LICENSE](../LICENSE).
