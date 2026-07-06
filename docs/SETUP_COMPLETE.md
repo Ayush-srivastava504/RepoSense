@@ -1,140 +1,86 @@
-# Model Setup - Quick Start Guide
+# Model Setup — Quick Start
 
-**Status: Hugging Face Migration Complete**
+> This previously described a `python scripts/setup_models.py` interactive wizard. **That script doesn't exist in this repo** — there is no `scripts/` directory at all. If you're looking for it, it was either never committed or removed; the manual steps below are the actual supported path today.
 
-This guide gets you up and running with RepoSense's new Hugging Face model system in 5 minutes.
+## Fastest path: Docker Compose
 
----
-
-## Quick Start (Recommended)
-
-### Interactive Setup Wizard
-
-The easiest way to configure everything automatically:
+You don't need to set up any models by hand — the `neural-generator` and `rag` images on GHCR already have everything baked in or configured to fetch on first use:
 
 ```bash
-python scripts/setup_models.py
+docker compose -f infrastructure/docker/docker-compose.yml up -d neural-generator rag
 ```
 
-This wizard will:
-1.  Check dependencies
-2.  Configure CodeBERT model
-3.  Configure Qwen LLM
-4.  Create .env file
-5.  Update .gitignore
-6.  Optionally download models
+- `neural-generator` starts with the Qwen3-0.6B-Q4_K_M GGUF file already inside the image (baked in during the image build via `curl` from a GitHub Release — see `neural_generator/Dockerfile`).
+- `rag` downloads `all-MiniLM-L6-v2` (sentence-transformers, ~90MB) from Hugging Face Hub the first time it's needed, caching it under the `huggingface_cache` volume.
 
-**That's it!** Your app is ready to run.
-
----
-
-## Manual Setup
-
-If you prefer manual configuration:
-
-### 1. Install Dependencies
+Check both came up healthy:
 
 ```bash
-pip install transformers huggingface-hub onnxruntime optimum[onnxruntime] llama-cpp-python
+curl http://localhost:8002/health   # {"status": "ok", "model_loaded": true}
+curl http://localhost:8001/health   # {"status": "ok"}
 ```
 
-### 2. Login to Hugging Face (Optional)
+## Manual path (without Docker)
 
-For private models:
+### 1. Neural Generator
 
 ```bash
-huggingface-cli login
-# Paste your token when prompted
+mkdir -p models
+curl -L https://github.com/Ayush-srivastava504/RepoSense/releases/download/models/Qwen3-0.6B-Q4_K_M.gguf \
+  -o models/Qwen3-0.6B-Q4_K_M.gguf
+
+cd services/api/neural_generator
+pip install -r requirements.txt   # fastapi, uvicorn, llama-cpp-python
+MODEL_PATH=$(pwd)/../../../models/Qwen3-0.6B-Q4_K_M.gguf \
+  uvicorn src.app:app --host 0.0.0.0 --port 8002
 ```
 
-### 3. Create `.env` File
+### 2. RAG Service
 
 ```bash
-# .env file in repository root
-CODEBERT_MODEL=microsoft/codebert-base
-HF_MODEL_REPO=TheBloke/Qwen2-0.5B-Instruct-GGUF
-HF_MODEL_FILE=qwen2-0.5b-instruct.Q4_K_M.gguf
-MODEL_CACHE_DIR=.model_cache
+cd services/api/rag
+pip install -r requirements.txt   # includes torch (CPU wheel), sentence-transformers, faiss-cpu
+uvicorn src.app:app --host 0.0.0.0 --port 8001
 ```
 
-### 4. Start the App
+No model download step needed — `sentence-transformers` fetches `all-MiniLM-L6-v2` automatically on first request and caches it in `~/.cache/huggingface` (override with `HF_HOME`).
 
-```bash
-python services/app.py
-```
+### 3. Core API
 
-Models will download automatically on first run (~500MB total).
+The Core API doesn't need any model files itself — its "AI" code review is a regex/pattern analyzer (`analysis_engine.py`), not a loaded ML model. It just needs `RAG_SERVICE_URL` and `NEURAL_GENERATOR_URL` pointed at the two services above. See [services/api/README.md](../services/api/README.md) for its full setup.
 
----
+## Default models actually used
 
-## Docker Deployment
+| Model | Approx. size | Where it comes from | Used for |
+|---|---|---|---|
+| Qwen3-0.6B-Q4_K_M (GGUF) | ~400MB | Baked into `neural-generator` image from a GitHub Release | LinkedIn/resume/README text generation |
+| all-MiniLM-L6-v2 | ~90MB | Downloaded from Hugging Face Hub on first RAG request | Semantic search embeddings |
+| CodeBERT (`microsoft/codebert-base`) | — | Not downloaded, not loaded anywhere | Referenced in `ml_config.py` but unused — code review is pattern-based, see [MODEL_CONFIGURATION.md](./MODEL_CONFIGURATION.md) |
 
-```bash
-docker-compose up -d
-```
-
-Models are automatically downloaded and cached. Perfect for CI/CD!
-
----
-
-## Default Models
-
-| Model | Size | Purpose | Provider |
-|-------|------|---------|----------|
-| **CodeBERT** | ~500MB | Code Analysis | microsoft |
-| **Qwen 0.5B** | ~300MB | Code Generation | TheBloke |
-
----
-
-## Next Steps
-
-1. **Run the wizard**: `python scripts/setup_models.py`
-2. **Start the app**: `python services/app.py`
-3. **Test the API**: Open `http://localhost:8000/docs`
-4. **Read full guide**: See `COMPLETE_MODEL_MIGRATION_GUIDE.md`
-
----
-
-## Tips
-
-- **First run is slow** (downloading models) - subsequent runs are fast
-- **Models cached locally** - `.model_cache/` directory
-- **Offline mode** - once cached, works without internet
-- **Custom models** - use any model from Hugging Face by changing env vars
-
----
+There's no `.model_cache/` directory used by anything running today — that was part of the earlier Hugging-Face-download design described in [COMPLETE_MODEL_MIGRATION_GUIDE.md](./COMPLETE_MODEL_MIGRATION_GUIDE.md), which itself has since been superseded by the "bake the GGUF into the image" approach above.
 
 ## Troubleshooting
 
-### Issue: "Module not found"
-**Solution:** Install dependencies: `pip install transformers huggingface-hub llama-cpp-python`
+### `Module not found` on either microservice
+```bash
+pip install -r services/api/neural_generator/requirements.txt   # or rag/requirements.txt
+```
+Each sub-service has its own `requirements.txt` — installing the Core API's doesn't cover them.
 
-### Issue: "Model download stuck"
-**Solution:** Check internet connection. Models are ~500MB total.
+### Neural Generator says "Model not loaded"
+The GGUF file isn't at `MODEL_PATH`. If you're running the prebuilt Docker image this shouldn't happen (it's baked in); if you're running bare-metal, re-check the `curl` download step above.
 
-### Issue: "Out of memory"
-**Solution:** Qwen uses ~1.5GB RAM. If it crashes, use a smaller model.
+### RAG service hangs on first request
+It's downloading `all-MiniLM-L6-v2` from Hugging Face Hub — this can take a minute on a slow connection. Subsequent requests use the cache.
 
-### Issue: "HuggingFace API error"
-**Solution:** Try `huggingface-cli login` or check your internet connection.
+### Out of memory
+`docker-compose.yml` caps both `neural-generator` and `rag` at `mem_limit: 1024m`. If the container is OOM-killed, that's your signal — either raise the limit or reduce `LLM_N_CTX` (default 4096) on the neural generator.
 
----
+## Full documentation
 
-## Full Documentation
+- [docs/MODEL_CONFIGURATION.md](./MODEL_CONFIGURATION.md) — full environment variable reference, and what's actually wired up vs. dead code
+- [docs/COMPLETE_MODEL_MIGRATION_GUIDE.md](./COMPLETE_MODEL_MIGRATION_GUIDE.md) — historical context on how model handling evolved
+- [services/api/neural_generator/README.md](../services/api/neural_generator/README.md)
+- [services/api/rag/README.md](../services/api/rag/README.md)
 
-- **COMPLETE_MODEL_MIGRATION_GUIDE.md** - Deep dive, all details
-- **HUGGINGFACE_MODEL_GUIDE.md** - Upload custom models
-- **MODEL_CONFIGURATION.md** - Environment variables reference
-- **MODEL_MIGRATION_SUMMARY.md** - What changed and why
-
----
-
-## Need Help?
-
-1. Check the logs: `tail -f logs/app.log`
-2. Read the full guide: `COMPLETE_MODEL_MIGRATION_GUIDE.md`
-3. Review environment: Run `python -c "import transformers; print(transformers.__version__)"`
-
----
-
-**Ready to go! Run `python scripts/setup_models.py` now.** 🎉
+There is no `HUGGINGFACE_MODEL_GUIDE.md` or `MODEL_MIGRATION_SUMMARY.md` in this repo, despite being referenced by an earlier version of this file.

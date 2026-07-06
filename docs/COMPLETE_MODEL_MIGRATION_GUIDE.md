@@ -1,510 +1,63 @@
-# Complete Hugging Face Model Migration Guide
+# Model Handling: Historical Migration Notes
 
-**Comprehensive guide for RepoSense model migration from local storage to Hugging Face Hub.**
+> **This is a historical document.** It originally described a migration from models committed directly to Git to a Hugging-Face-Hub-download-on-demand design (`CODEBERT_MODEL`, `HF_MODEL_REPO`, `HF_MODEL_FILE`, `MODEL_CACHE_DIR`). That HF-download design has itself since been superseded for the model that actually matters at runtime. This version corrects the guide to reflect what's true today, while keeping the migration history for context. For the authoritative current state, see [MODEL_CONFIGURATION.md](./MODEL_CONFIGURATION.md) — this document exists for background, not as a setup guide.
 
----
+## Timeline, as best reconstructed from the code
 
-## Table of Contents
+### Stage 1 — Models committed to Git (earliest)
+Model weights lived directly in the repository under paths like `services/api/models/` and `services/api/neural-generator/models/`. Large, slow to clone, hard to update.
 
-1. [Overview](#overview)
-2. [What Changed](#what-changed)
-3. [Architecture](#architecture)
-4. [Setup Instructions](#setup-instructions)
-5. [Configuration](#configuration)
-6. [Deployment](#deployment)
-7. [Troubleshooting](#troubleshooting)
-8. [Advanced Usage](#advanced-usage)
-
----
-
-## Overview
-
-RepoSense has been migrated to use **Hugging Face Hub** for model management:
-
-- **No large files in Git** - Models download on-demand
-- **Automatic caching** - Downloaded models cached locally
-- **Easy deployment** - Works with Docker, K8s, Railway, Heroku
-- **Custom models** - Use fine-tuned models from Hugging Face
-- **Private models** - Support for private repositories
-
----
-
-## What Changed
-
-### Before Migration 
-
-```
-Repository Structure:
-├── services/api/models/
-│   ├── codebert_quantized/          (500MB - committed to Git!)
-│   ├── codebert_onnx/               (400MB - committed to Git!)
-│   └── codebert_tokenizer/          (100MB - committed to Git!)
-├── services/api/neural-generator/models/
-│   └── Qwen3-0.6B-Q4_K_M.gguf      (400MB - committed to Git!)
-```
-
-**Problems:**
-- Large repository (~2GB just for models)
-- Slow clones
-- Hard to update models
-- Doesn't scale to multiple models
-- Wasteful deployment
-
----
-
-### After Migration
-
-```
-Repository Structure:
-├── .env                             (Configuration only)
-├── .model_cache/                    (Local cache, not committed)
-├── services/api/src/utils/
-│   └── model_downloader.py         (New: Download models)
-├── scripts/
-│   ├── setup_models.py             (New: Interactive setup)
-│   └── upload_model_to_hf.py       (New: Upload custom models)
-```
-
-**Benefits:**
-- Repository ~50MB (no models)
-- Fast clones
-- Easy model updates
-- Scales to hundreds of models
-- Efficient deployment
-
----
-
-## Architecture
-
-### Model Management Flow
-
-```
-┌─────────────────────────────────────────┐
-│   First Run or Model Update             │
-└──────────────────┬──────────────────────┘
-                   │
-                   ▼
-        ┌──────────────────────┐
-        │  Check Environment   │
-        │  Variables           │
-        └──────────────┬───────┘
-                       │
-                       ▼
-        ┌──────────────────────┐
-        │  Call model_downloader│
-        │  from Hugging Face   │
-        └──────────────┬───────┘
-                       │
-                       ▼
-        ┌──────────────────────┐
-        │  Download Model to   │
-        │  .model_cache/       │
-        └──────────────┬───────┘
-                       │
-                       ▼
-        ┌──────────────────────┐
-        │  Cache Hit: Skip     │
-        │  (if already cached) │
-        └──────────────┬───────┘
-                       │
-                       ▼
-        ┌──────────────────────┐
-        │  Load Model in App   │
-        └──────────────────────┘
-```
-
-### Components
-
-| Component | Purpose | Location |
-|-----------|---------|----------|
-| **model_downloader.py** | Download & cache models | `services/api/src/utils/` |
-| **setup_models.py** | Interactive setup wizard | `scripts/` |
-| **upload_model_to_hf.py** | Upload models to HF | `scripts/` |
-| **analysis_engine.py** | Updated to use HF models | `services/api/src/services/` |
-| **neural-generator/app.py** | Updated to use HF models | `services/api/neural-generator/src/` |
-
----
-
-## Setup Instructions
-
-### Option 1: Automatic Setup (Recommended)
-
-```bash
-# Run the interactive setup wizard
-python scripts/setup_models.py
-```
-
-Prompts you for:
-- CodeBERT model name
-- Qwen model configuration
-- Cache directory
-- Whether to download models now
-
-Creates `.env` file automatically.
-
-### Option 2: Manual Setup
-
-#### Step 1: Install Dependencies
-
-```bash
-pip install \
-  transformers \
-  huggingface-hub \
-  onnxruntime \
-  optimum[onnxruntime] \
-  llama-cpp-python
-```
-
-#### Step 2: Create `.env` File
+### Stage 2 — Hugging Face Hub download-on-demand
+The intended fix: fetch models from HF Hub at runtime/build time instead of committing them, controlled by environment variables:
 
 ```env
-# Code analysis model
-CODEBERT_MODEL=microsoft/codebert-base
-
-# Code generation model (Qwen)
-HF_MODEL_REPO=TheBloke/Qwen2-0.5B-Instruct-GGUF
-HF_MODEL_FILE=qwen2-0.5b-instruct.Q4_K_M.gguf
-
-# Cache directory for models
-MODEL_CACHE_DIR=.model_cache
-```
-
-#### Step 3: Start Application
-
-```bash
-python services/app.py
-```
-
-Models download automatically on first run (~500MB, takes 2-5 minutes).
-
----
-
-## Configuration
-
-### Environment Variables
-
-All configuration via environment variables (or `.env` file):
-
-#### CodeBERT Configuration
-
-```bash
-# Which model to use for code analysis
-CODEBERT_MODEL=microsoft/codebert-base
-
-# Cache directory (optional, defaults to .model_cache)
-MODEL_CACHE_DIR=.model_cache
-```
-
-**Available CodeBERT Models:**
-- `microsoft/codebert-base` (default, 500MB)
-- `microsoft/codebert-base-mlm` (alternative)
-- Your own fine-tuned version (e.g., `myorg/codebert-custom`)
-
-#### Qwen Configuration
-
-```bash
-# Hugging Face repository
-HF_MODEL_REPO=TheBloke/Qwen2-0.5B-Instruct-GGUF
-
-# Model file within the repository
-HF_MODEL_FILE=qwen2-0.5b-instruct.Q4_K_M.gguf
-
-# Cache directory (same as CodeBERT)
-MODEL_CACHE_DIR=.model_cache
-```
-
-**Available Qwen Models:**
-- `TheBloke/Qwen2-0.5B-Instruct-GGUF` (default, 300MB)
-- `TheBloke/Qwen2-1.5B-Instruct-GGUF` (larger, 700MB)
-- Your own fine-tuned version
-
-### Using Custom/Private Models
-
-#### Private Model on Hugging Face
-
-```bash
-# Authenticate first
-huggingface-cli login
-
-# Use your private repo
-export CODEBERT_MODEL=myorg/my-private-codebert
-export HF_MODEL_REPO=myorg/my-private-qwen
-```
-
-#### Local Model Development
-
-During development, you can use local paths:
-
-```bash
-# Not recommended for production, but works locally
-export CODEBERT_MODEL=./local_models/my-codebert
-export HF_MODEL_REPO=./local_models/my-qwen
-```
-
----
-
-## Deployment
-
-### Docker Deployment
-
-The Docker setup automatically handles model downloads:
-
-```bash
-# Standard docker-compose
-docker-compose up -d
-
-# Models download on first startup (~2-5 minutes)
-docker logs -f repo-sense-api
-
-# Subsequent starts use cached models (fast)
-```
-
-**docker-compose.yml:**
-```yaml
-version: '3.8'
-services:
-  api:
-    image: repo-sense-api:latest
-    environment:
-      CODEBERT_MODEL: microsoft/codebert-base
-      HF_MODEL_REPO: TheBloke/Qwen2-0.5B-Instruct-GGUF
-      HF_MODEL_FILE: qwen2-0.5b-instruct.Q4_K_M.gguf
-      MODEL_CACHE_DIR: /app/.model_cache
-    volumes:
-      - model_cache:/app/.model_cache
-    ports:
-      - "8000:8000"
-
-volumes:
-  model_cache:
-```
-
-### Kubernetes Deployment
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: repo-sense-config
-data:
-  CODEBERT_MODEL: microsoft/codebert-base
-  HF_MODEL_REPO: TheBloke/Qwen2-0.5B-Instruct-GGUF
-  HF_MODEL_FILE: qwen2-0.5b-instruct.Q4_K_M.gguf
-  MODEL_CACHE_DIR: /models
-
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: model-cache
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
-
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: repo-sense-api
-spec:
-  replicas: 1
-  template:
-    spec:
-      containers:
-      - name: api
-        image: repo-sense-api:latest
-        envFrom:
-        - configMapRef:
-            name: repo-sense-config
-        volumeMounts:
-        - name: models
-          mountPath: /models
-      volumes:
-      - name: models
-        persistentVolumeClaim:
-          claimName: model-cache
-```
-
-### Railway/Heroku Deployment
-
-Set environment variables in deployment dashboard:
-
-```
 CODEBERT_MODEL=microsoft/codebert-base
 HF_MODEL_REPO=TheBloke/Qwen2-0.5B-Instruct-GGUF
 HF_MODEL_FILE=qwen2-0.5b-instruct.Q4_K_M.gguf
 MODEL_CACHE_DIR=.model_cache
 ```
 
-Models will download on first deployment (may take 5-10 minutes for cold start).
+This left behind two pieces of code that still exist in the repo:
+- `services/api/src/configs/ml_config.py` — defines a `ModelConfig` Pydantic settings class with `MODEL_NAME` (prefixed `MODEL_`), `DEVICE`, `MAX_TOKENS`, `QUANTIZATION_ENABLED`, `MODEL_CACHE_DIR`.
+- `services/api/src/utils/model_downloader.py` — a `ModelDownloader` class with `download_codebert()` and `download_qwen_gguf()` methods, still defaulting to `TheBloke/Qwen2-0.5B-Instruct-GGUF`.
 
----
+### Stage 3 — What's actually running today
 
-## Troubleshooting
+Neither piece from Stage 2 is called anywhere in the current codebase (`grep -rn "ModelDownloader" services/` finds only the class definition itself — zero call sites). Instead:
 
-### Issue: "Module transformers not found"
+- **Code review** (`analysis_engine.py`) is a regex/pattern-based static analyzer. It never loads CodeBERT, HuggingFace Transformers, or any model. `CODEBERT_MODEL` and everything in `ModelConfig` have no effect on it.
+- **Text generation** (Neural Generator) loads a **Qwen3-0.6B-Q4_K_M GGUF** file via `llama-cpp-python`, but instead of downloading it from Hugging Face Hub, `neural_generator/Dockerfile` `curl`s it directly from a **GitHub Release** at build time:
+  ```dockerfile
+  RUN mkdir -p /app/models && \
+      curl -L https://github.com/Ayush-srivastava504/RepoSense/releases/download/models/Qwen3-0.6B-Q4_K_M.gguf \
+      -o /app/models/Qwen3-0.6B-Q4_K_M.gguf
+  ```
+  The model is baked into the image, not downloaded at container start. `HF_MODEL_REPO`/`HF_MODEL_FILE` play no role here — the only relevant env var is `MODEL_PATH`, which just tells `llama-cpp-python` where to find the already-present file.
+- **The one thing that genuinely still downloads from Hugging Face Hub at runtime** is the RAG service's embedding model, `all-MiniLM-L6-v2`, fetched by `sentence-transformers` on first use and cached via `HF_HOME`.
 
-**Solution:**
-```bash
-pip install transformers huggingface-hub
-```
+So the "migration" this document originally described (committed weights → HF Hub download) was a real step for CodeBERT/Qwen2 in an earlier version of the project, but the current Qwen3 setup moved to a third pattern — "bake into the image from a GitHub Release" — that this doc never covered, and CodeBERT was dropped from the request path entirely in favor of pattern matching.
 
-### Issue: "Model download fails / timeout"
+## Why this matters if you're reading old references to this migration
 
-**Check:**
-1. Internet connection: `ping huggingface.co`
-2. HF API status: https://status.huggingface.co
-3. Disk space: `df -h`
+If you find other documentation, comments, or scripts referencing:
+- `scripts/setup_models.py` — doesn't exist in this repo
+- `HUGGINGFACE_MODEL_GUIDE.md`, `MODEL_MIGRATION_SUMMARY.md` — don't exist in this repo
+- Kubernetes/Railway/Heroku config blocks setting `CODEBERT_MODEL`/`HF_MODEL_REPO`/`HF_MODEL_FILE` — harmless to set, but have no effect on the running application today
 
-**Solution:**
-```bash
-# Clear cache and retry
-rm -rf .model_cache
-python services/app.py
-```
+...treat them as historical or aspirational rather than instructions to follow. For an actual deployment, see [docs/DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md), and for actual env vars, see [docs/MODEL_CONFIGURATION.md](./MODEL_CONFIGURATION.md).
 
-### Issue: "Out of memory"
+## If you want to genuinely revive the CodeBERT path
 
-Qwen uses ~1.5GB RAM. If you get OOM errors:
+`ml_config.py` and `model_downloader.py` are still present and functional as standalone code — they're just not called. Wiring CodeBERT-based analysis back in would mean:
+1. Importing `ml_settings.model` (or a new setting) into `analysis_engine.py` or `ai_service.py`.
+2. Calling `ModelDownloader().download_codebert(...)` somewhere in the startup path (or lazily, like the RAG service's `Embedder` singleton does for `all-MiniLM-L6-v2`).
+3. Replacing or augmenting the `PatternRule`/`CodeAnalyzer` regex logic with actual model inference.
 
-```bash
-# Use smaller model
-export HF_MODEL_REPO=TheBloke/Qwen2-0.5B-Instruct-GGUF
-export HF_MODEL_FILE=qwen2-0.5b-instruct.Q4_K_M.gguf
+None of that exists today — this is a description of the gap, not a completed feature.
 
-# Or disable GPU inference (already disabled)
-export n_gpu_layers=0
-```
+## Related docs
 
-### Issue: "HuggingFace authentication required"
-
-For private models:
-
-```bash
-# Authenticate
-huggingface-cli login
-
-# Or use token
-export HF_TOKEN=hf_xxx...
-```
-
-### Issue: "Model path not found in cache"
-
-```bash
-# Verify HF CLI can access models
-huggingface-cli list-repo-files microsoft/codebert-base
-
-# Check your .env file
-cat .env
-
-# Manually download
-python -c "from transformers import AutoModel; AutoModel.from_pretrained('microsoft/codebert-base')"
-```
-
----
-
-## Advanced Usage
-
-### Using Custom Fine-Tuned Models
-
-1. **Upload model to Hugging Face:**
-```bash
-python scripts/upload_model_to_hf.py \
-  --type codebert \
-  --local-path ./my-codebert \
-  --repo myorg/my-codebert
-```
-
-2. **Use in RepoSense:**
-```bash
-export CODEBERT_MODEL=myorg/my-codebert
-python services/app.py
-```
-
-### Model Downloader API
-
-Use the downloader utility in your own code:
-
-```python
-from services.api.src.utils.model_downloader import get_downloader
-
-downloader = get_downloader()
-
-# Download CodeBERT
-codebert_info = downloader.download_codebert("microsoft/codebert-base")
-model = codebert_info["model"]
-tokenizer = codebert_info["tokenizer"]
-
-# Download Qwen
-qwen_info = downloader.download_qwen_gguf(
-    repo_id="TheBloke/Qwen2-0.5B-Instruct-GGUF",
-    filename="qwen2-0.5b-instruct.Q4_K_M.gguf"
-)
-model_path = qwen_info["local_path"]
-
-# List cached models
-cached = downloader.get_cached_models()
-print(cached)
-
-# Clear cache
-downloader.clear_cache()
-```
-
-### Monitoring Model Usage
-
-Check what's cached:
-
-```bash
-# List all cached models
-ls -lh .model_cache/
-
-# Check disk usage
-du -sh .model_cache/
-```
-
-### Fallback Mode
-
-If models unavailable, code analysis still works via patterns:
-
-```python
-# In analysis_engine.py
-if self.codebert_available:
-    # Use ML-based analysis
-else:
-    # Use pattern-based analysis (always available)
-```
-
----
-
-## FAQ
-
-**Q: Will the models always download on startup?**
-A: No, only on first run or after cache clear. Subsequent runs use cached models.
-
-**Q: Can I use different models in different environments?**
-A: Yes! Use environment variables. Dev can use `microsoft/codebert-base`, prod can use your fine-tuned model.
-
-**Q: What if I'm offline?**
-A: Models must download once, then work offline from cache.
-
-**Q: Can I use multiple models?**
-A: Yes! Modify `model_downloader.py` to support multiple CodeBERT or Qwen models.
-
-**Q: How do I update models?**
-A: Just change the environment variable and restart. Old cache is cleaned up automatically.
-
----
-
-## Related Documents
-
-- **SETUP_COMPLETE.md** - Quick start (5 minutes)
-- **HUGGINGFACE_MODEL_GUIDE.md** - Uploading custom models
-- **MODEL_CONFIGURATION.md** - Configuration reference
-- **MODEL_MIGRATION_SUMMARY.md** - What changed summary
-
----
-
-**Everything is set up! Start with `SETUP_COMPLETE.md` if you're new.**
+- [docs/MODEL_CONFIGURATION.md](./MODEL_CONFIGURATION.md) — current, authoritative env var reference
+- [docs/SETUP_COMPLETE.md](./SETUP_COMPLETE.md) — quick-start for getting models running today
+- [services/api/neural_generator/README.md](../services/api/neural_generator/README.md)
+- [services/api/rag/README.md](../services/api/rag/README.md)

@@ -60,10 +60,3 @@ logs/
 debug.log
 error.log
 
-# Documentation & Internal Files (keep private)
-docs/
-REFACTORING_COMPLETION_SUMMARY.md
-push_output.txt
-DEPLOYMENT_GUIDE.md
-HUGGINGFACE_MODEL_GUIDE.md
-MODEL_MIGRATION_SUMMARY.md
