@@ -1,181 +1,160 @@
-# Internship Platform - Setup Guide
+# RepoSense - Setup Guide
 
 ## 1. DATABASE MIGRATIONS
 
+Migrations live in **`services/api/database/migrations/`** — not a root-level `database/` folder.
+
 ### Quick Start (Recommended)
 
-```powershell
-# Option A: Using the Python migration runner
-python run_migrations.py
+```bash
+# Option A: Python migration runner — runs all 12 migrations in order
+python services/api/run_migrations.py
 
-# Option B: Using Makefile (Linux/Mac)
-make migrate
-
-# Option C: Manual with psql
-psql "postgresql://postgres:postgres@localhost:5432/postgres" -f database/migrations/001_users.sql
-psql "postgresql://postgres:postgres@localhost:5432/postgres" -f database/migrations/002_resumes.sql
-psql "postgresql://postgres:postgres@localhost:5432/postgres" -f database/migrations/003_jobs.sql
-psql "postgresql://postgres:postgres@localhost:5432/postgres" -f database/migrations/004_subscriptions.sql
+# Option B: Manual with psql (all 12, in order)
+cd services/api/database/migrations
+for f in 001_users.sql 002_resumes.sql 003_jobs.sql 004_subscriptions.sql \
+         005_repo_docs.sql 006_subscriptions_unique_constraint.sql \
+         007_migrate_stripe_to_razorpay.sql 008_otp_auth.sql \
+         009_async_jobs.sql 010_linkedin_optimizer.sql \
+         011_job_trust_and_ranking.sql 012_guest_users.sql; do
+  psql "$DATABASE_URL" -f "$f"
+done
 ```
+
+`make migrate` in the root Makefile is **stale** — it only runs migrations 001–004 and will leave your schema missing OTP auth, async jobs, LinkedIn optimizer, job trust/ranking, and guest user support. Use `run_migrations.py`.
 
 ### What Each Migration Does
 
-| File | Creates | Purpose |
-|------|---------|---------|
-| `001_users.sql` | `users` table | Stores user accounts, GitHub tokens, subscription tier |
-| `002_resumes.sql` | `resumes` table | Stores user-created resumes |
-| `003_jobs.sql` | `jobs` table | Stores scraped internship/job postings |
-| `004_subscriptions.sql` | `subscriptions` table | Stores Razorpay payment info |
-| `005_repo_docs.sql` | `repo_docs` table | Stores GitHub repository documentation |
+| File | Creates / Changes | Purpose |
+|---|---|---|
+| `001_users.sql` | `users` table | Accounts, subscription tier, (legacy) `github_token` column |
+| `002_resumes.sql` | `resumes` table | User-created resumes |
+| `003_jobs.sql` | `jobs` table | Scraped job/internship postings |
+| `004_subscriptions.sql` | `subscriptions` table | Originally Stripe-shaped payment records |
+| `005_repo_docs.sql` | `repo_docs` table | Generated READMEs (RAG service) |
+| `006_subscriptions_unique_constraint.sql` | `subscriptions` | Adds a unique constraint |
+| `007_migrate_stripe_to_razorpay.sql` | `subscriptions` | Adds `razorpay_order_id`, `razorpay_payment_id`, `plan`; keeps old `stripe_*` columns for historical data but stops writing to them |
+| `008_otp_auth.sql` | `users` | Adds email-OTP columns |
+| `009_async_jobs.sql` | new `async_jobs` table | Backs `/api/async-jobs/{id}` polling |
+| `010_linkedin_optimizer.sql` | new tables | LinkedIn Profile Optimizer feature |
+| `011_job_trust_and_ranking.sql` | `jobs` | Trust/ranking columns used by `processors/trust.py` |
+| `012_guest_users.sql` | `users` | Adds `is_guest` column |
 
-### Database Schema
+### Database Schema (core tables)
 
 ```sql
--- Users: Stores accounts and GitHub tokens
+-- Users
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
+    password_hash TEXT NOT NULL,     -- vestigial: current auth is OTP-based, not password-based
     subscription_tier TEXT DEFAULT 'free',
-    github_token TEXT,              -- encrypted GitHub access token
+    github_token TEXT,               -- Fernet-encrypted GitHub access token (optional connection)
     created_at TIMESTAMP DEFAULT NOW()
+    -- + is_guest BOOLEAN (012), OTP columns (008)
 );
 
--- Resumes: User-created resumes
+-- Resumes
 CREATE TABLE resumes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
-    content JSONB NOT NULL,         -- stores resume structure as JSON
+    content JSONB NOT NULL,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Jobs: Scraped internship/job listings
+-- Jobs
 CREATE TABLE jobs (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     company TEXT NOT NULL,
     description TEXT,
     url TEXT UNIQUE,
-    source TEXT,                    -- which scraper found this (indeed, linkedin, etc)
+    source TEXT,
     posted_at TIMESTAMP,
     is_active BOOLEAN DEFAULT TRUE
+    -- + trust/ranking columns (011)
 );
 
--- Subscriptions: Razorpay payment records
--- Repo Docs: GitHub repository documentation
+-- Subscriptions (Razorpay today — see migration 007)
+CREATE TABLE subscriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id),
+    stripe_customer_id TEXT,          -- legacy, historical only
+    stripe_subscription_id TEXT,      -- legacy, historical only
+    status TEXT DEFAULT 'inactive',
+    current_period_end TIMESTAMP,
+    razorpay_order_id TEXT UNIQUE,
+    razorpay_payment_id TEXT,
+    plan TEXT DEFAULT 'pro'
+);
+
+-- Repo Docs, async_jobs, LinkedIn optimizer tables: see their individual migration files
 ```
 
 ---
 
-## 2. CRAWLER - WHERE JOBS ARE SAVED
+## 2. CRAWLER — WHERE JOBS ARE SAVED
 
 ### Flow: Job Scraping → Storage
 
 ```
-Scraper (Indeed, LinkedIn, etc)
+Scraper (LinkedIn, Indeed, Naukri, Internshala, Wellfound,
+         Unstop, Glassdoor, Cutshort, company_portals)
     ↓
-Normalizer (clean & standardize)
+Normalizer (processors/normalizer.py)
     ↓
-Deduplicator (remove duplicates)
+Deduplicator (processors/dedupe.py)
     ↓
-S3 (Raw NDJSON files) ← **First storage**
+Enricher (processors/enricher.py)
     ↓
-PostgreSQL (jobs table) ← **Final storage**
+Trust/ranking (processors/trust.py)
+    ↓
+PostgreSQL `jobs` table  ← final storage
 ```
 
-### Storage Locations
+`config.py` defines `S3_BUCKET`/`S3_PREFIX`/`DYNAMODB_TABLE` variables, but confirm against `utils.py` and `index.py` whether your deployment actually writes raw NDJSON to S3 before the DB write, or whether S3/DynamoDB are unused legacy config in your environment — treat those as optional/unconfirmed rather than a guaranteed intermediate step.
 
-#### A. AWS S3 (Raw Data)
-- **Bucket**: `job-crawler-raw` (default, configurable via `S3_BUCKET` in `.env`)
-- **Path Structure**: `jobs/{source}/{date}/{timestamp}.ndjson`
-
-**Example**:
-```
-s3://job-crawler-raw/jobs/indeed/2026-05-17/2026-05-17T13-19-46.ndjson
-s3://job-crawler-raw/jobs/linkedin/2026-05-17/2026-05-17T13-25-12.ndjson
-s3://job-crawler-raw/jobs/naukri/2026-05-17/2026-05-17T13-30-45.ndjson
-```
-
-**Format**: NDJSON (one JSON object per line)
-```json
-{"id":"indeed_12345","title":"Python Developer Intern","company":"TechCorp","location":"Bangalore","salary":"10000-15000 INR","source":"indeed","url":"https://..."}
-{"id":"indeed_12346","title":"Data Science Intern","company":"DataFirm","location":"Mumbai","salary":"12000-18000 INR","source":"indeed","url":"https://..."}
-```
-
-#### B. PostgreSQL (Processed Data)
-- **Database**: `postgres` (or `internship_db` if you changed it)
-- **Table**: `jobs`
-- **Host**: `localhost:5432` (default)
-- **Credentials**: `postgres:postgres` (from `.env`)
-
-**Query to see all scraped jobs**:
+**Query to see recently scraped jobs:**
 ```sql
-SELECT id, title, company, source, posted_at 
-FROM jobs 
-WHERE is_active = true 
-ORDER BY posted_at DESC 
+SELECT id, title, company, source, posted_at
+FROM jobs
+WHERE is_active = true
+ORDER BY posted_at DESC
 LIMIT 50;
 ```
 
 ### Crawler Configuration
 
-Located in: `services/api/crawler/src/config.py`
+Located in `services/api/crawler/src/config.py`. Key settings (all overridable via env vars):
 
-**Key Settings**:
 ```python
-# Storage
-S3_BUCKET = os.getenv("S3_BUCKET", "job-crawler-raw")
-S3_PREFIX = os.getenv("S3_PREFIX", "jobs/")  # S3 path prefix
-DYNAMODB_TABLE = os.getenv("DYNAMODB_TABLE", "jobs")  # Alternative: DynamoDB
-
-# Crawl Settings
-MAX_WORKERS = int(os.getenv("MAX_WORKERS", "8"))  # parallel scrapers
-REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))  # seconds per request
-
-# What to scrape
-DEFAULT_KEYWORDS = [
-    "internship",
-    "fresher",
-    "graduate trainee",
-    "junior developer",
-    "software engineer intern",
-    "data science intern",
-    "ML intern",
-]
-
-DEFAULT_LOCATIONS = [
-    "Bangalore", "Mumbai", "Delhi", "Pune", ...
-]
-
-# Enabled scrapers
-ENABLED_SCRAPERS = [
-    "linkedin",
-    "indeed", 
-    "naukri",
-    "internshala",
-    "wellfound",
-    "glassdoor",
-    "cutshort",
-    "unstop",
-]
+MAX_WORKERS = int(os.getenv("MAX_WORKERS", "8"))
+REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
+RETRY_BACKOFF = float(os.getenv("RETRY_BACKOFF", "2.0"))
+RATE_LIMIT_DELAY = float(os.getenv("RATE_LIMIT_DELAY", "1.5"))
+USE_PROXY = os.getenv("USE_PROXY", "false")
+HEADLESS = os.getenv("HEADLESS", "true")
 ```
 
 ### Running the Crawler
 
-```powershell
-# Navigate to crawler directory
-cd e:\Repo_Sense\services\api\crawler
-
-# Install dependencies
+```bash
+cd services/api/crawler
 pip install -r requirements.txt
 
-# Run the crawler
+# Default run (all enabled scrapers)
 python src/index.py
 
-# Or run a specific scraper
-python -m src.scrapers.indeed
+# Custom: specific scrapers, comma-separated, plus a page cap
+python src/index.py --scrapers linkedin,indeed,naukri --max-pages 5
+
+# Dry run (no DB writes)
+python src/index.py --dry-run
 ```
+
+The crawler is a **one-shot CLI job**, not a persistent server — it exits when the run finishes. Schedule it via cron, a CI job, or a container run, not `uvicorn`.
 
 ---
 
@@ -183,130 +162,134 @@ python -m src.scrapers.indeed
 
 ### Common Errors & Solutions
 
-#### Error 1: `ConnectionResetError: An existing connection was forcibly closed`
-**Cause**: PostgreSQL or Redis not running
-**Solution**:
-```powershell
-# Windows: Start PostgreSQL service
-net start PostgreSQL14  # adjust version number
-
-# Or use Docker (recommended)
+#### `ConnectionResetError` / DB connection refused
+**Cause:** PostgreSQL not running.
+```bash
 docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:15
-
-# Start Redis
-docker run -d -p 6379:6379 redis:latest
 ```
 
-#### Error 2: `redis.exceptions.ConnectionError`
-**Cause**: Redis connection failed in rate-limiting middleware
-**Status**: **FIXED** - Rate limiter now skips if Redis is unavailable
+#### `redis.exceptions.ConnectionError`
+**Cause:** Redis unreachable. The app is designed to degrade gracefully — `/health/detailed` will report `redis: disconnected` rather than crashing. If routes are actually failing (not just health reporting), check `configs/redis.py`.
 
-#### Error 3: `AttributeError: 'NoneType' object has no attribute ...`
-**Cause**: DB pool is None and code tries to call methods on it
-**Status**: **FIXED** - All routes now check `if pool is None: raise HTTPException(503)`
-
-#### Error 4: `NameError: name 'get_db_pool' is not defined`
-**Cause**: Missing import in route files
-**Status**:  **FIXED** - All imports added
-
-#### Error 5: `ModuleNotFoundError: No module named '...'`
-**Cause**: Missing dependencies
-**Solution**:
-```powershell
-cd e:\Repo_Sense\services\api
+#### `ModuleNotFoundError: No module named '...'`
+```bash
+cd services/api
 pip install -r requirements.txt
 ```
+For the sub-services, each has its **own** `requirements.txt`:
+```bash
+pip install -r services/api/crawler/requirements.txt
+pip install -r services/api/rag/requirements.txt
+pip install -r services/api/neural_generator/requirements.txt
+```
 
-### How to Run Without Errors
+#### API starts but every AI feature fails
+**Cause:** `RAG_SERVICE_URL` / `NEURAL_GENERATOR_URL` point to services that aren't running. Start those two first, or use Docker Compose which sequences health checks for you.
 
-**Step 1: Start Dependencies**
-```powershell
-# Option A: Use Docker (easiest)
-cd e:\Repo_Sense\infrastructure\docker
-docker-compose up -d
+### How to Run Without Errors, Step by Step
 
-# Option B: Start manually
-# Terminal 1: PostgreSQL
+**Step 1 — Start dependencies**
+```bash
+# Easiest: Docker Compose brings up everything except the frontend
+docker-compose -f infrastructure/docker/docker-compose.yml up -d
+
+# Manual alternative:
 docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:15
-
-# Terminal 2: Redis
-docker run -d -p 6379:6379 redis:latest
+docker run -d -p 6379:6379 redis:7-alpine
 ```
 
-**Step 2: Run Migrations**
-```powershell
-cd e:\Repo_Sense
-python run_migrations.py
+**Step 2 — Run migrations**
+```bash
+python services/api/run_migrations.py
 ```
 
-**Step 3: Start Backend**
-```powershell
-cd e:\Repo_Sense\services\api
-python -m venv venv
-.\venv\Scripts\activate
+**Step 3 — Start the microservices the API depends on**
+```bash
+cd services/api/neural_generator && uvicorn src.app:app --port 8002 &
+cd services/api/rag && uvicorn src.app:app --port 8001 &
+```
+
+**Step 4 — Start the Core API**
+```bash
+cd services/api
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 uvicorn src.core.app:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**Step 4: Start Frontend**
-```powershell
-cd e:\Repo_Sense\apps\web
+Note the module path: `src.core.app:app`, not `src.app:app` — the FastAPI factory (`create_application()`) lives in `src/core/app.py`.
+
+**Step 5 — Start the frontend**
+```bash
+cd apps/web
 npm install
 npm run dev
 ```
 
-**Step 5: Test**
-```powershell
-# Test backend
+**Step 6 — Verify**
+```bash
 curl http://localhost:8000/health
-# Should return: {"status": "ok"}
+# {"status": "ok"}
 
-# Test API
-curl http://localhost:8000/api/resume/list
-# Should return: [] (or 401 if not authenticated)
+curl http://localhost:8000/health/detailed
+# {"status": "ok", "services": {"api": "ok", "db": "ok", "redis": "ok"}}
+
+curl http://localhost:8000/api/jobs/featured
+# [] or a list of jobs
 ```
 
 ---
 
 ## 4. ENVIRONMENT VARIABLES
 
-Update `.env` in `e:\Repo_Sense\` with:
+`config.py` resolves `.env` from the repo root (four directories up from `services/api/src/configs/`). Create it there:
 
 ```bash
 # Database
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/internship_db
 
 # Redis
-REDIS_URL=redis://localhost:6379/0
+REDIS_URL=redis://localhost:6379
 
-# GitHub OAuth
+# GitHub OAuth (optional account connection, not primary login)
 GITHUB_CLIENT_ID=your_github_client_id
 GITHUB_CLIENT_SECRET=your_github_client_secret
 GITHUB_REDIRECT_URI=http://localhost:8000/api/github/callback
+GITHUB_TOKEN_ENCRYPTION_KEY=your_fernet_key   # python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 
 # JWT
-JWT_SECRET=your_secret_key_here
+JWT_SECRET=your_secret_key_minimum_32_characters
 
-# Encryption
-GITHUB_TOKEN_ENCRYPTION_KEY=your_32_char_encryption_key_________
+# Email OTP (primary login)
+EMAIL_PROVIDER=resend
+RESEND_API_KEY=your_resend_api_key
 
-# AWS (for crawler S3 storage)
-AWS_ACCESS_KEY=your_aws_key
-AWS_SECRET_KEY=your_aws_secret
-S3_BUCKET=job-crawler-raw
+# Storage (resume PDFs)
+AWS_ACCESS_KEY_ID=your_aws_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret
+AWS_REGION=us-east-1
+S3_BUCKET=resume-storage
 
-# Razorpay
+# Razorpay — not Stripe
 RAZORPAY_KEY_ID=rzp_test_...
 RAZORPAY_KEY_SECRET=...
 
-# Frontend
+# Frontend / CORS
 FRONTEND_URL=http://localhost:3000
+CORS_ORIGINS=["http://localhost:3000","http://localhost:8000"]
 
-# API
-API_HOST=0.0.0.0
-API_PORT=8000
+# Sibling microservices
+RAG_SERVICE_URL=http://localhost:8001
+NEURAL_GENERATOR_URL=http://localhost:8002
+
+# Core API
+HOST=0.0.0.0
+PORT=8000
 ENVIRONMENT=development
+REQUIRE_AUTH=false
 ```
+
+`AWS_ACCESS_KEY` / `AWS_SECRET_KEY` / `API_HOST` / `API_PORT` (as seen in older docs) are **not** the variable names the code actually reads — it's `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `HOST`, and `PORT`.
 
 ---
 
@@ -314,12 +297,13 @@ ENVIRONMENT=development
 
 - [ ] PostgreSQL running? → `docker ps | grep postgres`
 - [ ] Redis running? → `docker ps | grep redis`
-- [ ] Migrations completed? → `python run_migrations.py`
-- [ ] `.env` file exists? → Check `e:\Repo_Sense\.env`
-- [ ] Dependencies installed? → `pip install -r requirements.txt`
-- [ ] Backend starts? → `uvicorn src.core.app:app --reload`
+- [ ] Migrations completed (all 12)? → `python services/api/run_migrations.py`
+- [ ] `.env` exists at the repo root?
+- [ ] Core API deps installed? → `pip install -r services/api/requirements.txt`
+- [ ] RAG and Neural Generator running, if you need AI features? → ports 8001 and 8002
+- [ ] Backend starts? → `uvicorn src.core.app:app --reload` (from `services/api/`)
 - [ ] Frontend starts? → `npm run dev` in `apps/web`
-- [ ] API responds? → `curl http://localhost:8000/health`
+- [ ] API responds? → `curl http://localhost:8000/health/detailed`
 
 ---
 
@@ -328,4 +312,4 @@ ENVIRONMENT=development
 If you still see errors, share:
 1. The exact error message
 2. Which step failed
-3. Output of: `python run_migrations.py` or `uvicorn src.core.app:app --reload`
+3. Output of `python services/api/run_migrations.py` and `uvicorn src.core.app:app --reload`
