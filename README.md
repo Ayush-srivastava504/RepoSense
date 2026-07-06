@@ -326,9 +326,6 @@ See [docs/DEPLOYMENT_GUIDE.md](./docs/DEPLOYMENT_GUIDE.md). There is no committe
 - Write tests for new features (see the Testing section above — coverage is currently thin)
 - Update documentation in the relevant README when behavior changes
 
-## License
-
-MIT — see [LICENSE](./LICENSE).
 
 ## Support
 
