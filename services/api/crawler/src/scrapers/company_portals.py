@@ -1,4 +1,3 @@
-# these one are not running because they ar efixed scraper some css issue means i am scraping by old way these website have change css now new css to check
 import json
 import os
 import random
@@ -13,6 +12,66 @@ from playwright.sync_api import sync_playwright
 from scrapers.base import BaseScraper
 from config import COMPANY_PORTALS
 from utils import safe_get
+
+
+JOB_KEYWORDS = (
+    "intern",
+    "trainee",
+    "engineer",
+    "developer",
+    "analyst",
+    "manager",
+    "associate",
+    "specialist",
+    "consultant",
+    "executive",
+    "lead",
+    "designer",
+    "scientist",
+    "architect",
+    "officer",
+    "coordinator",
+    "graduate",
+    "fresher",
+)
+
+JOB_HREF_KEYWORDS = (
+    "job",
+    "career",
+    "opening",
+    "position",
+    "vacan",
+    "apply",
+    "requisition",
+    "req/",
+)
+
+CARD_SELECTOR_CANDIDATES = [
+    "article",
+    ".job-card",
+    ".opening",
+    ".job-listing",
+    ".job-item",
+    ".job-row",
+    ".job-tile",
+    ".position",
+    ".posting",
+    ".vacancy",
+    "li.job",
+    "tr.job",
+    '[class*="job-card"]',
+    '[class*="jobCard"]',
+    '[class*="job-item"]',
+    '[class*="jobItem"]',
+    '[class*="job-listing"]',
+    '[class*="posting"]',
+    '[data-testid*="job"]',
+    '[data-automation-id*="job"]',
+    '[class*="opening"]',
+    '[class*="vacan"]',
+    '[class*="career"]',
+    '[class*="job"]',
+]
 
 
 class CompanyPortalsScraper(BaseScraper):
@@ -98,6 +157,8 @@ class CompanyPortalsScraper(BaseScraper):
 
         results = []
 
+        seen = set()
+
         base_url = config.get(
             "jobs_url",
             config.get(
@@ -143,7 +204,6 @@ class CompanyPortalsScraper(BaseScraper):
 
                 continue
 
-            # Write debug HTML only if SCRAPER_DEBUG is enabled
             if os.getenv("SCRAPER_DEBUG"):
                 with open(
                     f"{company_key}_debug_{page}.html",
@@ -157,41 +217,28 @@ class CompanyPortalsScraper(BaseScraper):
                 "html.parser",
             )
 
-            card_selector = selectors.get(
-                "job_cards",
-                (
-                    "article, "
-                    ".job-card, "
-                    ".opening, "
-                    ".job, "
-                    '[class*="job"]'
-                ),
+            page_jobs = []
+
+            jsonld_jobs = self._extract_jsonld_jobs(
+                soup,
+                config,
             )
 
-            cards = soup.select(
-                card_selector
+            page_jobs.extend(jsonld_jobs)
+
+            cards, used_selector = self._find_cards(
+                soup,
+                selectors.get("job_cards"),
             )
 
             self.log.info(
-                "%s found %d cards",
+                "%s page %d: %d jsonld, %d cards via %s",
                 config["name"],
+                page,
+                len(jsonld_jobs),
                 len(cards),
+                used_selector,
             )
-
-            if not cards:
-
-                jsonld_jobs = self._extract_jsonld_jobs(
-                    soup,
-                    config,
-                )
-
-                if jsonld_jobs:
-
-                    results.extend(
-                        jsonld_jobs
-                    )
-
-                continue
 
             for card in cards:
 
@@ -204,13 +251,147 @@ class CompanyPortalsScraper(BaseScraper):
                     )
 
                     if job:
-                        results.append(job)
+                        page_jobs.append(job)
 
                 except Exception:
                     continue
 
-            if len(cards) < 3:
+            if not page_jobs:
+
+                heuristic_jobs = self._heuristic_extract(
+                    soup,
+                    config,
+                    base_url,
+                )
+
+                self.log.info(
+                    "%s page %d: %d heuristic jobs",
+                    config["name"],
+                    page,
+                    len(heuristic_jobs),
+                )
+
+                page_jobs.extend(heuristic_jobs)
+
+            new_count = 0
+
+            for job in page_jobs:
+
+                key = (
+                    job["title"].lower(),
+                    job.get("apply_url", "").lower(),
+                )
+
+                if key in seen:
+                    continue
+
+                seen.add(key)
+
+                results.append(job)
+
+                new_count += 1
+
+            if new_count == 0:
                 break
+
+        return results
+
+    def _find_cards(
+        self,
+        soup,
+        configured_selector: Optional[str],
+    ):
+
+        selector_list = []
+
+        if configured_selector:
+            selector_list.append(configured_selector)
+
+        selector_list.extend(CARD_SELECTOR_CANDIDATES)
+
+        for selector in selector_list:
+
+            try:
+                cards = soup.select(selector)
+            except Exception:
+                continue
+
+            if len(cards) >= 2:
+                return cards, selector
+
+        return [], "none"
+
+    def _heuristic_extract(
+        self,
+        soup,
+        config: Dict,
+        base_url: str,
+    ) -> List[Dict]:
+
+        results = []
+
+        seen_titles = set()
+
+        for link in soup.select("a[href]"):
+
+            text = _clean(
+                link.get_text(" ", strip=True)
+            )
+
+            href = link.get("href", "")
+
+            if not text or len(text) < 4 or len(text) > 120:
+                continue
+
+            text_lower = text.lower()
+
+            href_lower = href.lower()
+
+            title_match = any(
+                kw in text_lower for kw in JOB_KEYWORDS
+            )
+
+            href_match = any(
+                kw in href_lower for kw in JOB_HREF_KEYWORDS
+            )
+
+            if not (title_match or href_match):
+                continue
+
+            if text_lower in seen_titles:
+                continue
+
+            seen_titles.add(text_lower)
+
+            job = self._empty_job()
+
+            job["company"] = config["name"]
+
+            job["source"] = (
+                "company_portal_"
+                f"{config['name'].lower().replace(' ', '_')}"
+            )
+
+            job["title"] = text
+
+            container = link.find_parent(
+                ["li", "tr", "div", "article"]
+            )
+
+            job["description"] = _clean(
+                container.get_text(" ", strip=True)
+            ) if container else text
+
+            job["apply_url"] = urljoin(
+                base_url,
+                href,
+            )
+
+            job["type"] = _infer_type(text)
+
+            job["is_remote"] = "remote" in job["description"].lower()
+
+            results.append(job)
 
         return results
 
@@ -264,20 +445,30 @@ class CompanyPortalsScraper(BaseScraper):
                 timeout=60000,
             )
 
-            page.wait_for_timeout(8000)
+            try:
+                page.wait_for_load_state(
+                    "networkidle",
+                    timeout=15000,
+                )
+            except Exception:
+                pass
+
+            page.wait_for_timeout(4000)
 
             try:
 
-                for _ in range(4):
+                for _ in range(6):
 
-                    page.mouse.wheel(0, 3500)
+                    page.mouse.wheel(0, 3000)
 
                     page.wait_for_timeout(
-                        random.randint(1000, 2500)
+                        random.randint(800, 1800)
                     )
 
             except Exception:
                 pass
+
+            page.wait_for_timeout(2000)
 
             html = page.content()
 
@@ -336,6 +527,23 @@ class CompanyPortalsScraper(BaseScraper):
                     if job:
                         results.append(job)
 
+                elif isinstance(json_ld, dict) and "@graph" in json_ld:
+
+                    for item in json_ld.get("@graph", []):
+
+                        if (
+                            isinstance(item, dict)
+                            and item.get("@type") == "JobPosting"
+                        ):
+
+                            job = self._parse_jsonld(
+                                item,
+                                config,
+                            )
+
+                            if job:
+                                results.append(job)
+
             except Exception:
                 pass
 
@@ -364,7 +572,9 @@ class CompanyPortalsScraper(BaseScraper):
             ),
             "h2",
             "h3",
+            "h4",
             ".title",
+            '[class*="title"]',
             "a",
         ]
 
@@ -398,7 +608,7 @@ class CompanyPortalsScraper(BaseScraper):
             card,
             selectors.get(
                 "location",
-                ".location",
+                '.location, [class*="location"]',
             ),
         )
 
@@ -406,7 +616,7 @@ class CompanyPortalsScraper(BaseScraper):
             card,
             selectors.get(
                 "salary",
-                ".salary",
+                '.salary, [class*="salary"]',
             ),
         )
 
@@ -416,7 +626,7 @@ class CompanyPortalsScraper(BaseScraper):
             card,
             selectors.get(
                 "duration",
-                ".duration",
+                '.duration, [class*="duration"]',
             ),
         )
 
@@ -489,6 +699,13 @@ class CompanyPortalsScraper(BaseScraper):
 
         if isinstance(
             job_location,
+            list,
+        ) and job_location:
+
+            job_location = job_location[0]
+
+        if isinstance(
+            job_location,
             dict,
         ):
 
@@ -545,12 +762,14 @@ class CompanyPortalsScraper(BaseScraper):
             )
         )
 
+        apply_field = json_ld.get("apply", {})
+
+        if not isinstance(apply_field, dict):
+            apply_field = {}
+
         job["apply_url"] = (
             json_ld.get("url", "")
-            or json_ld.get(
-                "apply",
-                {},
-            ).get(
+            or apply_field.get(
                 "url",
                 "",
             )
