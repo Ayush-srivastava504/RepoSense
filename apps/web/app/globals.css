@@ -323,6 +323,11 @@ body {
     color: var(--indigo);
   }
 
+  .chip-active {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
   /* Nav */
   .nav-link {
     font-size: 0.9375rem;

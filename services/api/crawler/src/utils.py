@@ -545,6 +545,183 @@ def job_exists(
     )
 
 
+def make_hackathon_id(
+    title: str,
+    organizer: str,
+    source_url: str,
+) -> str:
+
+    raw_value = (
+        f"{title.lower().strip()}|"
+        f"{(organizer or '').lower().strip()}|"
+        f"{source_url}"
+    )
+
+    return "hk_" + hashlib.sha256(
+        raw_value.encode()
+    ).hexdigest()[:16]
+
+
+def make_hackathon_slug(
+    title: str,
+    hackathon_id: str,
+) -> str:
+
+    import re as _re
+
+    slug = _re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    slug = _re.sub(r"-{2,}", "-", slug)
+
+    if not slug:
+        slug = "hackathon"
+
+    return f"{slug}-{hackathon_id[-6:]}"
+
+
+def upsert_hackathons(
+    hackathons: List[Dict]
+) -> int:
+
+    if not hackathons:
+        return 0
+
+    conn = get_pg_conn()
+
+    cursor = conn.cursor()
+
+    rows = []
+
+    for h in hackathons:
+
+        rows.append(
+            (
+                h.get("id"),
+                h.get("title"),
+                h.get("slug"),
+                h.get("organizer"),
+                h.get("description"),
+                h.get("participation_mode"),
+                h.get("location"),
+                h.get("country"),
+                bool(h.get("is_global", False)),
+                bool(h.get("is_student_friendly", False)),
+                h.get("start_date"),
+                h.get("end_date"),
+                h.get("registration_deadline"),
+                h.get("prize_pool_text"),
+                h.get("prize_value_usd"),
+                h.get("team_size_min"),
+                h.get("team_size_max"),
+                h.get("eligibility"),
+                json.dumps(h.get("themes") or []),
+                json.dumps(h.get("submission_requirements") or []),
+                h.get("source"),
+                json.dumps(h.get("sources") or [h.get("source")]),
+                h.get("source_url"),
+                h.get("apply_url"),
+                h.get("image_url"),
+                h.get("status", "upcoming"),
+                h.get("quality_score", 0),
+                h.get("trust_score", 0),
+                h.get("source_hash"),
+            )
+        )
+
+    execute_batch(
+        cursor,
+        """
+        INSERT INTO hackathons (
+            id, title, slug, organizer, description,
+            participation_mode, location, country, is_global, is_student_friendly,
+            start_date, end_date, registration_deadline,
+            prize_pool_text, prize_value_usd,
+            team_size_min, team_size_max,
+            eligibility, themes, submission_requirements,
+            source, sources, source_url, apply_url, image_url,
+            status, quality_score, trust_score, source_hash,
+            last_seen_at, updated_at
+        )
+        VALUES (
+            %s,%s,%s,%s,%s,
+            %s,%s,%s,%s,%s,
+            %s,%s,%s,
+            %s,%s,
+            %s,%s,
+            %s,%s,%s,
+            %s,%s,%s,%s,%s,
+            %s,%s,%s,%s,
+            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )
+        ON CONFLICT (source_url) DO UPDATE SET
+            title                  = EXCLUDED.title,
+            description            = EXCLUDED.description,
+            participation_mode     = EXCLUDED.participation_mode,
+            location               = EXCLUDED.location,
+            country                = EXCLUDED.country,
+            is_global              = EXCLUDED.is_global,
+            is_student_friendly    = EXCLUDED.is_student_friendly,
+            start_date             = EXCLUDED.start_date,
+            end_date               = EXCLUDED.end_date,
+            registration_deadline  = EXCLUDED.registration_deadline,
+            prize_pool_text        = EXCLUDED.prize_pool_text,
+            prize_value_usd        = EXCLUDED.prize_value_usd,
+            team_size_min          = EXCLUDED.team_size_min,
+            team_size_max          = EXCLUDED.team_size_max,
+            eligibility            = EXCLUDED.eligibility,
+            themes                 = EXCLUDED.themes,
+            submission_requirements = EXCLUDED.submission_requirements,
+            apply_url              = EXCLUDED.apply_url,
+            image_url              = COALESCE(EXCLUDED.image_url, hackathons.image_url),
+            status                 = EXCLUDED.status,
+            quality_score          = EXCLUDED.quality_score,
+            trust_score            = EXCLUDED.trust_score,
+            sources                = EXCLUDED.sources,
+            is_active              = TRUE,
+            last_seen_at           = CURRENT_TIMESTAMP,
+            updated_at             = CURRENT_TIMESTAMP
+        """,
+        rows,
+    )
+
+    conn.commit()
+
+    written = len(rows)
+
+    log.info(
+        "Upserted %d hackathons into PostgreSQL at %s:%s/%s",
+        written,
+        PG_HOST,
+        PG_PORT,
+        PG_DB,
+    )
+
+    return written
+
+
+def deactivate_stale_hackathons(days: int = 3) -> int:
+
+    conn = get_pg_conn()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        UPDATE hackathons
+        SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP
+        WHERE last_seen_at < NOW() - INTERVAL '1 day' * %s
+          AND is_active = TRUE
+        """,
+        (days,),
+    )
+
+    conn.commit()
+
+    deactivated = cursor.rowcount
+
+    log.info("Deactivated %d stale hackathons", deactivated)
+
+    return deactivated
+
+
 def safe_get(
     session: requests.Session,
     url: str,

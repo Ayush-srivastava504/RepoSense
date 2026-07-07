@@ -1,0 +1,117 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+
+import { getHackathons, getHackathonsEndingSoon, BASE_URL } from '@/lib/hackathons';
+import HackathonCard from '@/app/components/HackathonCard';
+import TrackView from '@/app/components/TrackView';
+
+export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: 'Hackathons — Active Hackathons Worth Building For',
+  description:
+    'A short, daily-refreshed list of the best active hackathons — online, India, and global. Curated for quality, not volume.',
+  alternates: {
+    canonical: `${BASE_URL}/hackathons`,
+  },
+};
+
+const FILTERS = [
+  { label: 'All', mode: undefined, country: undefined },
+  { label: 'Online', mode: 'online', country: undefined },
+  { label: 'India', mode: undefined, country: 'India' },
+  { label: 'Global', mode: undefined, country: undefined },
+];
+
+export default async function HackathonsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ mode?: string; country?: string; theme?: string }>;
+}) {
+  const params = await searchParams;
+
+  const [hackathons, endingSoon] = await Promise.all([
+    getHackathons({ mode: params.mode, country: params.country, theme: params.theme, limit: 20 }),
+    getHackathonsEndingSoon(5),
+  ]);
+
+  return (
+    <main className="mx-auto max-w-6xl px-4 py-12">
+      <TrackView event="hackathon_page_viewed" params={{ result_count: hackathons.length }} />
+      <header className="mb-10">
+        <p className="eyebrow">Discover</p>
+        <h1 className="display text-3xl font-medium" style={{ color: 'var(--ink)' }}>
+          Find your next hackathon
+        </h1>
+        <p className="mt-2 max-w-2xl text-sm leading-7" style={{ color: 'var(--ink-soft)' }}>
+          Build. Compete. Ship something. We crawl hackathon listings every day and keep only the
+          best {hackathons.length || 20} active ones — no stale or duplicate events.
+        </p>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          {FILTERS.map((f) => {
+            const qs = new URLSearchParams();
+            if (f.mode) qs.set('mode', f.mode);
+            if (f.country) qs.set('country', f.country);
+            const href = qs.toString() ? `/hackathons?${qs.toString()}` : '/hackathons';
+            const active =
+              (f.mode ?? '') === (params.mode ?? '') && (f.country ?? '') === (params.country ?? '');
+
+            return (
+              <Link
+                key={f.label}
+                href={href}
+                className={active ? 'chip chip-active text-sm' : 'chip chip-muted text-sm'}
+              >
+                {f.label}
+              </Link>
+            );
+          })}
+        </div>
+      </header>
+
+      {endingSoon.length > 0 && (
+        <section className="mb-10">
+          <h2 className="mb-3 text-sm font-medium uppercase tracking-wide" style={{ color: 'var(--ink-soft)' }}>
+            Ending soon
+          </h2>
+          <div className="flex flex-col gap-2">
+            {endingSoon.map((h) => (
+              <Link
+                key={h.id}
+                href={`/hackathons/${h.slug}`}
+                className="panel flex items-center justify-between px-4 py-3 text-sm transition hover:-translate-y-0.5"
+              >
+                <span style={{ color: 'var(--ink)' }}>{h.title}</span>
+                <span style={{ color: 'var(--ink-soft)' }}>
+                  {h.registration_deadline
+                    ? new Date(h.registration_deadline).toLocaleDateString()
+                    : 'Deadline TBA'}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section>
+        <h2 className="mb-4 text-sm font-medium uppercase tracking-wide" style={{ color: 'var(--ink-soft)' }}>
+          Active hackathons
+        </h2>
+
+        {hackathons.length === 0 ? (
+          <p className="text-sm" style={{ color: 'var(--ink-soft)' }}>
+            No active hackathons match this filter right now — check back soon, the crawler
+            refreshes this list daily.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {hackathons.map((h) => (
+              <HackathonCard key={h.id} hackathon={h} />
+            ))}
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}

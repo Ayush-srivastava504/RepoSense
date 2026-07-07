@@ -152,6 +152,29 @@ services:
         condition: service_healthy
     mem_limit: 2048m
     cpus: 1.5
+  hackathon-crawler:
+    build:
+      context: ../../services/api/crawler
+      dockerfile: Dockerfile
+      target: dev
+    container_name: hackathon-crawler
+    # Batch job like `crawler` — runs once and exits. Schedule it once a
+    # day (host cron / EventBridge rule calling `docker compose run
+    # --rm hackathon-crawler`, or an ECS scheduled task in prod) rather
+    # than `restart: unless-stopped`, since hackathons don't change
+    # minute-to-minute the way job boards do.
+    restart: "no"
+    command: ["python", "src/hackathon_index.py"]
+    env_file:
+      - .env
+    environment:
+      HEADLESS: "true"
+      AWS_REGION: us-east-1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 1024m
+    cpus: 1
 volumes:
   postgres_data:
   rag_data:
