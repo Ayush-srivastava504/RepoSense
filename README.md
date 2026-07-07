@@ -101,72 +101,701 @@ See [docs/DEPLOYMENT_GUIDE.md](./docs/DEPLOYMENT_GUIDE.md) for production deploy
 
 ```
 RepoSense-master/
-├── README.md                          # This file
-├── LICENSE                            # MIT
-├── Makefile                           # dev/build/test/migrate helper targets
-├── ci-test.txt                        # CI smoke-test marker file, not project docs
+│
+├── .dockerignore
+│   → Defines files excluded from Docker build contexts.
+│
+├── .gitignore
+│   → Defines local/generated files excluded from Git.
+│
+├── .github/
+│   └── workflows/
+│       └── backend-cicd.yml
+│           → GitHub Actions CI/CD workflow for backend build and deployment.
+│
+├── Makefile
+│   → Provides shortcuts for development, build, test, migration, and Docker commands.
+│
+├── README.md
+│   → Main project documentation, architecture overview, setup, and API information.
+│
+├── ci-test.txt
+│   → Small CI test artifact used to verify repository/workflow changes.
+│
+│
 ├── apps/
-│   ├── OVERVIEW.md                    # Executive summary & architecture
-│   └── web/                           # Next.js 14 frontend
+│   │
+│   ├── OVERVIEW.md
+│   │   → Overview of applications contained in the apps workspace.
+│   │
+│   └── web/
+│       │   → Next.js 14 frontend application deployed separately from backend services.
+│       │
+│       ├── .gitignore
+│       │   → Frontend-specific Git ignore rules.
+│       │
 │       ├── README.md
-│       ├── app/                       # App Router pages
-│       │   ├── page.tsx               # Landing page
-│       │   ├── about/                 # About page
-│       │   ├── jobs/, internships/    # Public job/internship listings + [slug] detail pages
-│       │   └── (auth)/                # Routes behind AuthGuard
-│       │       ├── login/             # Email OTP login
-│       │       ├── register/          # Account creation (OTP-based, not password)
-│       │       ├── dashboard/         # Main authenticated dashboard
-│       │       ├── github/            # GitHub OAuth connect + repo browser + terminal
-│       │       ├── linkedin/          # LinkedIn Profile Optimizer
-│       │       └── resume/builder/    # Resume builder
-│       ├── app/components/            # AdSlot, AppShell, JobCard, CommitGraph3D, Terminal, etc.
-│       └── lib/                       # api.ts, auth.ts (OTP + guest), jobs.ts, stripe.ts (→ Razorpay), featureFlags.ts
+│       │   → Frontend setup and development documentation.
+│       │
+│       ├── app/
+│       │   │   → Next.js App Router pages, layouts, and page-level components.
+│       │   │
+│       │   ├── page.tsx
+│       │   │   → Main InternFlow landing page.
+│       │   │
+│       │   ├── layout.tsx
+│       │   │   → Global root layout shared across all frontend routes.
+│       │   │
+│       │   ├── globals.css
+│       │   │   → Global styles and Tailwind CSS configuration rules.
+│       │   │
+│       │   ├── sitemap.ts
+│       │   │   → Dynamically generates the search-engine sitemap.
+│       │   │
+│       │   ├── about/
+│       │   │   └── page.tsx
+│       │   │       → Public About page describing InternFlow.
+│       │   │
+│       │   ├── jobs/
+│       │   │   ├── page.tsx
+│       │   │   │   → Displays searchable and ranked job listings.
+│       │   │   │
+│       │   │   └── [slug]/
+│       │   │       └── page.tsx
+│       │   │           → Dynamic job detail page resolved from the job slug.
+│       │   │
+│       │   ├── internships/
+│       │   │   ├── page.tsx
+│       │   │   │   → Displays internship-specific listings.
+│       │   │   │
+│       │   │   └── [slug]/
+│       │   │       └── page.tsx
+│       │   │           → Dynamic internship detail page.
+│       │   │
+│       │   ├── (auth)/
+│       │   │   │   → Route group containing authentication and protected product pages.
+│       │   │   │
+│       │   │   ├── login/
+│       │   │   │   └── page.tsx
+│       │   │   │       → Email OTP login interface.
+│       │   │   │
+│       │   │   ├── register/
+│       │   │   │   └── page.tsx
+│       │   │   │       → OTP-based user account registration interface.
+│       │   │   │
+│       │   │   ├── dashboard/
+│       │   │   │   └── page.tsx
+│       │   │   │       → Main authenticated user dashboard.
+│       │   │   │
+│       │   │   ├── github/
+│       │   │   │   └── page.tsx
+│       │   │   │       → GitHub repository browser and interactive repository terminal.
+│       │   │   │
+│       │   │   ├── linkedin/
+│       │   │   │   └── page.tsx
+│       │   │   │       → LinkedIn profile analysis and optimization interface.
+│       │   │   │
+│       │   │   └── resume/
+│       │   │       └── builder/
+│       │   │           └── page.tsx
+│       │   │               → AI-assisted resume builder interface.
+│       │   │
+│       │   └── components/
+│       │       │   → Shared UI components primarily used by App Router pages.
+│       │       │
+│       │       ├── AdSlot.tsx
+│       │       │   → Generic advertisement placement component.
+│       │       │
+│       │       ├── AppShell.tsx
+│       │       │   → Shared application shell and page structure.
+│       │       │
+│       │       ├── ApplyButton.tsx
+│       │       │   → Handles job application CTA behaviour.
+│       │       │
+│       │       ├── AuthGuard.tsx
+│       │       │   → Protects frontend content requiring authentication.
+│       │       │
+│       │       ├── CommitGraph3D.tsx
+│       │       │   → Renders an interactive 3D Git commit visualization.
+│       │       │
+│       │       ├── FeaturedJobs.tsx
+│       │       │   → Displays selected or highly ranked job opportunities.
+│       │       │
+│       │       ├── Footer.tsx
+│       │       │   → Shared site footer.
+│       │       │
+│       │       ├── HeroGraph.tsx
+│       │       │   → Visual graph used in the landing-page hero section.
+│       │       │
+│       │       ├── InternshipDetailAds.tsx
+│       │       │   → Advertisement placement specifically for internship detail pages.
+│       │       │
+│       │       ├── JobBadges.tsx
+│       │       │   → Renders job metadata and classification badges.
+│       │       │
+│       │       ├── JobCard.tsx
+│       │       │   → Displays an individual job or internship listing card.
+│       │       │
+│       │       ├── JobDetail.tsx
+│       │       │   → Shared detailed job information presentation component.
+│       │       │
+│       │       ├── Logo.tsx
+│       │       │   → InternFlow/RepoSense logo component.
+│       │       │
+│       │       └── SponsoredCard.tsx
+│       │           → Displays sponsored content inside listing feeds.
+│       │
+│       ├── components/
+│       │   └── github/
+│       │       └── Terminal.tsx
+│       │           → xterm.js-powered live GitHub repository terminal component.
+│       │
+│       ├── lib/
+│       │   │   → Frontend utility, API, authentication, and feature helper modules.
+│       │   │
+│       │   ├── analytics.ts
+│       │   │   → Sends custom frontend events to Google Analytics.
+│       │   │
+│       │   ├── api.ts
+│       │   │   → Central HTTP fetch wrapper for FastAPI backend requests.
+│       │   │
+│       │   ├── auth.ts
+│       │   │   → Handles OTP authentication, JWT storage, and guest sessions.
+│       │   │
+│       │   ├── featureFlags.ts
+│       │   │   → Controls frontend feature availability through flags.
+│       │   │
+│       │   ├── jobs.ts
+│       │   │   → Job and internship API fetching helpers.
+│       │   │
+│       │   ├── slug.ts
+│       │   │   → Creates and processes SEO-friendly job URL slugs.
+│       │   │
+│       │   ├── stripe.ts
+│       │   │   → Legacy-named module containing Razorpay checkout logic.
+│       │   │
+│       │   └── useAuthGate.ts
+│       │       → React authentication gate hook for protected feature access.
+│       │
+│       ├── public/
+│       │   │   → Static assets served directly by Next.js.
+│       │   │
+│       │   ├── ads.txt
+│       │   │   → Declares authorized advertising sellers.
+│       │   │
+│       │   ├── favicon.ico
+│       │   │   → Browser favicon.
+│       │   │
+│       │   ├── file.svg
+│       │   │   → Static file icon asset.
+│       │   │
+│       │   ├── globe.svg
+│       │   │   → Static globe icon asset.
+│       │   │
+│       │   ├── next.svg
+│       │   │   → Next.js logo asset.
+│       │   │
+│       │   ├── robots.txt
+│       │   │   → Search crawler access rules.
+│       │   │
+│       │   ├── sw.js
+│       │   │   → Browser service worker.
+│       │   │
+│       │   └── window.svg
+│       │       → Static browser/window icon asset.
+│       │
+│       ├── eslint.config.mjs
+│       │   → ESLint rules for TypeScript and Next.js source code.
+│       │
+│       ├── next.config.js
+│       │   → Next.js framework and build configuration.
+│       │
+│       ├── package.json
+│       │   → Frontend scripts and JavaScript dependencies.
+│       │
+│       ├── postcss.config.js
+│       │   → PostCSS configuration used by the frontend build.
+│       │
+│       ├── postcss.config.mjs
+│       │   → Alternate ES module PostCSS configuration.
+│       │
+│       ├── tailwind.config.js
+│       │   → Tailwind CSS theme and source scanning configuration.
+│       │
+│       └── tsconfig.json
+│           → TypeScript compiler configuration.
+│
 │
 ├── docs/
-│   ├── SETUP_GUIDE.md                 # Full setup + database schema
-│   ├── SETUP_COMPLETE.md              # Model quick-start
-│   ├── MODEL_CONFIGURATION.md         # Environment variable reference for ML models
-│   ├── COMPLETE_MODEL_MIGRATION_GUIDE.md  # Historical: local-weights → Hugging Face Hub migration
-│   └── DEPLOYMENT_GUIDE.md            # Production deployment (Docker/Railway/manual)
+│   │   → Project setup, deployment, refactoring, and model configuration documentation.
+│   │
+│   ├── COMPLETE_MODEL_MIGRATION_GUIDE.md
+│   │   → Documents the migration between model implementations/configurations.
+│   │
+│   ├── DEPLOYMENT_GUIDE.md
+│   │   → Describes deployment steps for the production system.
+│   │
+│   ├── MODEL_CONFIGURATION.md
+│   │   → Documents model paths, model settings, and inference configuration.
+│   │
+│   ├── Overview.md
+│   │   → General system and repository overview.
+│   │
+│   ├── REFACTORING_COMPLETION_SUMMARY.md
+│   │   → Summarizes completed architecture and code refactoring work.
+│   │
+│   ├── SETUP_COMPLETE.md
+│   │   → Records completed environment and project setup state.
+│   │
+│   └── SETUP_GUIDE.md
+│       → Step-by-step local project setup instructions.
 │
-├── infrastructure/docker/
-│   └── docker-compose.yml             # postgres, redis, neural-generator, rag, api, crawler
+│
+├── infrastructure/
+│   └── docker/
+│       └── docker-compose.yml
+│           → Defines PostgreSQL, Redis, API, RAG, neural generator, and crawler containers.
+│
 │
 ├── services/
-│   ├── README.md                      # Backend microservices guide
-│   ├── app.py                         # Convenience entrypoint that launches services/api
-│   └── api/                           # Core FastAPI application (the actual backend root)
+│   │   → Python backend workspace containing the API and supporting runtime services.
+│   │
+│   ├── .env.example
+│   │   → Example backend environment-variable configuration without production secrets.
+│   │
+│   ├── .gitignore
+│   │   → Backend-specific Git ignore rules.
+│   │
+│   ├── Pyproject.toml
+│   │   → Python project metadata and tooling configuration.
+│   │
+│   ├── README.md
+│   │   → Backend services overview and development documentation.
+│   │
+│   ├── app.py
+│   │   → Thin compatibility entrypoint forwarding execution to the core API application.
+│   │
+│   └── api/
+│       │   → Core FastAPI backend and colocated crawler, RAG, and inference services.
+│       │
+│       ├── .dockerignore
+│       │   → Excludes unnecessary files from the API Docker build.
+│       │
+│       ├── Dockerfile
+│       │   → Builds the main FastAPI application container.
+│       │
 │       ├── README.md
+│       │   → API-specific setup and architecture documentation.
+│       │
+│       ├── __init__.py
+│       │   → Marks the API directory as a Python package.
+│       │
+│       ├── ci-test.txt
+│       │   → Backend CI validation artifact.
+│       │
+│       ├── entrypoint.sh
+│       │   → Runs database migrations before starting Uvicorn.
+│       │
+│       ├── monitor.py
+│       │   → Standalone service health and runtime metrics monitor.
+│       │
 │       ├── requirements.txt
-│       ├── run_migrations.py          # Runs all 12 migrations in services/api/database/migrations/
-│       ├── database/migrations/       # 001_users.sql … 012_guest_users.sql
-│       ├── entrypoint.sh              # Docker container startup script
-│       ├── monitor.py                 # Standalone health/metrics monitor
+│       │   → Python dependencies required by the core API container.
+│       │
+│       ├── run_migrations.py
+│       │   → Discovers and executes SQL migrations in version order.
+│       │
+│       ├── test_imports.py
+│       │   → Verifies that important backend modules import successfully.
+│       │
+│       │
+│       ├── database/
+│       │   └── migrations/
+│       │       │   → Ordered SQL schema migrations defining the PostgreSQL database.
+│       │       │
+│       │       ├── 001_users.sql
+│       │       │   → Creates the core users and authentication schema.
+│       │       │
+│       │       ├── 002_resumes.sql
+│       │       │   → Adds resume storage and resume-related tables.
+│       │       │
+│       │       ├── 003_jobs.sql
+│       │       │   → Creates job listing and job data structures.
+│       │       │
+│       │       ├── 004_subscriptions.sql
+│       │       │   → Introduces user subscription and payment records.
+│       │       │
+│       │       ├── 005_repo_docs.sql
+│       │       │   → Adds repository document and generated documentation storage.
+│       │       │
+│       │       ├── 006_subscriptions_unique_constraint.sql
+│       │       │   → Enforces subscription uniqueness constraints.
+│       │       │
+│       │       ├── 007_migrate_stripe_to_razorpay.sql
+│       │       │   → Migrates legacy Stripe fields and schema to Razorpay.
+│       │       │
+│       │       ├── 008_otp_auth.sql
+│       │       │   → Adds OTP-based email authentication structures.
+│       │       │
+│       │       ├── 009_async_jobs.sql
+│       │       │   → Adds persistent asynchronous AI job tracking.
+│       │       │
+│       │       ├── 010_linkedin_optimizer.sql
+│       │       │   → Adds LinkedIn analysis and optimization history.
+│       │       │
+│       │       ├── 011_job_trust_and_ranking.sql
+│       │       │   → Adds job trust, quality, and ranking metadata.
+│       │       │
+│       │       └── 012_guest_users.sql
+│       │           → Introduces temporary guest-user sessions.
+│       │
 │       ├── src/
-│       │   ├── core/app.py            # FastAPI app factory — this is the real app entrypoint
-│       │   ├── configs/               # config.py (Pydantic Settings), db.py, redis.py, ml_config.py
-│       │   ├── middleware/            # auth.py (JWT), rate_limit.py
-│       │   ├── routes/                # auth, github, jobs, resume, linkedin, subscription, webhooks, async_jobs
-│       │   ├── api/                   # routes.py (code review), routes_self_healing.py
-│       │   ├── services/              # ai_service, analysis_engine, auto_fixer, resume_*, linkedin_*, job_queue, github_service, subscription_service, email_service, etc.
-│       │   ├── schemas/, utils/
+│       │   │   → Main FastAPI application source code.
+│       │   │
+│       │   ├── __init__.py
+│       │   │   → Marks the source directory as a Python package.
+│       │   │
+│       │   ├── api/
+│       │   │   │   → Code-review and self-healing API endpoint layer.
+│       │   │   │
+│       │   │   ├── __init__.py
+│       │   │   │   → Marks the API routes package.
+│       │   │   │
+│       │   │   ├── routes.py
+│       │   │   │   → Exposes code review and automatic fix endpoints.
+│       │   │   │
+│       │   │   └── routes_self_healing.py
+│       │   │       → Exposes combined code fix-and-validation endpoints.
+│       │   │
+│       │   ├── configs/
+│       │   │   │   → Application, database, Redis, and ML configuration modules.
+│       │   │   │
+│       │   │   ├── __init__.py
+│       │   │   │   → Marks the configuration package.
+│       │   │   │
+│       │   │   ├── config.py
+│       │   │   │   → Loads environment-based application settings using Pydantic.
+│       │   │   │
+│       │   │   ├── db.py
+│       │   │   │   → Creates and manages the asyncpg PostgreSQL connection pool.
+│       │   │   │
+│       │   │   ├── ml_config.py
+│       │   │   │   → Stores machine-learning and model runtime configuration.
+│       │   │   │
+│       │   │   ├── redis.py
+│       │   │   │   → Initializes Redis with graceful fallback when unavailable.
+│       │   │   │
+│       │   │   └── settings.py
+│       │   │       → Additional centralized application settings definitions.
+│       │   │
+│       │   ├── core/
+│       │   │   │   → FastAPI application bootstrap and shared core infrastructure.
+│       │   │   │
+│       │   │   ├── __init__.py
+│       │   │   │   → Marks the core application package.
+│       │   │   │
+│       │   │   ├── app.py
+│       │   │   │   → Primary FastAPI application factory and production API entrypoint.
+│       │   │   │
+│       │   │   ├── app_self_healing.py
+│       │   │   │   → Alternate FastAPI application focused on self-healing code flows.
+│       │   │   │
+│       │   │   ├── dependencies.py
+│       │   │   │   → Defines reusable FastAPI dependency injection helpers.
+│       │   │   │
+│       │   │   └── exceptions.py
+│       │   │       → Defines shared application exception types and error handling.
+│       │   │
+│       │   ├── middleware/
+│       │   │   │   → Request authentication and traffic-control middleware.
+│       │   │   │
+│       │   │   ├── __init__.py
+│       │   │   │   → Marks the middleware package.
+│       │   │   │
+│       │   │   ├── auth.py
+│       │   │   │   → Decodes JWT bearer tokens and resolves authenticated users.
+│       │   │   │
+│       │   │   └── rate_limit.py
+│       │   │       → Implements Redis-backed per-user and per-IP rate limiting.
+│       │   │
+│       │   ├── routes/
+│       │   │   │   → Domain-oriented FastAPI HTTP route modules.
+│       │   │   │
+│       │   │   ├── async_jobs.py
+│       │   │   │   → Provides endpoints for polling asynchronous AI job status.
+│       │   │   │
+│       │   │   ├── auth.py
+│       │   │   │   → Handles OTP requests, OTP verification, login, and guest sessions.
+│       │   │   │
+│       │   │   ├── github.py
+│       │   │   │   → Handles GitHub OAuth, repositories, README flows, and terminal access.
+│       │   │   │
+│       │   │   ├── jobs.py
+│       │   │   │   → Provides job search, ranking, featured, listing, and detail APIs.
+│       │   │   │
+│       │   │   ├── linkedin.py
+│       │   │   │   → Provides LinkedIn analysis, unlock, and history APIs.
+│       │   │   │
+│       │   │   ├── resume.py
+│       │   │   │   → Provides resume generation, creation, retrieval, and listing APIs.
+│       │   │   │
+│       │   │   ├── review.py
+│       │   │   │   → Exposes code review operations through the domain route layer.
+│       │   │   │
+│       │   │   ├── subscription.py
+│       │   │   │   → Handles Razorpay checkout, subscription status, and payment webhooks.
+│       │   │   │
+│       │   │   └── webhooks.py
+│       │   │       → Receives and processes external GitHub webhook events.
+│       │   │
+│       │   ├── schemas/
+│       │   │   │   → Pydantic API validation and serialization models.
+│       │   │   │
+│       │   │   ├── __init__.py
+│       │   │   │   → Marks the schemas package.
+│       │   │   │
+│       │   │   └── models.py
+│       │   │       → Defines shared request and response data models.
+│       │   │
+│       │   ├── services/
+│       │   │   │   → Business logic, AI orchestration, integrations, and domain services.
+│       │   │   │
+│       │   │   ├── __init__.py
+│       │   │   │   → Marks the service layer package.
+│       │   │   │
+│       │   │   ├── ai_service.py
+│       │   │   │   → Wraps model and local neural-generator interactions.
+│       │   │   │
+│       │   │   ├── analysis_engine.py
+│       │   │   │   → Detects code security, bug, and style issues using deterministic patterns.
+│       │   │   │
+│       │   │   ├── auto_fixer.py
+│       │   │   │   → Produces automatic code fixes for detected issues.
+│       │   │   │
+│       │   │   ├── code_preprocessor.py
+│       │   │   │   → Cleans and prepares submitted source code before analysis.
+│       │   │   │
+│       │   │   ├── email_service.py
+│       │   │   │   → Sends authentication OTP emails through Resend.
+│       │   │   │
+│       │   │   ├── github.py
+│       │   │   │   → Provides lower-level GitHub integration functionality.
+│       │   │   │
+│       │   │   ├── github_service.py
+│       │   │   │   → Wraps GitHub API calls and repository operations.
+│       │   │   │
+│       │   │   ├── job_queue.py
+│       │   │   │   → Creates, executes, and tracks background AI jobs.
+│       │   │   │
+│       │   │   ├── jobs_service.py
+│       │   │   │   → Implements job query, filtering, and ranking business logic.
+│       │   │   │
+│       │   │   ├── linkedin_ai_service.py
+│       │   │   │   → Uses the local LLM to generate LinkedIn rewrite suggestions.
+│       │   │   │
+│       │   │   ├── linkedin_rules.py
+│       │   │   │   → Implements deterministic LinkedIn profile scoring rules.
+│       │   │   │
+│       │   │   ├── linkedin_service.py
+│       │   │   │   → Orchestrates LinkedIn analysis, scoring, and persistence.
+│       │   │   │
+│       │   │   ├── metrics.py
+│       │   │   │   → Collects application and service runtime metrics.
+│       │   │   │
+│       │   │   ├── postprocessor.py
+│       │   │   │   → Cleans, normalizes, and formats raw model-generated output.
+│       │   │   │
+│       │   │   ├── resume_ai_service.py
+│       │   │   │   → Generates AI-assisted resume content.
+│       │   │   │
+│       │   │   ├── resume_pdf_service.py
+│       │   │   │   → Compiles generated resume data into PDF using LaTeX.
+│       │   │   │
+│       │   │   ├── resume_service.py
+│       │   │   │   → Orchestrates resume persistence and resume-domain operations.
+│       │   │   │
+│       │   │   ├── resume_template_service.py
+│       │   │   │   → Loads and manages resume templates.
+│       │   │   │
+│       │   │   ├── review_service.py
+│       │   │   │   → Coordinates preprocessing, issue detection, AI review, and output formatting.
+│       │   │   │
+│       │   │   ├── subscription_service.py
+│       │   │   │   → Implements Razorpay subscription and plan business logic.
+│       │   │   │
+│       │   │   ├── terminal_manager.py
+│       │   │   │   → Creates and manages WebSocket terminal sessions.
+│       │   │   │
+│       │   │   └── validation_engine.py
+│       │   │       → Re-analyzes code to validate automatically generated fixes.
+│       │   │
+│       │   └── utils/
+│       │       │   → Shared cryptography, logging, and model-management utilities.
+│       │       │
+│       │       ├── __init__.py
+│       │       │   → Marks the utilities package.
+│       │       │
+│       │       ├── crypto.py
+│       │       │   → Encrypts and decrypts stored GitHub tokens using Fernet.
+│       │       │
+│       │       ├── logger.py
+│       │       │   → Configures structured JSON application logging.
+│       │       │
+│       │       └── model_downloader.py
+│       │           → Downloads and caches Hugging Face models such as CodeBERT.
 │       │
-│       ├── crawler/                   # Job scraper microservice (9+ sources)
+│       ├── templates/
+│       │   └── resume_template.tex
+│       │       → LaTeX template used to render generated resumes as PDFs.
+│       │
+│       │
+│       ├── crawler/
+│       │   │   → Independent batch service for collecting and processing job listings.
+│       │   │
+│       │   ├── Dockerfile
+│       │   │   → Builds the lightweight crawler container.
+│       │   │
 │       │   ├── README.md
-│       │   └── src/{index.py, config.py, scrapers/, processors/, utils.py}
+│       │   │   → Documents crawler architecture and execution.
+│       │   │
+│       │   ├── package.json
+│       │   │   → Node package metadata retained for crawler tooling.
+│       │   │
+│       │   ├── package-lock.json
+│       │   │   → Locks Node dependencies used by crawler tooling.
+│       │   │
+│       │   ├── requirements.txt
+│       │   │   → Python dependencies required by scrapers and processors.
+│       │   │
+│       │   └── src/
+│       │       ├── __init__.py
+│       │       │   → Marks crawler source as a Python package.
+│       │       │
+│       │       ├── config.py
+│       │       │   → Loads crawler source and database configuration.
+│       │       │
+│       │       ├── index.py
+│       │       │   → Main crawler entrypoint that runs all enabled scrapers and exits.
+│       │       │
+│       │       ├── utils.py
+│       │       │   → Shared crawler HTTP, parsing, and data utility functions.
+│       │       │
+│       │       ├── processors/
+│       │       │   ├── __init__.py
+│       │       │   │   → Marks crawler processors as a package.
+│       │       │   ├── dedupe.py
+│       │       │   │   → Removes exact and fuzzy duplicate job listings.
+│       │       │   ├── enricher.py
+│       │       │   │   → Adds derived metadata to normalized jobs.
+│       │       │   ├── normalizer.py
+│       │       │   │   → Converts source-specific jobs into one canonical schema.
+│       │       │   └── trust.py
+│       │       │       → Scores source, company, and application-domain trustworthiness.
+│       │       │
+│       │       └── scrapers/
+│       │           ├── __init__.py
+│       │           │   → Marks source scraper modules as a package.
+│       │           ├── base.py
+│       │           │   → Defines shared scraper behaviour and source interface.
+│       │           ├── company_portals.py
+│       │           │   → Collects jobs directly from supported company career portals.
+│       │           ├── cutshort.py
+│       │           │   → Collects job listings from Cutshort.
+│       │           ├── glassdoor.py
+│       │           │   → Collects job listings from Glassdoor.
+│       │           ├── indeed.py
+│       │           │   → Collects job listings from Indeed.
+│       │           ├── internshala.py
+│       │           │   → Collects internship listings from Internshala.
+│       │           ├── linkedin.py
+│       │           │   → Collects job listings from LinkedIn.
+│       │           ├── naukri.py
+│       │           │   → Collects job listings from Naukri.
+│       │           ├── unstop.py
+│       │           │   → Collects internship and job opportunities from Unstop.
+│       │           └── wellfound.py
+│       │               → Collects startup job listings from Wellfound.
 │       │
-│       ├── neural_generator/          # Local LLM inference microservice
+│       │
+│       ├── rag/
+│       │   │   → Retrieval-Augmented Generation service running independently on port 8001.
+│       │   │
+│       │   ├── .dockerignore
+│       │   │   → Excludes unnecessary files from the RAG Docker build.
+│       │   │
+│       │   ├── Dockerfile
+│       │   │   → Builds the MiniLM and FAISS RAG service container.
+│       │   │
 │       │   ├── README.md
-│       │   └── src/app.py             # Qwen3-0.6B GGUF via llama-cpp-python
+│       │   │   → Documents RAG architecture and API usage.
+│       │   │
+│       │   ├── requirements.txt
+│       │   │   → Python dependencies for embeddings and vector search.
+│       │   │
+│       │   └── src/
+│       │       ├── .env.example
+│       │       │   → Example RAG environment-variable configuration.
+│       │       ├── __init__.py
+│       │       │   → Marks RAG source as a Python package.
+│       │       ├── app.py
+│       │       │   → RAG FastAPI application entrypoint listening on port 8001.
+│       │       ├── config.py
+│       │       │   → Loads embedding, vector-store, and neural-generator configuration.
+│       │       ├── routes.py
+│       │       │   → Exposes repository indexing and README generation endpoints.
+│       │       ├── models/
+│       │       │   └── schemas.py
+│       │       │       → Defines RAG API request and response schemas.
+│       │       └── services/
+│       │           ├── __init__.py
+│       │           │   → Marks RAG service modules as a package.
+│       │           ├── chunker.py
+│       │           │   → Splits repository source files into retrieval-sized text chunks.
+│       │           ├── embedder.py
+│       │           │   → Encodes repository chunks using all-MiniLM-L6-v2 embeddings.
+│       │           ├── generator.py
+│       │           │   → Builds grounded prompts from retrieved code and calls Qwen inference.
+│       │           └── vector_store.py
+│       │               → Creates, searches, saves, and loads FAISS vector indexes.
 │       │
-│       └── rag/                       # Semantic search / README generation microservice
+│       │
+│       └── neural_generator/
+│           │   → Dedicated local LLM inference microservice running on port 8002.
+│           │
+│           ├── .dockerignore
+│           │   → Excludes unnecessary files from the neural-generator Docker build.
+│           │
+│           ├── Dockerfile
+│           │   → Builds the llama.cpp-based Qwen inference container.
+│           │
 │           ├── README.md
-│           └── src/{app.py, routes.py, services/{chunker,embedder,vector_store,generator}.py}
+│           │   → Documents neural-generator setup and inference API.
+│           │
+│           ├── __init__.py
+│           │   → Marks the neural generator as a Python package.
+│           │
+│           ├── requirements.txt
+│           │   → Defines llama-cpp-python and inference dependencies.
+│           │
+│           └── src/
+│               ├── __init__.py
+│               │   → Marks neural-generator source as a Python package.
+│               │
+│               └── app.py
+│                   → Loads the Qwen3 0.6B GGUF model and exposes the port 8002 generation API.
+│
 │
 └── tests/
-    ├── test_basic.py
-    └── pytest.ini
+    │   → Root-level automated test suite and Pytest configuration.
+    │
+    ├── __init__.py
+    │   → Marks the tests directory as a Python package.
+    │
+    ├── pytest.ini
+    │   → Configures Pytest discovery and execution behaviour.
+    │
+    └── test_basic.py
+        → Contains basic application and project sanity tests.
 ```
 
 ## Tech Stack
