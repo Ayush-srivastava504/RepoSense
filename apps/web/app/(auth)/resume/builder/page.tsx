@@ -3,7 +3,6 @@
 import { useRef, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
-import AppShell from '../../../components/AppShell';
 import AuthGuard from '../../../components/AuthGuard';
 import { trackEvent } from '@/lib/analytics';
 
@@ -236,7 +235,7 @@ function ResumeContent() {
   const pct = Math.round(genProgress * 100);
 
   return (
-    <AppShell user={user} onLogout={() => { trackEvent('logout'); logout(); }}>
+{ trackEvent('logout'); logout(); }}>
       <p className="eyebrow eyebrow-accent">// resume</p>
       <h1 className="display mt-2 text-3xl font-medium">Resume builder</h1>
 
@@ -548,7 +547,7 @@ function ResumeContent() {
           </div>
         </div>
       )}
-    </AppShell>
+    
   );
 }
 
