@@ -161,7 +161,7 @@ function ReadmeGenerateButton({
 }
 
 function GitHubContent() {
-  const { user, logout, refresh } = useAuth();
+  const { user, refresh } = useAuth();
   const router       = useRouter();
   const searchParams = useSearchParams();
 
@@ -326,7 +326,7 @@ function GitHubContent() {
     : 'var(--rust)';
 
   return (
-{ trackEvent('logout'); logout(); }}>
+<>
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -608,7 +608,7 @@ function GitHubContent() {
           )}
         </div>
       )}
-    
+    </>
   );
 }
 

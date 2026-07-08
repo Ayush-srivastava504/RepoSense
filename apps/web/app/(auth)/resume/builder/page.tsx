@@ -54,7 +54,7 @@ function EntryCard({ onRemove, children }: { onRemove?: () => void; children: Re
 }
 
 function ResumeContent() {
-  const { user, logout } = useAuth();
+  useAuth();
   const [tab, setTab] = useState<Tab>('handwritten');
 
   // — handwritten form state —
@@ -235,7 +235,7 @@ function ResumeContent() {
   const pct = Math.round(genProgress * 100);
 
   return (
-{ trackEvent('logout'); logout(); }}>
+<>
       <p className="eyebrow eyebrow-accent">// resume</p>
       <h1 className="display mt-2 text-3xl font-medium">Resume builder</h1>
 
@@ -547,7 +547,7 @@ function ResumeContent() {
           </div>
         </div>
       )}
-    
+    </>
   );
 }
 

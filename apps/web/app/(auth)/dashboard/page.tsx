@@ -152,7 +152,7 @@ function SectionHeader({
 }
 
 function DashboardContent() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
 
   const [stats, setStats] = useState<Stats | null>(null);
@@ -199,7 +199,6 @@ function DashboardContent() {
     });
   }, [user]);
 
-  const handleLogout = () => { trackEvent('logout'); logout(); };
   const firstName = user?.email?.split('@')[0] ?? 'there';
   const newUser = stats && stats.total_reviews === 0 && stats.repos_connected === 0;
 
@@ -211,7 +210,8 @@ function DashboardContent() {
   };
 
   return (
-<div className="flex flex-wrap items-start justify-between gap-3">
+    <>
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="eyebrow eyebrow-accent">// overview</p>
           <h1 className="display mt-2 text-2xl font-medium sm:text-3xl">
@@ -537,7 +537,7 @@ function DashboardContent() {
         </div>
       )}
 
-    
+    </>
   );
 }
 

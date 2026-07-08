@@ -73,7 +73,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function LinkedInContent() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   const [status, setStatus]   = useState<Status | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -189,7 +189,7 @@ function LinkedInContent() {
   const gated = !loadingStatus && status && !status.can_analyze;
 
   return (
-{ trackEvent('logout'); logout(); }}>
+<>
       <p className="eyebrow eyebrow-accent">// linkedin</p>
       <h1 className="display mt-2 text-2xl font-medium sm:text-3xl">LinkedIn Profile Optimizer</h1>
       <p className="mt-1 max-w-xl text-sm" style={{ color: 'var(--ink-soft)' }}>
@@ -460,7 +460,7 @@ function LinkedInContent() {
           </div>
         </div>
       )}
-    
+    </>
   );
 }
 
