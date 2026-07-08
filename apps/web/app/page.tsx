@@ -1,9 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
-import Logo from '@/app/components/Logo';
 import HeroGraph from '@/app/components/HeroGraph';
 import Footer from '@/app/components/Footer';
 
@@ -82,52 +81,6 @@ const previewJobs = [
   { title: 'Full Stack Intern',      company: 'Meesho',    location: 'Remote',    tag: 'Hot' },
 ];
 
-function ThemeToggle() {
-  const [dark, setDark] = useState(false);
-
-  useEffect(() => {
-    const stored = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const isDark = stored === 'dark' || (!stored && prefersDark);
-    setDark(isDark);
-    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-  }, []);
-
-  const toggle = () => {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
-    localStorage.setItem('theme', next ? 'dark' : 'light');
-  };
-
-  return (
-    <button
-      onClick={toggle}
-      aria-label="Toggle dark mode"
-      className="btn btn-ghost !px-2 !py-1.5 text-sm"
-      title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-    >
-      {dark ? (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="5" />
-          <line x1="12" y1="1" x2="12" y2="3" />
-          <line x1="12" y1="21" x2="12" y2="23" />
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-          <line x1="1" y1="12" x2="3" y2="12" />
-          <line x1="21" y1="12" x2="23" y2="12" />
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-        </svg>
-      ) : (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-        </svg>
-      )}
-    </button>
-  );
-}
-
 export default function LandingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -140,25 +93,6 @@ export default function LandingPage() {
 
   return (
     <div className="shell">
-      {/* NAV */}
-      <nav className="sticky top-0 z-40 border-b backdrop-blur-sm" style={{ borderColor: 'var(--line)', background: 'var(--paper-nav)' }}>
-        <div className="container-xl flex h-14 items-center justify-between gap-3">
-          <Logo />
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Link href="/about" className="nav-link hidden sm:inline text-sm px-3 py-1.5">
-              About
-            </Link>
-            <Link
-              href="/dashboard"
-              className="btn btn-primary text-sm px-4 py-2 transition-transform duration-150 hover:scale-[1.03] active:scale-[0.98]"
-            >
-              Go to dashboard
-            </Link>
-          </div>
-        </div>
-      </nav>
-
       {/* HERO */}
       <section className="container-xl grid items-center gap-10 py-12 md:grid-cols-2 md:py-20">
         <div>

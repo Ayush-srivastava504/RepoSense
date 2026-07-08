@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Logo from './Logo';
 import Footer from './Footer';
+import { useAuth } from '@/lib/auth';
 
 const sections = [
   { href: '/about',          label: 'About' },
@@ -98,14 +99,11 @@ function ThemeToggle() {
 
 export default function AppShell({
   children,
-  user,
-  onLogout,
 }: {
   children: React.ReactNode;
-  user?: { email: string } | null;
-  onLogout?: () => void;
 }) {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -168,19 +166,21 @@ export default function AppShell({
 
             {user ? (
               <>
-                <span
-                  className="eyebrow hidden sm:inline truncate max-w-[160px]"
-                  title={user.email}
+                <Link
+                  href="/dashboard"
+                  className="btn btn-primary text-sm hidden sm:inline-flex"
                 >
-                  {user.email}
-                </span>
+                  Dashboard
+                </Link>
 
-                <button
-                  onClick={onLogout}
-                  className="btn btn-ghost !px-2 !py-1 text-sm hidden sm:inline-flex"
-                >
-                  Sign out
-                </button>
+                {!user.is_guest && (
+                  <button
+                    onClick={logout}
+                    className="btn btn-ghost !px-2 !py-1 text-sm hidden sm:inline-flex"
+                  >
+                    Sign out
+                  </button>
+                )}
               </>
             ) : (
               <Link
@@ -270,7 +270,7 @@ export default function AppShell({
                 className="mt-2 border-t pt-3 flex items-center justify-between"
                 style={{ borderColor: 'var(--line)' }}
               >
-                {user && (
+                {user && !user.is_guest && (
                   <span
                     className="eyebrow truncate max-w-[200px] px-3"
                     title={user.email}
@@ -280,12 +280,23 @@ export default function AppShell({
                 )}
 
                 {user ? (
-                  <button
-                    onClick={onLogout}
-                    className="btn btn-ghost !px-3 !py-2 text-sm ml-auto"
-                  >
-                    Sign out
-                  </button>
+                  <div className="ml-auto flex items-center gap-2">
+                    <Link
+                      href="/dashboard"
+                      className="btn btn-primary text-sm"
+                    >
+                      Dashboard
+                    </Link>
+
+                    {!user.is_guest && (
+                      <button
+                        onClick={logout}
+                        className="btn btn-ghost !px-3 !py-2 text-sm"
+                      >
+                        Sign out
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   <Link
                     href="/login"
