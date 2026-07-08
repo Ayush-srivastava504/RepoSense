@@ -122,6 +122,18 @@ def _extract_items(data) -> List[Dict]:
     return []
 
 
+def _has_link(card) -> bool:
+    if card.name == "a" and card.has_attr("href"):
+        return True
+    return card.select_one("a[href]") is not None
+
+
+def _find_link(card):
+    if card.name == "a" and card.has_attr("href"):
+        return card
+    return card.select_one("a[href]")
+
+
 def _dedupe_key(job: Dict) -> Tuple[str, str]:
     return (
         (job.get("title") or "").lower(),
@@ -316,7 +328,7 @@ class CompanyPortalsScraper(BaseScraper):
             if count < MIN_CARD_MATCHES or count > MAX_CARD_MATCHES:
                 continue
 
-            score = sum(1 for card in cards if card.select_one("a[href]"))
+            score = sum(1 for card in cards if _has_link(card))
             if score < count * 0.5:
                 continue
 
@@ -411,6 +423,9 @@ class CompanyPortalsScraper(BaseScraper):
             if title:
                 break
 
+        if not title and card.name == "a":
+            title = _clean(card.get_text(" ", strip=True))[:120]
+
         if not title:
             return None
 
@@ -421,7 +436,7 @@ class CompanyPortalsScraper(BaseScraper):
         job["duration"] = _text(card, selectors.get("duration", '.duration, [class*="duration"]'))
         job["description"] = _clean(card.get_text(" ", strip=True))
 
-        link = card.select_one("a[href]")
+        link = _find_link(card)
         job["apply_url"] = urljoin(config.get("base_url", ""), link.get("href", "")) if link else ""
 
         job["type"] = _infer_type(job["title"])
