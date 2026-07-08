@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
-import AppShell from '../../components/AppShell';
 import AuthGuard from '../../components/AuthGuard';
 import { trackEvent } from '@/lib/analytics';
 
@@ -327,7 +326,7 @@ function GitHubContent() {
     : 'var(--rust)';
 
   return (
-    <AppShell user={user} onLogout={() => { trackEvent('logout'); logout(); }}>
+{ trackEvent('logout'); logout(); }}>
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -609,7 +608,7 @@ function GitHubContent() {
           )}
         </div>
       )}
-    </AppShell>
+    
   );
 }
 

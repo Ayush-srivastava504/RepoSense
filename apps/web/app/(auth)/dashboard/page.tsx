@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
-import AppShell from '../../components/AppShell';
 import { trackEvent } from '@/lib/analytics';
 
 interface Stats {
@@ -212,9 +211,7 @@ function DashboardContent() {
   };
 
   return (
-    <AppShell user={user} onLogout={handleLogout}>
-
-      <div className="flex flex-wrap items-start justify-between gap-3">
+<div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="eyebrow eyebrow-accent">// overview</p>
           <h1 className="display mt-2 text-2xl font-medium sm:text-3xl">
@@ -540,7 +537,7 @@ function DashboardContent() {
         </div>
       )}
 
-    </AppShell>
+    
   );
 }
 

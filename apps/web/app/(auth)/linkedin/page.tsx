@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
-import AppShell from '../../components/AppShell';
 import AuthGuard from '../../components/AuthGuard';
 import { trackEvent } from '@/lib/analytics';
 
@@ -190,7 +189,7 @@ function LinkedInContent() {
   const gated = !loadingStatus && status && !status.can_analyze;
 
   return (
-    <AppShell user={user} onLogout={() => { trackEvent('logout'); logout(); }}>
+{ trackEvent('logout'); logout(); }}>
       <p className="eyebrow eyebrow-accent">// linkedin</p>
       <h1 className="display mt-2 text-2xl font-medium sm:text-3xl">LinkedIn Profile Optimizer</h1>
       <p className="mt-1 max-w-xl text-sm" style={{ color: 'var(--ink-soft)' }}>
@@ -461,7 +460,7 @@ function LinkedInContent() {
           </div>
         </div>
       )}
-    </AppShell>
+    
   );
 }
 

@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import AppShell from '@/app/components/AppShell';
 import { useAuth } from '@/lib/auth';
 import { trackEvent } from '@/lib/analytics';
 
@@ -38,8 +37,7 @@ export default function AboutPage() {
   const handleLogout = () => { trackEvent('logout'); logout(); };
 
   return (
-    <AppShell user={user} onLogout={handleLogout}>
-      <div>
+<div>
         <p className="eyebrow eyebrow-accent">// about</p>
         <h1 className="display mt-2 text-2xl font-medium sm:text-3xl">
           Why InternFlow exists
@@ -106,6 +104,6 @@ export default function AboutPage() {
           </Link>
         </div>
       </div>
-    </AppShell>
+    
   );
 }
