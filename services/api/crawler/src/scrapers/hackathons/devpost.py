@@ -1,10 +1,12 @@
+import re
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
+
+from dateutil import parser as dateparser
 
 from scrapers.hackathons.base import BaseHackathonScraper
 
-# Devpost exposes an (unauthenticated, publicly used by their own frontend)
-# JSON search endpoint, so this scraper skips Playwright entirely — plain
-# requests is enough and far more reliable than rendering the SPA.
+
 API_URL = "https://devpost.com/api/hackathons"
 
 
@@ -22,7 +24,9 @@ class DevpostScraper(BaseHackathonScraper):
 
         results: List[Dict] = []
 
-        for page_num in range(1, 4):
+        pages = min(max_pages or 3, 3)
+
+        for page_num in range(1, pages + 1):
 
             params = {
                 "status[]": "open",
@@ -30,61 +34,306 @@ class DevpostScraper(BaseHackathonScraper):
                 "page": page_num,
             }
 
-            self.log.info("Scraping Devpost page %d", page_num)
+            self.log.info(
+                "Scraping Devpost page %d",
+                page_num,
+            )
 
-            resp = None
             try:
-                resp = self.session.get(API_URL, params=params, timeout=20)
-                resp.raise_for_status()
-            except Exception as e:
-                self.log.warning("Devpost API error: %s", str(e))
+                response = self.session.get(
+                    API_URL,
+                    params=params,
+                    timeout=20,
+                )
+
+                response.raise_for_status()
+
+            except Exception as exc:
+                self.log.warning(
+                    "Devpost API error: %s",
+                    str(exc),
+                )
+
                 continue
 
             try:
-                data = resp.json()
+                data = response.json()
+
             except Exception:
-                self.log.warning("Devpost API returned non-JSON")
+                self.log.warning(
+                    "Devpost API returned non-JSON"
+                )
+
                 continue
 
-            entries = data.get("hackathons", [])
+            entries = data.get(
+                "hackathons",
+                [],
+            )
 
             if not entries:
                 break
 
             for entry in entries:
-                h = self._parse_entry(entry)
-                if h:
-                    results.append(h)
 
-        self.log.info("Collected %d hackathons from devpost", len(results))
+                hackathon = self._parse_entry(
+                    entry
+                )
+
+                if hackathon:
+                    results.append(
+                        hackathon
+                    )
+
+        self.log.info(
+            "Collected %d hackathons from devpost",
+            len(results),
+        )
+
         return results
 
-    def _parse_entry(self, entry: Dict) -> Optional[Dict]:
+    def _parse_entry(
+        self,
+        entry: Dict,
+    ) -> Optional[Dict]:
 
-        title = (entry.get("title") or "").strip()
+        title = (
+            entry.get("title")
+            or ""
+        ).strip()
+
         if not title:
             return None
 
-        url = entry.get("url") or ""
+        url = (
+            entry.get("url")
+            or ""
+        ).strip()
 
-        h = self._empty_hackathon()
-        h["title"] = title
-        h["organizer"] = (entry.get("organization_name") or "Devpost host") or None
-        h["description"] = entry.get("tagline") or entry.get("description") or ""
-        h["participation_mode"] = "online" if entry.get("open_state") == "open" and entry.get("displayed_location", {}).get("location") in (None, "Online") else None
-        h["location"] = (entry.get("displayed_location") or {}).get("location")
-        h["is_global"] = h["location"] in (None, "Online", "Worldwide")
+        if not url:
+            return None
 
-        prizes = entry.get("prize_amount")
-        h["prize_pool_text"] = prizes
+        hackathon = self._empty_hackathon()
 
-        h["registration_deadline"] = entry.get("submission_period_dates")
+        hackathon["title"] = title
 
-        h["themes"] = [t.get("name") for t in (entry.get("themes") or []) if t.get("name")][:8]
+        hackathon["organizer"] = (
+            entry.get("organization_name")
+            or "Devpost host"
+        )
 
-        h["source"] = self.source_name
-        h["source_url"] = url
-        h["apply_url"] = url
-        h["image_url"] = entry.get("thumbnail_url")
+        hackathon["description"] = (
+            entry.get("tagline")
+            or entry.get("description")
+            or ""
+        )
 
-        return h
+        displayed_location = (
+            entry.get("displayed_location")
+            or {}
+        )
+
+        location = displayed_location.get(
+            "location"
+        )
+
+        hackathon["location"] = location
+
+        hackathon["is_global"] = location in (
+            None,
+            "Online",
+            "Worldwide",
+        )
+
+        if location in (
+            None,
+            "Online",
+            "Worldwide",
+        ):
+            hackathon["participation_mode"] = (
+                "online"
+            )
+
+        prize_amount = entry.get(
+            "prize_amount"
+        )
+
+        hackathon["prize_pool_text"] = (
+            prize_amount
+        )
+
+        submission_period = entry.get(
+            "submission_period_dates"
+        )
+
+        start_date, end_date = (
+            _parse_submission_period(
+                submission_period
+            )
+        )
+
+        hackathon["start_date"] = start_date
+
+        hackathon["end_date"] = end_date
+
+        # Devpost submission end date is the effective
+        # registration/submission deadline for the listing.
+        hackathon["registration_deadline"] = (
+            end_date
+        )
+
+        hackathon["themes"] = [
+            theme.get("name")
+            for theme in (
+                entry.get("themes")
+                or []
+            )
+            if theme.get("name")
+        ][:8]
+
+        hackathon["source"] = (
+            self.source_name
+        )
+
+        hackathon["source_url"] = url
+
+        hackathon["apply_url"] = url
+
+        hackathon["image_url"] = (
+            entry.get("thumbnail_url")
+        )
+
+        return hackathon
+
+
+def _parse_submission_period(
+    value,
+) -> tuple[Optional[str], Optional[str]]:
+
+    if not value:
+        return None, None
+
+    text = str(value).strip()
+
+    # Example:
+    # Jul 05 - 31, 2026
+
+    same_month_match = re.fullmatch(
+        (
+            r"([A-Za-z]{3,9})\s+"
+            r"(\d{1,2})\s*-\s*"
+            r"(\d{1,2}),\s*"
+            r"(\d{4})"
+        ),
+        text,
+    )
+
+    if same_month_match:
+
+        month = same_month_match.group(1)
+
+        start_day = same_month_match.group(2)
+
+        end_day = same_month_match.group(3)
+
+        year = same_month_match.group(4)
+
+        start_text = (
+            f"{month} {start_day}, {year}"
+        )
+
+        end_text = (
+            f"{month} {end_day}, {year}"
+        )
+
+        return (
+            _parse_devpost_date(start_text),
+            _parse_devpost_date(end_text),
+        )
+
+    # Example:
+    # Jun 15 - Jul 31, 2026
+
+    cross_month_match = re.fullmatch(
+        (
+            r"([A-Za-z]{3,9})\s+"
+            r"(\d{1,2})\s*-\s*"
+            r"([A-Za-z]{3,9})\s+"
+            r"(\d{1,2}),\s*"
+            r"(\d{4})"
+        ),
+        text,
+    )
+
+    if cross_month_match:
+
+        start_month = (
+            cross_month_match.group(1)
+        )
+
+        start_day = (
+            cross_month_match.group(2)
+        )
+
+        end_month = (
+            cross_month_match.group(3)
+        )
+
+        end_day = (
+            cross_month_match.group(4)
+        )
+
+        year = cross_month_match.group(5)
+
+        start_text = (
+            f"{start_month} "
+            f"{start_day}, "
+            f"{year}"
+        )
+
+        end_text = (
+            f"{end_month} "
+            f"{end_day}, "
+            f"{year}"
+        )
+
+        return (
+            _parse_devpost_date(start_text),
+            _parse_devpost_date(end_text),
+        )
+
+    self_contained_date = (
+        _parse_devpost_date(text)
+    )
+
+    return (
+        None,
+        self_contained_date,
+    )
+
+
+def _parse_devpost_date(
+    value: str,
+) -> Optional[str]:
+
+    try:
+        parsed = dateparser.parse(
+            value,
+            fuzzy=False,
+        )
+
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(
+                tzinfo=timezone.utc
+            )
+
+        return parsed.astimezone(
+            timezone.utc
+        ).isoformat()
+
+    except (
+        ValueError,
+        TypeError,
+        OverflowError,
+    ):
+        return None
