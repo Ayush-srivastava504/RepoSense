@@ -3,6 +3,8 @@ import type { Metadata } from 'next';
 import Script from 'next/script';
 import { Inter, Fraunces, IBM_Plex_Mono } from 'next/font/google';
 
+import AppShell from './components/AppShell';
+
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-body',
@@ -101,7 +103,9 @@ export const metadata: Metadata = {
 
   icons: {
     icon: [
-      { url: '/favicon.ico' },
+      {
+        url: '/favicon.ico',
+      },
       {
         url: '/favicon-16x16.png',
         sizes: '16x16',
@@ -190,7 +194,7 @@ export default function RootLayout({
           {`
             window.dataLayer = window.dataLayer || [];
 
-            function gtag(){
+            function gtag() {
               dataLayer.push(arguments);
             }
 
@@ -204,7 +208,7 @@ export default function RootLayout({
           `}
         </Script>
 
-        {children}
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
