@@ -5,6 +5,7 @@ import time
 from typing import Dict, List, Optional
 from urllib.parse import urljoin
 
+import requests
 from bs4 import BeautifulSoup
 
 from scrapers.base import BaseScraper
@@ -12,8 +13,6 @@ from scrapers.base import BaseScraper
 
 BASE = "https://cutshort.io"
 
-# Real category slugs — Cutshort no longer supports ?keyword query search,
-# it uses pre-built SEO category pages instead.
 CATEGORY_SLUGS = [
     "internship-jobs",
     "fullstack-developer-jobs",
@@ -23,11 +22,13 @@ CATEGORY_SLUGS = [
     "devops-jobs",
 ]
 
+REQUEST_TIMEOUT = 20
+
 
 class CutshortScraper(BaseScraper):
 
     source_name = "cutshort"
-    uses_browser = True  # kept True for safety; site is SSR but JS-rendered fallback is cheap insurance
+    uses_browser = False
 
     def scrape(
         self,
@@ -37,110 +38,289 @@ class CutshortScraper(BaseScraper):
     ) -> List[Dict]:
 
         jobs: List[Dict] = []
+        seen_urls = set()
+
+        session = requests.Session()
+        session.headers.update({
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/138.0.0.0 Safari/537.36"
+            ),
+            "Accept": (
+                "text/html,application/xhtml+xml,"
+                "application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+            ),
+            "Accept-Language": "en-US,en;q=0.9",
+            "Cache-Control": "no-cache",
+        })
 
         for slug in CATEGORY_SLUGS:
             try:
-                html = self._render_category(slug)
-            except Exception as e:
-                self.log.warning("Cutshort render failed for %s: %s", slug, str(e))
-                continue
+                html = self._fetch_category(session, slug)
 
-            if os.getenv("SCRAPER_DEBUG"):
-                with open(f"cutshort_debug_{slug}.html", "w", encoding="utf-8") as f:
-                    f.write(html)
-
-            soup = BeautifulSoup(html, "html.parser")
-            cards = self._find_cards(soup)
-            self.log.info("Cutshort [%s] found %d cards", slug, len(cards))
-
-            for card in cards:
-                try:
-                    job = self._parse_card(card)
-                    if job:
-                        jobs.append(job)
-                except Exception:
+                if not html:
                     continue
 
-            time.sleep(random.uniform(2, 4))
+                if os.getenv("SCRAPER_DEBUG"):
+                    with open(
+                        f"cutshort_debug_{slug}.html",
+                        "w",
+                        encoding="utf-8",
+                    ) as f:
+                        f.write(html)
 
-        self.log.info("Collected %d jobs from cutshort", len(jobs))
+                soup = BeautifulSoup(html, "html.parser")
+                cards = self._find_cards(soup)
+
+                self.log.info(
+                    "Cutshort [%s] found %d cards",
+                    slug,
+                    len(cards),
+                )
+
+                for card in cards:
+                    try:
+                        job = self._parse_card(card)
+
+                        if not job:
+                            continue
+
+                        apply_url = job.get("apply_url")
+
+                        if not apply_url or apply_url in seen_urls:
+                            continue
+
+                        seen_urls.add(apply_url)
+                        jobs.append(job)
+
+                    except Exception as e:
+                        self.log.debug(
+                            "Cutshort card parse failed: %s",
+                            str(e),
+                        )
+
+            except Exception as e:
+                self.log.warning(
+                    "Cutshort failed [%s]: %s",
+                    slug,
+                    str(e),
+                )
+
+            time.sleep(random.uniform(1, 2))
+
+        session.close()
+
+        self.log.info(
+            "Collected %d jobs from cutshort",
+            len(jobs),
+        )
+
         return jobs
 
-    def _render_category(self, slug: str) -> str:
-        url = f"{BASE}/jobs/{slug}"
-        self.log.info("Cutshort scrape: %s", url)
+    def _fetch_category(
+        self,
+        session: requests.Session,
+        slug: str,
+    ) -> str:
 
-        page = self.new_page()
-        try:
-            self.goto(page, url)
-            page.wait_for_timeout(3000)
-            # Site is mostly SSR — scroll a little in case of any lazy-loaded cards
-            for _ in range(3):
-                page.mouse.wheel(0, 3000)
-                page.wait_for_timeout(random.randint(800, 1500))
-            return page.content()
-        finally:
-            page.close()
+        url = f"{BASE}/jobs/{slug}"
+
+        self.log.info(
+            "Cutshort scrape: %s",
+            url,
+        )
+
+        started = time.monotonic()
+
+        response = session.get(
+            url,
+            timeout=REQUEST_TIMEOUT,
+            allow_redirects=True,
+        )
+
+        elapsed = time.monotonic() - started
+
+        self.log.info(
+            "Cutshort [%s] HTTP %d in %.2fs",
+            slug,
+            response.status_code,
+            elapsed,
+        )
+
+        response.raise_for_status()
+
+        if not response.text:
+            self.log.warning(
+                "Cutshort [%s] returned empty HTML",
+                slug,
+            )
+            return ""
+
+        return response.text
 
     def _find_cards(self, soup: BeautifulSoup) -> List:
-        """
-        Cutshort's job cards are anchored around an <h2><a>title</a></h2>
-        followed by an <h3><a>company</a></h3>. Rather than guess a wrapper
-        class (which changes across redesigns), walk up from each h2 to its
-        nearest container with both title and company present.
-        """
+
         cards = []
+        seen = set()
+
         for h2 in soup.find_all("h2"):
-            title_link = h2.find("a")
-            if not title_link or not title_link.get_text(strip=True):
+            title_link = h2.find("a", href=True)
+
+            if not title_link:
                 continue
-            container = h2.find_parent(["article", "div", "li"])
-            # walk up further if the immediate parent doesn't also contain an h3
+
+            title = title_link.get_text(
+                " ",
+                strip=True,
+            )
+
+            if not title:
+                continue
+
+            href = title_link.get("href", "")
+
+            if not href or href in seen:
+                continue
+
+            container = h2.find_parent(
+                ["article", "div", "li"]
+            )
+
             hops = 0
-            while container and not container.find("h3") and hops < 4:
-                container = container.find_parent(["article", "div", "li"])
+
+            while (
+                container
+                and not container.find("h3")
+                and hops < 4
+            ):
+                container = container.find_parent(
+                    ["article", "div", "li"]
+                )
                 hops += 1
-            if container:
-                cards.append(container)
+
+            if not container:
+                continue
+
+            seen.add(href)
+            cards.append(container)
+
         return cards
 
-    def _parse_card(self, card) -> Optional[Dict]:
+    def _parse_card(
+        self,
+        card,
+    ) -> Optional[Dict]:
+
         job = self._empty_job()
 
         h2 = card.find("h2")
-        title_link = h2.find("a") if h2 else None
-        title = _clean(title_link.get_text(" ", strip=True)) if title_link else ""
+
+        title_link = (
+            h2.find("a", href=True)
+            if h2
+            else None
+        )
+
+        if not title_link:
+            return None
+
+        title = _clean(
+            title_link.get_text(
+                " ",
+                strip=True,
+            )
+        )
+
         if not title:
             return None
+
         job["title"] = title
 
         h3 = card.find("h3")
-        company_link = h3.find("a") if h3 else None
-        job["company"] = _clean(company_link.get_text(strip=True)) if company_link else (
-            _clean(h3.get_text(strip=True)) if h3 else ""
+
+        company_link = (
+            h3.find("a")
+            if h3
+            else None
         )
 
-        text_blob = _clean(card.get_text(" ", strip=True))
+        if company_link:
+            job["company"] = _clean(
+                company_link.get_text(
+                    " ",
+                    strip=True,
+                )
+            )
+        elif h3:
+            job["company"] = _clean(
+                h3.get_text(
+                    " ",
+                    strip=True,
+                )
+            )
+        else:
+            job["company"] = ""
 
-        loc_match = re.search(
-            r"(Remote(?: only)?|Remote,\s*[\w\s]+|[\w\s]+\(?[\w\s]*\)?)\s*\d", text_blob
+        text_blob = _clean(
+            card.get_text(
+                " ",
+                strip=True,
+            )
         )
-        job["location"] = "Remote" if "remote" in text_blob.lower() else ""
 
-        salary_match = re.search(r"₹[\d.,LK\s\-/yrmo]+", text_blob)
-        job["salary"] = salary_match.group(0).strip() if salary_match else ""
+        is_remote = bool(
+            re.search(
+                r"\bremote\b",
+                text_blob,
+                re.IGNORECASE,
+            )
+        )
+
+        salary_match = re.search(
+            r"₹[\d.,LKlakhs\s\-/yrmo]+",
+            text_blob,
+            re.IGNORECASE,
+        )
+
+        href = title_link.get("href", "")
+
+        job["location"] = (
+            "Remote"
+            if is_remote
+            else ""
+        )
+
+        job["salary"] = (
+            salary_match.group(0).strip()
+            if salary_match
+            else ""
+        )
 
         job["description"] = text_blob[:1000]
         job["skills"] = []
-        job["type"] = "internship" if "intern" in title.lower() else "full-time"
-        job["is_remote"] = "remote" in text_blob.lower()
+
+        job["type"] = (
+            "internship"
+            if "intern" in title.lower()
+            else "full-time"
+        )
+
+        job["is_remote"] = is_remote
         job["posted_date"] = ""
 
-        href = title_link.get("href", "")
-        job["apply_url"] = href if href.startswith("http") else urljoin(BASE, href)
+        job["apply_url"] = (
+            href
+            if href.startswith("http")
+            else urljoin(BASE, href)
+        )
 
         return job
 
 
 def _clean(text) -> str:
-    return re.sub(r"\s+", " ", str(text or "")).strip()
+    return re.sub(
+        r"\s+",
+        " ",
+        str(text or ""),
+    ).strip()
