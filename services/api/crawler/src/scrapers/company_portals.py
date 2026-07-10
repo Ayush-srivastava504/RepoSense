@@ -28,8 +28,26 @@ JOB_KEYWORDS = frozenset((
 ))
 
 JOB_HREF_KEYWORDS = (
-    "job", "career", "opening", "position", "vacan", "apply",
-    "requisition", "req/",
+    "/job/", "/jobs/", "/career/", "/careers/", "/opening/", "/openings/",
+    "/position/", "/positions/", "/vacancy/", "/vacancies/",
+    "requisition", "jobid=", "job_id=", "job-id=", "/req/",
+)
+
+NON_JOB_TITLES = frozenset((
+    "sign in", "signin", "log in", "login", "sign up", "signup",
+    "register", "create account", "my account", "profile", "dashboard",
+    "home", "about", "contact", "privacy", "privacy policy", "terms",
+    "terms of use", "cookie policy", "help", "support", "faq",
+    "search", "search jobs", "view jobs", "all jobs", "job search",
+    "careers", "career", "join us", "learn more", "read more",
+    "apply", "apply now", "view details", "view job", "view position",
+    "back", "next", "previous", "menu", "close",
+))
+
+NON_JOB_TEXT_KEYWORDS = (
+    "forgot password", "remember me", "create an account",
+    "already have an account", "don't have an account",
+    "accept cookies", "cookie preferences",
 )
 
 CARD_SELECTOR_CANDIDATES = [
@@ -132,6 +150,58 @@ def _find_link(card):
     if card.name == "a" and card.has_attr("href"):
         return card
     return card.select_one("a[href]")
+
+
+def _looks_like_job_title(title: str) -> bool:
+    title = _clean(title)
+    if not title or len(title) < 4 or len(title) > 120:
+        return False
+
+    lowered = title.lower().strip(" -|•:>")
+
+    if lowered in NON_JOB_TITLES:
+        return False
+
+    if any(keyword in lowered for keyword in NON_JOB_TEXT_KEYWORDS):
+        return False
+
+    # Navigation/auth labels are usually very short and contain no role keyword.
+    return any(keyword in lowered for keyword in JOB_KEYWORDS)
+
+
+def _looks_like_job_url(url: str) -> bool:
+    lowered = (url or "").lower()
+    if not lowered or lowered.startswith(("#", "javascript:", "mailto:", "tel:")):
+        return False
+
+    auth_markers = (
+        "signin", "sign-in", "login", "log-in", "signup", "sign-up",
+        "register", "account", "auth", "sso",
+    )
+    if any(marker in lowered for marker in auth_markers):
+        return False
+
+    return any(keyword in lowered for keyword in JOB_HREF_KEYWORDS)
+
+
+def _is_valid_job(job: Dict) -> bool:
+    title = job.get("title", "")
+    apply_url = job.get("apply_url", "")
+
+    if not _looks_like_job_title(title):
+        return False
+
+    # Require either a job-looking URL or enough job context in the card/body.
+    if _looks_like_job_url(apply_url):
+        return True
+
+    description = _clean(job.get("description", "")).lower()
+    context_keywords = (
+        "responsibilit", "qualification", "requirement", "experience",
+        "skills", "role", "employment", "internship", "full-time",
+        "part-time", "location",
+    )
+    return len(description) >= 80 and any(word in description for word in context_keywords)
 
 
 def _dedupe_key(job: Dict) -> Tuple[str, str]:
@@ -288,6 +358,8 @@ class CompanyPortalsScraper(BaseScraper):
     def _collect_new(page_jobs: List[Dict], seen: set, results: List[Dict]) -> int:
         new_count = 0
         for job in page_jobs:
+            if not _is_valid_job(job):
+                continue
             key = _dedupe_key(job)
             if key in seen:
                 continue
@@ -354,11 +426,20 @@ class CompanyPortalsScraper(BaseScraper):
             text_lower = text.lower()
             href_lower = href.lower()
 
-            title_match = any(keyword in text_lower for keyword in JOB_KEYWORDS)
-            href_match = any(keyword in href_lower for keyword in JOB_HREF_KEYWORDS)
+            title_match = _looks_like_job_title(text)
+            href_match = _looks_like_job_url(href)
 
-            if not (title_match or href_match):
+            # A generic navigation link such as "Sign in", "Apply", or
+            # "Careers" must never become a job. Prefer a role-like title;
+            # otherwise require both a job URL and meaningful job text.
+            if not title_match:
                 continue
+
+            if not href_match:
+                container = link.find_parent(["li", "tr", "div", "article"])
+                container_text = _clean(container.get_text(" ", strip=True)) if container else ""
+                if len(container_text) < 80:
+                    continue
 
             if text_lower in seen_titles:
                 continue
@@ -426,7 +507,7 @@ class CompanyPortalsScraper(BaseScraper):
         if not title and card.name == "a":
             title = _clean(card.get_text(" ", strip=True))[:120]
 
-        if not title:
+        if not title or not _looks_like_job_title(title):
             return None
 
         job["title"] = title

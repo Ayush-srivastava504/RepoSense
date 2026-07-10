@@ -1,19 +1,16 @@
-"""
-Himalayas — https://himalayas.app
 
-Himalayas exposes a public, unauthenticated JSON API
-(https://himalayas.app/jobs/api) intended for exactly this kind of
-aggregation. No browser required.
-"""
+import re
+from typing import Dict, List, Optional
 
-from typing import Dict, List
+import requests
 
 from scrapers.base import BaseScraper
-from utils import safe_get
 
 
 API_URL = "https://himalayas.app/jobs/api"
+
 PAGE_SIZE = 20
+REQUEST_TIMEOUT = 30
 
 
 class HimalayasScraper(BaseScraper):
@@ -29,84 +26,293 @@ class HimalayasScraper(BaseScraper):
     ) -> List[Dict]:
 
         jobs: List[Dict] = []
+        seen_urls = set()
+
+        session = requests.Session()
+
+        session.headers.update({
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) "
+                "AppleWebKit/537.36 "
+                "(KHTML, like Gecko) "
+                "Chrome/138.0.0.0 Safari/537.36"
+            ),
+            "Accept": "application/json",
+            "Accept-Language": "en-US,en;q=0.9",
+        })
 
         offset = 0
-        pages_fetched = 0
 
-        while pages_fetched < max_pages:
+        try:
+            for page_number in range(1, max_pages + 1):
 
-            resp = safe_get(
-                self.session,
-                API_URL,
-                params={"limit": PAGE_SIZE, "offset": offset},
-                headers={
-                    "User-Agent": (
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) "
-                        "Chrome/124.0.0.0 Safari/537.36"
-                    ),
-                    "Accept": "application/json",
-                },
-                domain_key="himalayas",
-            )
+                self.log.info(
+                    "Himalayas page=%d offset=%d",
+                    page_number,
+                    offset,
+                )
 
-            pages_fetched += 1
+                data = self._fetch_page(
+                    session=session,
+                    offset=offset,
+                )
 
-            if resp is None:
-                self.log.warning("Himalayas request failed at offset %d", offset)
-                break
+                if data is None:
+                    break
 
-            try:
-                data = resp.json()
-            except Exception as exc:
-                self.log.warning("Himalayas JSON parse failed: %s", exc)
-                break
+                entries = data.get("jobs")
 
-            entries = data.get("jobs", [])
+                if not isinstance(entries, list):
+                    self.log.warning(
+                        "Himalayas invalid jobs field: %s",
+                        type(entries).__name__,
+                    )
+                    break
 
-            if not entries:
-                break
+                self.log.info(
+                    "Himalayas page %d returned %d jobs",
+                    page_number,
+                    len(entries),
+                )
 
-            for entry in entries:
-                try:
-                    job = self._parse_entry(entry)
-                    if job:
-                        jobs.append(job)
-                except Exception:
-                    continue
+                if not entries:
+                    break
 
-            offset += PAGE_SIZE
+                for entry in entries:
 
-            if len(entries) < PAGE_SIZE:
-                break
+                    if not isinstance(entry, dict):
+                        continue
 
-        self.log.info("Himalayas collected %d jobs", len(jobs))
+                    try:
+                        job = self._parse_entry(entry)
+                    except Exception as exc:
+                        self.log.debug(
+                            "Himalayas parse failed: %s",
+                            exc,
+                        )
+                        continue
+
+                    if not job:
+                        continue
+
+                    apply_url = job.get("apply_url")
+
+                    if not apply_url:
+                        continue
+
+                    if apply_url in seen_urls:
+                        continue
+
+                    seen_urls.add(apply_url)
+                    jobs.append(job)
+
+                if len(entries) < PAGE_SIZE:
+                    break
+
+                offset += PAGE_SIZE
+
+        finally:
+            session.close()
+
+        self.log.info(
+            "Himalayas collected %d jobs",
+            len(jobs),
+        )
+
         return jobs
 
-    def _parse_entry(self, entry: Dict) -> Dict:
-        title = (entry.get("title") or "").strip()
-        company = ((entry.get("companyName")) or "").strip()
+    def _fetch_page(
+        self,
+        session: requests.Session,
+        offset: int,
+    ) -> Optional[Dict]:
+
+        try:
+            response = session.get(
+                API_URL,
+                params={
+                    "limit": PAGE_SIZE,
+                    "offset": offset,
+                },
+                timeout=REQUEST_TIMEOUT,
+                allow_redirects=True,
+            )
+
+        except requests.RequestException as exc:
+
+            self.log.warning(
+                "Himalayas request failed offset=%d: %s",
+                offset,
+                exc,
+            )
+
+            return None
+
+        content_type = response.headers.get(
+            "content-type",
+            "",
+        ).lower()
+
+        self.log.info(
+            "Himalayas HTTP %d content-type=%s bytes=%d url=%s",
+            response.status_code,
+            content_type,
+            len(response.content),
+            response.url,
+        )
+
+        if response.status_code != 200:
+
+            self.log.warning(
+                "Himalayas HTTP failure %d body=%r",
+                response.status_code,
+                response.text[:300],
+            )
+
+            return None
+
+        body = response.text.strip()
+
+        if not body:
+
+            self.log.warning(
+                "Himalayas returned empty response"
+            )
+
+            return None
+
+        if "application/json" not in content_type:
+
+            self.log.warning(
+                "Himalayas returned non-JSON "
+                "content-type=%s body=%r",
+                content_type,
+                body[:300],
+            )
+
+            return None
+
+        try:
+            data = response.json()
+
+        except ValueError as exc:
+
+            self.log.warning(
+                "Himalayas JSON decode failed: %s body=%r",
+                exc,
+                body[:300],
+            )
+
+            return None
+
+        if not isinstance(data, dict):
+
+            self.log.warning(
+                "Himalayas unexpected JSON root: %s",
+                type(data).__name__,
+            )
+
+            return None
+
+        return data
+
+    def _parse_entry(
+        self,
+        entry: Dict,
+    ) -> Optional[Dict]:
+
+        title = _clean(
+            entry.get("title")
+        )
+
+        company = _clean(
+            entry.get("companyName")
+        )
 
         if not title or not company:
             return None
 
-        locations = entry.get("locationRestrictions") or []
-        location = ", ".join(locations) if locations else "Worldwide"
-
-        job_type_raw = (entry.get("employmentType") or "").lower()
-        job_type = "internship" if "intern" in job_type_raw else (
-            "contract" if "contract" in job_type_raw else "full-time"
+        restrictions = entry.get(
+            "locationRestrictions"
         )
 
-        min_salary = entry.get("minSalary")
-        max_salary = entry.get("maxSalary")
-        salary = None
-        if min_salary and max_salary:
-            salary = f"${min_salary:,} - ${max_salary:,}"
+        if isinstance(restrictions, list):
 
-        apply_url = entry.get("applicationLink") or (
-            f"https://himalayas.app/jobs/{entry.get('slug')}"
-            if entry.get("slug") else None
+            locations = [
+                _clean(location)
+                for location in restrictions
+                if _clean(location)
+            ]
+
+        elif restrictions:
+
+            locations = [
+                _clean(restrictions)
+            ]
+
+        else:
+
+            locations = []
+
+        location = (
+            ", ".join(locations)
+            if locations
+            else "Worldwide"
+        )
+
+        employment_type = _clean(
+            entry.get("employmentType")
+        ).lower()
+
+        if "intern" in employment_type:
+
+            job_type = "internship"
+
+        elif "contract" in employment_type:
+
+            job_type = "contract"
+
+        elif "part" in employment_type:
+
+            job_type = "part-time"
+
+        else:
+
+            job_type = "full-time"
+
+        salary = self._format_salary(entry)
+
+        apply_url = _clean(
+            entry.get("applicationLink")
+        )
+
+        if not apply_url:
+
+            slug = _clean(
+                entry.get("slug")
+            )
+
+            if slug:
+                apply_url = (
+                    f"https://himalayas.app/jobs/{slug}"
+                )
+
+        if not apply_url:
+            return None
+
+        skills = entry.get("skills")
+
+        if not isinstance(skills, list):
+            skills = []
+
+        skills = [
+            _clean(skill)
+            for skill in skills
+            if _clean(skill)
+        ]
+
+        description = _clean(
+            entry.get("description")
         )
 
         return {
@@ -115,10 +321,66 @@ class HimalayasScraper(BaseScraper):
             "location": location,
             "type": job_type,
             "salary": salary,
-            "description": entry.get("description"),
-            "skills": entry.get("skills", []),
+            "description": description[:5000],
+            "skills": skills,
             "apply_url": apply_url,
-            "posted_date": entry.get("pubDate"),
+            "posted_date": entry.get("pubDate") or "",
             "is_remote": True,
             "country": location,
         }
+
+    def _format_salary(
+        self,
+        entry: Dict,
+    ) -> str:
+
+        min_salary = entry.get("minSalary")
+        max_salary = entry.get("maxSalary")
+
+        currency = _clean(
+            entry.get("currency")
+        ).upper()
+
+        symbol = {
+            "USD": "$",
+            "EUR": "€",
+            "GBP": "£",
+            "INR": "₹",
+        }.get(currency, "")
+
+        try:
+            if min_salary is not None and max_salary is not None:
+
+                return (
+                    f"{symbol}{int(min_salary):,} - "
+                    f"{symbol}{int(max_salary):,}"
+                )
+
+            if min_salary is not None:
+
+                return (
+                    f"From {symbol}"
+                    f"{int(min_salary):,}"
+                )
+
+            if max_salary is not None:
+
+                return (
+                    f"Up to {symbol}"
+                    f"{int(max_salary):,}"
+                )
+
+        except (TypeError, ValueError):
+
+            return ""
+
+        return ""
+
+
+def _clean(value) -> str:
+
+    return re.sub(
+        r"\s+",
+        " ",
+        str(value or ""),
+    ).strip()
