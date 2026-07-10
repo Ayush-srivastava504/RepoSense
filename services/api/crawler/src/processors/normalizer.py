@@ -30,6 +30,27 @@ CANONICAL_FIELDS = {
     "category": str,
     "seniority": str,
     "normalized_location": str,
+    "is_government": bool,
+    "country": str,
+    "department": str,
+    "vacancies": str,
+    "notification_number": str,
+}
+
+# Sources whose jobs are always flagged is_government=True, regardless of
+# whether the individual scraper remembered to set the field itself.
+GOVERNMENT_SOURCES = {
+    "employment_news",
+    "freejobalert",
+}
+
+# Sources whose jobs are always flagged is_remote=True (remote-first boards).
+REMOTE_SOURCES = {
+    "himalayas",
+    "remoteok",
+    "weworkremotely",
+    "remotive",
+    "hiringcafe",
 }
 
 
@@ -189,6 +210,28 @@ def _normalize_single(
 
     job["normalized_location"] = _city_name(
         job["location"]
+    )
+
+    is_government = raw.get("is_government", False)
+
+    if not is_government:
+        is_government = job["source"] in GOVERNMENT_SOURCES
+
+    job["is_government"] = bool(is_government)
+
+    if not job["is_remote"]:
+        job["is_remote"] = job["source"] in REMOTE_SOURCES
+
+    job["country"] = _str(raw.get("country", "")) or (
+        "India" if not job["is_remote"] else "Worldwide"
+    )
+
+    job["department"] = _str(raw.get("department", ""))
+
+    job["vacancies"] = _str(raw.get("vacancies", ""))
+
+    job["notification_number"] = _str(
+        raw.get("notification_number", "")
     )
 
     return job

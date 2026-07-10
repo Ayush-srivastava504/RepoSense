@@ -470,6 +470,12 @@ def upsert_jobs(
                 bool(job.get("is_official_domain", False)),
                 job.get("domain_similarity", 0.0),
                 deadline,
+                bool(job.get("is_remote", False)),
+                bool(job.get("is_government", False)),
+                job.get("country") or None,
+                job.get("department") or None,
+                job.get("vacancies") or None,
+                job.get("notification_number") or None,
             )
         )
 
@@ -493,10 +499,17 @@ def upsert_jobs(
             apply_domain,
             is_official_domain,
             domain_similarity,
-            deadline
+            deadline,
+            is_remote,
+            is_government,
+            country,
+            department,
+            vacancies,
+            notification_number
         )
         VALUES (
             %s,%s,%s,%s,%s,
+            %s,%s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,%s
         )

@@ -12,6 +12,8 @@ const sections = [
   { href: '/github',         label: 'Code review' },
   { href: '/jobs',           label: 'Jobs' },
   { href: '/internships',    label: 'Internships' },
+  { href: '/remote-jobs',    label: 'Remote' },
+  { href: '/government-jobs', label: 'Government' },
   { href: '/hackathons',     label: 'Hackathons' },
   { href: '/resume/builder', label: 'Resume' },
   { href: '/linkedin',       label: 'LinkedIn' },

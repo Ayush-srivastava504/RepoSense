@@ -77,7 +77,13 @@ JOB_COLUMNS = """
     confidence_score,
     confidence_label,
     apply_domain,
-    is_official_domain
+    is_official_domain,
+    is_remote,
+    is_government,
+    country,
+    department,
+    vacancies,
+    notification_number
 """
 
 BADGE_EXPRESSIONS = """
@@ -116,6 +122,11 @@ async def get_jobs(
     source: str | None = Query(default=None),
     search: str | None = Query(default=None),
     type: str | None = Query(default=None, description="Filter by job type, e.g. 'internship'"),
+    category: str | None = Query(
+        default=None,
+        pattern="^(remote|government)$",
+        description="'remote' for is_remote=true, 'government' for is_government=true",
+    ),
     sort: str = Query(
         default="recent",
         pattern="^(recent|ranked)$",
@@ -136,6 +147,11 @@ async def get_jobs(
     if type:
         params.append(type)
         conditions.append(f"type = ${len(params)}")
+
+    if category == "remote":
+        conditions.append("is_remote = true")
+    elif category == "government":
+        conditions.append("is_government = true")
 
     if search:
         params.append(f"%{search}%")
@@ -190,6 +206,11 @@ async def get_jobs(
 async def get_featured_jobs(
     limit: int = Query(default=6, ge=1, le=12),
     type: str | None = Query(default=None),
+    category: str | None = Query(
+        default=None,
+        pattern="^(remote|government)$",
+        description="'remote' for is_remote=true, 'government' for is_government=true",
+    ),
 ):
     pool = await get_db_pool()
     if pool is None:
@@ -205,6 +226,11 @@ async def get_featured_jobs(
     if type:
         params.append(type)
         conditions.append(f"type = ${len(params)}")
+
+    if category == "remote":
+        conditions.append("is_remote = true")
+    elif category == "government":
+        conditions.append("is_government = true")
 
     where = "WHERE " + " AND ".join(conditions)
 

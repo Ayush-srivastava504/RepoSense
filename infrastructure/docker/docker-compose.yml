@@ -138,7 +138,7 @@ services:
         "python",
         "src/index.py",
         "--scrapers",
-        "internshala,naukri,linkedin,wellfound,indeed,unstop,glassdoor,cutshort,company_portals",
+        "internshala,linkedin,hiringcafe,unstop,cutshort,company_portals,himalayas,remoteok,weworkremotely,remotive,employment_news,freejobalert",
         "--max-pages",
         "2"
       ]
@@ -158,11 +158,6 @@ services:
       dockerfile: Dockerfile
       target: dev
     container_name: hackathon-crawler
-    # Batch job like `crawler` — runs once and exits. Schedule it once a
-    # day (host cron / EventBridge rule calling `docker compose run
-    # --rm hackathon-crawler`, or an ECS scheduled task in prod) rather
-    # than `restart: unless-stopped`, since hackathons don't change
-    # minute-to-minute the way job boards do.
     restart: "no"
     command: ["python", "src/hackathon_index.py"]
     env_file:

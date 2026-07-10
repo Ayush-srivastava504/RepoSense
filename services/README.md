@@ -227,11 +227,11 @@ There is no `/api/review/history`, `/api/jobs/match`, `/api/jobs/{id}/apply`, or
 ## Sub-Services
 
 ### Crawler (`services/api/crawler/`)
-9+ scrapers: LinkedIn, Indeed, Naukri, Internshala, Wellfound, Unstop, Glassdoor, Cutshort, and direct company portals.
+9+ scrapers: LinkedIn, HiringCafe, Internshala, Unstop, Cutshort, and direct company portals.
 
 ```bash
 cd services/api/crawler
-python src/index.py --scrapers linkedin,indeed --max-pages 5
+python src/index.py --scrapers linkedin,hiringcafe --max-pages 5
 ```
 
 Pipeline: scrape → normalize → deduplicate → enrich → trust/rank → store in Postgres. See [services/api/crawler/README.md](./api/crawler/README.md).
@@ -328,6 +328,3 @@ No Railway or Terraform config is currently committed in this repo. See [docs/DE
 - RAG: [services/api/rag/README.md](./api/rag/README.md)
 - Neural Generator: [services/api/neural_generator/README.md](./api/neural_generator/README.md)
 
-## License
-
-Part of the RepoSense project — MIT, see [../LICENSE](../LICENSE).

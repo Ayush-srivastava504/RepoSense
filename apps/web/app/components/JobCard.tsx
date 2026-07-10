@@ -26,6 +26,14 @@ export default function JobCard({ job, basePath = '/jobs' }: { job: Job; basePat
         <span className="chip chip-muted mt-2 w-fit text-[11px]">{job.location}</span>
       )}
 
+      {job.is_government && (job.department || job.vacancies) && (
+        <p className="mt-2 text-[11px]" style={{ color: 'var(--ink-soft)' }}>
+          {job.department && <span>{job.department}</span>}
+          {job.department && job.vacancies && ' · '}
+          {job.vacancies && <span>{job.vacancies} vacancies</span>}
+        </p>
+      )}
+
       <h2 className="display mt-4 text-lg font-medium leading-snug" style={{ color: 'var(--ink)' }}>
         {job.title}
       </h2>

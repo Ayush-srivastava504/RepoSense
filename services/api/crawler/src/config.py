@@ -33,8 +33,6 @@ PAGE_LOAD_TIMEOUT = int(os.getenv("PAGE_LOAD_TIMEOUT", "60"))
 # Credentials
 LINKEDIN_EMAIL = os.getenv("LINKEDIN_EMAIL", "")
 LINKEDIN_PASSWORD = os.getenv("LINKEDIN_PASSWORD", "")
-NAUKRI_EMAIL = os.getenv("NAUKRI_EMAIL", "")
-NAUKRI_PASSWORD = os.getenv("NAUKRI_PASSWORD", "")
 
 # Search configuration
 DEFAULT_KEYWORDS = [
@@ -69,6 +67,36 @@ DEFAULT_JOB_TYPES = [
 
 MAX_PAGES_PER_SOURCE = int(os.getenv("MAX_PAGES_PER_SOURCE", "10"))
 
+# Remote Jobs section — sources: Himalayas, Remote OK, We Work Remotely,
+# Remotive, HiringCafe (see scrapers/himalayas.py, remoteok.py,
+# weworkremotely.py, remotive.py, hiringcafe.py). These are used as
+# fallback search terms for sources that support server-side filtering
+# (Remotive, HiringCafe); Himalayas/Remote OK/WWR are broad feeds/APIs
+# that are then filtered client-side.
+REMOTE_KEYWORDS: List[str] = [
+    "software engineer",
+    "frontend developer",
+    "backend developer",
+    "full stack developer",
+    "data engineer",
+    "product manager",
+    "devops",
+]
+
+# Government Jobs section — sources: Employment News (department/office,
+# post/notification, vacancies are already present in its listings), plus
+# FreeJobAlert, a long-running third-party aggregator that republishes
+# UPSC/SSC/Railways/Banking/State PSC/Police/Defence/Teaching notices.
+# We intentionally scrape the aggregator rather than SSC/UPSC's own
+# .gov.in/.nic.in portals directly — those are more likely to rate-limit
+# or block automated access, and are best left alone rather than risking
+# it. See scrapers/freejobalert.py for details.
+GOVERNMENT_KEYWORDS: List[str] = [
+    "recruitment",
+    "vacancy",
+    "notification",
+]
+
 # User agent pool
 USER_AGENTS: List[str] = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -89,10 +117,18 @@ USER_AGENTS: List[str] = [
 ]
 
 # Enabled scrapers
+#
+# Naukri, Indeed, Glassdoor, and Wellfound were removed entirely (not just
+# excluded from the default list): they're protected (heavy anti-bot /
+# login walls) and broke often, so they cost more crawl budget than the
+# jobs they yielded. HiringCafe (scrapers/hiringcafe.py) replaces Wellfound
+# as the remote-jobs-focused source in this default list.
 ENABLED_SCRAPERS: List[str] = os.getenv(
     "ENABLED_SCRAPERS",
-    "internshala,naukri,linkedin,wellfound,indeed,"
-    "unstop,glassdoor,cutshort,company_portals",
+    "internshala,linkedin,hiringcafe,"
+    "unstop,cutshort,company_portals,"
+    "himalayas,remoteok,weworkremotely,remotive,"
+    "employment_news,freejobalert",
 ).split(",")
 
 # Company portal configuration

@@ -50,6 +50,20 @@ TRUSTED_COMPANIES: Dict[str, List[str]] = {
     "goldman sachs": ["goldmansachs.com"],
     "jpmorgan": ["jpmorgan.com", "jpmorganchase.com"],
     "morgan stanley": ["morganstanley.com"],
+
+    # Government recruitment bodies. These map to official *.gov.in / *.nic.in
+    # domains, so a job whose apply_url resolves there is our strongest
+    # possible signal — it's a direct-apply link on the notifying authority's
+    # own site, not a third-party aggregator republishing the notice.
+    #
+    # Note: SSC and UPSC are intentionally NOT listed here anymore. We used
+    # to scrape ssc.nic.in / upsc.gov.in directly, which is exactly the kind
+    # of official-domain apply_url this mapping exists for — but that
+    # scraper was retired (see scrapers/freejobalert.py) in favor of a
+    # third-party aggregator, so those jobs' apply_url now points at
+    # freejobalert.com and won't (and shouldn't) match here.
+    "employment news": ["employmentnews.gov.in"],
+    "ministry of information and broadcasting": ["employmentnews.gov.in"],
 }
 
 # Companies here get a small first-page ranking bump (top_company_boost) even

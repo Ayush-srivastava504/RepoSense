@@ -21,6 +21,12 @@ export interface Job {
   is_top_company?: boolean;
   is_verified_source?: boolean;
   is_hot?: boolean;
+  is_remote?: boolean;
+  is_government?: boolean;
+  country?: string;
+  department?: string;
+  vacancies?: string;
+  notification_number?: string;
 }
 
 interface JobsResponse {
@@ -48,6 +54,7 @@ function coerceJobs(data: JobsResponse | Job[]): Job[] {
 export async function getJobs(options: {
   search?: string;
   type?: string;
+  category?: 'remote' | 'government';
   sort?: 'recent' | 'ranked';
   limit?: number;
 } = {}): Promise<Job[]> {
@@ -64,6 +71,7 @@ export async function getJobs(options: {
 
     if (options.search) params.set('search', options.search);
     if (options.type) params.set('type', options.type);
+    if (options.category) params.set('category', options.category);
 
     const res = await fetch(
       `${process.env.API_BASE_URL}/api/jobs/?${params.toString()}`,
@@ -90,6 +98,7 @@ export async function getJobs(options: {
  */
 export async function getFeaturedJobs(options: {
   type?: string;
+  category?: 'remote' | 'government';
   limit?: number;
 } = {}): Promise<Job[]> {
   if (!process.env.API_BASE_URL) {
@@ -103,6 +112,7 @@ export async function getFeaturedJobs(options: {
     });
 
     if (options.type) params.set('type', options.type);
+    if (options.category) params.set('category', options.category);
 
     const res = await fetch(
       `${process.env.API_BASE_URL}/api/jobs/featured?${params.toString()}`,

@@ -99,8 +99,8 @@ CREATE TABLE subscriptions (
 ### Flow: Job Scraping → Storage
 
 ```
-Scraper (LinkedIn, Indeed, Naukri, Internshala, Wellfound,
-         Unstop, Glassdoor, Cutshort, company_portals)
+Scraper (LinkedIn, HiringCafe, Internshala,
+         Unstop, Cutshort, company_portals)
     ↓
 Normalizer (processors/normalizer.py)
     ↓
@@ -148,7 +148,7 @@ pip install -r requirements.txt
 python src/index.py
 
 # Custom: specific scrapers, comma-separated, plus a page cap
-python src/index.py --scrapers linkedin,indeed,naukri --max-pages 5
+python src/index.py --scrapers linkedin,hiringcafe --max-pages 5
 
 # Dry run (no DB writes)
 python src/index.py --dry-run

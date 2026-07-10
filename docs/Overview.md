@@ -61,8 +61,8 @@ All three microservices live *inside* `services/api/` (crawler, rag, neural_gene
 │  Crawler (services/api/crawler) — batch job, not a        │
 │  request-time dependency of the API. Run on a schedule    │
 │  (cron / CI / manually) to refresh the jobs table.         │
-│  9+ scrapers: LinkedIn, Indeed, Naukri, Internshala,       │
-│  Wellfound, Unstop, Glassdoor, Cutshort, company portals   │
+│  9+ scrapers: LinkedIn, HiringCafe, Internshala,            │
+│  Unstop, Cutshort, company portals                          │
 └──────────────────────────────────────────────────────────┘
 ```
 

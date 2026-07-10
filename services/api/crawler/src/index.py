@@ -78,52 +78,18 @@ def _load_scrapers() -> Dict:
 
     try:
 
-        from scrapers.wellfound import (
-            WellfoundScraper,
+        from scrapers.hiringcafe import (
+            HiringCafeScraper,
         )
 
-        registry["wellfound"] = (
-            WellfoundScraper
-        )
-
-    except ImportError as exc:
-
-        log.warning(
-            "wellfound scraper unavailable: %s",
-            exc,
-        )
-
-    try:
-
-        from scrapers.naukri import (
-            NaukriScraper,
-        )
-
-        registry["naukri"] = (
-            NaukriScraper
+        registry["hiringcafe"] = (
+            HiringCafeScraper
         )
 
     except ImportError as exc:
 
         log.warning(
-            "naukri scraper unavailable: %s",
-            exc,
-        )
-
-    try:
-
-        from scrapers.indeed import (
-            IndeedScraper,
-        )
-
-        registry["indeed"] = (
-            IndeedScraper
-        )
-
-    except ImportError as exc:
-
-        log.warning(
-            "indeed scraper unavailable: %s",
+            "hiringcafe scraper unavailable: %s",
             exc,
         )
 
@@ -141,23 +107,6 @@ def _load_scrapers() -> Dict:
 
         log.warning(
             "unstop scraper unavailable: %s",
-            exc,
-        )
-
-    try:
-
-        from scrapers.glassdoor import (
-            GlassdoorScraper,
-        )
-
-        registry["glassdoor"] = (
-            GlassdoorScraper
-        )
-
-    except ImportError as exc:
-
-        log.warning(
-            "glassdoor scraper unavailable: %s",
             exc,
         )
 
@@ -192,6 +141,117 @@ def _load_scrapers() -> Dict:
 
         log.warning(
             "company_portals scraper unavailable: %s",
+            exc,
+        )
+
+    # --- Remote Jobs section (Himalayas, Remote OK, We Work Remotely,
+    # Remotive, HiringCafe). Naukri/Indeed/Glassdoor/Wellfound were removed
+    # entirely — heavy anti-bot protection (login walls, aggressive
+    # rate-limiting, frequent markup churn) meant they cost more crawl
+    # budget than the jobs they reliably yielded. HiringCafe (see
+    # scrapers/hiringcafe.py) is wired in as their remote-jobs replacement.
+
+    try:
+
+        from scrapers.himalayas import (
+            HimalayasScraper,
+        )
+
+        registry["himalayas"] = (
+            HimalayasScraper
+        )
+
+    except ImportError as exc:
+
+        log.warning(
+            "himalayas scraper unavailable: %s",
+            exc,
+        )
+
+    try:
+
+        from scrapers.remoteok import (
+            RemoteOKScraper,
+        )
+
+        registry["remoteok"] = (
+            RemoteOKScraper
+        )
+
+    except ImportError as exc:
+
+        log.warning(
+            "remoteok scraper unavailable: %s",
+            exc,
+        )
+
+    try:
+
+        from scrapers.weworkremotely import (
+            WeWorkRemotelyScraper,
+        )
+
+        registry["weworkremotely"] = (
+            WeWorkRemotelyScraper
+        )
+
+    except ImportError as exc:
+
+        log.warning(
+            "weworkremotely scraper unavailable: %s",
+            exc,
+        )
+
+    try:
+
+        from scrapers.remotive import (
+            RemotiveScraper,
+        )
+
+        registry["remotive"] = (
+            RemotiveScraper
+        )
+
+    except ImportError as exc:
+
+        log.warning(
+            "remotive scraper unavailable: %s",
+            exc,
+        )
+
+    # --- Government Jobs section (Employment News, FreeJobAlert)
+
+    try:
+
+        from scrapers.employment_news import (
+            EmploymentNewsScraper,
+        )
+
+        registry["employment_news"] = (
+            EmploymentNewsScraper
+        )
+
+    except ImportError as exc:
+
+        log.warning(
+            "employment_news scraper unavailable: %s",
+            exc,
+        )
+
+    try:
+
+        from scrapers.freejobalert import (
+            FreeJobAlertScraper,
+        )
+
+        registry["freejobalert"] = (
+            FreeJobAlertScraper
+        )
+
+    except ImportError as exc:
+
+        log.warning(
+            "freejobalert scraper unavailable: %s",
             exc,
         )
 

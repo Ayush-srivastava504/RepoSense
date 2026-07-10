@@ -13,6 +13,7 @@ export default function JobBadges({ job, className = '' }: { job: Job; className
   if (job.is_new) badges.push({ label: 'New', variant: 'green' });
   if (job.is_hot) badges.push({ label: 'Hot', variant: 'rust' });
   if (job.is_verified_source) badges.push({ label: 'Verified Source', variant: 'muted' });
+  if (job.is_government) badges.push({ label: 'Government', variant: 'indigo' });
 
   if (badges.length === 0) return null;
 

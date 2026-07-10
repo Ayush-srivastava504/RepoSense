@@ -9,6 +9,8 @@ const columns = [
       { label: 'About', href: '/about' },
       { label: 'Jobs', href: '/jobs' },
       { label: 'Internships', href: '/internships' },
+      { label: 'Remote jobs', href: '/remote-jobs' },
+      { label: 'Government jobs', href: '/government-jobs' },
       { label: 'Resume builder', href: '/resume/builder' },
     ],
   },

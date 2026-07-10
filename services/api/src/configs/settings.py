@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     EMAIL_PROVIDER: str = "resend"
     RESEND_API_KEY: str = ""
     REQUIRE_AUTH: bool = False
+    # Secret shared with the k6 load-test harness only. When a request
+    # carries X-Load-Test-Key equal to this value, the rate limiter is
+    # bypassed so real server capacity can be measured. Left empty by
+    # default, which disables the bypass entirely — never set this in a
+    # public-facing environment except for the duration of a load test.
+    LOAD_TEST_BYPASS_KEY: str = ""
 
     class Config:
         env_file = os.path.abspath(

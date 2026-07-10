@@ -289,7 +289,7 @@ function DashboardContent() {
         <div className="mt-8 grid gap-3 sm:grid-cols-3">
           <StatCard label="// listings" value="Live" sub="Refreshed daily from 9 sources" />
           <StatCard label="// login required" value="No" sub="Browse, search, and apply freely" accent="green" />
-          <StatCard label="// sources tracked" value="9" sub="Naukri, LinkedIn, Wellfound & more" />
+          <StatCard label="// sources tracked" value="9" sub="HiringCafe, LinkedIn, Internshala & more" />
         </div>
       )}
 

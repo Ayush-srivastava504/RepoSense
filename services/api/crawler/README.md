@@ -9,8 +9,8 @@ The crawler lives at `services/api/crawler/` and runs as `python src/index.py`. 
 ## Pipeline
 
 ```
-Scraper (per-source: LinkedIn, Indeed, Naukri, Internshala, Wellfound,
-         Unstop, Glassdoor, Cutshort, company_portals)
+Scraper (per-source: LinkedIn, HiringCafe, Internshala,
+         Unstop, Cutshort, company_portals)
     ↓
 processors/normalizer.py    — maps each source's raw fields onto a canonical schema
     ↓
@@ -27,17 +27,14 @@ PostgreSQL `jobs` table
 
 `processors/trust.py` is explicitly additive by design (see its module docstring) — it never touches scraping/normalization/dedup/enrichment output, it only reads `company` and `apply_url` off an already-processed job dict and attaches a trust score and a small number of flags (e.g. whether the apply URL matches a manually curated list of official company domains) for the API layer to use in badges and ranking.
 
-## Sources (9 scrapers)
+## Sources
 
 | Source | File |
 |---|---|
 | LinkedIn | `src/scrapers/linkedin.py` |
-| Indeed | `src/scrapers/indeed.py` |
-| Naukri | `src/scrapers/naukri.py` |
+| HiringCafe | `src/scrapers/hiringcafe.py` |
 | Internshala | `src/scrapers/internshala.py` |
-| Wellfound | `src/scrapers/wellfound.py` |
 | Unstop | `src/scrapers/unstop.py` |
-| Glassdoor | `src/scrapers/glassdoor.py` |
 | Cutshort | `src/scrapers/cutshort.py` |
 | Company portals | `src/scrapers/company_portals.py` |
 
@@ -55,7 +52,7 @@ python src/index.py
 
 # Specific scrapers (comma-separated within one --scrapers value, or
 # space-separated multiple values — argparse nargs="+" accepts either)
-python src/index.py --scrapers linkedin,indeed,naukri --max-pages 5
+python src/index.py --scrapers linkedin,hiringcafe --max-pages 5
 
 # Custom keywords / locations (space-separated, overrides config.py defaults)
 python src/index.py --keywords "backend intern" "ml engineer" --locations Bangalore Remote
@@ -64,7 +61,7 @@ python src/index.py --keywords "backend intern" "ml engineer" --locations Bangal
 python src/index.py --dry-run
 ```
 
-`--scrapers` sets the `ENABLED_SCRAPERS` environment variable internally rather than being passed straight through — passing it re-splits on commas even if you space-separated multiple `--scrapers` values, so `--scrapers linkedin,indeed` and `--scrapers linkedin indeed` behave the same.
+`--scrapers` sets the `ENABLED_SCRAPERS` environment variable internally rather than being passed straight through — passing it re-splits on commas even if you space-separated multiple `--scrapers` values, so `--scrapers linkedin,hiringcafe` and `--scrapers linkedin hiringcafe` behave the same.
 
 Note the CLI's own `--max-pages` default is **3**, which is different from `MAX_PAGES_PER_SOURCE` in `config.py` (default **10**) — the CLI flag takes precedence when passed; `MAX_PAGES_PER_SOURCE` is a separate, currently-unused-by-the-CLI config constant unless something else reads it directly.
 
@@ -91,7 +88,6 @@ MAX_PAGES_PER_SOURCE=10   # see note above re: CLI --max-pages taking precedence
 
 # Site credentials (only needed if a scraper logs in rather than scraping public listings)
 LINKEDIN_EMAIL / LINKEDIN_PASSWORD
-NAUKRI_EMAIL / NAUKRI_PASSWORD
 
 # Legacy/possibly-unused storage config — confirm against utils.py/index.py
 # before assuming these do anything in your deployment
@@ -121,7 +117,7 @@ FROM python:3.11-slim AS dev                         # what actually gets built 
 # What actually runs, whether invoked manually or by cron
 docker build --target dev -t reposense-crawler:dev .
 docker run --rm --env-file ../../../.env reposense-crawler:dev \
-  python src/index.py --scrapers internshala,naukri,linkedin,wellfound,indeed,unstop,glassdoor,cutshort,company_portals --max-pages 2
+  python src/index.py --scrapers internshala,hiringcafe,linkedin,unstop,cutshort,company_portals --max-pages 2
 
 # Or via Compose (same target: dev build)
 docker compose -f ../../../infrastructure/docker/docker-compose.yml run --rm crawler

@@ -45,7 +45,7 @@ function buildJobPostingSchema(job: Job, canonicalUrl: string) {
 
     schema.applicantLocationRequirements = {
       '@type': 'Country',
-      name: 'IN',
+      name: job.country && job.country !== 'Worldwide' ? job.country : 'IN',
     };
   } else if (job.location) {
     schema.jobLocation = {
@@ -181,6 +181,30 @@ export default function JobDetail({
         >
           {compensation}
         </p>
+      )}
+
+      {job.is_government && (job.department || job.vacancies || job.notification_number) && (
+        <div
+          className="panel mt-4 flex flex-col gap-1 p-4 text-sm"
+          style={{ color: 'var(--ink-soft)' }}
+        >
+          {job.department && (
+            <p>
+              <span style={{ color: 'var(--ink)' }}>Department:</span> {job.department}
+            </p>
+          )}
+          {job.vacancies && (
+            <p>
+              <span style={{ color: 'var(--ink)' }}>Vacancies:</span> {job.vacancies}
+            </p>
+          )}
+          {job.notification_number && (
+            <p>
+              <span style={{ color: 'var(--ink)' }}>Notification No:</span>{' '}
+              {job.notification_number}
+            </p>
+          )}
+        </div>
       )}
 
       {isDeadlineSoon && (
