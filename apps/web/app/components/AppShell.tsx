@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Logo from './Logo';
 import Footer from './Footer';
+import PageTransition from './PageTransition';
 import { useAuth } from '@/lib/auth';
 
 const sections = [
@@ -56,7 +57,7 @@ function ThemeToggle() {
       onClick={toggle}
       aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
       title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-      className="btn btn-ghost !px-2 !py-1.5"
+      className="btn btn-ghost !px-2 !py-1.5 transition-transform duration-150 hover:scale-110 active:scale-95"
     >
       {dark ? (
         <svg
@@ -107,19 +108,24 @@ export default function AppShell({
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   return (
     <div className="shell">
       <header
-        className="sticky top-0 z-40 border-b backdrop-blur-sm"
-        style={{
-          borderColor: 'var(--line)',
-          background: 'var(--paper-nav)',
-        }}
+        className={`glass-nav sticky top-0 z-40 border-b ${scrolled ? 'is-scrolled' : ''}`}
+        style={{ borderColor: 'var(--line)' }}
       >
         <div className="container-xl flex h-14 items-center justify-between gap-3">
           <div className="flex items-center gap-6">
@@ -241,6 +247,7 @@ export default function AppShell({
             style={{
               borderColor: 'var(--line)',
               background: 'var(--paper)',
+              animation: 'reveal-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both',
             }}
           >
             <nav
@@ -314,7 +321,7 @@ export default function AppShell({
       </header>
 
       <main className="container-xl flex-1 py-8 sm:py-10">
-        {children}
+        <PageTransition>{children}</PageTransition>
       </main>
 
       <Footer />

@@ -367,15 +367,15 @@ html {
 }
 
 /* ══════════════════════════════════════════════════════
-   Motion system: hero reveal, scroll reveal, glass nav,
-   particles, micro-interactions, page transitions
+   Motion system — reveals, glass nav, particles, micro-interactions
    ══════════════════════════════════════════════════════ */
 
-@keyframes fade-slide-up {
+/* ─── Keyframes ─────────────────────────────── */
+@keyframes reveal-up {
   from {
     opacity: 0;
     transform: translateY(22px);
-    filter: blur(6px);
+    filter: blur(8px);
   }
   to {
     opacity: 1;
@@ -384,74 +384,92 @@ html {
   }
 }
 
-@keyframes fade-scale-in {
+@keyframes reveal-scale {
   from {
     opacity: 0;
-    transform: scale(0.96) translateY(10px);
-    filter: blur(8px);
+    transform: translateY(28px) scale(0.96);
+    filter: blur(10px);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateY(0) scale(1);
     filter: blur(0);
   }
 }
 
-@keyframes float-particle {
-  0%   { transform: translate3d(0, 0, 0) scale(1); }
-  50%  { transform: translate3d(var(--drift-x, 12px), var(--drift-y, -18px), 0) scale(1.08); }
-  100% { transform: translate3d(0, 0, 0) scale(1); }
-}
-
-@keyframes drift-gradient {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
+@keyframes gradient-drift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
 
-@keyframes page-fade-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+@keyframes float-particle {
+  0%, 100% { transform: translate3d(0, 0, 0); opacity: var(--particle-o, 0.5); }
+  50% { transform: translate3d(var(--particle-x, 10px), var(--particle-y, -18px), 0); opacity: calc(var(--particle-o, 0.5) * 0.6); }
 }
 
-/* ─── Hero reveal (runs on load, staggered via --d) ─── */
-.hero-anim {
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ─── Hero reveal (runs once on load) ───────────
+   Apply .hero-reveal to a container; each direct child with
+   data-reveal="N" staggers in by N * ~110ms. */
+.hero-reveal [data-reveal] {
   opacity: 0;
-  animation: fade-slide-up 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: var(--d, 0ms);
+  animation: reveal-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+.hero-reveal [data-reveal="0"] { animation-delay: 0.05s; }
+.hero-reveal [data-reveal="1"] { animation-delay: 0.16s; }
+.hero-reveal [data-reveal="2"] { animation-delay: 0.27s; }
+.hero-reveal [data-reveal="3"] { animation-delay: 0.38s; }
+.hero-reveal [data-reveal="4"] { animation-delay: 0.49s; }
+.hero-reveal [data-reveal="5"] { animation-delay: 0.6s; }
 
-/* ─── Scroll reveal (Reveal.tsx toggles .is-visible) ─── */
-.reveal {
+/* ─── Scroll reveal (IntersectionObserver-driven) ───
+   .scroll-reveal starts hidden; .is-visible triggers the animation.
+   .scroll-reveal-group staggers its direct children via nth-child delay. */
+.scroll-reveal {
   opacity: 0;
-  transform: translateY(28px);
-  filter: blur(4px);
-  transition: opacity 700ms cubic-bezier(0.16, 1, 0.3, 1),
-              transform 700ms cubic-bezier(0.16, 1, 0.3, 1),
-              filter 700ms cubic-bezier(0.16, 1, 0.3, 1);
-  transition-delay: var(--d, 0ms);
+  transform: translateY(26px);
+  filter: blur(6px);
 }
 
-.reveal.is-visible {
-  opacity: 1;
-  transform: translateY(0);
-  filter: blur(0);
+.scroll-reveal.is-visible {
+  animation: reveal-up 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* ─── Glassmorphism nav ─── */
+.scroll-reveal-group:not(.is-visible) > * {
+  opacity: 0;
+}
+
+.scroll-reveal-group.is-visible > * {
+  opacity: 0;
+  animation: reveal-scale 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.scroll-reveal-group.is-visible > *:nth-child(1) { animation-delay: 0.02s; }
+.scroll-reveal-group.is-visible > *:nth-child(2) { animation-delay: 0.09s; }
+.scroll-reveal-group.is-visible > *:nth-child(3) { animation-delay: 0.16s; }
+.scroll-reveal-group.is-visible > *:nth-child(4) { animation-delay: 0.23s; }
+.scroll-reveal-group.is-visible > *:nth-child(5) { animation-delay: 0.3s; }
+.scroll-reveal-group.is-visible > *:nth-child(6) { animation-delay: 0.37s; }
+
+/* ─── Glassmorphism navbar ─────────────────── */
 .glass-nav {
-  background: color-mix(in srgb, var(--paper-nav) 82%, transparent);
-  -webkit-backdrop-filter: blur(14px) saturate(160%);
-  backdrop-filter: blur(14px) saturate(160%);
+  background: color-mix(in srgb, var(--paper) 72%, transparent);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
   transition: background-color 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
 }
 
 .glass-nav.is-scrolled {
-  box-shadow: 0 1px 0 var(--line), 0 12px 24px -18px rgba(21, 23, 28, 0.28);
+  box-shadow: 0 1px 0 var(--line), 0 12px 32px -20px rgba(21, 23, 28, 0.35);
 }
 
-/* ─── Animated gradient / particle background ─── */
-.ambient-bg {
+/* ─── Animated gradient background ─────────── */
+.bg-aurora {
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -459,74 +477,118 @@ html {
   z-index: 0;
 }
 
-.ambient-bg::before {
+.bg-aurora::before,
+.bg-aurora::after {
   content: '';
   position: absolute;
   inset: -20%;
-  background: linear-gradient(120deg, var(--indigo-soft), transparent 45%, var(--green-soft) 70%, transparent);
-  background-size: 200% 200%;
-  animation: drift-gradient 16s ease-in-out infinite;
-  opacity: 0.7;
+  background:
+    radial-gradient(38% 32% at 22% 28%, var(--indigo-soft) 0%, transparent 70%),
+    radial-gradient(34% 30% at 78% 22%, var(--green-soft) 0%, transparent 70%),
+    radial-gradient(40% 34% at 55% 80%, var(--rust-soft) 0%, transparent 72%);
+  background-size: 180% 180%;
+  animation: gradient-drift 22s ease-in-out infinite;
+  opacity: 0.8;
 }
 
-.ambient-particle {
-  position: absolute;
-  border-radius: 999px;
-  background: radial-gradient(circle at 30% 30%, var(--indigo), transparent 70%);
-  opacity: 0.35;
-  animation: float-particle 7s ease-in-out infinite;
-}
-
-[data-theme="dark"] .ambient-particle {
+.bg-aurora::after {
+  animation-duration: 30s;
+  animation-direction: reverse;
   opacity: 0.5;
+  mix-blend-mode: multiply;
 }
 
-/* ─── Micro-interactions ─── */
+[data-theme="dark"] .bg-aurora::after {
+  mix-blend-mode: screen;
+}
+
+/* Floating particles */
+.bg-particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bg-particles span {
+  position: absolute;
+  display: block;
+  width: var(--particle-size, 6px);
+  height: var(--particle-size, 6px);
+  border-radius: 999px;
+  background: var(--particle-color, var(--indigo));
+  opacity: var(--particle-o, 0.5);
+  animation: float-particle var(--particle-dur, 9s) ease-in-out infinite;
+  animation-delay: var(--particle-delay, 0s);
+}
+
+/* ─── Micro-interactions ─────────────────────── */
+
+/* Card lift on hover */
 .card-lift {
-  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 220ms ease;
-  will-change: transform;
+  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 260ms ease, border-color 260ms ease;
 }
 
 .card-lift:hover {
-  transform: translateY(-5px);
+  transform: translateY(-6px);
   border-color: var(--line-strong);
-  box-shadow: 0 4px 8px rgba(21, 23, 28, 0.06), 0 20px 36px -16px rgba(21, 23, 28, 0.22);
+  box-shadow: 0 4px 8px rgba(21, 23, 28, 0.06), 0 24px 48px -20px rgba(21, 23, 28, 0.22);
 }
 
 [data-theme="dark"] .card-lift:hover {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), 0 20px 36px -16px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), 0 24px 48px -20px rgba(0, 0, 0, 0.55);
 }
 
-.btn-glow {
+/* Glow hover ring — cursor-tracked via --mx/--my custom properties set in JS */
+.glow-hover {
   position: relative;
+  isolation: isolate;
 }
 
-.btn-glow::after {
+.glow-hover::before {
   content: '';
   position: absolute;
-  inset: -2px;
+  inset: -1px;
   border-radius: inherit;
-  background: inherit;
-  filter: blur(10px);
+  background: radial-gradient(120px 60px at var(--mx, 50%) var(--my, 0%), color-mix(in srgb, var(--indigo) 55%, transparent), transparent 70%);
   opacity: 0;
+  transition: opacity 300ms ease;
   z-index: -1;
-  transition: opacity 250ms ease;
 }
 
-.btn-glow:hover::after {
-  opacity: 0.55;
+.glow-hover:hover::before {
+  opacity: 1;
 }
 
-.magnetic-btn {
-  transition: transform 150ms cubic-bezier(0.16, 1, 0.3, 1);
+/* Magnetic buttons — JS sets an inline transform; this just eases it */
+.btn-magnetic {
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), background-color 150ms ease, box-shadow 220ms ease;
   will-change: transform;
 }
 
-/* ─── Page transition wrapper ─── */
+.btn-magnetic:hover {
+  box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--indigo) 55%, transparent);
+}
+
+/* Smooth fade for route/page transitions */
 .page-transition {
-  animation: page-fade-in 420ms cubic-bezier(0.16, 1, 0.3, 1);
+  animation: fade-in 320ms ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-reveal [data-reveal],
+  .scroll-reveal,
+  .scroll-reveal-group.is-visible > *,
+  .bg-aurora::before,
+  .bg-aurora::after,
+  .bg-particles span,
+  .page-transition {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -534,20 +596,5 @@ html {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-  }
-
-  .reveal {
-    opacity: 1 !important;
-    transform: none !important;
-    filter: none !important;
-  }
-
-  .hero-anim {
-    opacity: 1 !important;
-    animation: none !important;
-  }
-
-  .magnetic-btn {
-    transform: none !important;
   }
 }

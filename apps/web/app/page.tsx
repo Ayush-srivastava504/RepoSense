@@ -4,6 +4,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
 import HeroGraph from '@/app/components/HeroGraph';
+import AuroraBackground from '@/app/components/AuroraBackground';
+import MagneticLink from '@/app/components/MagneticLink';
+import ScrollReveal from '@/app/components/ScrollReveal';
 
 const features = [
   {
@@ -93,36 +96,35 @@ export default function LandingPage() {
   return (
     <div className="shell">
       {/* HERO */}
-      <section className="container-xl grid items-center gap-10 py-12 md:grid-cols-2 md:py-20">
-        <div>
-          <p className="eyebrow eyebrow-accent mb-3">// AI-powered internship platform</p>
-          <h1 className="display text-[2rem] font-medium leading-[1.1] sm:text-[2.75rem]">
+      <section className="hero-reveal relative container-xl grid items-center gap-10 overflow-hidden py-12 md:grid-cols-2 md:py-20">
+        <AuroraBackground particleCount={12} />
+
+        <div className="relative z-10">
+          <p data-reveal="0" className="eyebrow eyebrow-accent mb-3">// AI-powered internship platform</p>
+          <h1 data-reveal="1" className="display text-[2rem] font-medium leading-[1.1] sm:text-[2.75rem]">
             Reviews your GitHub code and builds job-ready resumes automatically.
           </h1>
-          <p className="mt-4 max-w-md text-base leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+          <p data-reveal="2" className="mt-4 max-w-md text-base leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
             Connect a repo, push code, and get an AI review on the diff — then turn that work
             into a resume built for the internship you actually want. No signup wall — jump
             straight in.
           </p>
 
           {/* Social proof */}
-          <div className="mt-5 flex flex-wrap gap-3">
+          <div data-reveal="3" className="mt-5 flex flex-wrap gap-3">
             <span className="chip chip-green">1,200+ students</span>
             <span className="chip chip-green">8,400 repos analyzed</span>
             <span className="chip chip-green">3,100 resumes generated</span>
           </div>
 
-          <div className="mt-7 flex flex-wrap items-center gap-3">
-            <Link
-              href="/dashboard"
-              className="btn btn-primary transition-transform duration-150 hover:scale-[1.03] active:scale-[0.98]"
-            >
+          <div data-reveal="4" className="mt-7 flex flex-wrap items-center gap-3">
+            <MagneticLink href="/dashboard" className="btn btn-primary">
               Try it free
-            </Link>
+            </MagneticLink>
           </div>
         </div>
 
-        <div className="relative h-[280px] sm:h-[360px] md:h-[420px]">
+        <div data-reveal="5" className="relative z-10 h-[280px] sm:h-[360px] md:h-[420px]">
           <div
             className="absolute inset-0 rounded-[var(--radius-lg)]"
             style={{ background: 'radial-gradient(circle at 60% 35%, var(--indigo-soft), transparent 60%)' }}
@@ -132,11 +134,11 @@ export default function LandingPage() {
       </section>
 
       {/* HOW IT WORKS */}
-      <section className="container-xl py-14">
+      <ScrollReveal as="section" className="container-xl py-14">
         <hr className="hr-line mb-10" />
         <p className="eyebrow eyebrow-accent mb-2">// how it works</p>
         <h2 className="display text-2xl font-medium mb-10">Three steps from code to offer</h2>
-        <div className="grid gap-6 sm:grid-cols-3">
+        <ScrollReveal as="div" stagger className="grid gap-6 sm:grid-cols-3">
           {steps.map((s, i) => (
             <div key={s.num} className="relative">
               <p className="display text-4xl font-medium mb-3" style={{ color: 'var(--line-strong)' }}>{s.num}</p>
@@ -147,72 +149,72 @@ export default function LandingPage() {
               )}
             </div>
           ))}
-        </div>
-      </section>
+        </ScrollReveal>
+      </ScrollReveal>
 
       {/* RESUME BEFORE / AFTER */}
-      <section className="container-xl py-14">
+      <ScrollReveal as="section" className="container-xl py-14">
         <hr className="hr-line mb-10" />
         <p className="eyebrow eyebrow-accent mb-2">// see the difference</p>
         <h2 className="display text-2xl font-medium mb-8">What your resume becomes</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="panel p-6 border-l-4" style={{ borderLeftColor: 'var(--rust)' }}>
+        <ScrollReveal as="div" stagger className="grid gap-4 md:grid-cols-2">
+          <div className="panel card-lift p-6 border-l-4" style={{ borderLeftColor: 'var(--rust)' }}>
             <p className="chip chip-rust mb-4" style={{ width: 'fit-content' }}>before InternFlow</p>
             <p className="text-base leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
               "Built an internship project using FastAPI and React."
             </p>
           </div>
-          <div className="panel p-6 border-l-4" style={{ borderLeftColor: 'var(--green)' }}>
+          <div className="panel card-lift p-6 border-l-4" style={{ borderLeftColor: 'var(--green)' }}>
             <p className="chip chip-green mb-4" style={{ width: 'fit-content' }}>after InternFlow</p>
             <p className="text-base leading-relaxed" style={{ color: 'var(--ink)' }}>
               "Developed FastAPI backend handling <strong>10,000+ API requests/day</strong>, reducing response latency by <strong>35%</strong> through async query optimization and Redis caching."
             </p>
           </div>
-        </div>
+        </ScrollReveal>
         <p className="mt-4 text-sm" style={{ color: 'var(--muted)' }}>
           Generated from your actual commits, PRs, and AI review data — not thin air.
         </p>
-      </section>
+      </ScrollReveal>
 
       {/* FEATURES */}
-      <section className="container-xl py-14">
+      <ScrollReveal as="section" className="container-xl py-14">
         <hr className="hr-line mb-10" />
         <p className="eyebrow eyebrow-accent mb-2">// what's inside</p>
         <h2 className="display text-2xl font-medium mb-8">Everything in one workspace</h2>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <ScrollReveal as="div" stagger className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((f) => (
-            <div key={f.tag} className="panel p-6">
+            <div key={f.tag} className="panel card-lift p-6">
               <p className="eyebrow eyebrow-accent">// {f.tag}</p>
               <h3 className="display mt-3 text-xl font-medium">{f.title}</h3>
               <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{f.body}</p>
             </div>
           ))}
-        </div>
-      </section>
+        </ScrollReveal>
+      </ScrollReveal>
 
       {/* STUDENT BENEFITS */}
-      <section className="container-xl py-14">
+      <ScrollReveal as="section" className="container-xl py-14">
         <hr className="hr-line mb-10" />
         <p className="eyebrow eyebrow-accent mb-2">// built for students</p>
         <h2 className="display text-2xl font-medium mb-8">Not another developer tool</h2>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <ScrollReveal as="div" stagger className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {benefits.map((b) => (
-            <div key={b.title} className="panel p-5">
+            <div key={b.title} className="panel card-lift p-5">
               <h3 className="display text-base font-medium mb-2">{b.title}</h3>
               <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{b.body}</p>
             </div>
           ))}
-        </div>
-      </section>
+        </ScrollReveal>
+      </ScrollReveal>
 
       {/* TESTIMONIALS */}
-      <section className="container-xl py-14">
+      <ScrollReveal as="section" className="container-xl py-14">
         <hr className="hr-line mb-10" />
         <p className="eyebrow eyebrow-accent mb-2">// from students</p>
         <h2 className="display text-2xl font-medium mb-8">People who've used it</h2>
-        <div className="grid gap-5 sm:grid-cols-3">
+        <ScrollReveal as="div" stagger className="grid gap-5 sm:grid-cols-3">
           {testimonials.map((t) => (
-            <div key={t.name} className="panel p-6 flex flex-col justify-between">
+            <div key={t.name} className="panel card-lift p-6 flex flex-col justify-between">
               <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
                 "{t.quote}"
               </p>
@@ -222,11 +224,11 @@ export default function LandingPage() {
               </div>
             </div>
           ))}
-        </div>
-      </section>
+        </ScrollReveal>
+      </ScrollReveal>
 
       {/* JOB FEED PREVIEW */}
-      <section className="container-xl py-14">
+      <ScrollReveal as="section" className="container-xl py-14">
         <hr className="hr-line mb-10" />
         <div className="flex flex-wrap items-end justify-between gap-3 mb-8">
           <div>
@@ -240,9 +242,9 @@ export default function LandingPage() {
             See all
           </Link>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ScrollReveal as="div" stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {previewJobs.map((j) => (
-            <div key={j.title + j.company} className="panel p-5">
+            <div key={j.title + j.company} className="panel card-lift p-5">
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="display text-base font-medium">{j.title}</p>
                 {j.tag && (
@@ -255,14 +257,14 @@ export default function LandingPage() {
               <p className="eyebrow mt-1">{j.location}</p>
             </div>
           ))}
-        </div>
+        </ScrollReveal>
         <p className="mt-5 text-sm text-center" style={{ color: 'var(--muted)' }}>
           Browse the full feed and apply directly — no account needed.
         </p>
-      </section>
+      </ScrollReveal>
 
       {/* CLOSING CTA */}
-      <section className="container-xl pb-20">
+      <ScrollReveal as="section" className="container-xl pb-20">
         <div className="panel-dark flex flex-col items-start justify-between gap-6 p-7 sm:flex-row sm:items-center">
           <div>
             <p className="eyebrow" style={{ color: '#9ea3ab' }}>// ready when you are</p>
@@ -270,14 +272,11 @@ export default function LandingPage() {
               Push your next commit somewhere it gets read.
             </p>
           </div>
-          <Link
-            href="/dashboard"
-            className="btn btn-primary flex-shrink-0 whitespace-nowrap transition-transform duration-150 hover:scale-[1.03] active:scale-[0.98]"
-          >
+          <MagneticLink href="/dashboard" className="btn btn-primary flex-shrink-0 whitespace-nowrap">
             Get started free
-          </Link>
+          </MagneticLink>
         </div>
-      </section>
+      </ScrollReveal>
     </div>
   );
 }
