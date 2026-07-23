@@ -24,6 +24,7 @@ from routes import (
     subscription,
     webhooks,
     linkedin,
+    ats,
 )
 from routes.async_jobs import router as async_jobs_router
 
@@ -130,6 +131,7 @@ def create_application() -> FastAPI:
     app.include_router(subscription.router)
     app.include_router(webhooks.router)
     app.include_router(linkedin.router)
+    app.include_router(ats.router)
     app.include_router(async_jobs_router)   # /api/async-jobs/{id}
     app.include_router(review_router)       # /api/v1/review + /api/v1/fix
     app.include_router(self_healing_router)

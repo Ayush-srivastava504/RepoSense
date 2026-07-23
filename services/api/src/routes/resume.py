@@ -105,6 +105,25 @@ async def generate_resume(data: GenerateResumeRequest, user=Depends(verify_token
     return {"job_id": job_id, "status": "pending"}
 
 
+class GenerateCoverLetterRequest(BaseModel):
+    job_description: str
+    resume_text: str
+    company_name: Optional[str] = ""
+
+
+@router.post("/cover-letter")
+async def generate_cover_letter(data: GenerateCoverLetterRequest, user=Depends(verify_token)):
+    ai_service = ResumeAIService()
+    try:
+        return await ai_service.generate_cover_letter(
+            job_description=data.job_description,
+            resume_text=data.resume_text,
+            company_name=data.company_name or "",
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Cover letter generation failed: {exc}")
+
+
 def _strip_protocol(url: str) -> str:
     if not url:
         return ""

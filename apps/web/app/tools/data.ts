@@ -73,8 +73,8 @@ export const TOOLS: ToolDefinition[] = [
     metaDescription:
       'Check your resume against applicant tracking system (ATS) rules for free. Get an ATS score, keyword gaps, and formatting fixes before you apply.',
     heroDescription:
-      'Most student resumes get filtered out before a human ever sees them. InternFlow scores your resume against real ATS parsing rules — formatting, section headers, keyword match against the job description, and file structure — so you know what to fix before you hit apply.',
-    ctaHref: '/resume/builder',
+      'Most student resumes get filtered out before a human ever sees them. InternFlow scores your resume against real ATS parsing rules — formatting, section headers, and keyword match for your target role — for five roles: Software Engineer, AI/ML Engineer, DevOps Engineer, Data Engineer, and Data Analyst. Pick your role and see exactly what to fix before you apply.',
+    ctaHref: '/ats-checker',
     ctaLabel: 'Check my resume score',
     category: 'Career Tools',
     benefits: [
@@ -102,7 +102,7 @@ export const TOOLS: ToolDefinition[] = [
       {
         question: 'Do I need a specific job description to check my resume?',
         answer:
-          'You get a general formatting and structure score without one, and a more precise keyword-match score if you paste in a target job description.',
+          'No — pick your target role (Software Engineer, AI/ML Engineer, DevOps Engineer, Data Engineer, or Data Analyst) and InternFlow checks your resume against the keywords and formatting rules that role\'s applicant tracking systems actually look for.',
       },
     ],
     relatedSlugs: ['resume-builder', 'cover-letter-generator'],
@@ -198,8 +198,8 @@ export const TOOLS: ToolDefinition[] = [
       'Generate a tailored cover letter for any internship or job application. InternFlow matches your resume and the job description to write a specific, non-generic letter.',
     heroDescription:
       'Generic cover letters get skipped. InternFlow reads the job description alongside your resume and drafts a short, specific cover letter that explains why you fit that particular role — not a template with the company name swapped in.',
-    ctaHref: '/register',
-    ctaLabel: 'Get early access',
+    ctaHref: '/cover-letter',
+    ctaLabel: 'Generate my cover letter',
     category: 'Career Tools',
     benefits: [
       'Matches your resume experience to the specific job description',
@@ -216,7 +216,7 @@ export const TOOLS: ToolDefinition[] = [
       {
         question: 'Is the cover letter generator available now?',
         answer:
-          'It is rolling out to InternFlow accounts. Sign up for early access and you will be notified as soon as it is available on your account.',
+          'Yes. It is live on InternFlow — paste a job description and your resume text and it drafts a letter in under a minute.',
       },
       {
         question: 'Will the letter sound generic?',

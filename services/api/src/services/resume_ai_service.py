@@ -75,6 +75,39 @@ Output the JSON now:"""
         self._normalize(parsed_json)
         return parsed_json
 
+    async def generate_cover_letter(
+        self,
+        job_description: str,
+        resume_text: str,
+        company_name: str = "",
+    ):
+        prompt = f"""You are a career writing assistant. Write a short, specific cover letter (250-350 words) for this application. No markdown, no placeholders like [Company Name] left unfilled if the company name is given below, no generic filler sentences. Reference 1-2 concrete things from the resume that match the job description. Output only the letter body text, no subject line, no explanation.
+
+Company: {company_name or "the company"}
+Job description: {job_description}
+Candidate resume: {resume_text}
+
+Cover letter:"""
+
+        async with httpx.AsyncClient(timeout=300) as client:
+            response = await client.post(
+                f"{settings.NEURAL_GENERATOR_URL}/generate",
+                json={
+                    "prompt": prompt,
+                    "max_tokens": 500,
+                    "temperature": 0.4,
+                    "top_k": 40,
+                    "top_p": 0.9,
+                    "repeat_penalty": 1.1,
+                },
+            )
+            response.raise_for_status()
+            output = response.json()
+
+        text = output.get("text", "").strip()
+        text = text.replace("```", "").strip()
+        return {"letter": text}
+
     def _extract_first_json(self, text: str):
         decoder = json.JSONDecoder()
         start = text.find("{")

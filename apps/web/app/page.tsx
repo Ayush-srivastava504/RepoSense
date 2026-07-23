@@ -1,12 +1,13 @@
-'use client';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
 import HeroGraph from '@/app/components/HeroGraph';
 import AuroraBackground from '@/app/components/AuroraBackground';
 import MagneticLink from '@/app/components/MagneticLink';
 import ScrollReveal from '@/app/components/ScrollReveal';
+import AuthRedirect from '@/app/components/AuthRedirect';
+import JobCard from '@/app/components/JobCard';
+import { getFeaturedJobs, getJobs } from '@/lib/jobs';
+
+export const dynamic = 'force-dynamic';
 
 const features = [
   {
@@ -74,27 +75,13 @@ const testimonials = [
   },
 ];
 
-const previewJobs = [
-  { title: 'Data Analyst Intern',    company: 'Razorpay', location: 'Bangalore', tag: 'New' },
-  { title: 'Python Developer Intern', company: 'Zepto',    location: 'Mumbai',    tag: 'Hot' },
-  { title: 'AI/ML Intern',           company: 'Sarvam AI', location: 'Remote',   tag: 'New' },
-  { title: 'Backend Intern',         company: 'CRED',      location: 'Bangalore', tag: '' },
-  { title: 'Frontend Intern',        company: 'Groww',     location: 'Bangalore', tag: '' },
-  { title: 'Full Stack Intern',      company: 'Meesho',    location: 'Remote',    tag: 'Hot' },
-];
-
-export default function LandingPage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!loading && user && !user.is_guest) {
-      router.replace('/dashboard');
-    }
-  }, [user, loading, router]);
+export default async function LandingPage() {
+  const featured = await getFeaturedJobs({ limit: 6 });
+  const previewJobs = featured.length > 0 ? featured : await getJobs({ sort: 'recent', limit: 6 });
 
   return (
     <div className="shell">
+      <AuthRedirect />
       {/* HERO */}
       <section className="hero-reveal relative container-xl grid items-center gap-10 overflow-hidden py-12 md:grid-cols-2 md:py-20">
         <AuroraBackground particleCount={12} />
@@ -227,41 +214,32 @@ export default function LandingPage() {
         </ScrollReveal>
       </ScrollReveal>
 
-      {/* JOB FEED PREVIEW */}
-      <ScrollReveal as="section" className="container-xl py-14">
-        <hr className="hr-line mb-10" />
-        <div className="flex flex-wrap items-end justify-between gap-3 mb-8">
-          <div>
-            <p className="eyebrow eyebrow-accent mb-2">// latest internships</p>
-            <h2 className="display text-2xl font-medium">Refreshed daily</h2>
-          </div>
-          <Link
-            href="/jobs"
-            className="btn btn-secondary text-sm transition-transform duration-150 hover:scale-[1.03] active:scale-[0.98]"
-          >
-            See all
-          </Link>
-        </div>
-        <ScrollReveal as="div" stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {previewJobs.map((j) => (
-            <div key={j.title + j.company} className="panel card-lift p-5">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="display text-base font-medium">{j.title}</p>
-                {j.tag && (
-                  <span className={`chip text-[0.65rem] ${j.tag === 'Hot' ? 'chip-rust' : 'chip-green'}`}>
-                    {j.tag}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm mt-1" style={{ color: 'var(--ink-soft)' }}>{j.company}</p>
-              <p className="eyebrow mt-1">{j.location}</p>
+      {/* JOB FEED PREVIEW — real listings pulled live from the jobs API, not placeholders */}
+      {previewJobs.length > 0 && (
+        <ScrollReveal as="section" className="container-xl py-14">
+          <hr className="hr-line mb-10" />
+          <div className="flex flex-wrap items-end justify-between gap-3 mb-8">
+            <div>
+              <p className="eyebrow eyebrow-accent mb-2">// open right now</p>
+              <h2 className="display text-2xl font-medium">Jobs and internships from this week's crawl</h2>
             </div>
-          ))}
+            <Link
+              href="/jobs"
+              className="btn btn-secondary text-sm transition-transform duration-150 hover:scale-[1.03] active:scale-[0.98]"
+            >
+              See all listings
+            </Link>
+          </div>
+          <ScrollReveal as="div" stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {previewJobs.slice(0, 6).map((j) => (
+              <JobCard key={j.id} job={j} />
+            ))}
+          </ScrollReveal>
+          <p className="mt-5 text-sm text-center" style={{ color: 'var(--muted)' }}>
+            Browse the full feed and apply directly — no account needed.
+          </p>
         </ScrollReveal>
-        <p className="mt-5 text-sm text-center" style={{ color: 'var(--muted)' }}>
-          Browse the full feed and apply directly — no account needed.
-        </p>
-      </ScrollReveal>
+      )}
 
       {/* CLOSING CTA */}
       <ScrollReveal as="section" className="container-xl pb-20">
