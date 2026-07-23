@@ -141,11 +141,12 @@ export default function LandingPage() {
   return (
     <div className="shell">
       {/* HERO SECTION */}
-      <section className="hero-section relative container-xl grid items-center gap-10 py-16 md:py-24 lg:py-28 overflow-hidden animated-bg">
+      <section className="hero-section relative container-xl grid items-center gap-10 py-16 md:py-24 lg:py-28 overflow-hidden animated-bg md:grid-cols-2">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5 pointer-events-none"></div>
         <div className="particles"></div>
         
-        <div className="relative z-10 col-span-1 md:col-span-1 order-1 md:order-1">
+        {/* Left Column - Content */}
+        <div className="relative z-10">
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -201,11 +202,12 @@ export default function LandingPage() {
           </motion.div>
         </div>
 
+        {/* Right Column - 3D Graph */}
         <motion.div 
           initial={{ opacity: 0, scale: 0.9, rotate: -2 }}
           animate={{ opacity: 1, scale: 1, rotate: 0 }}
           transition={{ delay: 0.4, duration: 1.1, ease: "easeOut" }}
-          className="relative h-[320px] sm:h-[400px] md:h-[480px] flex items-center justify-center col-span-1 md:col-span-1 order-2 md:order-2"
+          className="relative h-[320px] sm:h-[400px] md:h-[480px] flex items-center justify-center"
         >
           <div className="absolute inset-0 rounded-[var(--radius-lg)] bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent" />
           <div className="relative w-full h-full">
