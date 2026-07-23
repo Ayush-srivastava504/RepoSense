@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
 import HeroGraph from '@/app/components/HeroGraph';
-import Footer from '@/app/components/Footer';
 
 const features = [
   {
@@ -279,8 +278,6 @@ export default function LandingPage() {
           </Link>
         </div>
       </section>
-
-      <Footer />
     </div>
   );
 }
