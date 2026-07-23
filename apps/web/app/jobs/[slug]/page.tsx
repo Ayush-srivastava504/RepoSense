@@ -4,7 +4,9 @@ import { notFound } from 'next/navigation';
 
 import { jobIdFromSlug } from '@/lib/slug';
 import { getJobById, BASE_URL } from '@/lib/jobs';
+import { jobPostingSchema, breadcrumbSchema } from '@/lib/structuredData';
 import JobDetail from '@/app/components/JobDetail';
+import TrackView from '@/app/components/TrackView';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,8 +50,31 @@ export default async function JobDetailPage({
     notFound();
   }
 
+  const canonicalUrl = `${BASE_URL}/jobs/${params.slug}`;
+  const jobSchema = jobPostingSchema(job, canonicalUrl);
+  const crumbs = breadcrumbSchema([
+    { name: 'Home', url: BASE_URL },
+    { name: 'Jobs', url: `${BASE_URL}/jobs` },
+    { name: job.title, url: canonicalUrl },
+  ]);
+
   return (
     <main className="w-full">
+      <Script
+        id="job-posting-schema"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jobSchema) }}
+      />
+      <Script
+        id="job-breadcrumb-schema"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}
+      />
+      <TrackView
+        event="job_view"
+        params={{ job_id: job.id, job_title: job.title, company: job.company }}
+      />
+
       <div className="mx-auto w-full max-w-5xl px-3 py-6 sm:px-4 sm:py-8">
         <JobDetail
           job={job}

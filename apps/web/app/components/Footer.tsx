@@ -11,7 +11,17 @@ const columns = [
       { label: 'Internships', href: '/internships' },
       { label: 'Remote jobs', href: '/remote-jobs' },
       { label: 'Government jobs', href: '/government-jobs' },
-      { label: 'Resume builder', href: '/resume/builder' },
+    ],
+  },
+  {
+    heading: 'AI tools',
+    links: [
+      { label: 'All tools', href: '/tools' },
+      { label: 'GitHub README generator', href: '/tools/github-readme-generator' },
+      { label: 'ATS resume checker', href: '/tools/ats-resume-checker' },
+      { label: 'Resume builder', href: '/tools/resume-builder' },
+      { label: 'LinkedIn optimizer', href: '/tools/linkedin-optimizer' },
+      { label: 'Cover letter generator', href: '/tools/cover-letter-generator' },
     ],
   },
   {

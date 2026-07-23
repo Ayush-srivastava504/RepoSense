@@ -6,13 +6,23 @@ Allow: /jobs
 Allow: /jobs/
 Allow: /internships
 Allow: /internships/
+Allow: /remote-jobs
+Allow: /remote-jobs/
+Allow: /government-jobs
+Allow: /government-jobs/
+Allow: /hackathons
+Allow: /hackathons/
+Allow: /tools
+Allow: /tools/
 Allow: /resume
 Allow: /resume/
+Allow: /github
+Allow: /github/
+Allow: /linkedin
+Allow: /linkedin/
 
 Disallow: /dashboard
 Disallow: /dashboard/
-Disallow: /github
-Disallow: /github/
 Disallow: /api/
 Disallow: /_next/
 Disallow: /static/

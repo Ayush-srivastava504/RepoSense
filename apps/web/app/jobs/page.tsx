@@ -13,6 +13,7 @@ import {
 import JobCard from '@/app/components/JobCard';
 import FeaturedJobs from '@/app/components/FeaturedJobs';
 import SponsoredCard from '@/app/components/SponsoredCard';
+import JobsSearchTracker from '@/app/components/JobsSearchTracker';
 
 export const dynamic = 'force-dynamic';
 
@@ -220,6 +221,8 @@ export default async function JobsPage({
 
   return (
     <div className="min-h-screen">
+      <JobsSearchTracker search={search} resultCount={totalJobs} />
+
       <Script
         id="jobs-in-page-push"
         strategy="afterInteractive"

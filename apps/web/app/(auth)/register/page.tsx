@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
 import Logo from '../../components/Logo';
+import { trackSignUp, trackFunnelStep } from '@/lib/analytics';
 
 type Step = 'email' | 'otp';
 
@@ -24,6 +25,7 @@ export default function Register() {
       // Register endpoint creates the user (or is a no-op if they already exist)
       // then sends OTP
       await requestOtp(email);
+      trackFunnelStep({ funnel: 'sign_up', step: 'otp_requested', step_index: 1 });
       setStep('otp');
     } catch (err: any) {
       setError(err?.message || 'Could not create your account. Try a different email.');
@@ -38,6 +40,7 @@ export default function Register() {
     setLoading(true);
     try {
       await verifyOtp(email, otp);
+      trackSignUp('email');
       router.push('/dashboard');
     } catch (err: any) {
       setError(err?.message || 'Invalid or expired code. Try again.');
