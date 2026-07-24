@@ -125,11 +125,11 @@ export default function ToolLandingPage({ params }: { params: { tool: string } }
 
         <section className="mt-10">
           <h2 className="display text-xl font-medium">Frequently asked questions</h2>
-          <div className="mt-4 space-y-5">
+          <div className="mt-4 space-y-3">
             {tool.faqs.map((faq) => (
-              <div key={faq.question}>
+              <div key={faq.question} className="panel p-4 sm:p-5">
                 <p className="font-medium">{faq.question}</p>
-                <p className="mt-1" style={{ color: 'var(--ink-soft)' }}>{faq.answer}</p>
+                <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{faq.answer}</p>
               </div>
             ))}
           </div>
@@ -138,14 +138,15 @@ export default function ToolLandingPage({ params }: { params: { tool: string } }
         {related.length > 0 && (
           <section className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
             <h2 className="display text-xl font-medium">Related tools</h2>
-            <ul className="mt-4 flex flex-wrap gap-3">
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
               {related.map((relatedTool) => (
                 <li key={relatedTool.slug}>
                   <Link
                     href={`/tools/${relatedTool.slug}`}
-                    className="chip"
+                    className="panel card-lift flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium"
                   >
                     {relatedTool.shortName}
+                    <span aria-hidden="true" style={{ color: 'var(--ink-soft)' }}>→</span>
                   </Link>
                 </li>
               ))}
@@ -155,10 +156,25 @@ export default function ToolLandingPage({ params }: { params: { tool: string } }
 
         <section className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
           <h2 className="display text-xl font-medium">Explore more</h2>
-          <ul className="mt-4 flex flex-wrap gap-3">
-            <li><Link href="/jobs" className="chip">Browse jobs</Link></li>
-            <li><Link href="/internships" className="chip">Browse internships</Link></li>
-            <li><Link href="/remote-jobs" className="chip">Remote jobs</Link></li>
+          <ul className="mt-4 grid gap-3 sm:grid-cols-3">
+            <li>
+              <Link href="/jobs" className="panel card-lift flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium">
+                Browse jobs
+                <span aria-hidden="true" style={{ color: 'var(--ink-soft)' }}>→</span>
+              </Link>
+            </li>
+            <li>
+              <Link href="/internships" className="panel card-lift flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium">
+                Browse internships
+                <span aria-hidden="true" style={{ color: 'var(--ink-soft)' }}>→</span>
+              </Link>
+            </li>
+            <li>
+              <Link href="/remote-jobs" className="panel card-lift flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium">
+                Remote jobs
+                <span aria-hidden="true" style={{ color: 'var(--ink-soft)' }}>→</span>
+              </Link>
+            </li>
           </ul>
         </section>
       </div>

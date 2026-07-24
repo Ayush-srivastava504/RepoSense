@@ -26,7 +26,7 @@
   --radius-md: 10px;
   --radius-lg: 16px;
 
-  --shadow-card: 0 1px 2px rgba(21, 23, 28, 0.04), 0 8px 24px -12px rgba(21, 23, 28, 0.10);
+  --shadow-card: 0 1px 3px rgba(21, 23, 28, 0.08), 0 10px 24px -10px rgba(21, 23, 28, 0.20);
 }
 
 /* ─── Dark mode tokens ──────────────────────────────── */
@@ -48,7 +48,7 @@
   --score-amber: #fbbf24;
   --score-orange: #fb923c;
 
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px -12px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.35), 0 10px 24px -10px rgba(0, 0, 0, 0.5);
 }
 
 html {
@@ -128,7 +128,7 @@ body {
   /* Cards / panels */
   .panel {
     background: var(--paper-dim);
-    border: 1px solid var(--line);
+    border: 1px solid var(--line-strong);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-card);
   }
