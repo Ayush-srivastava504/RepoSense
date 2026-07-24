@@ -59,6 +59,13 @@ def get_client_ip(request: Request) -> str:
 
 
 async def rate_limit_middleware(request: Request, call_next):
+    # Preflight requests carry no credentials and no business payload —
+    # blocking one doesn't protect anything, it just breaks the real
+    # request that follows it (browsers won't even send that request if
+    # the preflight comes back without proper CORS headers).
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
     # Try to obtain a Redis client. If the connection failed (``get_redis``
     # returns ``None``) we simply skip rate-limiting - the request can still
     # be processed, but no abuse protection will be applied.
@@ -84,13 +91,6 @@ async def rate_limit_middleware(request: Request, call_next):
         await redis.expire(key, 60)
 
     if current > limit:
-        # IMPORTANT: raising HTTPException here does NOT work. This
-        # middleware runs via app.middleware("http"), which sits *above*
-        # Starlette's ExceptionMiddleware in the stack. An HTTPException
-        # raised at this layer is never converted to a JSON 429 response -
-        # it propagates all the way out to ServerErrorMiddleware, which
-        # turns it into a bare, unhandled 500. Returning a JSONResponse
-        # directly is what actually produces a 429 to the client.
         retry_after = await redis.ttl(key)
         return JSONResponse(
             status_code=429,

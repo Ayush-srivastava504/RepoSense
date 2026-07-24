@@ -74,14 +74,17 @@ def create_application() -> FastAPI:
     )
 
     # ── Middleware ────────────────────────────────────────────────────────────
-
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    # IMPORTANT: Starlette wraps middleware in reverse registration order —
+    # the LAST middleware added via add_middleware()/@app.middleware("http")
+    # ends up OUTERMOST, running first on the way in and last on the way out.
+    # CORSMiddleware must therefore be added LAST. It used to be added
+    # first (innermost), so whenever an inner middleware short-circuited a
+    # request — most commonly rate_limit_middleware returning a 429 before
+    # ever reaching CORSMiddleware — the response left with no
+    # Access-Control-Allow-Origin header. Browsers can't distinguish that
+    # from a real CORS block, so every rate-limited call (very easy to hit
+    # while testing a tool repeatedly) showed up in the console as a CORS
+    # error instead of the actual 429.
 
     app.add_middleware(
         TrustedHostMiddleware,
@@ -120,6 +123,17 @@ def create_application() -> FastAPI:
         response = await call_next(request)
         response.headers["X-Process-Time"] = str(time.monotonic() - start)
         return response
+
+    # Added last => outermost => always gets a chance to attach CORS
+    # headers, even to responses that other middleware returned early.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.CORS_ORIGINS,
+        allow_origin_regex=settings.CORS_ORIGIN_REGEX,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     # ── Routers ───────────────────────────────────────────────────────────────
 

@@ -23,6 +23,15 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://localhost:8000",
     ]
+    # Vercel preview deployments get a fresh random subdomain
+    # (e.g. repo-sense-7mjn8w5ca-<team>.vercel.app) on every deploy, so
+    # they can't be listed individually in CORS_ORIGINS. This regex covers
+    # any *.vercel.app origin plus the production domain. Override via the
+    # CORS_ORIGIN_REGEX env var if the Vercel project/team slug changes.
+    CORS_ORIGIN_REGEX: str = (
+        r"^https://([a-zA-Z0-9\-]+\.)*vercel\.app$"
+        r"|^https://(www\.)?intern-flow\.in$"
+    )
     GITHUB_REDIRECT_URI: str = ""
     FRONTEND_URL: str = ""
     RAG_SERVICE_URL: str = "http://localhost:8001"
@@ -30,11 +39,6 @@ class Settings(BaseSettings):
     EMAIL_PROVIDER: str = "resend"
     RESEND_API_KEY: str = ""
     REQUIRE_AUTH: bool = False
-    # Secret shared with the k6 load-test harness only. When a request
-    # carries X-Load-Test-Key equal to this value, the rate limiter is
-    # bypassed so real server capacity can be measured. Left empty by
-    # default, which disables the bypass entirely — never set this in a
-    # public-facing environment except for the duration of a load test.
     LOAD_TEST_BYPASS_KEY: str = ""
 
     class Config:
