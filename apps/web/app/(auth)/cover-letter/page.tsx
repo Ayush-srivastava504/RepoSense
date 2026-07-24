@@ -30,12 +30,16 @@ function CoverLetterContent() {
     setLetter('');
     setCopied(false);
     try {
-      const data = await api.post('/resume/cover-letter', {
+      const { job_id } = await api.post('/resume/cover-letter', {
         job_description: jobDescription,
         resume_text: resumeText,
         company_name: companyName,
       });
-      setLetter(data.letter || '');
+      // The LLM call regularly takes 100+ seconds, so this goes through the
+      // same background-job + poll pattern as resume generation rather than
+      // waiting on the request itself (which a reverse proxy would kill).
+      const result = await api.pollJob(job_id, () => {});
+      setLetter(result?.letter || '');
       trackEvent('cover_letter_generated', { has_company: Boolean(companyName) });
     } catch (e: any) {
       setError(e?.message || 'Could not generate a letter. Try again in a moment.');
@@ -125,7 +129,7 @@ function CoverLetterContent() {
               className="rounded-[var(--radius-md)] border p-6 text-sm"
               style={{ borderColor: 'var(--line)', color: 'var(--ink-soft)' }}
             >
-              Writing a draft based on your resume and the job description…
+              Writing a draft based on your resume and the job description… this can take a minute or two.
             </div>
           )}
 

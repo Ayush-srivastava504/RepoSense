@@ -9,10 +9,9 @@ from pydantic import BaseModel
 
 from middleware.auth import verify_token
 from services.resume_service import ResumeService
-from services.resume_ai_service import ResumeAIService
 from services.resume_template_service import ResumeTemplateService
 from services.resume_pdf_service import ResumePDFService
-from services.job_queue import create_job, run_resume_job
+from services.job_queue import create_job, run_resume_job, run_cover_letter_job
 
 router = APIRouter(prefix="/api/resume", tags=["resume"])
 
@@ -113,15 +112,25 @@ class GenerateCoverLetterRequest(BaseModel):
 
 @router.post("/cover-letter")
 async def generate_cover_letter(data: GenerateCoverLetterRequest, user=Depends(verify_token)):
-    ai_service = ResumeAIService()
-    try:
-        return await ai_service.generate_cover_letter(
+    job_id = await create_job(
+        user_id=user["sub"],
+        job_type="cover_letter",
+        payload={
+            "job_description": data.job_description,
+            "resume_text": data.resume_text,
+            "company_name": data.company_name or "",
+        },
+    )
+    asyncio.create_task(
+        run_cover_letter_job(
+            job_id=job_id,
+            user_id=user["sub"],
             job_description=data.job_description,
             resume_text=data.resume_text,
             company_name=data.company_name or "",
         )
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Cover letter generation failed: {exc}")
+    )
+    return {"job_id": job_id, "status": "pending"}
 
 
 def _strip_protocol(url: str) -> str:

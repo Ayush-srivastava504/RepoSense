@@ -309,6 +309,43 @@ async def run_resume_job(job_id: str, user_id: str, resume_type: str,
         print(f"[job_queue] Resume job {job_id} failed:\n{tb}")
         await _update_job(pool, job_id, status="failed", error=tb[-2000:])
 
+async def run_cover_letter_job(job_id: str, user_id: str, job_description: str,
+                                resume_text: str, company_name: str):
+    """
+    Background task: generate a cover letter via LLM.
+
+    This calls the same on-premise LLM as run_resume_job/run_readme_job, which
+    routinely takes well over 100 seconds — a direct synchronous request/response
+    call gets killed by Cloudflare/Nginx before the LLM finishes (502/524), so
+    this has to go through the job queue like the others.
+    """
+    pool = await get_db_pool()
+    await _update_job(pool, job_id, status="running")
+
+    try:
+        from services.resume_ai_service import ResumeAIService
+
+        ai_service = ResumeAIService()
+        result = await ai_service.generate_cover_letter(
+            job_description=job_description,
+            resume_text=resume_text,
+            company_name=company_name,
+        )
+
+        import json as _json
+        await _update_job(
+            pool,
+            job_id,
+            status="done",
+            result=_json.dumps(result),
+        )
+
+    except Exception:
+        tb = traceback.format_exc()
+        print(f"[job_queue] Cover letter job {job_id} failed:\n{tb}")
+        await _update_job(pool, job_id, status="failed", error=tb[-2000:])
+
+
 async def run_linkedin_job(job_id: str, user_id: str, unlock_method: str, profile: dict):
     """
     Background task: run the 14-rule engine (instant) then call the LLM for
