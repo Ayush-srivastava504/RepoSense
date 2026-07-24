@@ -127,7 +127,7 @@ ENABLED_SCRAPERS: List[str] = os.getenv(
     "ENABLED_SCRAPERS",
     "internshala,linkedin,hiringcafe,"
     "unstop,cutshort,company_portals,"
-    "himalayas,remoteok,weworkremotely,remotive,"
+    "himalayas,remoteok,weworkremotely,remotive,japan_jobs,"
     "employment_news,freejobalert",
 ).split(",")
 

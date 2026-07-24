@@ -83,7 +83,9 @@ JOB_COLUMNS = """
     country,
     department,
     vacancies,
-    notification_number
+    notification_number,
+    job_group,
+    last_seen_at
 """
 
 BADGE_EXPRESSIONS = """
@@ -94,9 +96,22 @@ BADGE_EXPRESSIONS = """
         deadline IS NOT NULL
         AND deadline > now()
         AND deadline < now() + interval '2 days'
-    ) AS is_hot
+    ) AS is_hot,
+    (
+        posted_at IS NOT NULL
+        AND posted_at < now() - interval '30 days'
+    ) AS is_stale
 """
 
+# Rank/de-rank system.
+#
+# Soft de-rank (this expression): a listing's position decays as it ages,
+# well before the hard cutoff. Fresh jobs (<24h) get the biggest boost;
+# jobs older than 30 days lose the freshness boost entirely AND take a
+# flat penalty, so they sink toward the bottom of "ranked" ordering even
+# though they're still technically active (is_active only flips to FALSE
+# once the crawler hasn't re-confirmed the listing at all — see
+# deactivate_stale_jobs() in crawler/src/utils.py, the hard-cutoff half).
 RANKING_EXPRESSION = """
     (
         CASE WHEN lower(company) = ANY(:top_companies) THEN 40 ELSE 0 END
@@ -104,7 +119,8 @@ RANKING_EXPRESSION = """
             WHEN posted_at > now() - interval '24 hours' THEN 35
             WHEN posted_at > now() - interval '72 hours' THEN 20
             WHEN posted_at > now() - interval '7 days' THEN 8
-            ELSE 0
+            WHEN posted_at > now() - interval '30 days' THEN 0
+            ELSE -25
           END
         + (COALESCE(confidence_score, 0)::float / 100.0) * 25
     )
@@ -126,6 +142,15 @@ async def get_jobs(
         default=None,
         pattern="^(remote|government)$",
         description="'remote' for is_remote=true, 'government' for is_government=true",
+    ),
+    job_group: str | None = Query(
+        default=None,
+        pattern="^(software|sales|finance|other)$",
+        description="Coarse role filter: software | sales | finance | other",
+    ),
+    country: str | None = Query(
+        default=None,
+        description="Filter by country, e.g. 'Japan'. Case-insensitive exact match.",
     ),
     sort: str = Query(
         default="recent",
@@ -152,6 +177,14 @@ async def get_jobs(
         conditions.append("is_remote = true")
     elif category == "government":
         conditions.append("is_government = true")
+
+    if job_group:
+        params.append(job_group)
+        conditions.append(f"job_group = ${len(params)}")
+
+    if country:
+        params.append(country)
+        conditions.append(f"lower(country) = lower(${len(params)})")
 
     if search:
         params.append(f"%{search}%")
@@ -211,6 +244,11 @@ async def get_featured_jobs(
         pattern="^(remote|government)$",
         description="'remote' for is_remote=true, 'government' for is_government=true",
     ),
+    job_group: str | None = Query(
+        default=None,
+        pattern="^(software|sales|finance|other)$",
+    ),
+    country: str | None = Query(default=None),
 ):
     pool = await get_db_pool()
     if pool is None:
@@ -231,6 +269,14 @@ async def get_featured_jobs(
         conditions.append("is_remote = true")
     elif category == "government":
         conditions.append("is_government = true")
+
+    if job_group:
+        params.append(job_group)
+        conditions.append(f"job_group = ${len(params)}")
+
+    if country:
+        params.append(country)
+        conditions.append(f"lower(country) = lower(${len(params)})")
 
     where = "WHERE " + " AND ".join(conditions)
 

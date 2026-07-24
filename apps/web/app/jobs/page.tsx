@@ -14,15 +14,19 @@ import JobCard from '@/app/components/JobCard';
 import FeaturedJobs from '@/app/components/FeaturedJobs';
 import SponsoredCard from '@/app/components/SponsoredCard';
 import JobsSearchTracker from '@/app/components/JobsSearchTracker';
+import JobFilters, {
+  parseLocationFilter,
+  parseGroupFilter,
+} from '@/app/components/JobFilters';
 
 export const dynamic = 'force-dynamic';
 
 const JOBS_PER_PAGE = 12;
 
 export const metadata: Metadata = {
-  title: 'Job & Internship Listings in India — Refreshed Daily',
+  title: 'Job & Internship Listings — India, Remote & Japan — Refreshed Daily',
   description:
-    'Browse the latest jobs and internships in software, AI/ML, and data roles from companies in India. Updated daily.',
+    'Browse the latest software engineering, sales, and finance jobs and internships from India, remote-first companies, and Japan. Filter by role and location. Updated daily, no login required to browse.',
   alternates: {
     canonical: `${BASE_URL}/jobs`,
   },
@@ -32,16 +36,28 @@ function Pagination({
   currentPage,
   totalPages,
   search,
+  loc,
+  role,
 }: {
   currentPage: number;
   totalPages: number;
   search: string;
+  loc: string;
+  role: string;
 }) {
   const getPageUrl = (page: number) => {
     const params = new URLSearchParams();
 
     if (search) {
       params.set('search', search);
+    }
+
+    if (loc !== 'all') {
+      params.set('loc', loc);
+    }
+
+    if (role !== 'all') {
+      params.set('role', role);
     }
 
     if (page > 1) {
@@ -160,9 +176,13 @@ export default async function JobsPage({
   searchParams: {
     search?: string;
     page?: string;
+    loc?: string;
+    role?: string;
   };
 }) {
   const search = searchParams.search?.trim() || '';
+  const locationFilter = parseLocationFilter(searchParams.loc);
+  const groupFilter = parseGroupFilter(searchParams.role);
 
   const parsedPage = Number.parseInt(
     searchParams.page || '1',
@@ -174,14 +194,19 @@ export default async function JobsPage({
       ? 1
       : parsedPage;
 
+  const jobsFilterOptions = {
+    search,
+    sort: 'ranked' as const,
+    ...(locationFilter === 'remote' ? { category: 'remote' as const } : {}),
+    ...(locationFilter === 'japan' ? { country: 'Japan' } : {}),
+    ...(groupFilter !== 'all' ? { job_group: groupFilter } : {}),
+  };
+
   const [allJobs, featured] = await Promise.all([
-    getJobs({
-      search,
-      sort: 'ranked',
-    }),
+    getJobs(jobsFilterOptions),
     search
       ? Promise.resolve([])
-      : getFeaturedJobs({}),
+      : getFeaturedJobs(jobsFilterOptions),
   ]);
 
   const totalJobs = allJobs.length;
@@ -276,6 +301,13 @@ export default async function JobsPage({
           action="/jobs"
           className="mt-6 sm:mt-8"
         >
+          {locationFilter !== 'all' && (
+            <input type="hidden" name="loc" value={locationFilter} />
+          )}
+          {groupFilter !== 'all' && (
+            <input type="hidden" name="role" value={groupFilter} />
+          )}
+
           <div className="flex flex-col gap-2 sm:gap-3">
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <input
@@ -323,6 +355,13 @@ export default async function JobsPage({
           )}
         </form>
 
+        <JobFilters
+          basePath="/jobs"
+          search={search}
+          location={locationFilter}
+          group={groupFilter}
+        />
+
         <FeaturedJobs
           jobs={featured}
           basePath="/jobs"
@@ -352,6 +391,8 @@ export default async function JobsPage({
               currentPage={currentPage}
               totalPages={totalPages}
               search={search}
+              loc={locationFilter}
+              role={groupFilter}
             />
           </>
         ) : (
@@ -366,6 +407,59 @@ export default async function JobsPage({
             </p>
           </div>
         )}
+
+        <section className="mt-16 sm:mt-20 border-t pt-10" style={{ borderColor: 'var(--line)' }}>
+          <p className="eyebrow eyebrow-accent text-xs sm:text-sm">// about this page</p>
+
+          <h2 className="display mt-2 text-xl sm:text-2xl font-medium">
+            Find jobs and internships in India, remote, and Japan
+          </h2>
+
+          <div
+            className="mt-4 grid gap-6 sm:grid-cols-2 text-sm leading-relaxed"
+            style={{ color: 'var(--ink-soft)' }}
+          >
+            <div>
+              <p>
+                InternFlow aggregates job and internship listings from dozens of
+                company career pages and job boards every day, so you don&apos;t have
+                to check each one yourself. Use the <strong>location filter</strong> to
+                switch between opportunities based in India, fully remote roles, or
+                jobs and internships in Japan, and the <strong>role filter</strong> to
+                narrow results down to Software Engineer, Sales, Finance, or Other
+                positions.
+              </p>
+
+              <p className="mt-3">
+                Every listing is checked for freshness: newly posted roles are
+                ranked first, and listings that have been open for more than
+                30 days are automatically de-ranked and eventually retired if
+                they&apos;re no longer active — so you spend less time applying to
+                jobs that have already closed.
+              </p>
+            </div>
+
+            <div>
+              <p>
+                Whether you&apos;re a computer science student looking for a
+                software engineering internship, an experienced sales
+                professional exploring account executive roles, or a finance
+                graduate hunting for your first analyst position, our feed
+                pulls from company career pages, remote-first job boards, and
+                Japan-focused listings to give you one place to search.
+              </p>
+
+              <p className="mt-3">
+                Have a listing to report, a company you&apos;d like to see added, or
+                general feedback? Email us at{' '}
+                <a href="mailto:creatoramplified@gmail.com" className="underline">
+                  creatoramplified@gmail.com
+                </a>
+                .
+              </p>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   );

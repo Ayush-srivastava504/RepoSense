@@ -1,5 +1,6 @@
 
 import re
+import time
 from typing import Dict, List, Optional
 
 import requests
@@ -8,9 +9,15 @@ from scrapers.base import BaseScraper
 
 
 API_URL = "https://himalayas.app/jobs/api"
+SEARCH_URL = "https://himalayas.app/jobs/api/search"
 
 PAGE_SIZE = 20
 REQUEST_TIMEOUT = 30
+
+# Himalayas rate-limits aggressively (429). Retry a handful of times with
+# backoff instead of giving up on the first page and returning 0 jobs.
+MAX_RETRIES = 4
+RETRY_BACKOFF_SECONDS = 3.0
 
 
 class HimalayasScraper(BaseScraper):
@@ -127,25 +134,50 @@ class HimalayasScraper(BaseScraper):
         offset: int,
     ) -> Optional[Dict]:
 
-        try:
-            response = session.get(
-                API_URL,
-                params={
-                    "limit": PAGE_SIZE,
-                    "offset": offset,
-                },
-                timeout=REQUEST_TIMEOUT,
-                allow_redirects=True,
-            )
+        response = None
 
-        except requests.RequestException as exc:
+        for attempt in range(1, MAX_RETRIES + 1):
 
-            self.log.warning(
-                "Himalayas request failed offset=%d: %s",
-                offset,
-                exc,
-            )
+            try:
+                response = session.get(
+                    API_URL,
+                    params={
+                        "limit": PAGE_SIZE,
+                        "offset": offset,
+                    },
+                    timeout=REQUEST_TIMEOUT,
+                    allow_redirects=True,
+                )
 
+            except requests.RequestException as exc:
+
+                self.log.warning(
+                    "Himalayas request failed offset=%d attempt=%d: %s",
+                    offset,
+                    attempt,
+                    exc,
+                )
+
+                response = None
+
+            if response is not None and response.status_code == 429:
+
+                wait = RETRY_BACKOFF_SECONDS * attempt
+
+                self.log.warning(
+                    "Himalayas rate limited (429) offset=%d attempt=%d, "
+                    "waiting %.1fs",
+                    offset,
+                    attempt,
+                    wait,
+                )
+
+                time.sleep(wait)
+                continue
+
+            break
+
+        if response is None:
             return None
 
         content_type = response.headers.get(
@@ -236,23 +268,7 @@ class HimalayasScraper(BaseScraper):
             "locationRestrictions"
         )
 
-        if isinstance(restrictions, list):
-
-            locations = [
-                _clean(location)
-                for location in restrictions
-                if _clean(location)
-            ]
-
-        elif restrictions:
-
-            locations = [
-                _clean(restrictions)
-            ]
-
-        else:
-
-            locations = []
+        locations = _extract_location_names(restrictions)
 
         location = (
             ", ".join(locations)
@@ -288,13 +304,26 @@ class HimalayasScraper(BaseScraper):
 
         if not apply_url:
 
-            slug = _clean(
-                entry.get("slug")
+            # The API no longer returns a per-job "slug" field. Fall back
+            # to the company slug + guid, which is still enough to build
+            # a working link back to the listing on Himalayas.
+            company_slug = _clean(
+                entry.get("companySlug")
             )
 
-            if slug:
+            guid = _clean(
+                entry.get("guid")
+            )
+
+            if company_slug and guid:
                 apply_url = (
-                    f"https://himalayas.app/jobs/{slug}"
+                    f"https://himalayas.app/companies/"
+                    f"{company_slug}/jobs/{guid}"
+                )
+
+            elif company_slug:
+                apply_url = (
+                    f"https://himalayas.app/companies/{company_slug}"
                 )
 
         if not apply_url:
@@ -324,7 +353,7 @@ class HimalayasScraper(BaseScraper):
             "description": description[:5000],
             "skills": skills,
             "apply_url": apply_url,
-            "posted_date": entry.get("pubDate") or "",
+            "posted_date": _to_iso_date(entry.get("pubDate")),
             "is_remote": True,
             "country": location,
         }
@@ -384,3 +413,69 @@ def _clean(value) -> str:
         " ",
         str(value or ""),
     ).strip()
+
+
+def _extract_location_names(restrictions) -> List[str]:
+    """
+    Himalayas now returns locationRestrictions as a list of objects
+    like {"alpha2": "US", "name": "United States", "slug": "united-states"}
+    instead of plain strings. Handle both shapes so this doesn't silently
+    degrade if the API changes again.
+    """
+
+    if not restrictions:
+        return []
+
+    if isinstance(restrictions, dict):
+        restrictions = [restrictions]
+
+    if not isinstance(restrictions, list):
+        return []
+
+    names: List[str] = []
+
+    for item in restrictions:
+
+        if isinstance(item, dict):
+            name = _clean(
+                item.get("name")
+                or item.get("alpha2")
+                or item.get("slug")
+            )
+
+        else:
+            name = _clean(item)
+
+        if name:
+            names.append(name)
+
+    return names
+
+
+def _to_iso_date(value) -> str:
+    """
+    pubDate/expiryDate are documented as Unix timestamps in milliseconds
+    on the current API, but older payloads (and other callers) may still
+    send an ISO 8601 string. Normalize both to an ISO date string so
+    downstream normalization/sorting doesn't silently drop the job.
+    """
+
+    if not value:
+        return ""
+
+    if isinstance(value, (int, float)):
+
+        try:
+            from datetime import datetime, timezone
+
+            # Treat large numbers as milliseconds, smaller as seconds.
+            seconds = value / 1000 if value > 10_000_000_000 else value
+
+            return datetime.fromtimestamp(
+                seconds, tz=timezone.utc
+            ).isoformat()
+
+        except (ValueError, OSError, OverflowError):
+            return ""
+
+    return str(value)

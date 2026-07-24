@@ -1,5 +1,7 @@
 export const BASE_URL = 'https://intern-flow.in';
 
+export type JobGroup = 'software' | 'sales' | 'finance' | 'other';
+
 export interface Job {
   id: string;
   title: string;
@@ -21,12 +23,15 @@ export interface Job {
   is_top_company?: boolean;
   is_verified_source?: boolean;
   is_hot?: boolean;
+  is_stale?: boolean;
   is_remote?: boolean;
   is_government?: boolean;
   country?: string;
   department?: string;
   vacancies?: string;
   notification_number?: string;
+  job_group?: JobGroup;
+  last_seen_at?: string;
 }
 
 interface JobsResponse {
@@ -55,6 +60,8 @@ export async function getJobs(options: {
   search?: string;
   type?: string;
   category?: 'remote' | 'government';
+  job_group?: JobGroup;
+  country?: string;
   sort?: 'recent' | 'ranked';
   limit?: number;
 } = {}): Promise<Job[]> {
@@ -72,6 +79,8 @@ export async function getJobs(options: {
     if (options.search) params.set('search', options.search);
     if (options.type) params.set('type', options.type);
     if (options.category) params.set('category', options.category);
+    if (options.job_group) params.set('job_group', options.job_group);
+    if (options.country) params.set('country', options.country);
 
     const res = await fetch(
       `${process.env.API_BASE_URL}/api/jobs/?${params.toString()}`,

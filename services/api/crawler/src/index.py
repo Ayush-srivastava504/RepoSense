@@ -31,6 +31,7 @@ from utils import (
     get_logger,
     save_to_s3,
     upsert_jobs,
+    deactivate_stale_jobs,
     utcnow,
 )
 
@@ -219,6 +220,23 @@ def _load_scrapers() -> Dict:
             exc,
         )
 
+    try:
+
+        from scrapers.japan_jobs import (
+            JapanJobsScraper,
+        )
+
+        registry["japan_jobs"] = (
+            JapanJobsScraper
+        )
+
+    except ImportError as exc:
+
+        log.warning(
+            "japan_jobs scraper unavailable: %s",
+            exc,
+        )
+
     # --- Government Jobs section (Employment News, FreeJobAlert)
 
     try:
@@ -397,6 +415,8 @@ def run_pipeline(
 
     s3_key = ""
 
+    deactivated = 0
+
     if (
         not dry_run
         and enriched
@@ -438,6 +458,22 @@ def run_pipeline(
                 "PostgreSQL write failed"
             )
 
+        try:
+
+            # Rank/de-rank: anything the crawler hasn't re-confirmed in
+            # 30 days (a still-listed job would have been re-seen and
+            # its last_seen_at refreshed by upsert_jobs above) gets
+            # deactivated and drops out of all public listings.
+            deactivated = deactivate_stale_jobs(
+                days=30
+            )
+
+        except Exception:
+
+            log.exception(
+                "Stale job deactivation failed"
+            )
+
     elif dry_run:
 
         log.info(
@@ -459,6 +495,7 @@ def run_pipeline(
         "deduplicated": len(deduped),
         "enriched": len(enriched),
         "written_db": written,
+        "deactivated_stale": deactivated,
         "s3_key": s3_key,
     }
 

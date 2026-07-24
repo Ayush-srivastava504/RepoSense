@@ -476,6 +476,7 @@ def upsert_jobs(
                 job.get("department") or None,
                 job.get("vacancies") or None,
                 job.get("notification_number") or None,
+                job.get("job_group") or "other",
             )
         )
 
@@ -505,16 +506,28 @@ def upsert_jobs(
             country,
             department,
             vacancies,
-            notification_number
+            notification_number,
+            job_group,
+            last_seen_at
         )
         VALUES (
             %s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,%s,
-            %s,%s,%s,%s,%s,%s
+            %s,%s,%s,%s,%s,%s,
+            %s,
+            CURRENT_TIMESTAMP
         )
         ON CONFLICT (url)
-        DO NOTHING
+        DO UPDATE SET
+            -- Still-live listing seen again by the crawler: bring it back
+            -- from a stale de-rank/deactivation instead of leaving it
+            -- hidden forever. Content fields are left untouched so we
+            -- don't clobber any manual/enrichment edits made since the
+            -- first insert.
+            is_active     = TRUE,
+            last_seen_at  = CURRENT_TIMESTAMP,
+            job_group     = COALESCE(jobs.job_group, EXCLUDED.job_group)
         """,
         rows,
     )
@@ -532,6 +545,49 @@ def upsert_jobs(
     )
 
     return written
+
+
+def deactivate_stale_jobs(days: int = 30) -> int:
+    """
+    Rank/de-rank system, hard-cutoff half: any job/internship that hasn't
+    been re-confirmed by the crawler (last_seen_at) in `days` days is
+    deactivated (is_active = FALSE) and drops out of all listings.
+
+    The soft half — gradually lowering a listing's position as it ages
+    toward this cutoff — lives in the ranking SQL in
+    services/api/src/routes/jobs.py (RANKING_EXPRESSION), not here.
+
+    Jobs that are re-scraped and still live get is_active reset to TRUE
+    and last_seen_at refreshed by upsert_jobs's ON CONFLICT clause, so a
+    listing only stays deactivated if the crawler genuinely stops seeing
+    it (expired/removed) rather than just because 30 days passed.
+    """
+
+    conn = get_pg_conn()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        UPDATE jobs
+        SET is_active = FALSE
+        WHERE COALESCE(last_seen_at, posted_at, created_at)
+              < NOW() - INTERVAL '1 day' * %s
+          AND is_active = TRUE
+        """,
+        (days,),
+    )
+
+    conn.commit()
+
+    deactivated = cursor.rowcount
+
+    log.info(
+        "Deactivated %d stale jobs (older than %d days)",
+        deactivated,
+        days,
+    )
+
+    return deactivated
 
 
 def job_exists(

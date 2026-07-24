@@ -31,6 +31,12 @@ const columns = [
       { label: 'Create account', href: '/register' },
     ],
   },
+  {
+    heading: 'Contact',
+    links: [
+      { label: 'creatoramplified@gmail.com', href: 'mailto:creatoramplified@gmail.com' },
+    ],
+  },
 ];
 
 export default function Footer() {
@@ -72,7 +78,11 @@ export default function Footer() {
           style={{ borderColor: 'var(--line)' }}
         >
           <p className="eyebrow">© {new Date().getFullYear()} InternFlow — built for students, not enterprises</p>
-          <p className="eyebrow">made in India</p>
+          <p className="eyebrow">
+            <a href="mailto:creatoramplified@gmail.com">creatoramplified@gmail.com</a>
+            {' · '}
+            made in India
+          </p>
         </div>
       </div>
     </footer>

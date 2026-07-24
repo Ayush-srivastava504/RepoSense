@@ -50,7 +50,61 @@ CATEGORY_RULES: List[Tuple[str, List[str]]] = [
             "gcp",
         ],
     ),
+    (
+        "Sales",
+        [
+            "sales executive",
+            "sales representative",
+            "sales manager",
+            "business development",
+            "account executive",
+            "account manager",
+            "bdr",
+            "sdr",
+            "inside sales",
+            "field sales",
+            "pre-sales",
+            "presales",
+            "sales associate",
+            "territory manager",
+            "channel sales",
+            "revenue growth",
+        ],
+    ),
+    (
+        "Finance",
+        [
+            "finance",
+            "financial analyst",
+            "accountant",
+            "accounting",
+            "audit",
+            "auditor",
+            "taxation",
+            "tax analyst",
+            "investment banking",
+            "equity research",
+            "credit analyst",
+            "treasury",
+            "bookkeeping",
+            "financial planning",
+            "fp&a",
+            "controller",
+            "chartered accountant",
+        ],
+    ),
 ]
+
+# Coarse 4-bucket grouping used by the site's top-level job filter
+# (Software Engineer / Sales / Finance / Other). Maps the fine-grained
+# CATEGORY_RULES labels above onto one of these buckets.
+CATEGORY_TO_GROUP: Dict[str, str] = {
+    "Software Engineering": "software",
+    "Data Science & ML": "software",
+    "DevOps & Cloud": "software",
+    "Sales": "sales",
+    "Finance": "finance",
+}
 
 SKILL_PATTERNS: List[Tuple[str, str]] = [
     (r"\bpython\b", "Python"),
@@ -139,6 +193,12 @@ def _enrich_single(
 
         job["category"] = _classify_category(
             text_corpus
+        )
+
+    if not job.get("job_group"):
+
+        job["job_group"] = CATEGORY_TO_GROUP.get(
+            job["category"], "other"
         )
 
     extracted_skills = _extract_skills(

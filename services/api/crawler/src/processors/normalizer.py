@@ -51,6 +51,7 @@ REMOTE_SOURCES = {
     "weworkremotely",
     "remotive",
     "hiringcafe",
+    "japan_jobs",
 }
 
 
@@ -202,6 +203,8 @@ def _normalize_single(
     )
 
     job["category"] = ""
+
+    job["job_group"] = ""
 
     job["seniority"] = _infer_seniority(
         job["title"],

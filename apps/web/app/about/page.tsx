@@ -117,6 +117,33 @@ export default function AboutPage() {
       </div>
 
       <div className="mt-12">
+        <hr className="hr-line mb-10" />
+
+        <p className="eyebrow eyebrow-accent mb-2">// contact</p>
+
+        <h2 className="display text-xl font-medium mb-4">
+          Get in touch
+        </h2>
+
+        <div className="panel p-6 max-w-md">
+          <p
+            className="text-sm leading-relaxed"
+            style={{ color: 'var(--ink-soft)' }}
+          >
+            Questions, feedback, partnership requests, or a job/internship
+            listing you'd like removed — reach out any time.
+          </p>
+
+          <a
+            href="mailto:creatoramplified@gmail.com"
+            className="mt-3 inline-block text-sm font-medium underline"
+          >
+            creatoramplified@gmail.com
+          </a>
+        </div>
+      </div>
+
+      <div className="mt-12">
         <div className="panel-dark flex flex-col items-start justify-between gap-6 p-7 sm:flex-row sm:items-center">
           <div>
             <p className="eyebrow" style={{ color: '#9ea3ab' }}>
