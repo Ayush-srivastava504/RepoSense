@@ -15,6 +15,7 @@ export async function GET() {
     { loc: `${BASE_URL}/internships`, lastmod: now, changefreq: 'daily', priority: 0.9 },
     { loc: `${BASE_URL}/remote-jobs`, lastmod: now, changefreq: 'daily', priority: 0.9 },
     { loc: `${BASE_URL}/government-jobs`, lastmod: now, changefreq: 'daily', priority: 0.9 },
+    { loc: `${BASE_URL}/hackathons`, lastmod: now, changefreq: 'daily', priority: 0.9 },
   ]);
 
   return new Response(xml, { headers: { 'Content-Type': 'application/xml' } });

@@ -87,11 +87,13 @@ export async function getHackathons(
     theme?: string;
     isGlobal?: boolean;
     limit?: number;
+    offset?: number;
   } = {}
 ): Promise<Hackathon[]> {
   try {
     const params = new URLSearchParams({
       limit: String(options.limit ?? 20),
+      offset: String(options.offset ?? 0),
     });
 
     if (options.search) {

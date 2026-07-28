@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Script from 'next/script';
 import { notFound } from 'next/navigation';
 
-import { jobIdFromSlug } from '@/lib/slug';
+import { jobIdFromSlug, canonicalPathForJob } from '@/lib/slug';
 import { getJobById, BASE_URL } from '@/lib/jobs';
 import JobDetail from '@/app/components/JobDetail';
 
@@ -30,7 +30,7 @@ export async function generateMetadata({
       job.location ? ` (${job.location})` : ''
     }. View skills, compensation, and application details.`,
     alternates: {
-      canonical: `${BASE_URL}/remote-jobs/${params.slug}`,
+      canonical: `${BASE_URL}${canonicalPathForJob(job)}`,
     },
   };
 }
@@ -53,7 +53,7 @@ export default async function RemoteJobDetailPage({
       <div className="mx-auto w-full max-w-5xl px-3 py-6 sm:px-4 sm:py-8">
         <JobDetail
           job={job}
-          canonicalPath={`/remote-jobs/${params.slug}`}
+          canonicalPath={canonicalPathForJob(job)}
           backHref="/remote-jobs"
           backLabel="Back to remote jobs"
         />

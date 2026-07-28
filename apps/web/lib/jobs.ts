@@ -64,6 +64,7 @@ export async function getJobs(options: {
   country?: string;
   sort?: 'recent' | 'ranked';
   limit?: number;
+  offset?: number;
 } = {}): Promise<Job[]> {
   if (!process.env.API_BASE_URL) {
     console.error('API_BASE_URL is not set');
@@ -73,6 +74,7 @@ export async function getJobs(options: {
   try {
     const params = new URLSearchParams({
       limit: String(options.limit ?? 500),
+      offset: String(options.offset ?? 0),
       sort: options.sort ?? 'recent',
     });
 
