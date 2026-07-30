@@ -1,4 +1,4 @@
-export const BASE_URL = 'https://intern-flow.in';
+export const BASE_URL = 'https://www.intern-flow.in';
 
 const API_BASE_URL =
   process.env.API_BASE_URL ||

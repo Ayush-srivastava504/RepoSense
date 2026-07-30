@@ -27,4 +27,4 @@ Disallow: /api/
 Disallow: /_next/
 Disallow: /static/
 
-Sitemap: https://intern-flow.in/sitemap.xml
+Sitemap: https://www.intern-flow.in/sitemap.xml

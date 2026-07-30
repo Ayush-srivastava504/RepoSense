@@ -28,7 +28,7 @@ const plexMono = IBM_Plex_Mono({
   display: 'swap',
 });
 
-const BASE_URL = 'https://intern-flow.in';
+const BASE_URL = 'https://www.intern-flow.in';
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
