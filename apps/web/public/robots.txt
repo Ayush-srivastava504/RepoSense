@@ -14,6 +14,10 @@ Allow: /hackathons
 Allow: /hackathons/
 Allow: /tools
 Allow: /tools/
+Allow: /japan-jobs
+Allow: /japan-jobs/
+Allow: /japan-internships
+Allow: /japan-internships/
 Allow: /resume
 Allow: /resume/
 Allow: /github

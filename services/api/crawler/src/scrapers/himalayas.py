@@ -160,13 +160,20 @@ class HimalayasScraper(BaseScraper):
 
                 response = None
 
-            if response is not None and response.status_code == 429:
+            # Retry on rate limiting and on transient upstream failures
+            # (502/503/504 happen periodically on Himalayas and used to
+            # cause this scraper to give up for the whole run after a
+            # single blip instead of backing off and trying again).
+            if response is not None and response.status_code in (
+                429, 500, 502, 503, 504,
+            ):
 
                 wait = RETRY_BACKOFF_SECONDS * attempt
 
                 self.log.warning(
-                    "Himalayas rate limited (429) offset=%d attempt=%d, "
+                    "Himalayas retryable status %d offset=%d attempt=%d, "
                     "waiting %.1fs",
+                    response.status_code,
                     offset,
                     attempt,
                     wait,

@@ -11,6 +11,8 @@ const columns = [
       { label: 'Internships', href: '/internships' },
       { label: 'Remote jobs', href: '/remote-jobs' },
       { label: 'Government jobs', href: '/government-jobs' },
+      { label: 'Japan jobs', href: '/japan-jobs' },
+      { label: 'Japan internships', href: '/japan-internships' },
     ],
   },
   {

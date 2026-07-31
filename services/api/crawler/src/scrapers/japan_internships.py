@@ -1,20 +1,21 @@
 """
-Japan jobs -- dedicated crawler for full-time/contract/part-time jobs based
-in Japan or explicitly open to remote applicants based in Japan.
+Japan internships -- dedicated crawler for internships based in Japan or
+explicitly open to remote applicants based in Japan.
 
-Internships are intentionally excluded here -- see scrapers/japan_internships.py
-for the internship-specific crawler covering the same sources.
+Companion to scrapers/japan_jobs.py, which covers everything else
+(full-time/contract/part-time). Split into its own scraper/source so the
+two can be listed, monitored, and tuned independently on the site (e.g. a
+dedicated Japan internships page/filter), matching how internships are
+already split out from jobs elsewhere in this crawler (see internshala.py).
 
 Sources (both public, unauthenticated JSON, no browser required):
   1. Himalayas browse API, scanned and filtered client-side for Japan
-     relevance (location, category, or title). See scrapers/japan_common.py
-     for why this uses the browse endpoint instead of the search endpoint's
-     country filter.
+     relevance, keeping only entries whose employmentType is "Intern".
   2. Remote OK's public feed, filtered client-side for Japan-related
-     tags/locations (e.g. "japan", "tokyo", "jp").
+     tags/locations, keeping only postings whose title mentions "intern".
 
-Jobs from this scraper are tagged country="Japan" so they show up under
-the Japan filter regardless of which underlying source found them.
+Jobs from this scraper are tagged country="Japan" and type="internship" so
+they show up under both the Japan filter and the internships filter.
 """
 
 from typing import Dict, List
@@ -29,9 +30,9 @@ from scrapers.japan_common import (
 )
 
 
-class JapanJobsScraper(BaseScraper):
+class JapanInternshipsScraper(BaseScraper):
 
-    source_name = "japan_jobs"
+    source_name = "japan_internships"
     uses_browser = False
 
     def scrape(
@@ -61,7 +62,7 @@ class JapanJobsScraper(BaseScraper):
                     self.log.debug("Japan/Himalayas parse failed: %s", exc)
                     continue
 
-                if not job or job.get("type") == "internship":
+                if not job or job.get("type") != "internship":
                     continue
 
                 url = job.get("apply_url")
@@ -82,7 +83,7 @@ class JapanJobsScraper(BaseScraper):
                     self.log.debug("Japan/RemoteOK parse failed: %s", exc)
                     continue
 
-                if not job or job.get("type") == "internship":
+                if not job or job.get("type") != "internship":
                     continue
 
                 url = job.get("apply_url")
@@ -94,7 +95,7 @@ class JapanJobsScraper(BaseScraper):
             session.close()
 
         self.log.info(
-            "Japan jobs collected %d jobs total",
+            "Japan internships collected %d jobs total",
             len(jobs),
         )
 

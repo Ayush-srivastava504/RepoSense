@@ -237,6 +237,23 @@ def _load_scrapers() -> Dict:
             exc,
         )
 
+    try:
+
+        from scrapers.japan_internships import (
+            JapanInternshipsScraper,
+        )
+
+        registry["japan_internships"] = (
+            JapanInternshipsScraper
+        )
+
+    except ImportError as exc:
+
+        log.warning(
+            "japan_internships scraper unavailable: %s",
+            exc,
+        )
+
     # --- Government Jobs section (Employment News, FreeJobAlert)
 
     try:

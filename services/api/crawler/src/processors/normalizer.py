@@ -52,6 +52,7 @@ REMOTE_SOURCES = {
     "remotive",
     "hiringcafe",
     "japan_jobs",
+    "japan_internships",
 }
 
 
