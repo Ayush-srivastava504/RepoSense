@@ -1,27 +1,4 @@
-"""
-Shared sourcing helpers for Japan-focused scrapers.
 
-Used by both scrapers/japan_jobs.py (jobs, incl. Japan-remote) and
-scrapers/japan_internships.py (internships, incl. Japan-remote internships).
-Keeping the fetch/filter logic here means both scrapers stay in sync and a
-fix only needs to happen once.
-
-Why this fetches the *browse* endpoint instead of the search endpoint's
-`country=` filter:
-
-The Himalayas search API (/jobs/api/search) documents a `country` query
-parameter, but we could not get consistent, correctly-filtered results back
-from it in testing — repeated calls with country=JP / country=Japan kept
-returning unfiltered, globally-mixed results instead of Japan-only jobs.
-Rather than ship a crawler that silently returns wrong data if that
-parameter is flaky/rate-limited/cached upstream, this pages through the
-*browse* endpoint (/jobs/api), which is well-documented, paginates
-predictably via offset/limit, and is already proven reliable by
-scrapers/himalayas.py. Japan relevance is then decided client-side, the
-same pattern already used for Remote OK below and in the original
-japan_jobs.py. This costs more requests per run but is verifiable and
-doesn't depend on trusting an unverified filter parameter.
-"""
 
 import re
 import time
