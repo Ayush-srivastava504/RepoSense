@@ -46,7 +46,6 @@ GOVERNMENT_SOURCES = {
 
 # Sources whose jobs are always flagged is_remote=True (remote-first boards).
 REMOTE_SOURCES = {
-    "himalayas",
     "remoteok",
     "weworkremotely",
     "remotive",
@@ -57,7 +56,6 @@ REMOTE_SOURCES = {
     "europe_arbeitnow",
     "europe_remotive",
     "europe_weworkremotely",
-    "europe_himalayas",
     "europe_remoteok",
 }
 

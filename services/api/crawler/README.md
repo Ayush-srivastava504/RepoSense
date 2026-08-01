@@ -1,6 +1,6 @@
 # RepoSense Job Crawler
 
-> A one-shot CLI batch job (not a persistent HTTP service) that scrapes 9 sources, normalizes/dedupes/enriches/scores the results, and writes them into the shared PostgreSQL `jobs` table.
+> A one-shot CLI batch job (not a persistent HTTP service) that scrapes 20+ sources, normalizes/dedupes/enriches/scores the results, and writes them into the shared PostgreSQL `jobs` table.
 
 ## Overview
 
@@ -37,6 +37,24 @@ PostgreSQL `jobs` table
 | Unstop | `src/scrapers/unstop.py` |
 | Cutshort | `src/scrapers/cutshort.py` |
 | Company portals | `src/scrapers/company_portals.py` |
+| Remote OK | `src/scrapers/remoteok.py` |
+| We Work Remotely | `src/scrapers/weworkremotely.py` |
+| Remotive | `src/scrapers/remotive.py` |
+| Employment News / FreeJobAlert | `src/scrapers/employment_news.py`, `src/scrapers/freejobalert.py` |
+| Japan jobs / internships | `src/scrapers/japan_jobs.py`, `src/scrapers/japan_internships.py` |
+| Europe (Jobicy, Arbeitnow, Remotive, WWR, RemoteOK) | `src/scrapers/europe_*.py` |
+| **Greenhouse** (smart — company-token API) | `src/scrapers/greenhouse.py` |
+| **Lever** (smart — company-token API) | `src/scrapers/lever.py` |
+| **Ashby** (smart — company-token API) | `src/scrapers/ashby.py` |
+| **SmartRecruiters** (smart — company-token API) | `src/scrapers/smartrecruiters.py` |
+| **Workable** (smart — company-token API) | `src/scrapers/workable.py` |
+| **Generic boards** (JapanDev, TokyoDev, Jobvite, iCIMS, Teamtailor, GradConnection, Prosple, WayUp, etc. — structured-data based) | `src/scrapers/generic_boards.py` |
+
+> **Himalayas was removed entirely** (both the global `himalayas` scraper and the Europe-filtered `europe_himalayas` variant) — it was consistently returning 0 jobs. Nothing replaces it directly; RemoteOK/WeWorkRemotely/Remotive already cover the same remote-jobs space.
+>
+> The five "smart" ATS scrapers (Greenhouse/Lever/Ashby/SmartRecruiters/Workable) all share one fetch/parse implementation in `src/scrapers/ats_common.py` and are driven entirely by the company/board-token lists in `src/config.py`'s `ATS_COMPANIES` — adding a new company to any of them is a one-line config change, not new scraper code. `generic_boards.py` covers everything else (Jobvite, iCIMS, Teamtailor, and non-ATS sites like JapanDev/TokyoDev/internship boards) by reading each site's own schema.org `JobPosting` structured data instead of hand-maintained CSS selectors — configure target URLs in `GENERIC_BOARDS`.
+>
+> **Both `ATS_COMPANIES` and `GENERIC_BOARDS` ship as starter seed lists that have not been verified against live traffic** (no outbound network access in the environment they were written in) — spot-check tokens/URLs before relying on this in production; see the comments directly above each dict in `config.py`.
 
 All scrapers subclass `BaseScraper` (`src/scrapers/base.py`), which owns a shared Playwright Chromium instance per run (launched with `--disable-dev-shm-usage --no-sandbox --disable-gpu --disable-setuid-sandbox`) and gives subclasses a `session` (via `utils.make_session()`) for scrapers that only need `requests`/BeautifulSoup rather than a real browser — set `uses_browser = False` on those subclasses to skip the Chromium launch entirely. A 120-second navigation timeout is applied via `NAV_TIMEOUT_MS`.
 
@@ -133,6 +151,21 @@ FROM jobs
 WHERE is_active = true
 ORDER BY posted_at DESC
 LIMIT 50;
+```
+
+## Why a scraper being "enabled" doesn't mean it runs
+
+There are **two separate places** a scraper needs to be listed, and they can drift apart:
+
+1. **`src/config.py`'s `ENABLED_SCRAPERS`** — the default list used when nothing overrides it.
+2. **`infrastructure/docker/docker-compose.yml`'s `crawler` service `command`** — an explicit `--scrapers a,b,c` flag, which **overrides #1 entirely** (the CLI flag sets the `ENABLED_SCRAPERS` env var internally; env var wins over the `config.py` default).
+
+Production runs via cron → `docker compose run --rm crawler`, which uses #2. This is exactly why the Europe and Japan scrapers previously did nothing in production even though they were registered in `index.py` and present in `config.py`'s default list: `docker-compose.yml`'s `command` simply didn't include their names, so the CLI override silently dropped them before the pipeline ever started — no error, no log line, they just never ran. This has been fixed — the compose command now includes `japan_jobs`, `japan_internships`, and all six `europe_*` scrapers, plus the new ATS/generic-board smart crawlers.
+
+**Takeaway:** to activate (or deactivate) a scraper for the actual scheduled production runs, edit the `--scrapers` list in `docker-compose.yml`, not just `config.py`. To run everything in `config.py`'s default list instead (e.g. for a one-off manual run), invoke the crawler without a `--scrapers` flag at all:
+
+```bash
+python src/index.py --max-pages 2   # uses config.py's ENABLED_SCRAPERS, no override
 ```
 
 ## Scheduling

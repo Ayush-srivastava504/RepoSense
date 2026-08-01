@@ -145,29 +145,14 @@ def _load_scrapers() -> Dict:
             exc,
         )
 
-    # --- Remote Jobs section (Himalayas, Remote OK, We Work Remotely,
-    # Remotive, HiringCafe). Naukri/Indeed/Glassdoor/Wellfound were removed
-    # entirely — heavy anti-bot protection (login walls, aggressive
-    # rate-limiting, frequent markup churn) meant they cost more crawl
-    # budget than the jobs they reliably yielded. HiringCafe (see
-    # scrapers/hiringcafe.py) is wired in as their remote-jobs replacement.
-
-    try:
-
-        from scrapers.himalayas import (
-            HimalayasScraper,
-        )
-
-        registry["himalayas"] = (
-            HimalayasScraper
-        )
-
-    except ImportError as exc:
-
-        log.warning(
-            "himalayas scraper unavailable: %s",
-            exc,
-        )
+    # --- Remote Jobs section (Remote OK, We Work Remotely, Remotive,
+    # HiringCafe). Naukri/Indeed/Glassdoor/Wellfound were removed entirely
+    # — heavy anti-bot protection (login walls, aggressive rate-limiting,
+    # frequent markup churn) meant they cost more crawl budget than the
+    # jobs they reliably yielded. HiringCafe (see scrapers/hiringcafe.py)
+    # is wired in as their remote-jobs replacement. Himalayas was also
+    # removed entirely (both this and europe_himalayas below) — it was
+    # consistently returning 0 jobs.
 
     try:
 
@@ -255,14 +240,14 @@ def _load_scrapers() -> Dict:
         )
 
     # --- Europe section (Jobicy, Arbeitnow, Remotive, We Work Remotely,
-    #     Himalayas, Remote OK, each client/server-filtered for Europe)
+    #     Remote OK, each client/server-filtered for Europe). Himalayas
+    #     was removed entirely — consistently returned 0 jobs.
 
     _europe_scrapers = [
         ("europe_jobicy", "scrapers.europe_jobicy", "EuropeJobicyScraper"),
         ("europe_arbeitnow", "scrapers.europe_arbeitnow", "EuropeArbeitnowScraper"),
         ("europe_remotive", "scrapers.europe_remotive", "EuropeRemotiveScraper"),
         ("europe_weworkremotely", "scrapers.europe_weworkremotely", "EuropeWeWorkRemotelyScraper"),
-        ("europe_himalayas", "scrapers.europe_himalayas", "EuropeHimalayasScraper"),
         ("europe_remoteok", "scrapers.europe_remoteok", "EuropeRemoteOKScraper"),
     ]
 
@@ -318,6 +303,59 @@ def _load_scrapers() -> Dict:
 
         log.warning(
             "freejobalert scraper unavailable: %s",
+            exc,
+        )
+
+    # --- ATS "smart crawlers" section (Greenhouse, Lever, Ashby,
+    # SmartRecruiters, Workable). Each is one shared fetch/parse module
+    # (scrapers/ats_common.py) driven by the company/board token list in
+    # config.ATS_COMPANIES — growing coverage is a config change, not new
+    # scraper code. Jobvite/iCIMS/Teamtailor don't have one consistent
+    # public API across companies, so they (plus non-ATS sites like
+    # JapanDev/TokyoDev/GradConnection/Prosple/WayUp) go through
+    # generic_boards instead (see scrapers/generic_boards.py).
+
+    _ats_scrapers = [
+        ("greenhouse", "scrapers.greenhouse", "GreenhouseScraper"),
+        ("lever", "scrapers.lever", "LeverScraper"),
+        ("ashby", "scrapers.ashby", "AshbyScraper"),
+        ("smartrecruiters", "scrapers.smartrecruiters", "SmartRecruitersScraper"),
+        ("workable", "scrapers.workable", "WorkableScraper"),
+    ]
+
+    for _source_name, _module_name, _class_name in _ats_scrapers:
+
+        try:
+
+            _module = __import__(
+                _module_name,
+                fromlist=[_class_name],
+            )
+
+            registry[_source_name] = getattr(_module, _class_name)
+
+        except ImportError as exc:
+
+            log.warning(
+                "%s scraper unavailable: %s",
+                _source_name,
+                exc,
+            )
+
+    try:
+
+        from scrapers.generic_boards import (
+            GenericBoardsScraper,
+        )
+
+        registry["generic_boards"] = (
+            GenericBoardsScraper
+        )
+
+    except ImportError as exc:
+
+        log.warning(
+            "generic_boards scraper unavailable: %s",
             exc,
         )
 

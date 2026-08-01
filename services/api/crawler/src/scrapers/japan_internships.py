@@ -9,10 +9,12 @@ dedicated Japan internships page/filter), matching how internships are
 already split out from jobs elsewhere in this crawler (see internshala.py).
 
 Sources (both public, unauthenticated JSON, no browser required):
-  1. Himalayas browse API, scanned and filtered client-side for Japan
-     relevance, keeping only entries whose employmentType is "Intern".
+  1. Jobicy, filtered client-side for entries that look like internships.
   2. Remote OK's public feed, filtered client-side for Japan-related
      tags/locations, keeping only postings whose title mentions "intern".
+
+(Himalayas was previously a third source here. Removed entirely — the
+Himalayas API was consistently returning 0 jobs, see scrapers/japan_common.py.)
 
 Jobs from this scraper are tagged country="Japan" and type="internship" so
 they show up under both the Japan filter and the internships filter.
@@ -25,8 +27,6 @@ from scrapers.japan_common import (
     make_session,
     fetch_jobicy_japan_entries,
     parse_jobicy_entry,
-    fetch_himalayas_japan_entries,
-    parse_himalayas_entry,
     fetch_remoteok_japan_entries,
     parse_remoteok_entry,
 )
@@ -65,28 +65,6 @@ class JapanInternshipsScraper(BaseScraper):
                     job = parse_jobicy_entry(entry)
                 except Exception as exc:
                     self.log.debug("Japan/Jobicy parse failed: %s", exc)
-                    continue
-
-                if not job or job.get("type") != "internship":
-                    continue
-
-                url = job.get("apply_url")
-                if url and url not in seen_urls:
-                    seen_urls.add(url)
-                    jobs.append(job)
-
-            himalayas_entries = fetch_himalayas_japan_entries(
-                session=session,
-                max_pages=max_pages,
-                log=self.log,
-            )
-
-            for entry in himalayas_entries:
-
-                try:
-                    job = parse_himalayas_entry(entry)
-                except Exception as exc:
-                    self.log.debug("Japan/Himalayas parse failed: %s", exc)
                     continue
 
                 if not job or job.get("type") != "internship":

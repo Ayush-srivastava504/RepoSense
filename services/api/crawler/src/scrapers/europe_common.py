@@ -1,7 +1,7 @@
 """
 Shared sourcing helpers for the Europe scrapers (europe_jobicy.py,
-europe_arbeitnow.py, europe_himalayas.py, europe_remoteok.py,
-europe_remotive.py, europe_weworkremotely.py).
+europe_arbeitnow.py, europe_remoteok.py, europe_remotive.py,
+europe_weworkremotely.py).
 
 Every source function here was independently checked before being wired
 into a scraper -- following the same lesson learned from the Japan
@@ -16,10 +16,15 @@ confirming they actually work.
   - Remotive: public, no-auth, documented API, confirmed current canonical
     endpoint is https://remotive.com/api/remote-jobs (the older
     remotive.io URL now redirects/warns to move here).
-  - Himalayas / Remote OK: same browse-and-filter approach already used
-    and confirmed working in scrapers/japan_common.py, generalized here
-    with a broader Europe hint list instead of a Japan one.
+  - Remote OK: same browse-and-filter approach already used and confirmed
+    working in scrapers/japan_common.py, generalized here with a broader
+    Europe hint list instead of a Japan one.
   - We Work Remotely: public RSS feed, no auth.
+
+Himalayas was previously a source here too (same browse-and-filter
+approach) -- REMOVED entirely, along with the standalone
+scrapers/europe_himalayas.py and scrapers/himalayas.py, because the
+Himalayas API was consistently returning 0 jobs.
 
 GaijinPot was considered as a "famous" board but its robots.txt disallows
 automated access, so it was intentionally left out -- same standard
@@ -28,14 +33,12 @@ of how well-known it is.
 """
 
 import re
-import time
 import xml.etree.ElementTree as ET
 from typing import Dict, List, Optional
 
 import requests
 
 
-HIMALAYAS_BROWSE_URL = "https://himalayas.app/jobs/api"
 REMOTEOK_API_URL = "https://remoteok.com/api"
 JOBICY_API_URL = "https://jobicy.com/api/v2/remote-jobs"
 ARBEITNOW_API_URL = "https://arbeitnow.com/api/job-board-api"
@@ -43,10 +46,6 @@ REMOTIVE_API_URL = "https://remotive.com/api/remote-jobs"
 WEWORKREMOTELY_RSS_URL = "https://weworkremotely.com/remote-jobs.rss"
 
 REQUEST_TIMEOUT = 30
-PAGE_SIZE = 20
-MAX_RETRIES = 4
-RETRY_BACKOFF_SECONDS = 3.0
-MAX_BROWSE_PAGES_HARD_CAP = 60
 
 EUROPE_HINTS = (
     "europe", "european", "emea", "eu ", " eu",
@@ -441,160 +440,6 @@ def parse_weworkremotely_entry(entry: Dict) -> Optional[Dict]:
         "description": description[:5000],
         "skills": [],
         "apply_url": link,
-        "posted_date": "",
-        "is_remote": True,
-        "country": "Europe",
-    }
-
-
-# ---------------------------------------------------------------------
-# Himalayas (browse + client-filter, same pattern as japan_common.py)
-# ---------------------------------------------------------------------
-
-def _himalayas_location_names(entry: Dict) -> List[str]:
-    restrictions = entry.get("locationRestrictions")
-    names: List[str] = []
-    if isinstance(restrictions, list):
-        for item in restrictions:
-            if isinstance(item, dict):
-                names.append(_clean(
-                    item.get("name") or item.get("alpha2") or item.get("slug")
-                ))
-            else:
-                names.append(_clean(item))
-    return names
-
-
-def fetch_himalayas_europe_entries(
-    session: requests.Session,
-    max_pages: int,
-    log,
-) -> List[Dict]:
-
-    matched: List[Dict] = []
-    offset = 0
-    pages_to_scan = min(max(max_pages, 1) * 4, MAX_BROWSE_PAGES_HARD_CAP)
-    page_number = 0
-
-    for page_number in range(1, pages_to_scan + 1):
-
-        data = _fetch_himalayas_page(session=session, offset=offset, log=log)
-
-        if data is None:
-            break
-
-        entries = data.get("jobs")
-        if not isinstance(entries, list) or not entries:
-            break
-
-        for entry in entries:
-            if not isinstance(entry, dict):
-                continue
-            categories = entry.get("categories")
-            categories_text = (
-                " ".join(_clean(c) for c in categories)
-                if isinstance(categories, list)
-                else ""
-            )
-            haystack = " ".join([
-                " ".join(_himalayas_location_names(entry)),
-                categories_text,
-                _clean(entry.get("title")),
-            ])
-            if _looks_european(haystack):
-                matched.append(entry)
-
-        if len(entries) < PAGE_SIZE:
-            break
-
-        offset += PAGE_SIZE
-
-    log.info(
-        "Europe/Himalayas scanned ~%d pages, matched %d entries",
-        page_number, len(matched),
-    )
-
-    return matched
-
-
-def _fetch_himalayas_page(
-    session: requests.Session, offset: int, log
-) -> Optional[Dict]:
-
-    response = None
-
-    for attempt in range(1, MAX_RETRIES + 1):
-        try:
-            response = session.get(
-                HIMALAYAS_BROWSE_URL,
-                params={"limit": PAGE_SIZE, "offset": offset},
-                timeout=REQUEST_TIMEOUT,
-                allow_redirects=True,
-            )
-        except requests.RequestException as exc:
-            log.warning(
-                "Europe/Himalayas request failed offset=%d attempt=%d: %s",
-                offset, attempt, exc,
-            )
-            response = None
-
-        if response is not None and response.status_code in (
-            429, 500, 502, 503, 504,
-        ):
-            wait = RETRY_BACKOFF_SECONDS * attempt
-            time.sleep(wait)
-            continue
-
-        break
-
-    if response is None or response.status_code != 200:
-        return None
-
-    try:
-        data = response.json()
-    except ValueError:
-        return None
-
-    return data if isinstance(data, dict) else None
-
-
-def parse_himalayas_entry(entry: Dict) -> Optional[Dict]:
-
-    title = _clean(entry.get("title"))
-    company = _clean(entry.get("companyName"))
-
-    if not title or not company:
-        return None
-
-    apply_url = _clean(entry.get("applicationLink"))
-    if not apply_url:
-        company_slug = _clean(entry.get("companySlug"))
-        guid = _clean(entry.get("guid"))
-        if company_slug and guid:
-            apply_url = (
-                f"https://himalayas.app/companies/{company_slug}/jobs/{guid}"
-            )
-    if not apply_url:
-        return None
-
-    job_type = _job_type_from_text(
-        f"{_clean(entry.get('employmentType'))} {title}"
-    )
-
-    skills = entry.get("skills")
-    skills = [_clean(s) for s in skills if _clean(s)] if isinstance(skills, list) else []
-
-    location = ", ".join(_himalayas_location_names(entry)) or "Europe"
-
-    return {
-        "title": title,
-        "company": company,
-        "location": location,
-        "type": job_type,
-        "salary": "",
-        "description": _clean(entry.get("description"))[:5000],
-        "skills": skills,
-        "apply_url": apply_url,
         "posted_date": "",
         "is_remote": True,
         "country": "Europe",

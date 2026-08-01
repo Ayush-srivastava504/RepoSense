@@ -67,12 +67,11 @@ DEFAULT_JOB_TYPES = [
 
 MAX_PAGES_PER_SOURCE = int(os.getenv("MAX_PAGES_PER_SOURCE", "10"))
 
-# Remote Jobs section — sources: Himalayas, Remote OK, We Work Remotely,
-# Remotive, HiringCafe (see scrapers/himalayas.py, remoteok.py,
-# weworkremotely.py, remotive.py, hiringcafe.py). These are used as
-# fallback search terms for sources that support server-side filtering
-# (Remotive, HiringCafe); Himalayas/Remote OK/WWR are broad feeds/APIs
-# that are then filtered client-side.
+# Remote Jobs section — sources: Remote OK, We Work Remotely,
+# Remotive, HiringCafe (see scrapers/remoteok.py, weworkremotely.py,
+# remotive.py, hiringcafe.py). These are used as fallback search terms
+# for sources that support server-side filtering (Remotive, HiringCafe);
+# Remote OK is a broad feed that's then filtered client-side.
 REMOTE_KEYWORDS: List[str] = [
     "software engineer",
     "frontend developer",
@@ -123,16 +122,98 @@ USER_AGENTS: List[str] = [
 # login walls) and broke often, so they cost more crawl budget than the
 # jobs they yielded. HiringCafe (scrapers/hiringcafe.py) replaces Wellfound
 # as the remote-jobs-focused source in this default list.
+#
+# Himalayas and Europe/Himalayas were REMOVED entirely (not just disabled):
+# both consistently returned 0 jobs — Himalayas' public API started
+# rate-limiting/blocking this crawler's traffic hard enough that retries
+# never recovered within a run. RemoteOK/WeWorkRemotely/Remotive already
+# cover the same remote-jobs space, so nothing needed to replace it.
+#
+# NOTE: this list is the *default* only. It's overridden by whatever
+# ENABLED_SCRAPERS env var is set, and — for the production cron/Docker
+# path — by the --scrapers flag baked into infrastructure/docker/
+# docker-compose.yml's `crawler` service `command`. A scraper being in
+# this list does NOT mean it runs in production; check that compose file
+# (or the actual crontab on the box) for what really executes on a
+# schedule. See crawler/README.md "Scheduling" section.
 ENABLED_SCRAPERS: List[str] = os.getenv(
     "ENABLED_SCRAPERS",
     "internshala,linkedin,hiringcafe,"
     "unstop,cutshort,company_portals,"
-    "himalayas,remoteok,weworkremotely,remotive,"
+    "remoteok,weworkremotely,remotive,"
     "japan_jobs,japan_internships,"
     "europe_jobicy,europe_arbeitnow,europe_remotive,"
-    "europe_weworkremotely,europe_himalayas,europe_remoteok,"
-    "employment_news,freejobalert",
+    "europe_weworkremotely,europe_remoteok,"
+    "employment_news,freejobalert,"
+    "greenhouse,lever,ashby,smartrecruiters,workable,"
+    "generic_boards",
 ).split(",")
+
+# ATS (Applicant Tracking System) company registry — "smart crawlers"
+#
+# Greenhouse/Lever/Ashby/SmartRecruiters/Workable each publish one public,
+# unauthenticated JSON API per company job board. There is no "search all
+# companies" endpoint on any of them — you fetch board-by-board using the
+# company's board token/slug. That means growing these crawlers is just
+# adding tokens below; no new scraper code needed (see
+# scrapers/ats_common.py + scrapers/greenhouse.py / lever.py / ashby.py /
+# smartrecruiters.py / workable.py).
+#
+# IMPORTANT: this is a starter seed list, not verified against live
+# traffic (this environment has no outbound network access to check it).
+# Companies switch ATS providers over time and a stale token just 404s
+# harmlessly (logged, doesn't crash the run) — but before relying on this
+# in production, spot check a few, e.g.:
+#   curl https://boards-api.greenhouse.io/v1/boards/<token>/jobs
+#   curl https://api.lever.co/v0/postings/<token>?mode=json
+# and prune/replace any that don't resolve. Add as many tokens as you
+# want per platform; each one is a full board of jobs, so this scales to
+# the 5,000-30,000/platform ranges you're targeting purely by list size.
+ATS_COMPANIES: Dict[str, List[str]] = {
+    "greenhouse": [
+        "stripe", "airbnb", "coinbase", "robinhood", "gitlab", "figma",
+        "notion", "discord", "cloudflare", "dropbox", "asana", "docusign",
+        "affirm", "squarespace", "pinterest", "reddit", "doordash",
+        "instacart", "twitch", "brex",
+    ],
+    "lever": [
+        "netflix", "shopify", "figma", "canva", "reddit", "attentive",
+        "ramp", "mixpanel", "plaid", "eventbrite",
+    ],
+    "ashby": [
+        "ashby", "vanta", "mercury", "linear", "retool", "modern-treasury",
+    ],
+    "smartrecruiters": [
+        "Visa", "Bosch", "McDonalds", "Adidas", "Ikea", "Yourfoodjob",
+    ],
+    "workable": [
+        "workable", "typeform",
+    ],
+}
+
+# Generic structured-data boards — for platforms/sites with no shared
+# public JSON API (Jobvite, iCIMS, Teamtailor) and for standalone sites
+# that aren't an ATS platform at all (JapanDev, TokyoDev, internship
+# aggregators like GradConnection/Prosple/WayUp/Parker Dewey). See
+# scrapers/generic_boards.py — it reads each site's own schema.org
+# JobPosting structured data (what the site already publishes for Google
+# for Jobs) rather than hand-maintained CSS selectors, and falls back to
+# a conservative link-text heuristic if a page has none.
+#
+# Each entry needs a real, working listing/search URL — the placeholders
+# below are NOT verified (no outbound network in this environment) and
+# should be swapped in/uncommented with the actual board URLs before this
+# scraper is relied on. `source_tag` groups multiple URLs under one
+# crawler-summary bucket (e.g. several company Jobvite instances all
+# tagged "jobvite").
+GENERIC_BOARDS: List[Dict[str, str]] = [
+    # {"name": "JapanDev", "url": "https://japan-dev.com/jobs", "source_tag": "japandev"},
+    # {"name": "TokyoDev", "url": "https://www.tokyodev.com/jobs", "source_tag": "tokyodev"},
+    # {"name": "GradConnection", "url": "https://au.gradconnection.com/internships/", "source_tag": "gradconnection"},
+    # {"name": "Prosple", "url": "https://in.prosple.com/search-jobs", "source_tag": "prosple"},
+    # {"name": "WayUp", "url": "https://www.wayup.com/s/internships/", "source_tag": "wayup"},
+    # {"name": "Example Jobvite company", "url": "https://jobs.jobvite.com/<company>", "source_tag": "jobvite", "company_hint": "Example Co"},
+]
 
 # Company portal configuration
 COMPANY_PORTALS: Dict[str, Dict] = {
