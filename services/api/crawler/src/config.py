@@ -129,6 +129,8 @@ ENABLED_SCRAPERS: List[str] = os.getenv(
     "unstop,cutshort,company_portals,"
     "himalayas,remoteok,weworkremotely,remotive,"
     "japan_jobs,japan_internships,"
+    "europe_jobicy,europe_arbeitnow,europe_remotive,"
+    "europe_weworkremotely,europe_himalayas,europe_remoteok,"
     "employment_news,freejobalert",
 ).split(",")
 

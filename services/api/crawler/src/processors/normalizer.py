@@ -53,6 +53,12 @@ REMOTE_SOURCES = {
     "hiringcafe",
     "japan_jobs",
     "japan_internships",
+    "europe_jobicy",
+    "europe_arbeitnow",
+    "europe_remotive",
+    "europe_weworkremotely",
+    "europe_himalayas",
+    "europe_remoteok",
 }
 
 

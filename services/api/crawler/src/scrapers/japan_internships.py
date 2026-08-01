@@ -23,6 +23,8 @@ from typing import Dict, List
 from scrapers.base import BaseScraper
 from scrapers.japan_common import (
     make_session,
+    fetch_jobicy_japan_entries,
+    parse_jobicy_entry,
     fetch_himalayas_japan_entries,
     parse_himalayas_entry,
     fetch_remoteok_japan_entries,
@@ -48,6 +50,31 @@ class JapanInternshipsScraper(BaseScraper):
         session = make_session()
 
         try:
+            # Jobicy doesn't have a formal "internship" jobType in its
+            # taxonomy (full-time/freelance/contract/part-time only), so
+            # this will likely surface few or no results — parse_jobicy_entry
+            # still checks the title for "intern" as a best-effort catch.
+            jobicy_entries = fetch_jobicy_japan_entries(
+                session=session,
+                log=self.log,
+            )
+
+            for entry in jobicy_entries:
+
+                try:
+                    job = parse_jobicy_entry(entry)
+                except Exception as exc:
+                    self.log.debug("Japan/Jobicy parse failed: %s", exc)
+                    continue
+
+                if not job or job.get("type") != "internship":
+                    continue
+
+                url = job.get("apply_url")
+                if url and url not in seen_urls:
+                    seen_urls.add(url)
+                    jobs.append(job)
+
             himalayas_entries = fetch_himalayas_japan_entries(
                 session=session,
                 max_pages=max_pages,

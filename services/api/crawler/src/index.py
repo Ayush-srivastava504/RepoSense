@@ -254,6 +254,37 @@ def _load_scrapers() -> Dict:
             exc,
         )
 
+    # --- Europe section (Jobicy, Arbeitnow, Remotive, We Work Remotely,
+    #     Himalayas, Remote OK, each client/server-filtered for Europe)
+
+    _europe_scrapers = [
+        ("europe_jobicy", "scrapers.europe_jobicy", "EuropeJobicyScraper"),
+        ("europe_arbeitnow", "scrapers.europe_arbeitnow", "EuropeArbeitnowScraper"),
+        ("europe_remotive", "scrapers.europe_remotive", "EuropeRemotiveScraper"),
+        ("europe_weworkremotely", "scrapers.europe_weworkremotely", "EuropeWeWorkRemotelyScraper"),
+        ("europe_himalayas", "scrapers.europe_himalayas", "EuropeHimalayasScraper"),
+        ("europe_remoteok", "scrapers.europe_remoteok", "EuropeRemoteOKScraper"),
+    ]
+
+    for _source_name, _module_name, _class_name in _europe_scrapers:
+
+        try:
+
+            _module = __import__(
+                _module_name,
+                fromlist=[_class_name],
+            )
+
+            registry[_source_name] = getattr(_module, _class_name)
+
+        except ImportError as exc:
+
+            log.warning(
+                "%s scraper unavailable: %s",
+                _source_name,
+                exc,
+            )
+
     # --- Government Jobs section (Employment News, FreeJobAlert)
 
     try:
