@@ -26,8 +26,14 @@ class LinkedInScraper(BaseScraper):
 
         jobs: List[Dict] = []
 
-        keywords = keywords[:4]
-        locations = locations[:3]
+        # Was a hardcoded [:4]/[:3] that silently dropped most of
+        # config.DEFAULT_KEYWORDS. Now configurable, higher default, so
+        # the role list (data analyst, devops, ML engineer, etc.) is
+        # actually searched — raise LINKEDIN_MAX_KEYWORDS if needed.
+        max_keywords = int(os.getenv("LINKEDIN_MAX_KEYWORDS", "10"))
+        max_locations = int(os.getenv("LINKEDIN_MAX_LOCATIONS", "3"))
+        keywords = keywords[:max_keywords]
+        locations = locations[:max_locations]
 
         for keyword in keywords:
             for location in locations:

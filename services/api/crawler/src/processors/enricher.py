@@ -20,6 +20,8 @@ CATEGORY_RULES: List[Tuple[str, List[str]]] = [
             "full stack",
             "web dev",
             "application",
+            "system analyst",
+            "systems analyst",
         ],
     ),
     (

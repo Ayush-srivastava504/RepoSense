@@ -517,8 +517,8 @@ def run_pipeline(
 
         except Exception as exc:
 
-            log.error(
-                "S3 write failed: %s",
+            log.warning(
+                "S3 backup write failed (non-fatal, DB insert is authoritative): %s",
                 exc,
             )
 

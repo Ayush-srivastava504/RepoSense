@@ -17,6 +17,7 @@ const sections = [
   { href: '/government-jobs', label: 'Government' },
   { href: '/japan-jobs',      label: 'Japan' },
   { href: '/japan-internships', label: 'Japan Intern' },
+  { href: '/europe-jobs',     label: 'Europe' },
   { href: '/hackathons',     label: 'Hackathons' },
   { href: '/resume/builder', label: 'Resume' },
   { href: '/ats-checker',    label: 'ATS Checker' },

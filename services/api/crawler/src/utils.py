@@ -566,16 +566,32 @@ def deactivate_stale_jobs(days: int = 30) -> int:
     conn = get_pg_conn()
     cursor = conn.cursor()
 
-    cursor.execute(
-        """
-        UPDATE jobs
-        SET is_active = FALSE
-        WHERE COALESCE(last_seen_at, posted_at, created_at)
-              < NOW() - INTERVAL '1 day' * %s
-          AND is_active = TRUE
-        """,
-        (days,),
-    )
+    # created_at should exist per migrations/003_jobs.sql, but older
+    # deployed schemas can drift — fall back to last_seen_at/posted_at
+    # only rather than crashing the whole pipeline run over one column.
+    try:
+        cursor.execute(
+            """
+            UPDATE jobs
+            SET is_active = FALSE
+            WHERE COALESCE(last_seen_at, posted_at, created_at)
+                  < NOW() - INTERVAL '1 day' * %s
+              AND is_active = TRUE
+            """,
+            (days,),
+        )
+    except psycopg2.errors.UndefinedColumn:
+        conn.rollback()
+        cursor.execute(
+            """
+            UPDATE jobs
+            SET is_active = FALSE
+            WHERE COALESCE(last_seen_at, posted_at)
+                  < NOW() - INTERVAL '1 day' * %s
+              AND is_active = TRUE
+            """,
+            (days,),
+        )
 
     conn.commit()
 

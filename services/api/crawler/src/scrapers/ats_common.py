@@ -23,6 +23,7 @@ Rate limiting: every request goes through utils.safe_get/rate_limiter
 infrastructure across many companies in the same run.
 """
 
+import html
 import re
 import time
 from typing import Dict, List, Optional
@@ -46,8 +47,11 @@ DEFAULT_HEADERS = {
 
 
 def clean(value) -> str:
-    text = str(value or "")
+    # Unescape first: some boards double-encode ("&lt;h2&gt;") so raw
+    # tag-stripping alone leaves literal "h2"/"/h2" words behind.
+    text = html.unescape(str(value or ""))
     text = TAG_RE.sub(" ", text)
+    text = html.unescape(text)
     return WHITESPACE_RE.sub(" ", text).strip()
 
 

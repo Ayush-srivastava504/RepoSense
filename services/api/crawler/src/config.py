@@ -40,9 +40,15 @@ DEFAULT_KEYWORDS = [
     "fresher",
     "graduate trainee",
     "junior developer",
-    "software engineer intern",
-    "data science intern",
-    "ML intern",
+    "software engineer",
+    "software developer",
+    "data analyst",
+    "data engineer",
+    "python developer",
+    "devops engineer",
+    "system analyst",
+    "ai engineer",
+    "machine learning engineer",
 ]
 
 DEFAULT_LOCATIONS = [
@@ -77,9 +83,14 @@ REMOTE_KEYWORDS: List[str] = [
     "frontend developer",
     "backend developer",
     "full stack developer",
+    "python developer",
     "data engineer",
+    "data analyst",
+    "devops engineer",
+    "system analyst",
+    "ai engineer",
+    "machine learning engineer",
     "product manager",
-    "devops",
 ]
 
 # Government Jobs section — sources: Employment News (department/office,
@@ -170,18 +181,33 @@ ENABLED_SCRAPERS: List[str] = os.getenv(
 # want per platform; each one is a full board of jobs, so this scales to
 # the 5,000-30,000/platform ranges you're targeting purely by list size.
 ATS_COMPANIES: Dict[str, List[str]] = {
+    # notion/docusign/doordash confirmed 404 (moved off Greenhouse) in a
+    # live run and were dropped; the rest of this list confirmed working.
     "greenhouse": [
         "stripe", "airbnb", "coinbase", "robinhood", "gitlab", "figma",
-        "notion", "discord", "cloudflare", "dropbox", "asana", "docusign",
-        "affirm", "squarespace", "pinterest", "reddit", "doordash",
+        "discord", "cloudflare", "dropbox", "asana",
+        "affirm", "squarespace", "pinterest", "reddit",
         "instacart", "twitch", "brex",
+        "databricks", "snowflake", "mongodb", "hashicorp", "confluent",
+        "elastic", "twilio", "roblox", "unity", "zscaler", "crowdstrike",
+        "palantir", "webflow", "rippling", "deel", "vercel", "scaleai",
+        "anthropic", "duolingo", "toast", "carta", "gusto", "justworks",
+        "benchling", "samsara", "klaviyo", "amplitude", "sourcegraph",
+        "circleci", "pagerduty", "grafana-labs", "okta", "netskope",
     ],
+    # Every token below 404'd or JSON-decode-failed on the last live run
+    # (see crawler logs); netflix/shopify/canva/reddit aren't actually on
+    # Lever. Replaced with candidates believed to be real Lever/Ashby
+    # users — still unverified here (no outbound network), spot-check
+    # with `curl https://api.lever.co/v0/postings/<token>?mode=json`
+    # (Lever) or `curl https://api.ashbyhq.com/posting-api/job-board/<token>`
+    # (Ashby) before relying on them.
     "lever": [
-        "netflix", "shopify", "figma", "canva", "reddit", "attentive",
-        "ramp", "mixpanel", "plaid", "eventbrite",
+        "plaid", "eventbrite", "netlify", "loom", "shipt", "papaya-global",
+        "getir", "kraken",
     ],
     "ashby": [
-        "ashby", "vanta", "mercury", "linear", "retool", "modern-treasury",
+        "mercury", "ramp", "openai", "linear", "vanta",
     ],
     "smartrecruiters": [
         "Visa", "Bosch", "McDonalds", "Adidas", "Ikea", "Yourfoodjob",
@@ -207,11 +233,10 @@ ATS_COMPANIES: Dict[str, List[str]] = {
 # crawler-summary bucket (e.g. several company Jobvite instances all
 # tagged "jobvite").
 GENERIC_BOARDS: List[Dict[str, str]] = [
-    # {"name": "JapanDev", "url": "https://japan-dev.com/jobs", "source_tag": "japandev"},
-    # {"name": "TokyoDev", "url": "https://www.tokyodev.com/jobs", "source_tag": "tokyodev"},
-    # {"name": "GradConnection", "url": "https://au.gradconnection.com/internships/", "source_tag": "gradconnection"},
-    # {"name": "Prosple", "url": "https://in.prosple.com/search-jobs", "source_tag": "prosple"},
-    # {"name": "WayUp", "url": "https://www.wayup.com/s/internships/", "source_tag": "wayup"},
+    {"name": "JapanDev", "url": "https://japan-dev.com/jobs", "source_tag": "japandev"},
+    {"name": "TokyoDev", "url": "https://www.tokyodev.com/jobs", "source_tag": "tokyodev"},
+    {"name": "Prosple India", "url": "https://in.prosple.com/search-jobs", "source_tag": "prosple"},
+    {"name": "WayUp", "url": "https://www.wayup.com/s/internships/", "source_tag": "wayup"},
     # {"name": "Example Jobvite company", "url": "https://jobs.jobvite.com/<company>", "source_tag": "jobvite", "company_hint": "Example Co"},
 ]
 

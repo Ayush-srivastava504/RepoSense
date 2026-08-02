@@ -110,6 +110,8 @@ export async function getJobs(options: {
 export async function getFeaturedJobs(options: {
   type?: string;
   category?: 'remote' | 'government';
+  job_group?: JobGroup;
+  country?: string;
   limit?: number;
 } = {}): Promise<Job[]> {
   if (!process.env.API_BASE_URL) {
@@ -124,6 +126,8 @@ export async function getFeaturedJobs(options: {
 
     if (options.type) params.set('type', options.type);
     if (options.category) params.set('category', options.category);
+    if (options.job_group) params.set('job_group', options.job_group);
+    if (options.country) params.set('country', options.country);
 
     const res = await fetch(
       `${process.env.API_BASE_URL}/api/jobs/featured?${params.toString()}`,

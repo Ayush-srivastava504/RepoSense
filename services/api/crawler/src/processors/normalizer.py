@@ -1,3 +1,4 @@
+import html
 import re
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
@@ -258,17 +259,20 @@ def _clean_html(
     text: str,
 ) -> str:
 
+    # ATS APIs (Greenhouse etc.) often return HTML-escaped HTML, i.e.
+    # "&lt;h2&gt;" not "<h2>". Unescape first or tags never get stripped
+    # and leak into descriptions as bare words like "h2 strong ... /h2".
+    text = html.unescape(text)
+
     text = re.sub(
         r"<[^>]+>",
         " ",
         text,
     )
 
-    text = re.sub(
-        r"&[a-zA-Z]{2,6};",
-        " ",
-        text,
-    )
+    # Second unescape catches entities that were inside the removed tags
+    # or were double-encoded in the source payload.
+    text = html.unescape(text)
 
     return re.sub(
         r"\s+",
