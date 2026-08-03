@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Logo from './Logo';
@@ -8,22 +8,30 @@ import Footer from './Footer';
 import PageTransition from './PageTransition';
 import { useAuth } from '@/lib/auth';
 
-const sections = [
+// Primary items stay visible in the top-level nav; everything else lives
+// under the "More" dropdown so the header never overflows and pushes the
+// Dashboard / Sign out actions out of view.
+const primarySections = [
   { href: '/about',          label: 'About' },
   { href: '/github',         label: 'Code review' },
   { href: '/jobs',           label: 'Jobs' },
   { href: '/internships',    label: 'Internships' },
-  { href: '/remote-jobs',    label: 'Remote' },
-  { href: '/government-jobs', label: 'Government' },
-  { href: '/japan-jobs',      label: 'Japan' },
-  { href: '/japan-internships', label: 'Japan Intern' },
-  { href: '/europe-jobs',     label: 'Europe' },
-  { href: '/hackathons',     label: 'Hackathons' },
   { href: '/resume/builder', label: 'Resume' },
-  { href: '/ats-checker',    label: 'ATS Checker' },
-  { href: '/cover-letter',   label: 'Cover Letter' },
-  { href: '/linkedin',       label: 'LinkedIn' },
 ];
+
+const moreSections = [
+  { href: '/remote-jobs',       label: 'Remote' },
+  { href: '/government-jobs',   label: 'Government' },
+  { href: '/japan-jobs',        label: 'Japan' },
+  { href: '/japan-internships', label: 'Japan Intern' },
+  { href: '/europe-jobs',       label: 'Europe' },
+  { href: '/hackathons',        label: 'Hackathons' },
+  { href: '/ats-checker',       label: 'ATS Checker' },
+  { href: '/cover-letter',      label: 'Cover Letter' },
+  { href: '/linkedin',          label: 'LinkedIn' },
+];
+
+const sections = [...primarySections, ...moreSections];
 
 function ThemeToggle() {
   const [dark, setDark] = useState(false);
@@ -105,6 +113,110 @@ function ThemeToggle() {
   );
 }
 
+function MoreMenu({
+  active,
+  pathname,
+}: {
+  active: boolean;
+  pathname: string | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="nav-link relative flex items-center gap-1 pb-1 text-sm"
+        style={
+          active
+            ? { color: 'var(--ink)', fontWeight: 600 }
+            : undefined
+        }
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        More
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          style={{
+            transition: 'transform 150ms ease',
+            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+          }}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+
+        {active && (
+          <span
+            className="absolute -bottom-[1px] left-0 h-[2px] w-full rounded-full"
+            style={{ background: 'var(--indigo)' }}
+          />
+        )}
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-50 mt-2 grid w-56 grid-cols-1 gap-0.5 rounded-[var(--radius-md)] border p-1.5"
+          style={{
+            borderColor: 'var(--line)',
+            background: 'var(--paper)',
+            boxShadow: '0 12px 32px -12px rgba(21, 23, 28, 0.35)',
+            animation: 'reveal-up 0.15s cubic-bezier(0.16, 1, 0.3, 1) both',
+          }}
+        >
+          {moreSections.map((s) => {
+            const isActive = pathname?.startsWith(s.href);
+
+            return (
+              <Link
+                key={s.href}
+                href={s.href}
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                className="rounded-[var(--radius-sm)] px-3 py-2 text-sm"
+                style={{
+                  color: isActive ? 'var(--indigo)' : 'var(--ink)',
+                  background: isActive ? 'var(--indigo-soft)' : 'transparent',
+                  fontWeight: isActive ? 600 : 400,
+                }}
+              >
+                {s.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AppShell({
   children,
 }: {
@@ -139,17 +251,17 @@ export default function AppShell({
             </Link>
 
             <nav
-              className="hidden items-center gap-5 md:flex"
+              className="hidden items-center gap-5 lg:flex"
               aria-label="Main navigation"
             >
-              {sections.map((s) => {
+              {primarySections.map((s) => {
                 const active = pathname?.startsWith(s.href);
 
                 return (
                   <Link
                     key={s.href}
                     href={s.href}
-                    className="nav-link relative pb-1 text-sm"
+                    className="nav-link relative pb-1 text-sm whitespace-nowrap"
                     style={
                       active
                         ? {
@@ -171,6 +283,11 @@ export default function AppShell({
                   </Link>
                 );
               })}
+
+              <MoreMenu
+                active={moreSections.some((s) => pathname?.startsWith(s.href))}
+                pathname={pathname}
+              />
             </nav>
           </div>
 
@@ -205,7 +322,7 @@ export default function AppShell({
             )}
 
             <button
-              className="btn btn-ghost !px-2 !py-1.5 md:hidden"
+              className="btn btn-ghost !px-2 !py-1.5 lg:hidden"
               aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={mobileOpen}
               onClick={() => setMobileOpen((v) => !v)}
@@ -248,7 +365,7 @@ export default function AppShell({
 
         {mobileOpen && (
           <div
-            className="border-t md:hidden"
+            className="border-t lg:hidden"
             style={{
               borderColor: 'var(--line)',
               background: 'var(--paper)',
