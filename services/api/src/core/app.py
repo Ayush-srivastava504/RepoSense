@@ -25,6 +25,7 @@ from routes import (
     webhooks,
     linkedin,
     ats,
+    dashboard,
 )
 from routes.async_jobs import router as async_jobs_router
 
@@ -138,6 +139,7 @@ def create_application() -> FastAPI:
     # ── Routers ───────────────────────────────────────────────────────────────
 
     app.include_router(auth.router)
+    app.include_router(dashboard.router)
     app.include_router(github.router)
     app.include_router(resume.router)
     app.include_router(jobs.router)

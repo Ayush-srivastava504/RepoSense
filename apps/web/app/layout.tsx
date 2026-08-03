@@ -159,6 +159,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* Google AdSense — plain <script> (not next/script) so Next doesn't
+            attach its data-nscript attribute, which AdSense's own parser
+            warns about ("head tag doesn't support data-nscript attribute") */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3315793616023053"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body
         className={`${inter.variable} ${fraunces.variable} ${plexMono.variable} font-sans antialiased`}
       >
@@ -174,14 +184,6 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(websiteSchema),
           }}
-        />
-
-        {/* Google AdSense */}
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3315793616023053"
-          crossOrigin="anonymous"
-          strategy="afterInteractive"
         />
 
         {/* Google Analytics */}
