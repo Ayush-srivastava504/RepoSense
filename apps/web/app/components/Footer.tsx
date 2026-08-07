@@ -14,6 +14,7 @@ const columns = [
       { label: 'Japan jobs', href: '/japan-jobs' },
       { label: 'Japan internships', href: '/japan-internships' },
       { label: 'Europe jobs', href: '/europe-jobs' },
+      { label: 'Blog', href: '/blog' },
     ],
   },
   {

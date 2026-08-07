@@ -1,0 +1,49 @@
+name: Daily SEO Content
+
+on:
+  schedule:
+    # 03:00 UTC daily = 08:30 IST
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      count:
+        description: 'Number of posts to generate'
+        required: false
+        default: '1'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate post(s)
+        env:
+          # Optional: set this repo secret for AI-written articles instead
+          # of the template fallback. Without it, the script still runs
+          # using the built-in template generator.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: node scripts/generate-daily-posts.mjs --count ${{ github.event.inputs.count || '1' }}
+
+      - name: Commit and push
+        run: |
+          git config user.name "internflow-seo-bot"
+          git config user.email "seo-bot@users.noreply.github.com"
+          git add apps/web/content/blog apps/web/content/seo/keywords.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore(seo): auto-publish daily blog post(s) [skip ci]"
+            git push
+          fi

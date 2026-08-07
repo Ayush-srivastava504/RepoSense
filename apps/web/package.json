@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "seo:generate": "node ../../scripts/generate-daily-posts.mjs"
   },
   "dependencies": {
     "@next/third-parties": "^14.0.4",

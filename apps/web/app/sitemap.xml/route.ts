@@ -10,6 +10,7 @@ export async function GET() {
     `${BASE_URL}/sitemap-jobs.xml`,
     `${BASE_URL}/sitemap-hackathons.xml`,
     `${BASE_URL}/sitemap-tools.xml`,
+    `${BASE_URL}/sitemap-blog.xml`,
   ];
 
   const body = `<?xml version="1.0" encoding="UTF-8"?>
