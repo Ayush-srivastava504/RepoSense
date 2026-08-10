@@ -364,9 +364,9 @@
     "keyword": "resume headline for freshers",
     "category": "resume-ats",
     "priority": "high",
-    "status": "queued",
-    "publishedSlug": null,
-    "publishedAt": null
+    "status": "published",
+    "publishedSlug": "resume-headline-for-freshers-kw-0041",
+    "publishedAt": "2026-08-10T04:42:31.011Z"
   },
   {
     "id": "kw-0042",
