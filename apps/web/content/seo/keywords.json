@@ -436,9 +436,9 @@
     "keyword": "resume builder",
     "category": "resume-ats",
     "priority": "high",
-    "status": "queued",
-    "publishedSlug": null,
-    "publishedAt": null
+    "status": "published",
+    "publishedSlug": "resume-builder-kw-0049",
+    "publishedAt": "2026-08-13T04:55:07.495Z"
   },
   {
     "id": "kw-0050",
