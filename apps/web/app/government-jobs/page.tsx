@@ -13,8 +13,6 @@ import JobCard from '@/app/components/JobCard';
 import FeaturedJobs from '@/app/components/FeaturedJobs';
 import SponsoredCard from '@/app/components/SponsoredCard';
 
-export const dynamic = 'force-dynamic';
-
 const JOBS_PER_PAGE = 12;
 
 export const metadata: Metadata = {

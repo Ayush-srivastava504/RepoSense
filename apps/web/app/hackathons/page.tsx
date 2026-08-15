@@ -9,8 +9,6 @@ import {
 import HackathonCard from '@/app/components/HackathonCard';
 import TrackView from '@/app/components/TrackView';
 
-export const dynamic = 'force-dynamic';
-
 export const metadata: Metadata = {
   title: 'Hackathons — Active Hackathons Worth Building For',
   description:

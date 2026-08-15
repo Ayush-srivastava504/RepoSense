@@ -7,8 +7,6 @@ import { getJobById, BASE_URL } from '@/lib/jobs';
 import { jobPostingSchema, breadcrumbSchema } from '@/lib/structuredData';
 import JobDetail from '@/app/components/JobDetail';
 
-export const dynamic = 'force-dynamic';
-
 const NATIVE_AD_CONTAINER =
   'container-0ecc31c4385791c7fa0bcc3db25e36c9';
 

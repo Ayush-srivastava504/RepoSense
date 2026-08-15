@@ -8,8 +8,6 @@ import { jobPostingSchema, breadcrumbSchema } from '@/lib/structuredData';
 import JobDetail from '@/app/components/JobDetail';
 import TrackView from '@/app/components/TrackView';
 
-export const dynamic = 'force-dynamic';
-
 const NATIVE_AD_CONTAINER =
   'container-0ecc31c4385791c7fa0bcc3db25e36c9';
 

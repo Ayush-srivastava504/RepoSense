@@ -7,8 +7,6 @@ import AuthRedirect from '@/app/components/AuthRedirect';
 import JobCard from '@/app/components/JobCard';
 import { getFeaturedJobs, getJobs } from '@/lib/jobs';
 
-export const dynamic = 'force-dynamic';
-
 const features = [
   {
     tag: 'review',

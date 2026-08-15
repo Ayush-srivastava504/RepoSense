@@ -118,10 +118,8 @@ export async function getHackathons(
 
     const url = `${API_BASE_URL}/api/hackathons/?${params.toString()}`;
 
-    console.log('Fetching hackathons from:', url);
-
     const res = await fetch(url, {
-      cache: 'no-store',
+      next: { revalidate: 3600 },
     });
 
     if (!res.ok) {
@@ -151,7 +149,7 @@ export async function getFeaturedHackathons(
     const res = await fetch(
       `${API_BASE_URL}/api/hackathons/featured?limit=${limit}`,
       {
-        cache: 'no-store',
+        next: { revalidate: 3600 },
       }
     );
 
@@ -176,7 +174,7 @@ export async function getHackathonsEndingSoon(
     const res = await fetch(
       `${API_BASE_URL}/api/hackathons/ending-soon?limit=${limit}`,
       {
-        cache: 'no-store',
+        next: { revalidate: 3600 },
       }
     );
 
@@ -201,7 +199,7 @@ export async function getHackathonBySlug(
     const res = await fetch(
       `${API_BASE_URL}/api/hackathons/${encodeURIComponent(slug)}`,
       {
-        cache: 'no-store',
+        next: { revalidate: 3600 },
       }
     );
 

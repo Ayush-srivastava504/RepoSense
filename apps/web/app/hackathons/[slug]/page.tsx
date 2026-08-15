@@ -5,8 +5,6 @@ import { getHackathonBySlug, formatDeadline, BASE_URL } from '@/lib/hackathons';
 import HackathonApplyButton from '@/app/components/HackathonApplyButton';
 import TrackView from '@/app/components/TrackView';
 
-export const dynamic = 'force-dynamic';
-
 export async function generateMetadata({
   params,
 }: {
