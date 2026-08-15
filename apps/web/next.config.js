@@ -2,16 +2,22 @@
 const nextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+    NEXT_PUBLIC_LOGO_DEV_TOKEN: process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN,
   },
   images: {
-    // Company logos are fetched from Clearbit's free logo API, keyed by
-    // the job's apply_domain. next/image requires every remote host to
-    // be allowlisted up front; wildcarding isn't possible for a single
-    // fixed host, so this is the full, exact set we use.
+    // Company logos: Logo.dev is the primary source (the officially-
+    // recommended successor to Clearbit's Logo API, which was shut down
+    // Dec 8, 2025 — see app/components/CompanyLogo.tsx), with Google's
+    // favicon service as a no-key fallback. next/image requires every
+    // remote host to be allowlisted up front.
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'logo.clearbit.com',
+        hostname: 'img.logo.dev',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.google.com',
       },
     ],
     // Logos are small and mostly flat color/wordmarks — 64px is plenty

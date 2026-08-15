@@ -5,15 +5,24 @@ import Image from 'next/image';
 import { companyInitial, companyColor } from '@/lib/avatar';
 
 /**
- * Real logo when we can resolve one, falling back to the deterministic
- * initial avatar otherwise — covers three cases:
- *  1. No apply_domain on the job at all (fall back immediately, no request).
- *  2. Clearbit has no logo for that domain (its endpoint 404s, onError fires).
- *  3. Everything works (common case for recognizable companies).
+ * Real company logo, in three tiers, falling back automatically at
+ * each stage:
  *
- * Clearbit's logo endpoint is free, keyless, and needs no attribution —
- * fine for this volume. If that ever changes, swap the `src` below for
- * another provider; the fallback behavior doesn't need to change.
+ *  1. Logo.dev — the officially-recommended successor to Clearbit's
+ *     Logo API (which was permanently shut down Dec 8, 2025; every
+ *     logo.clearbit.com request has failed since). Best quality,
+ *     50M+ companies, but needs a free publishable token — sign up
+ *     at https://www.logo.dev/signup (2 minutes, 500K requests/month
+ *     free) and set NEXT_PUBLIC_LOGO_DEV_TOKEN in your env. Safe to
+ *     expose client-side — it's a publishable key, same model as a
+ *     Stripe publishable key, not a secret.
+ *  2. Google's favicon service — no signup, no key, works today.
+ *     Lower resolution (favicon-sized, not a full logo mark) but a
+ *     real fetched image rather than a generated placeholder, so
+ *     it's the fallback while a Logo.dev token isn't configured yet,
+ *     or for the rare domain Logo.dev doesn't have.
+ *  3. The deterministic initial avatar — only when there's no
+ *     apply_domain at all, or both image sources fail to load.
  */
 export default function CompanyLogo({
   company,
@@ -24,10 +33,14 @@ export default function CompanyLogo({
   applyDomain?: string;
   size?: number;
 }) {
-  const [failed, setFailed] = useState(false);
+  const logoDevToken = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
+  const [stage, setStage] = useState<'logoDev' | 'favicon' | 'initials'>(
+    applyDomain ? (logoDevToken ? 'logoDev' : 'favicon') : 'initials',
+  );
+
   const { bg, fg } = companyColor(company);
 
-  if (!applyDomain || failed) {
+  if (stage === 'initials' || !applyDomain) {
     return (
       <div
         aria-hidden="true"
@@ -39,19 +52,24 @@ export default function CompanyLogo({
     );
   }
 
+  const src =
+    stage === 'logoDev'
+      ? `https://img.logo.dev/${applyDomain}?token=${logoDevToken}&size=128&retina=true&format=webp`
+      : `https://www.google.com/s2/favicons?domain=${applyDomain}&sz=128`;
+
   return (
     <div
       className="flex flex-none items-center justify-center overflow-hidden rounded-xl border"
       style={{ width: size, height: size, borderColor: 'var(--line)', background: '#fff' }}
     >
       <Image
-        src={`https://logo.clearbit.com/${applyDomain}?size=128`}
+        key={src}
+        src={src}
         alt={company ? `${company} logo` : 'Company logo'}
         width={size}
         height={size}
         className="h-full w-full object-contain p-1.5"
-        onError={() => setFailed(true)}
-        unoptimized={false}
+        onError={() => setStage(stage === 'logoDev' ? 'favicon' : 'initials')}
       />
     </div>
   );
