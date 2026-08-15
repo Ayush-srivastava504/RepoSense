@@ -16,8 +16,7 @@ import JobFilters, {
   parseLocationFilter,
   parseGroupFilter,
 } from '@/app/components/JobFilters';
-
-export const dynamic = 'force-dynamic';
+import { sortIndiaFirst, isIndiaJob } from '@/lib/jobPriority';
 
 const JOBS_PER_PAGE = 12;
 
@@ -203,6 +202,8 @@ export default async function InternshipsPage({
       ? 1
       : parsedPage;
 
+  // See app/jobs/page.tsx for why "India" is bucketed client-side
+  // instead of sent as a country param.
   const jobsFilterOptions = {
     search,
     type: 'internship',
@@ -212,12 +213,26 @@ export default async function InternshipsPage({
     ...(groupFilter !== 'all' ? { job_group: groupFilter } : {}),
   };
 
-  const [allJobs, featured] = await Promise.all([
+  const [fetchedJobs, fetchedFeatured] = await Promise.all([
     getJobs(jobsFilterOptions),
     search
       ? Promise.resolve([])
       : getFeaturedJobs(jobsFilterOptions),
   ]);
+
+  const allJobs =
+    locationFilter === 'india'
+      ? fetchedJobs.filter(isIndiaJob)
+      : locationFilter === 'all'
+        ? sortIndiaFirst(fetchedJobs)
+        : fetchedJobs;
+
+  const featured =
+    locationFilter === 'india'
+      ? fetchedFeatured.filter(isIndiaJob)
+      : locationFilter === 'all'
+        ? sortIndiaFirst(fetchedFeatured)
+        : fetchedFeatured;
 
   const totalJobs = allJobs.length;
 

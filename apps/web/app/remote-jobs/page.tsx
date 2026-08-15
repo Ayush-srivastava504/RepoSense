@@ -12,8 +12,7 @@ import {
 import JobCard from '@/app/components/JobCard';
 import FeaturedJobs from '@/app/components/FeaturedJobs';
 import SponsoredCard from '@/app/components/SponsoredCard';
-
-export const dynamic = 'force-dynamic';
+import { RoleFilter, parseGroupFilter } from '@/app/components/JobFilters';
 
 const JOBS_PER_PAGE = 12;
 
@@ -30,16 +29,22 @@ function Pagination({
   currentPage,
   totalPages,
   search,
+  role,
 }: {
   currentPage: number;
   totalPages: number;
   search: string;
+  role: string;
 }) {
   const getPageUrl = (page: number) => {
     const params = new URLSearchParams();
 
     if (search) {
       params.set('search', search);
+    }
+
+    if (role !== 'all') {
+      params.set('role', role);
     }
 
     if (page > 1) {
@@ -168,10 +173,12 @@ export default async function RemoteJobsPage({
   searchParams: {
     search?: string;
     page?: string;
+    role?: string;
   };
 }) {
   const search =
     searchParams.search?.trim() || '';
+  const groupFilter = parseGroupFilter(searchParams.role);
 
   const parsedPage = Number.parseInt(
     searchParams.page || '1',
@@ -183,17 +190,18 @@ export default async function RemoteJobsPage({
       ? 1
       : parsedPage;
 
+  const jobsFilterOptions = {
+    search,
+    category: 'remote' as const,
+    sort: 'ranked' as const,
+    ...(groupFilter !== 'all' ? { job_group: groupFilter } : {}),
+  };
+
   const [allJobs, featured] = await Promise.all([
-    getJobs({
-      search,
-      category: 'remote',
-      sort: 'ranked',
-    }),
+    getJobs(jobsFilterOptions),
     search
       ? Promise.resolve([])
-      : getFeaturedJobs({
-          category: 'remote',
-        }),
+      : getFeaturedJobs(jobsFilterOptions),
   ]);
 
   const totalJobs = allJobs.length;
@@ -338,6 +346,14 @@ export default async function RemoteJobsPage({
           )}
         </form>
 
+        <div className="mt-4">
+          <RoleFilter
+            basePath="/remote-jobs"
+            search={search}
+            group={groupFilter}
+          />
+        </div>
+
         <FeaturedJobs
           jobs={featured}
           basePath="/remote-jobs"
@@ -367,6 +383,7 @@ export default async function RemoteJobsPage({
               currentPage={currentPage}
               totalPages={totalPages}
               search={search}
+              role={groupFilter}
             />
           </>
         ) : (

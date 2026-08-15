@@ -18,8 +18,7 @@ import JobFilters, {
   parseLocationFilter,
   parseGroupFilter,
 } from '@/app/components/JobFilters';
-
-export const dynamic = 'force-dynamic';
+import { sortIndiaFirst, isIndiaJob } from '@/lib/jobPriority';
 
 const JOBS_PER_PAGE = 12;
 
@@ -194,6 +193,11 @@ export default async function JobsPage({
       ? 1
       : parsedPage;
 
+  // "India" isn't sent to the API as a country filter — most India
+  // listings (company career pages) have no `country` value set at all,
+  // so an exact-match filter on the string "India" would miss them. We
+  // fetch the same broad set as "all" and bucket/filter client-side
+  // instead (see lib/jobPriority.ts).
   const jobsFilterOptions = {
     search,
     sort: 'ranked' as const,
@@ -202,12 +206,26 @@ export default async function JobsPage({
     ...(groupFilter !== 'all' ? { job_group: groupFilter } : {}),
   };
 
-  const [allJobs, featured] = await Promise.all([
+  const [fetchedJobs, fetchedFeatured] = await Promise.all([
     getJobs(jobsFilterOptions),
     search
       ? Promise.resolve([])
       : getFeaturedJobs(jobsFilterOptions),
   ]);
+
+  const allJobs =
+    locationFilter === 'india'
+      ? fetchedJobs.filter(isIndiaJob)
+      : locationFilter === 'all'
+        ? sortIndiaFirst(fetchedJobs)
+        : fetchedJobs;
+
+  const featured =
+    locationFilter === 'india'
+      ? fetchedFeatured.filter(isIndiaJob)
+      : locationFilter === 'all'
+        ? sortIndiaFirst(fetchedFeatured)
+        : fetchedFeatured;
 
   const totalJobs = allJobs.length;
 
