@@ -18,7 +18,12 @@ Usage:
     python scripts/enrich_job_content.py --limit 200
     python scripts/enrich_job_content.py --force-stale --limit 50
 
-Requires DATABASE_URL and XAI_API_KEY in the environment. Exits 0 and logs
+Requires DATABASE_URL and XAI_API_KEY in the environment. When run via
+.github/workflows/content-enrichment.yml, that environment is the EC2
+box's own docker-compose .env (passed through via `docker compose run
+--rm --entrypoint python api scripts/enrich_job_content.py ...` over SSH)
+— not GitHub Actions secrets, since Postgres here is only reachable
+locally on that box. Exits 0 and logs
 a warning (rather than failing the CI run) if XAI_API_KEY is unset, so the
 workflow can be added without immediately requiring the secret.
 """

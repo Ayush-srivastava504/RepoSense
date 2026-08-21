@@ -4,6 +4,15 @@ name: Job Content Enrichment
 # the pages showing up as "Discovered - currently not indexed" in Search
 # Console because the raw scraped description is too short/boilerplate for
 # Google to bother indexing. See services/api/scripts/enrich_job_content.py.
+#
+# Postgres lives on the same EC2 box as the API/crawler containers and is
+# not exposed to the internet — a GitHub-hosted runner has no way to reach
+# it directly (hosted runners don't have a fixed IP you could even
+# allowlist). So instead of connecting out to the DB from the runner, this
+# follows the exact same pattern as the "Deploy to EC2" job in
+# backend-cicd.yml: SSH into the box with appleboy/ssh-action, then run the
+# script *there*, against the DB's private/local address, using the same
+# docker-compose .env the api container already runs with.
 
 on:
   schedule:
@@ -25,29 +34,39 @@ jobs:
   enrich:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Run enrichment batch on EC2
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          python-version: '3.11'
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          timeout: 60s
+          # Grok calls + rate-limit sleeps add up over a few hundred rows —
+          # give this more headroom than the app deploy/smoke-test jobs get.
+          command_timeout: 20m
+          script_stop: true
+          envs: LIMIT,FORCE_STALE
+          script: |
+            set -e
+            cd /home/ec2-user/RepoSense
 
-      - name: Install dependencies
-        working-directory: services/api
-        run: pip install -r requirements.txt
+            LIMIT="${LIMIT:-100}"
+            EXTRA_ARGS=""
+            if [ "${FORCE_STALE:-false}" = "true" ]; then
+              EXTRA_ARGS="--force-stale"
+            fi
 
-      - name: Run enrichment batch
-        working-directory: services/api
+            echo "Running content enrichment (limit=$LIMIT, force_stale=${FORCE_STALE:-false})"
+
+            # --entrypoint python skips entrypoint.sh (migrations + uvicorn
+            # boot) and just runs the one-off script instead. env_file: .env
+            # (already configured on this box for the api service) supplies
+            # DATABASE_URL — add XAI_API_KEY to that same .env, this workflow
+            # does not pass it in from GitHub secrets.
+            docker compose -f infrastructure/docker/docker-compose.yml \
+              run --rm --entrypoint python api \
+              scripts/enrich_job_content.py --limit "$LIMIT" $EXTRA_ARGS
         env:
-          # Required. Without this secret the script logs a warning and
-          # exits 0 (no-op) — safe to merge this workflow before the
-          # secret is provisioned.
-          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          ARGS="--limit ${{ github.event.inputs.limit || '100' }}"
-          if [ "${{ github.event.inputs.force_stale || 'false' }}" = "true" ]; then
-            ARGS="$ARGS --force-stale"
-          fi
-          python scripts/enrich_job_content.py $ARGS
+          LIMIT: ${{ github.event.inputs.limit || '100' }}
+          FORCE_STALE: ${{ github.event.inputs.force_stale || 'false' }}
