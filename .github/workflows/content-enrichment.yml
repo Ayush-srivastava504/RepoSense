@@ -1,10 +1,6 @@
 name: Job Content Enrichment
 
-# Fills in AI-generated overview copy for thin job/internship listings —
-# the pages showing up as "Discovered - currently not indexed" in Search
-# Console because the raw scraped description is too short/boilerplate for
-# Google to bother indexing. See services/api/scripts/enrich_job_content.py.
-#
+
 # Postgres lives on the same EC2 box as the API/crawler containers and is
 # not exposed to the internet — a GitHub-hosted runner has no way to reach
 # it directly (hosted runners don't have a fixed IP you could even
