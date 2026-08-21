@@ -7,7 +7,7 @@ import { TOOLS } from '@/app/tools/data';
 import { breadcrumbSchema } from '@/lib/structuredData';
 
 export const metadata: Metadata = {
-  title: 'Free AI Career Tools for Students — InternFlow',
+  title: 'Free AI Career Tools for Students',
   description:
     'Free AI tools built for engineering students: GitHub README generator, ATS resume checker, resume builder, LinkedIn optimizer, and cover letter generator.',
   alternates: { canonical: `${BASE_URL}/tools` },

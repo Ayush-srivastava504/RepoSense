@@ -1,6 +1,23 @@
-'use client';
-
+import type { Metadata } from 'next';
 import Link from 'next/link';
+
+import { BASE_URL } from '@/lib/jobs';
+import { breadcrumbSchema } from '@/lib/structuredData';
+
+export const metadata: Metadata = {
+  title: 'About InternFlow — AI Code Review & Internship Platform',
+  description:
+    'InternFlow connects to your GitHub, reviews your code like a senior engineer would, and turns that work into an ATS-ready resume tuned for the job you want.',
+  alternates: {
+    canonical: `${BASE_URL}/about`,
+  },
+  openGraph: {
+    title: 'About InternFlow',
+    description:
+      'Built by students, for students — InternFlow turns your real GitHub work into proof and into a better resume.',
+    url: `${BASE_URL}/about`,
+  },
+};
 
 const values = [
   {
@@ -34,8 +51,20 @@ const team = [
 ];
 
 export default function AboutPage() {
+  const breadcrumb = breadcrumbSchema([
+    { name: 'Home', url: BASE_URL },
+    { name: 'About', url: `${BASE_URL}/about` },
+  ]);
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumb),
+        }}
+      />
+
       <div>
         <p className="eyebrow eyebrow-accent">// about</p>
 

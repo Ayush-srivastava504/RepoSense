@@ -13,9 +13,9 @@ import SponsoredCard from '@/app/components/SponsoredCard';
 const JOBS_PER_PAGE = 12;
 
 export const metadata: Metadata = {
-  title: 'Europe Jobs — UK, Germany, Netherlands & Remote-for-Europe | InternFlow',
+  title: 'Europe Jobs — UK, Germany, Netherlands & Remote-for-Europe',
   description:
-    'Full-time, contract, and part-time roles based in Europe or open to remote applicants based in Europe, sourced from Jobicy, Arbeitnow, Remotive, We Work Remotely, and Remote OK and refreshed daily.',
+    'Full-time, contract, and part-time roles based in Europe or open to remote applicants, sourced from Jobicy, Arbeitnow, Remotive, and more — refreshed daily.',
   alternates: {
     canonical: `${BASE_URL}/europe-jobs`,
   },

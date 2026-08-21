@@ -375,12 +375,10 @@ html {
   from {
     opacity: 0;
     transform: translateY(22px);
-    filter: blur(8px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
-    filter: blur(0);
   }
 }
 
@@ -388,19 +386,38 @@ html {
   from {
     opacity: 0;
     transform: translateY(28px) scale(0.96);
-    filter: blur(10px);
   }
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
-    filter: blur(0);
   }
 }
 
+/* Gentle continuous rotation for the hero graph SVG (replaces the old
+   three.js/WebGL version). transform-only so it runs on the compositor
+   thread, not main thread, and is a single element (not 8+ like the old
+   per-node blur reveals), which keeps it out of "non-composited
+   animations" and "main-thread work" audits. */
+@keyframes hero-graph-spin {
+  0% { transform: perspective(600px) rotateY(-6deg) rotateX(2deg); }
+  50% { transform: perspective(600px) rotateY(6deg) rotateX(-2deg); }
+  100% { transform: perspective(600px) rotateY(-6deg) rotateX(2deg); }
+}
+
+.hero-graph-spin {
+  animation: hero-graph-spin 9s ease-in-out infinite;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* transform-only (translate/scale), so this runs on the compositor thread
+   instead of triggering a repaint of the gradient on every frame — the old
+   version animated background-position, which Lighthouse's "Avoid
+   non-composited animations" audit flags as a main-thread paint cost. */
 @keyframes gradient-drift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% { transform: translate3d(-3%, -2%, 0) scale(1); }
+  50% { transform: translate3d(3%, 2%, 0) scale(1.06); }
+  100% { transform: translate3d(-3%, -2%, 0) scale(1); }
 }
 
 @keyframes float-particle {
@@ -481,13 +498,15 @@ html {
 .bg-aurora::after {
   content: '';
   position: absolute;
-  inset: -20%;
+  /* Extra room (vs. the old -20%/180%) so the transform-based drift below
+     never reveals an edge. */
+  inset: -35%;
   background:
     radial-gradient(38% 32% at 22% 28%, var(--indigo-soft) 0%, transparent 70%),
     radial-gradient(34% 30% at 78% 22%, var(--green-soft) 0%, transparent 70%),
     radial-gradient(40% 34% at 55% 80%, var(--rust-soft) 0%, transparent 72%);
-  background-size: 180% 180%;
   animation: gradient-drift 22s ease-in-out infinite;
+  will-change: transform;
   opacity: 0.8;
 }
 

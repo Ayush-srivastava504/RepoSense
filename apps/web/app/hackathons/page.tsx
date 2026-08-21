@@ -8,6 +8,7 @@ import {
 } from '@/lib/hackathons';
 import HackathonCard from '@/app/components/HackathonCard';
 import TrackView from '@/app/components/TrackView';
+import { breadcrumbSchema } from '@/lib/structuredData';
 
 export const metadata: Metadata = {
   title: 'Hackathons — Active Hackathons Worth Building For',
@@ -68,8 +69,33 @@ export default async function HackathonsPage({
     getHackathonsEndingSoon(5),
   ]);
 
+  const itemListSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    itemListElement: hackathons.map((hackathon, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      url: `${BASE_URL}/hackathons/${hackathon.slug}`,
+    })),
+  };
+
+  const breadcrumb = breadcrumbSchema([
+    { name: 'Home', url: BASE_URL },
+    { name: 'Hackathons', url: `${BASE_URL}/hackathons` },
+  ]);
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
+      />
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
+      />
+
       <TrackView
         event="hackathon_page_viewed"
         params={{

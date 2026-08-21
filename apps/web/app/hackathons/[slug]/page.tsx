@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { getHackathonBySlug, formatDeadline, BASE_URL } from '@/lib/hackathons';
 import HackathonApplyButton from '@/app/components/HackathonApplyButton';
 import TrackView from '@/app/components/TrackView';
+import { breadcrumbSchema, eventSchema } from '@/lib/structuredData';
 
 export async function generateMetadata({
   params,
@@ -16,7 +17,7 @@ export async function generateMetadata({
   if (!hackathon) return {};
 
   return {
-    title: `${hackathon.title} — Hackathon | InternFlow`,
+    title: `${hackathon.title} — Hackathon`,
     description:
       hackathon.description?.substring(0, 155) ||
       `${hackathon.title} — registration details, prizes, and how to apply.`,
@@ -51,8 +52,45 @@ export default async function HackathonDetailPage({
       ? `${hackathon.team_size_min}–${hackathon.team_size_max} members`
       : undefined;
 
+  const canonicalUrl = `${BASE_URL}/hackathons/${hackathon.slug}`;
+
+  // Google's Event rich result requires a startDate — skip the schema
+  // entirely rather than emit one that would fail validation.
+  const event = hackathon.start_date
+    ? eventSchema({
+        name: hackathon.title,
+        description: hackathon.description,
+        url: canonicalUrl,
+        startDate: hackathon.start_date,
+        endDate: hackathon.end_date,
+        isOnline: hackathon.participation_mode === 'online',
+        location: hackathon.location,
+        country: hackathon.country,
+        organizer: hackathon.organizer,
+        imageUrl: hackathon.image_url,
+      })
+    : null;
+
+  const breadcrumb = breadcrumbSchema([
+    { name: 'Home', url: BASE_URL },
+    { name: 'Hackathons', url: `${BASE_URL}/hackathons` },
+    { name: hackathon.title, url: canonicalUrl },
+  ]);
+
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
+      {event && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(event) }}
+        />
+      )}
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
+      />
+
       <TrackView event="hackathon_viewed" params={{ slug: hackathon.slug, source: hackathon.source }} />
       <p className="eyebrow">{hackathon.organizer || 'Hackathon'}</p>
       <h1 className="display mt-1 text-3xl font-medium" style={{ color: 'var(--ink)' }}>

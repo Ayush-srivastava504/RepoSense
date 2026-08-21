@@ -15,6 +15,7 @@ export async function GET() {
     { loc: `${BASE_URL}/internships`, lastmod: now, changefreq: 'daily', priority: 0.9 },
     { loc: `${BASE_URL}/remote-jobs`, lastmod: now, changefreq: 'daily', priority: 0.9 },
     { loc: `${BASE_URL}/government-jobs`, lastmod: now, changefreq: 'daily', priority: 0.9 },
+    { loc: `${BASE_URL}/companies`, lastmod: now, changefreq: 'daily', priority: 0.7 },
     { loc: `${BASE_URL}/hackathons`, lastmod: now, changefreq: 'daily', priority: 0.9 },
     { loc: `${BASE_URL}/japan-jobs`, lastmod: now, changefreq: 'daily', priority: 0.8 },
     { loc: `${BASE_URL}/japan-internships`, lastmod: now, changefreq: 'daily', priority: 0.8 },

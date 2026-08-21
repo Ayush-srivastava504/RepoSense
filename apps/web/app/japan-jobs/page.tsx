@@ -13,7 +13,7 @@ import SponsoredCard from '@/app/components/SponsoredCard';
 const JOBS_PER_PAGE = 12;
 
 export const metadata: Metadata = {
-  title: 'Japan Jobs — Tokyo, Osaka & Remote-for-Japan | InternFlow',
+  title: 'Japan Jobs — Tokyo, Osaka & Remote-for-Japan',
   description:
     'Full-time, contract, and part-time roles based in Japan or open to remote applicants based in Japan, sourced from Himalayas and Remote OK and refreshed daily.',
   alternates: {

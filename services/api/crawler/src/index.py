@@ -27,6 +27,10 @@ from processors.trust import (
     score_batch,
 )
 
+from content_enrichment import (
+    run_content_enrichment_for_new_jobs,
+)
+
 from utils import (
     get_logger,
     save_to_s3,
@@ -503,6 +507,12 @@ def run_pipeline(
 
     deactivated = 0
 
+    content_enrichment_summary = {
+        "enabled": False,
+        "attempted": 0,
+        "enriched": 0,
+    }
+
     if (
         not dry_run
         and enriched
@@ -546,6 +556,29 @@ def run_pipeline(
 
         try:
 
+            # Automatic content enrichment: fills in AI overview copy for
+            # this run's own thin listings right away, instead of waiting
+            # for the next scheduled catch-up run (see content_enrichment.py
+            # and .github/workflows/content-enrichment.yml). Best-effort —
+            # never raises, so it can't fail the crawl.
+            content_enrichment_summary = run_content_enrichment_for_new_jobs(
+                enriched
+            )
+
+        except Exception:
+
+            log.exception(
+                "Automatic content enrichment step failed unexpectedly"
+            )
+
+            content_enrichment_summary = {
+                "enabled": False,
+                "attempted": 0,
+                "enriched": 0,
+            }
+
+        try:
+
             # Rank/de-rank: anything the crawler hasn't re-confirmed in
             # 30 days (a still-listed job would have been re-seen and
             # its last_seen_at refreshed by upsert_jobs above) gets
@@ -582,6 +615,7 @@ def run_pipeline(
         "enriched": len(enriched),
         "written_db": written,
         "deactivated_stale": deactivated,
+        "content_enrichment": content_enrichment_summary,
         "s3_key": s3_key,
     }
 

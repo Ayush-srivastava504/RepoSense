@@ -25,6 +25,28 @@ const nextConfig = {
     imageSizes: [32, 48, 64],
   },
   /**
+   * Long-lived, immutable caching for static files in /public. These are
+   * fingerprint-free (favicon, og-image, manifest, etc.), so instead of
+   * relying on the default short/no-cache behavior we tell browsers to
+   * keep them for a year and revalidate only when we intentionally
+   * change the deployment. Fixes the "Use efficient cache lifetimes"
+   * Lighthouse insight.
+   */
+  async headers() {
+    return [
+      {
+        source: '/:path*(svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ];
+  },
+
+  /**
    * Disable webpack's persistent file cache on Windows.
    * The default cache strategy can cause "Unable to snapshot resolve dependencies"
    * errors during the build process. Switching to an in‑memory cache avoids the

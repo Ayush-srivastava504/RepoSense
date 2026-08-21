@@ -12,6 +12,47 @@ from scrapers.base import BaseScraper
 
 BASE = "https://www.linkedin.com"
 
+# LinkedIn's own job-type facet (f_JT=I) filters to postings LinkedIn itself
+# classifies as "Internship" — this catches listings that never made it into
+# our keyword loop below (e.g. "Analyst, Summer Program 2027" with no
+# "intern" in the title) but that LinkedIn already tags as an internship.
+# Much higher precision than grepping titles for the word "intern".
+LINKEDIN_JOB_TYPE_INTERNSHIP = "I"
+
+# India-specific city list for the dedicated internship pass. Kept local
+# (rather than importing config.DEFAULT_LOCATIONS) so this scraper still
+# works if config's list changes shape — these are the LinkedIn-recognized
+# location strings that reliably geo-filter to India.
+INDIA_LOCATIONS: List[str] = [
+    "India",
+    "Bangalore",
+    "Mumbai",
+    "Delhi",
+    "Hyderabad",
+    "Pune",
+    "Chennai",
+    "Kolkata",
+    "Noida",
+    "Gurgaon",
+    "Ahmedabad",
+]
+
+# Role terms searched against the internship-only facet. Broader than
+# DEFAULT_KEYWORDS' single "internship" entry so the India pass isn't
+# limited to whatever the shared keyword list happens to contain.
+INDIA_INTERNSHIP_ROLES: List[str] = [
+    "software engineer intern",
+    "data analyst intern",
+    "machine learning intern",
+    "web developer intern",
+    "backend developer intern",
+    "frontend developer intern",
+    "product management intern",
+    "marketing intern",
+    "business analyst intern",
+    "summer internship",
+]
+
 
 class LinkedInScraper(BaseScraper):
 
@@ -25,6 +66,7 @@ class LinkedInScraper(BaseScraper):
     ) -> List[Dict]:
 
         jobs: List[Dict] = []
+        seen_urls = set()
 
         # Was a hardcoded [:4]/[:3] that silently dropped most of
         # config.DEFAULT_KEYWORDS. Now configurable, higher default, so
@@ -38,8 +80,51 @@ class LinkedInScraper(BaseScraper):
         for keyword in keywords:
             for location in locations:
                 batch = self._search(keyword, location, max_pages)
-                jobs.extend(batch)
+                for job in batch:
+                    url = job.get("apply_url", "")
+                    if url and url in seen_urls:
+                        continue
+                    if url:
+                        seen_urls.add(url)
+                    jobs.append(job)
                 time.sleep(random.uniform(2, 4))
+
+        # Dedicated India-internships pass: LinkedIn's f_JT=I facet against
+        # a fixed set of India cities and intern-role search terms. Public
+        # search-results pages only (same as the rest of this scraper) — no
+        # login, no scraping behind LinkedIn's auth wall.
+        if os.getenv("LINKEDIN_INDIA_INTERNSHIPS", "true").lower() == "true":
+            india_max_pages = int(os.getenv("LINKEDIN_INDIA_MAX_PAGES", str(max_pages)))
+            india_locations = INDIA_LOCATIONS[
+                : int(os.getenv("LINKEDIN_INDIA_MAX_LOCATIONS", "6"))
+            ]
+            india_roles = INDIA_INTERNSHIP_ROLES[
+                : int(os.getenv("LINKEDIN_INDIA_MAX_ROLES", "6"))
+            ]
+
+            for role in india_roles:
+                for location in india_locations:
+                    batch = self._search(
+                        role,
+                        location,
+                        india_max_pages,
+                        job_type=LINKEDIN_JOB_TYPE_INTERNSHIP,
+                    )
+                    for job in batch:
+                        url = job.get("apply_url", "")
+                        if url and url in seen_urls:
+                            continue
+                        if url:
+                            seen_urls.add(url)
+                        # LinkedIn already scoped these to internships in
+                        # India via the search facet + location — tag them
+                        # so downstream ranking/sorting (India-first, job
+                        # type filters) treats them correctly even if the
+                        # title itself doesn't say "intern" or "India".
+                        job["type"] = "internship"
+                        job["country"] = "India"
+                        jobs.append(job)
+                    time.sleep(random.uniform(2, 4))
 
         self.log.info("Collected %d jobs from linkedin", len(jobs))
         return jobs
@@ -49,6 +134,7 @@ class LinkedInScraper(BaseScraper):
         keyword: str,
         location: str,
         max_pages: int,
+        job_type: Optional[str] = None,
     ) -> List[Dict]:
 
         results = []
@@ -63,6 +149,9 @@ class LinkedInScraper(BaseScraper):
                 f"&location={quote(location)}"
                 f"&start={start}"
             )
+
+            if job_type:
+                url += f"&f_JT={job_type}"
 
             self.log.info("LinkedIn scrape: %s", url)
 

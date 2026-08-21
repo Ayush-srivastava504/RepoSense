@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     REQUIRE_AUTH: bool = False
     LOAD_TEST_BYPASS_KEY: str = ""
+    # xAI Grok API key, used by the content-enrichment batch job
+    # (services/api/scripts/enrich_job_content.py) to generate short,
+    # unique overview copy for thin job/internship listings. Optional —
+    # the script logs a warning and no-ops without it rather than failing
+    # the CI run.
+    XAI_API_KEY: str = ""
 
     class Config:
         env_file = os.path.abspath(

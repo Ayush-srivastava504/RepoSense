@@ -13,7 +13,7 @@ import SponsoredCard from '@/app/components/SponsoredCard';
 const JOBS_PER_PAGE = 12;
 
 export const metadata: Metadata = {
-  title: 'Japan Internships — Tokyo, Osaka & Remote-for-Japan | InternFlow',
+  title: 'Japan Internships — Tokyo, Osaka & Remote-for-Japan',
   description:
     'Internships based in Japan or open to remote applicants based in Japan, sourced from Himalayas and Remote OK and refreshed daily.',
   alternates: {

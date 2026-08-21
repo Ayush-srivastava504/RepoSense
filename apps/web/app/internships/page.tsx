@@ -213,11 +213,17 @@ export default async function InternshipsPage({
     ...(groupFilter !== 'all' ? { job_group: groupFilter } : {}),
   };
 
+  // Featured picks are a first-page-only spotlight, not a recurring
+  // section — fetch (and later render) them only when nobody's searching
+  // and we're actually on page 1, so pages 2+ don't repeat the same
+  // "high-quality picks" block above every page of results.
+  const showFeatured = !search && requestedPage === 1;
+
   const [fetchedJobs, fetchedFeatured] = await Promise.all([
     getJobs(jobsFilterOptions),
-    search
-      ? Promise.resolve([])
-      : getFeaturedJobs(jobsFilterOptions),
+    showFeatured
+      ? getFeaturedJobs(jobsFilterOptions)
+      : Promise.resolve([]),
   ]);
 
   const allJobs =

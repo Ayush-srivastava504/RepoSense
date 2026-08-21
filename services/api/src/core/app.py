@@ -20,6 +20,7 @@ from routes import (
     github,
     resume,
     jobs,
+    companies,
     hackathons,
     subscription,
     webhooks,
@@ -143,6 +144,7 @@ def create_application() -> FastAPI:
     app.include_router(github.router)
     app.include_router(resume.router)
     app.include_router(jobs.router)
+    app.include_router(companies.router)
     app.include_router(hackathons.router)
     app.include_router(subscription.router)
     app.include_router(webhooks.router)

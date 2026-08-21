@@ -5,12 +5,22 @@ import JobCard from './JobCard';
  * Renders nothing when `jobs` is empty. Featured jobs always come from the
  * real /api/jobs/featured query (see lib/jobs.ts) - this component never
  * fabricates placeholder listings.
+ *
+ * Wrapped in its own bordered/tinted box (rather than a plain heading +
+ * `<hr>`) so it visually reads as one curated block, distinct from the
+ * regular listings grid below it.
  */
 export default function FeaturedJobs({ jobs, basePath = '/jobs' }: { jobs: Job[]; basePath?: string }) {
   if (jobs.length === 0) return null;
 
   return (
-    <section className="mt-10">
+    <section
+      className="mt-8 mb-10 rounded-[var(--radius-lg)] p-5 sm:p-7"
+      style={{
+        border: '1px solid var(--indigo)',
+        background: 'var(--indigo-soft)',
+      }}
+    >
       <p className="eyebrow eyebrow-accent">// featured opportunities</p>
       <h2 className="display mt-1 text-xl font-medium">High-quality picks right now</h2>
 
@@ -19,8 +29,7 @@ export default function FeaturedJobs({ jobs, basePath = '/jobs' }: { jobs: Job[]
           <JobCard key={job.id} job={job} basePath={basePath} />
         ))}
       </div>
-
-      <hr className="hr-line mt-10" />
     </section>
   );
 }
+

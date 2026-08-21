@@ -7,7 +7,7 @@ import { getAllPosts } from '@/lib/blog';
 import { breadcrumbSchema } from '@/lib/structuredData';
 
 export const metadata: Metadata = {
-  title: 'Career & Internship Guides — InternFlow Blog',
+  title: 'Career & Internship Guides — Blog',
   description:
     'Practical, no-fluff guides on internships, ATS resumes, GitHub portfolios, LinkedIn, hackathons, and job hunting for engineering students in India and abroad.',
   alternates: { canonical: `${BASE_URL}/blog` },

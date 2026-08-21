@@ -22,6 +22,7 @@ const primarySections = [
 const moreSections = [
   { href: '/remote-jobs',       label: 'Remote' },
   { href: '/government-jobs',   label: 'Government' },
+  { href: '/companies',         label: 'Companies' },
   { href: '/japan-jobs',        label: 'Japan' },
   { href: '/japan-internships', label: 'Japan Intern' },
   { href: '/europe-jobs',       label: 'Europe' },
@@ -180,39 +181,48 @@ function MoreMenu({
         )}
       </button>
 
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 top-full z-50 mt-2 grid w-56 grid-cols-1 gap-0.5 rounded-[var(--radius-md)] border p-1.5"
-          style={{
-            borderColor: 'var(--line)',
-            background: 'var(--paper)',
-            boxShadow: '0 12px 32px -12px rgba(21, 23, 28, 0.35)',
-            animation: 'reveal-up 0.15s cubic-bezier(0.16, 1, 0.3, 1) both',
-          }}
-        >
-          {moreSections.map((s) => {
-            const isActive = pathname?.startsWith(s.href);
+      <div
+        role="menu"
+        aria-hidden={!open}
+        className="absolute right-0 top-full z-50 mt-2 grid w-56 grid-cols-1 gap-0.5 rounded-[var(--radius-md)] border p-1.5"
+        style={{
+          borderColor: 'var(--line)',
+          background: 'var(--paper)',
+          boxShadow: '0 12px 32px -12px rgba(21, 23, 28, 0.35)',
+          // Rendered in the initial HTML at all times (so every link is
+          // crawlable without a click) — only its visibility/interactivity
+          // toggles with `open`. Do NOT go back to `{open && (...)}` here;
+          // that unmounts the links entirely, which is what made all 10
+          // "More" destinations invisible to Google's renderer.
+          opacity: open ? 1 : 0,
+          visibility: open ? 'visible' : 'hidden',
+          pointerEvents: open ? 'auto' : 'none',
+          transform: open ? 'translateY(0)' : 'translateY(-4px)',
+          transition: 'opacity 150ms ease, transform 150ms ease',
+        }}
+      >
+        {moreSections.map((s) => {
+          const isActive = pathname?.startsWith(s.href);
 
-            return (
-              <Link
-                key={s.href}
-                href={s.href}
-                role="menuitem"
-                onClick={() => setOpen(false)}
-                className="rounded-[var(--radius-sm)] px-3 py-2 text-sm"
-                style={{
-                  color: isActive ? 'var(--indigo)' : 'var(--ink)',
-                  background: isActive ? 'var(--indigo-soft)' : 'transparent',
-                  fontWeight: isActive ? 600 : 400,
-                }}
-              >
-                {s.label}
-              </Link>
-            );
-          })}
-        </div>
-      )}
+          return (
+            <Link
+              key={s.href}
+              href={s.href}
+              role="menuitem"
+              tabIndex={open ? 0 : -1}
+              onClick={() => setOpen(false)}
+              className="rounded-[var(--radius-sm)] px-3 py-2 text-sm"
+              style={{
+                color: isActive ? 'var(--indigo)' : 'var(--ink)',
+                background: isActive ? 'var(--indigo-soft)' : 'transparent',
+                fontWeight: isActive ? 600 : 400,
+              }}
+            >
+              {s.label}
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -363,83 +373,94 @@ export default function AppShell({
           </div>
         </div>
 
-        {mobileOpen && (
-          <div
-            className="border-t lg:hidden"
-            style={{
-              borderColor: 'var(--line)',
-              background: 'var(--paper)',
-              animation: 'reveal-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both',
-            }}
+        <div
+          className="border-t lg:hidden"
+          aria-hidden={!mobileOpen}
+          style={{
+            borderColor: 'var(--line)',
+            background: 'var(--paper)',
+            // Always rendered so every nav link is present in the initial
+            // HTML (and crawlable without a click) — visibility toggles
+            // with `mobileOpen` via CSS instead of mount/unmount. On
+            // mobile this is the ONLY header nav Google's mobile-first
+            // indexing ever sees, so it must not be conditionally mounted.
+            maxHeight: mobileOpen ? '600px' : '0px',
+            overflow: 'hidden',
+            opacity: mobileOpen ? 1 : 0,
+            transition: 'max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease',
+          }}
+        >
+          <nav
+            className="container-xl flex flex-col py-3"
+            aria-label="Mobile navigation"
           >
-            <nav
-              className="container-xl flex flex-col py-3"
-              aria-label="Mobile navigation"
+            {sections.map((s) => {
+              const active = pathname?.startsWith(s.href);
+
+              return (
+                <Link
+                  key={s.href}
+                  href={s.href}
+                  tabIndex={mobileOpen ? 0 : -1}
+                  className="rounded-[var(--radius-sm)] px-3 py-3 text-sm font-medium"
+                  style={{
+                    color: active ? 'var(--indigo)' : 'var(--ink)',
+                    background: active
+                      ? 'var(--indigo-soft)'
+                      : 'transparent',
+                  }}
+                  aria-current={active ? 'page' : undefined}
+                >
+                  {s.label}
+                </Link>
+              );
+            })}
+
+            <div
+              className="mt-2 border-t pt-3 flex items-center justify-between"
+              style={{ borderColor: 'var(--line)' }}
             >
-              {sections.map((s) => {
-                const active = pathname?.startsWith(s.href);
+              {user && !user.is_guest && (
+                <span
+                  className="eyebrow truncate max-w-[200px] px-3"
+                  title={user.email}
+                >
+                  {user.email}
+                </span>
+              )}
 
-                return (
+              {user ? (
+                <div className="ml-auto flex items-center gap-2">
                   <Link
-                    key={s.href}
-                    href={s.href}
-                    className="rounded-[var(--radius-sm)] px-3 py-3 text-sm font-medium"
-                    style={{
-                      color: active ? 'var(--indigo)' : 'var(--ink)',
-                      background: active
-                        ? 'var(--indigo-soft)'
-                        : 'transparent',
-                    }}
-                    aria-current={active ? 'page' : undefined}
+                    href="/dashboard"
+                    tabIndex={mobileOpen ? 0 : -1}
+                    className="btn btn-primary text-sm"
                   >
-                    {s.label}
+                    Dashboard
                   </Link>
-                );
-              })}
 
-              <div
-                className="mt-2 border-t pt-3 flex items-center justify-between"
-                style={{ borderColor: 'var(--line)' }}
-              >
-                {user && !user.is_guest && (
-                  <span
-                    className="eyebrow truncate max-w-[200px] px-3"
-                    title={user.email}
-                  >
-                    {user.email}
-                  </span>
-                )}
-
-                {user ? (
-                  <div className="ml-auto flex items-center gap-2">
-                    <Link
-                      href="/dashboard"
-                      className="btn btn-primary text-sm"
+                  {!user.is_guest && (
+                    <button
+                      onClick={logout}
+                      tabIndex={mobileOpen ? 0 : -1}
+                      className="btn btn-ghost !px-3 !py-2 text-sm"
                     >
-                      Dashboard
-                    </Link>
-
-                    {!user.is_guest && (
-                      <button
-                        onClick={logout}
-                        className="btn btn-ghost !px-3 !py-2 text-sm"
-                      >
-                        Sign out
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <Link
-                    href="/login"
-                    className="btn btn-secondary text-sm ml-auto"
-                  >
-                    Sign in
-                  </Link>
-                )}
-              </div>
-            </nav>
-          </div>
-        )}
+                      Sign out
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  href="/login"
+                  tabIndex={mobileOpen ? 0 : -1}
+                  className="btn btn-secondary text-sm ml-auto"
+                >
+                  Sign in
+                </Link>
+              )}
+            </div>
+          </nav>
+        </div>
       </header>
 
       <main className="container-xl flex-1 py-8 sm:py-10">

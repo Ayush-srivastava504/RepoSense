@@ -32,6 +32,12 @@ export interface Job {
   notification_number?: string;
   job_group?: JobGroup;
   last_seen_at?: string;
+  /** AI-generated overview for thin listings — see migration 017 and
+   *  services/api/scripts/enrich_job_content.py. Absent for listings
+   *  that already had enough original description, or that haven't
+   *  been processed by the enrichment batch job yet. */
+  enriched_overview?: string;
+  enriched_keywords?: string[];
 }
 
 interface JobsResponse {
@@ -142,6 +148,40 @@ export async function getFeaturedJobs(options: {
     return coerceJobs(await res.json());
   } catch (err) {
     console.error('Failed to fetch featured jobs:', err);
+    return [];
+  }
+}
+
+/**
+ * Content-based "similar jobs" for a job's detail page — ranked server-side
+ * by title similarity + job_group/type/remote/location match (see
+ * SIMILAR_JOBS_EXPRESSION in services/api/src/routes/jobs.py). No login or
+ * browsing history required, so this works the same for guests as for
+ * signed-in users.
+ */
+export async function getSimilarJobs(
+  jobId: string,
+  limit = 6
+): Promise<Job[]> {
+  if (!process.env.API_BASE_URL) {
+    console.error('API_BASE_URL is not set');
+    return [];
+  }
+
+  try {
+    const res = await fetch(
+      `${process.env.API_BASE_URL}/api/jobs/${jobId}/similar?limit=${limit}`,
+      { next: { revalidate: 3600 } }
+    );
+
+    if (!res.ok) {
+      console.error('Similar jobs API returned', res.status);
+      return [];
+    }
+
+    return coerceJobs(await res.json());
+  } catch (err) {
+    console.error('Failed to fetch similar jobs:', err);
     return [];
   }
 }

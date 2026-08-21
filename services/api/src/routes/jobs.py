@@ -85,7 +85,9 @@ JOB_COLUMNS = """
     vacancies,
     notification_number,
     job_group,
-    last_seen_at
+    last_seen_at,
+    enriched_overview,
+    enriched_keywords
 """
 
 BADGE_EXPRESSIONS = """
@@ -297,6 +299,96 @@ async def get_featured_jobs(
         LIMIT ${limit_pos}
         """,
         *params, limit,
+    )
+
+    return {"jobs": [dict(row) for row in rows]}
+
+
+# Content-based similarity ranking for "similar jobs" on a job's detail
+# page. No login/user history involved — purely a function of the one job
+# being viewed, so it works for guests (the vast majority of traffic) too.
+#
+# similarity(title, :self_title) uses the pg_trgm extension already enabled
+# in migration 003_jobs.sql (idx_jobs_title_trgm etc.), so this is a plain
+# indexed-adjacent query, not a new dependency. Weighting: title similarity
+# dominates (0-50), then same coarse job_group / type / remote-ness / city
+# each add a fixed bonus, with a small freshness tiebreaker so that among
+# similarly-relevant jobs the more recently posted one shows first.
+SIMILAR_JOBS_EXPRESSION = """
+    similarity(title, :self_title) * 50
+    + CASE WHEN job_group = :self_job_group THEN 20 ELSE 0 END
+    + CASE WHEN type = :self_type THEN 15 ELSE 0 END
+    + CASE WHEN is_remote = :self_is_remote THEN 8 ELSE 0 END
+    + CASE
+        WHEN :self_location != '' AND lower(location) = lower(:self_location)
+        THEN 10 ELSE 0
+      END
+    + CASE
+        WHEN posted_at > now() - interval '7 days' THEN 5
+        WHEN posted_at > now() - interval '30 days' THEN 2
+        ELSE 0
+      END
+"""
+
+
+@router.get("/{job_id}/similar")
+async def get_similar_jobs(
+    job_id: str,
+    limit: int = Query(default=6, ge=1, le=12),
+):
+    pool = await get_db_pool()
+    if pool is None:
+        raise HTTPException(503, "Database unavailable")
+
+    self_job = await pool.fetchrow(
+        """
+        SELECT title, job_group, type, is_remote, location, company
+        FROM jobs
+        WHERE id = $1
+        """,
+        job_id,
+    )
+
+    if self_job is None:
+        raise HTTPException(404, "Job not found")
+
+    placeholder = "$6"
+    badges_sql = BADGE_EXPRESSIONS.replace(":top_companies", placeholder)
+
+    ranking_sql = (
+        SIMILAR_JOBS_EXPRESSION
+        .replace(":self_title", "$2")
+        .replace(":self_job_group", "$3")
+        .replace(":self_type", "$4")
+        .replace(":self_is_remote", "$5")
+        .replace(":self_location", "$7")
+    )
+
+    rows = await pool.fetch(
+        f"""
+        SELECT
+            {JOB_COLUMNS},
+            {badges_sql},
+            ({ranking_sql}) AS match_score
+        FROM jobs
+        WHERE is_active = true
+          AND id != $1
+          AND (
+              job_group = $3
+              OR type = $4
+              OR similarity(title, $2) > 0.15
+          )
+        ORDER BY match_score DESC, posted_at DESC
+        LIMIT $8
+        """,
+        job_id,
+        self_job["title"] or "",
+        self_job["job_group"] or "other",
+        self_job["type"] or "",
+        self_job["is_remote"] or False,
+        _lower_top_companies(),
+        self_job["location"] or "",
+        limit,
     )
 
     return {"jobs": [dict(row) for row in rows]}

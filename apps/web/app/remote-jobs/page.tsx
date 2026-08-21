@@ -17,9 +17,9 @@ import { RoleFilter, parseGroupFilter } from '@/app/components/JobFilters';
 const JOBS_PER_PAGE = 12;
 
 export const metadata: Metadata = {
-  title: 'Remote Jobs — US, UK & Worldwide | InternFlow',
+  title: 'Remote Jobs — US, UK & Worldwide',
   description:
-    'Remote software, product, and data roles from Himalayas, Remote OK, We Work Remotely, and Remotive. Refreshed daily, open to India, the US, the UK, and worldwide applicants.',
+    'Remote software, product, and data roles from Himalayas, Remote OK, We Work Remotely, and Remotive. Refreshed daily, open to India, US, UK, and worldwide.',
   alternates: {
     canonical: `${BASE_URL}/remote-jobs`,
   },
@@ -197,11 +197,17 @@ export default async function RemoteJobsPage({
     ...(groupFilter !== 'all' ? { job_group: groupFilter } : {}),
   };
 
+  // Featured picks are a first-page-only spotlight, not a recurring
+  // section — fetch (and later render) them only when nobody's searching
+  // and we're actually on page 1, so pages 2+ don't repeat the same
+  // "high-quality picks" block above every page of results.
+  const showFeatured = !search && requestedPage === 1;
+
   const [allJobs, featured] = await Promise.all([
     getJobs(jobsFilterOptions),
-    search
-      ? Promise.resolve([])
-      : getFeaturedJobs(jobsFilterOptions),
+    showFeatured
+      ? getFeaturedJobs(jobsFilterOptions)
+      : Promise.resolve([]),
   ]);
 
   const totalJobs = allJobs.length;

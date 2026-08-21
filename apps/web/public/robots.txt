@@ -1,5 +1,9 @@
 User-agent: *
 Allow: /
+Allow: /about
+Allow: /companies
+Allow: /blog
+Allow: /blog/
 Allow: /register
 Allow: /login
 Allow: /jobs
@@ -18,6 +22,8 @@ Allow: /japan-jobs
 Allow: /japan-jobs/
 Allow: /japan-internships
 Allow: /japan-internships/
+Allow: /europe-jobs
+Allow: /europe-jobs/
 Allow: /resume
 Allow: /resume/
 Allow: /github

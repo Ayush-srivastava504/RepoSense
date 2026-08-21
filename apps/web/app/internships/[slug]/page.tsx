@@ -24,7 +24,7 @@ export async function generateMetadata({
   }
 
   return {
-    title: `${job.title} at ${job.company} — Internship | InternFlow`,
+    title: `${job.title} at ${job.company} — Internship`,
     description: `Apply for the ${job.title} internship at ${job.company}${
       job.location ? ` in ${job.location}` : ''
     }. View eligibility, skills, stipend, and application details.`,

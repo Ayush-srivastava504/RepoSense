@@ -1,7 +1,8 @@
 import type { Job } from '@/lib/jobs';
-import { BASE_URL } from '@/lib/jobs';
+import { BASE_URL, getSimilarJobs } from '@/lib/jobs';
 import JobBadges from '@/app/components/JobBadges';
 import ApplyButton from '@/app/components/ApplyButton';
+import SimilarJobs from '@/app/components/SimilarJobs';
 
 /**
  * Builds JobPosting structured data following Google's
@@ -15,11 +16,19 @@ import ApplyButton from '@/app/components/ApplyButton';
 function buildJobPostingSchema(job: Job, canonicalUrl: string) {
   const isRemote = /remote/i.test(job.location || '');
 
+  // Lead with the AI-generated overview (see migration 017) when present —
+  // it's original, role-specific prose, vs. the raw scraped description
+  // which is often thin/boilerplate and shared near-verbatim across many
+  // listings from the same source board.
+  const schemaDescription = job.enriched_overview
+    ? `${job.enriched_overview}\n\n${job.description || ''}`.trim()
+    : job.description;
+
   const schema: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': 'JobPosting',
     title: job.title,
-    description: job.description,
+    description: schemaDescription,
     datePosted: job.posted_at,
     employmentType:
       job.type === 'internship' ? 'INTERN' : 'FULL_TIME',
@@ -91,7 +100,7 @@ function parseFirstNumber(text: string): number | null {
   return match ? Number(match[0]) : null;
 }
 
-export default function JobDetail({
+export default async function JobDetail({
   job,
   canonicalPath,
   backHref,
@@ -102,6 +111,8 @@ export default function JobDetail({
   backHref: string;
   backLabel: string;
 }) {
+  const similarJobs = await getSimilarJobs(job.id, 6);
+
   const compensation =
     job.stipend || job.salary || null;
 
@@ -222,8 +233,29 @@ export default function JobDetail({
         </p>
       )}
 
+      {job.enriched_overview && (
+        <div className="mt-6">
+          <p
+            className="whitespace-pre-line text-sm leading-relaxed"
+            style={{ color: 'var(--ink)' }}
+          >
+            {job.enriched_overview}
+          </p>
+
+          {job.enriched_keywords && job.enriched_keywords.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {job.enriched_keywords.map((kw) => (
+                <span key={kw} className="chip chip-muted text-[0.65rem]">
+                  {kw}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <p
-        className="mt-6 whitespace-pre-line text-sm leading-relaxed"
+        className="mt-4 whitespace-pre-line text-sm leading-relaxed"
         style={{
           color: 'var(--ink-soft)',
         }}
@@ -253,6 +285,8 @@ export default function JobDetail({
           ← {backLabel}
         </a>
       </div>
+
+      <SimilarJobs jobs={similarJobs} />
     </main>
   );
 }

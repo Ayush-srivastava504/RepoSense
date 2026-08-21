@@ -25,7 +25,7 @@ const JOBS_PER_PAGE = 12;
 export const metadata: Metadata = {
   title: 'Job & Internship Listings — India, Remote & Japan — Refreshed Daily',
   description:
-    'Browse the latest software engineering, sales, and finance jobs and internships from India, remote-first companies, and Japan. Filter by role and location. Updated daily, no login required to browse.',
+    'Browse the latest software engineering, sales, and finance jobs and internships from India, remote companies, and Japan. Updated daily, no login required.',
   alternates: {
     canonical: `${BASE_URL}/jobs`,
   },
@@ -206,11 +206,17 @@ export default async function JobsPage({
     ...(groupFilter !== 'all' ? { job_group: groupFilter } : {}),
   };
 
+  // Featured picks are a first-page-only spotlight, not a recurring
+  // section — fetch (and later render) them only when nobody's searching
+  // and we're actually on page 1, so pages 2+ don't repeat the same
+  // "high-quality picks" block above every page of results.
+  const showFeatured = !search && requestedPage === 1;
+
   const [fetchedJobs, fetchedFeatured] = await Promise.all([
     getJobs(jobsFilterOptions),
-    search
-      ? Promise.resolve([])
-      : getFeaturedJobs(jobsFilterOptions),
+    showFeatured
+      ? getFeaturedJobs(jobsFilterOptions)
+      : Promise.resolve([]),
   ]);
 
   const allJobs =

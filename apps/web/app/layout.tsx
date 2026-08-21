@@ -1,5 +1,5 @@
 import './globals.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
 import { Inter, Fraunces, IBM_Plex_Mono } from 'next/font/google';
 
@@ -129,6 +129,15 @@ export const metadata: Metadata = {
   manifest: '/site.webmanifest',
 };
 
+// Explicit rather than relying on Next's default — makes mobile
+// rendering intent unambiguous to crawlers/Lighthouse, and matches
+// site.webmanifest's theme_color for a consistent mobile browser chrome.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#ffffff',
+};
+
 const organizationSchema = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
@@ -159,16 +168,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        {/* Google AdSense — plain <script> (not next/script) so Next doesn't
-            attach its data-nscript attribute, which AdSense's own parser
-            warns about ("head tag doesn't support data-nscript attribute") */}
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3315793616023053"
-          crossOrigin="anonymous"
-        />
-      </head>
+      {/* AdSense's loader script used to be hard-coded here in <head>, so it
+          loaded on every route — including ad-free pages like the homepage —
+          where Lighthouse flagged almost all of it as unused JavaScript.
+          AdSlot.tsx now injects it lazily, only on pages that actually
+          render an ad unit (see app/components/AdSlot.tsx). */}
       <body
         className={`${inter.variable} ${fraunces.variable} ${plexMono.variable} font-sans antialiased`}
       >

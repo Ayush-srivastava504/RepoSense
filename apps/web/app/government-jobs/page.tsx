@@ -16,7 +16,7 @@ import SponsoredCard from '@/app/components/SponsoredCard';
 const JOBS_PER_PAGE = 12;
 
 export const metadata: Metadata = {
-  title: 'Government Jobs — Sarkari Naukri Notifications | InternFlow',
+  title: 'Government Jobs — Sarkari Naukri Notifications',
   description:
     'Latest government job notifications from Employment News and FreeJobAlert — department, post, vacancies, and direct-apply links. Refreshed daily.',
   alternates: {
@@ -181,17 +181,23 @@ export default async function GovernmentJobsPage({
       ? 1
       : parsedPage;
 
+  // Featured picks are a first-page-only spotlight, not a recurring
+  // section — fetch (and later render) them only when nobody's searching
+  // and we're actually on page 1, so pages 2+ don't repeat the same
+  // "high-quality picks" block above every page of results.
+  const showFeatured = !search && requestedPage === 1;
+
   const [allJobs, featured] = await Promise.all([
     getJobs({
       search,
       category: 'government',
       sort: 'ranked',
     }),
-    search
-      ? Promise.resolve([])
-      : getFeaturedJobs({
+    showFeatured
+      ? getFeaturedJobs({
           category: 'government',
-        }),
+        })
+      : Promise.resolve([]),
   ]);
 
   const totalJobs = allJobs.length;

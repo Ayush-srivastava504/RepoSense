@@ -113,6 +113,57 @@ export function softwareApplicationSchema(params: {
   };
 }
 
+export function eventSchema(params: {
+  name: string;
+  description?: string;
+  url: string;
+  startDate?: string;
+  endDate?: string;
+  isOnline: boolean;
+  location?: string;
+  country?: string;
+  organizer?: string;
+  imageUrl?: string;
+}) {
+  const schema: Record<string, any> = {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: params.name,
+    description: params.description || params.name,
+    url: params.url,
+    ...(params.startDate ? { startDate: params.startDate } : {}),
+    ...(params.endDate ? { endDate: params.endDate } : {}),
+    eventAttendanceMode: params.isOnline
+      ? 'https://schema.org/OnlineEventAttendanceMode'
+      : 'https://schema.org/OfflineEventAttendanceMode',
+    eventStatus: 'https://schema.org/EventScheduled',
+    ...(params.imageUrl ? { image: [params.imageUrl] } : {}),
+    organizer: {
+      '@type': 'Organization',
+      name: params.organizer || ORG_NAME,
+    },
+  };
+
+  if (params.isOnline) {
+    schema.location = {
+      '@type': 'VirtualLocation',
+      url: params.url,
+    };
+  } else {
+    schema.location = {
+      '@type': 'Place',
+      name: params.location || params.country || 'TBA',
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: params.location,
+        addressCountry: params.country,
+      },
+    };
+  }
+
+  return schema;
+}
+
 export function jobPostingSchema(job: Job, canonicalUrl: string) {
   const employmentType = /intern/i.test(job.type ?? '')
     ? 'INTERN'

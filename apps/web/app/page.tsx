@@ -73,6 +73,18 @@ const testimonials = [
   },
 ];
 
+const categoryLinks = [
+  { href: '/jobs', label: 'All jobs', body: 'Every open listing across India, remote, and abroad.' },
+  { href: '/internships', label: 'Internships', body: 'India, remote, and Japan — refreshed daily.' },
+  { href: '/remote-jobs', label: 'Remote jobs', body: 'Fully remote roles from US, UK, and worldwide.' },
+  { href: '/government-jobs', label: 'Government jobs', body: 'Sarkari Naukri notifications, tracked daily.' },
+  { href: '/companies', label: 'Companies hiring', body: 'Top employers, mass-hiring drives, and startups.' },
+  { href: '/hackathons', label: 'Hackathons', body: 'Active hackathons worth building for.' },
+  { href: '/japan-jobs', label: 'Japan jobs', body: 'Tokyo, Osaka, and remote-for-Japan roles.' },
+  { href: '/europe-jobs', label: 'Europe jobs', body: 'UK, Germany, Netherlands, and remote-for-Europe.' },
+  { href: '/tools', label: 'AI career tools', body: 'Resume builder, ATS checker, and more — free.' },
+];
+
 export default async function LandingPage() {
   const featured = await getFeaturedJobs({ limit: 6 });
   const previewJobs = featured.length > 0 ? featured : await getJobs({ sort: 'recent', limit: 6 });
@@ -238,6 +250,29 @@ export default async function LandingPage() {
           </p>
         </ScrollReveal>
       )}
+
+      {/* CATEGORY HUB — links out to every listing category so link equity
+          from the homepage (our highest-authority page) actually reaches
+          them, instead of relying solely on the header/footer nav. */}
+      <ScrollReveal as="section" className="container-xl py-14">
+        <hr className="hr-line mb-10" />
+        <p className="eyebrow eyebrow-accent mb-2">// browse by category</p>
+        <h2 className="display text-2xl font-medium mb-8">Find what you're looking for</h2>
+        <ScrollReveal as="div" stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {categoryLinks.map((c) => (
+            <Link
+              key={c.href}
+              href={c.href}
+              className="panel card-lift p-5 block"
+            >
+              <h3 className="display text-base font-medium">{c.label}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+                {c.body}
+              </p>
+            </Link>
+          ))}
+        </ScrollReveal>
+      </ScrollReveal>
 
       {/* CLOSING CTA */}
       <ScrollReveal as="section" className="container-xl pb-20">

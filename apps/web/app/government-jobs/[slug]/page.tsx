@@ -24,7 +24,7 @@ export async function generateMetadata({
   }
 
   return {
-    title: `${job.title}${job.department ? ` — ${job.department}` : ''} | InternFlow`,
+    title: `${job.title}${job.department ? ` — ${job.department}` : ''}`,
     description: `${job.department ? `${job.department} recruitment: ` : ''}${job.title}${
       job.vacancies ? `. ${job.vacancies} vacancies.` : '.'
     } View eligibility, notification details, and the official application link.`,
