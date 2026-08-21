@@ -59,7 +59,8 @@ apps/web/
 ├── components/
 │   ├── AppShell.tsx              # Sticky nav, layout wrapper for all app pages
 │   ├── Logo.tsx                  # InternFlow wordmark + icon
-│   └── HeroGraph.tsx             # Static SVG git graph, CSS-animated (no client JS/WebGL)
+│   ├── HeroGraph.tsx             # Lazy-loads CommitGraph3D with SVG fallback
+│   └── CommitGraph3D.tsx         # Rotating 3D git graph (Three.js / R3F)
 │
 └── lib/
     ├── api.ts                    # Fetch wrapper (attaches JWT, throws on errors)

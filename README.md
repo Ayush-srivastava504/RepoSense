@@ -215,6 +215,9 @@ RepoSense-master/
 │       │       ├── AuthGuard.tsx
 │       │       │   → Protects frontend content requiring authentication.
 │       │       │
+│       │       ├── CommitGraph3D.tsx
+│       │       │   → Renders an interactive 3D Git commit visualization.
+│       │       │
 │       │       ├── FeaturedJobs.tsx
 │       │       │   → Displays selected or highly ranked job opportunities.
 │       │       │

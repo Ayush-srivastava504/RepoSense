@@ -62,7 +62,7 @@ apps/web/
 │   ├── jobs/page.tsx, jobs/[slug]/page.tsx
 │   ├── internships/page.tsx, internships/[slug]/page.tsx
 │   ├── components/                    # AdSlot, AppShell, ApplyButton, AuthGuard,
-│   │                                   # FeaturedJobs, Footer, HeroGraph,
+│   │                                   # CommitGraph3D, FeaturedJobs, Footer, HeroGraph,
 │   │                                   # InternshipDetailAds, JobBadges, JobCard,
 │   │                                   # JobDetail, Logo, SponsoredCard
 │   ├── globals.css                    # Design tokens (CSS vars) + utility classes
