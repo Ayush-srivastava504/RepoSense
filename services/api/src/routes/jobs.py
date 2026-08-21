@@ -77,6 +77,7 @@ JOB_COLUMNS = """
     confidence_score,
     confidence_label,
     apply_domain,
+    logo_domain,
     is_official_domain,
     is_remote,
     is_government,

@@ -22,25 +22,27 @@ import { companyInitial, companyColor } from '@/lib/avatar';
  *     it's the fallback while a Logo.dev token isn't configured yet,
  *     or for the rare domain Logo.dev doesn't have.
  *  3. The deterministic initial avatar — only when there's no
- *     apply_domain at all, or both image sources fail to load.
+ *     logoDomain at all (e.g. an aggregator-sourced job with no known
+ *     official domain — see processors/trust.py logo_domain), or when
+ *     both image sources fail to load.
  */
 export default function CompanyLogo({
   company,
-  applyDomain,
+  logoDomain,
   size = 44,
 }: {
   company?: string;
-  applyDomain?: string;
+  logoDomain?: string;
   size?: number;
 }) {
   const logoDevToken = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
   const [stage, setStage] = useState<'logoDev' | 'favicon' | 'initials'>(
-    applyDomain ? (logoDevToken ? 'logoDev' : 'favicon') : 'initials',
+    logoDomain ? (logoDevToken ? 'logoDev' : 'favicon') : 'initials',
   );
 
   const { bg, fg } = companyColor(company);
 
-  if (stage === 'initials' || !applyDomain) {
+  if (stage === 'initials' || !logoDomain) {
     return (
       <div
         aria-hidden="true"
@@ -54,8 +56,8 @@ export default function CompanyLogo({
 
   const src =
     stage === 'logoDev'
-      ? `https://img.logo.dev/${applyDomain}?token=${logoDevToken}&size=128&retina=true&format=webp`
-      : `https://www.google.com/s2/favicons?domain=${applyDomain}&sz=128`;
+      ? `https://img.logo.dev/${logoDomain}?token=${logoDevToken}&size=128&retina=true&format=webp`
+      : `https://www.google.com/s2/favicons?domain=${logoDomain}&sz=128`;
 
   return (
     <div

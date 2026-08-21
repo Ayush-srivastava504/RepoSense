@@ -18,6 +18,7 @@ export interface Job {
   confidence_score?: number;
   confidence_label?: 'verified' | 'high_confidence' | 'review_recommended' | 'unverified';
   apply_domain?: string;
+  logo_domain?: string;
   is_official_domain?: boolean;
   is_new?: boolean;
   is_top_company?: boolean;

@@ -202,9 +202,15 @@ ATS_COMPANIES: Dict[str, List[str]] = {
     # with `curl https://api.lever.co/v0/postings/<token>?mode=json`
     # (Lever) or `curl https://api.ashbyhq.com/posting-api/job-board/<token>`
     # (Ashby) before relying on them.
+    # eventbrite/netlify/loom/shipt/papaya-global/getir all 404'd on the
+    # last live run (see crawler logs) — dropped and replaced with
+    # anchorage/wealthsimple, both confirmed live Lever customers as of
+    # this edit. plaid/kraken are real tokens too; a 0-job result for them
+    # is a legitimately empty board, not a broken token — check
+    # `curl https://api.lever.co/v0/postings/<token>?mode=json` before
+    # assuming any token here is stale.
     "lever": [
-        "plaid", "eventbrite", "netlify", "loom", "shipt", "papaya-global",
-        "getir", "kraken",
+        "plaid", "kraken", "anchorage", "wealthsimple",
     ],
     "ashby": [
         "mercury", "ramp", "openai", "linear", "vanta",
@@ -212,8 +218,14 @@ ATS_COMPANIES: Dict[str, List[str]] = {
     "smartrecruiters": [
         "Visa", "Bosch", "McDonalds", "Adidas", "Ikea", "Yourfoodjob",
     ],
+    # "workable" was a literal placeholder token (not a real company slug)
+    # and 404'd every run — replaced with huggingface, a confirmed live
+    # Workable customer. Verify with
+    # `curl https://apply.workable.com/api/v1/widget/accounts/<slug>`
+    # before trusting any slug here long-term; Workable doesn't publish a
+    # customer directory so there's no way to auto-discover replacements.
     "workable": [
-        "workable", "typeform",
+        "huggingface", "typeform", "deelhq",
     ],
 }
 

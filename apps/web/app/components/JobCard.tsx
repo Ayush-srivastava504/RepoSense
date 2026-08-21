@@ -27,7 +27,7 @@ export default function JobCard({ job, basePath = '/jobs' }: { job: Job; basePat
           </p>
         </div>
 
-        <CompanyLogo company={job.company} applyDomain={job.apply_domain} size={44} />
+        <CompanyLogo company={job.company} logoDomain={job.logo_domain} size={44} />
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">

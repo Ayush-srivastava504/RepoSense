@@ -467,6 +467,7 @@ def upsert_jobs(
                 job.get("confidence_score", 0),
                 job.get("confidence_label", "unverified"),
                 job.get("apply_domain"),
+                job.get("logo_domain"),
                 bool(job.get("is_official_domain", False)),
                 job.get("domain_similarity", 0.0),
                 deadline,
@@ -498,6 +499,7 @@ def upsert_jobs(
             confidence_score,
             confidence_label,
             apply_domain,
+            logo_domain,
             is_official_domain,
             domain_similarity,
             deadline,
@@ -515,7 +517,7 @@ def upsert_jobs(
             %s,%s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,%s,
-            %s,
+            %s,%s,
             CURRENT_TIMESTAMP
         )
         ON CONFLICT (url)

@@ -56,6 +56,7 @@ async def get_companies(
             count(*)                                   AS job_count,
             bool_or(is_official_domain)                 AS is_official_domain,
             (array_agg(apply_domain) FILTER (WHERE apply_domain IS NOT NULL))[1] AS apply_domain,
+            (array_agg(logo_domain) FILTER (WHERE logo_domain IS NOT NULL))[1]   AS logo_domain,
             (array_agg(location) FILTER (WHERE location IS NOT NULL))[1]         AS sample_location,
             max(posted_at)                              AS last_posted_at
         FROM jobs
@@ -76,6 +77,7 @@ async def get_companies(
             "job_count": row["job_count"],
             "is_official_domain": row["is_official_domain"],
             "apply_domain": row["apply_domain"],
+            "logo_domain": row["logo_domain"],
             "sample_location": row["sample_location"],
             "last_posted_at": row["last_posted_at"],
         }

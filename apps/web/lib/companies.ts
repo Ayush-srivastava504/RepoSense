@@ -5,6 +5,7 @@ export interface Company {
   job_count: number;
   is_official_domain?: boolean;
   apply_domain?: string;
+  logo_domain?: string;
   sample_location?: string;
   last_posted_at?: string;
   tier: CompanyTier;

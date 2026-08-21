@@ -95,6 +95,19 @@ FREE_EMAIL_DOMAINS: set = {
     "rediffmail.com", "protonmail.com", "icloud.com", "aol.com",
 }
 
+# Job boards / aggregators whose own domain the apply_url points at — the
+# domain is real and legitimate for apply_domain/trust purposes (that IS
+# where you apply), but it is never the *employer's* domain, so it must
+# never be used to look up a company logo. Without this, e.g. every
+# LinkedIn-sourced job showed LinkedIn's own favicon/logo instead of the
+# hiring company's, since CompanyLogo just fetched a logo for apply_domain.
+AGGREGATOR_DOMAINS: set = {
+    "linkedin.com", "indeed.com", "glassdoor.com", "naukri.com",
+    "internshala.com", "unstop.com", "cutshort.in", "freejobalert.com",
+    "remoteok.com", "remoteok.io", "weworkremotely.com", "remotive.com",
+    "wayup.com", "hiring.cafe", "jobicy.com", "arbeitnow.com",
+}
+
 URL_SHORTENERS: set = {
     "bit.ly", "tinyurl.com", "t.co", "rebrand.ly", "cutt.ly", "is.gd",
     "buff.ly", "ow.ly", "shorturl.at", "rb.gy",
@@ -125,6 +138,7 @@ def score(job: Dict) -> Dict:
         job.setdefault("confidence_score", 0)
         job.setdefault("confidence_label", "unverified")
         job.setdefault("apply_domain", None)
+        job.setdefault("logo_domain", None)
         job.setdefault("is_official_domain", False)
         job.setdefault("domain_similarity", 0.0)
 
@@ -192,6 +206,20 @@ def _score_single(job: Dict) -> None:
     job["domain_similarity"] = round(similarity, 2)
     job["confidence_score"] = score_value
     job["confidence_label"] = _label_for(score_value, is_official)
+
+    # Logo lookup domain: same as apply_domain UNLESS apply_domain is a
+    # job-board/aggregator (LinkedIn, Indeed, ...), in which case using it
+    # would fetch the *platform's* logo, not the employer's. Fall back to
+    # our curated official-domain mapping when we have one for this
+    # company; otherwise leave it unset so the UI shows the initials
+    # avatar rather than a misleading logo.
+    is_aggregator_domain = bool(domain) and any(
+        domain == d or domain.endswith("." + d) for d in AGGREGATOR_DOMAINS
+    )
+    if is_aggregator_domain:
+        job["logo_domain"] = trusted_domains[0] if trusted_domains else None
+    else:
+        job["logo_domain"] = domain
 
 
 def _label_for(score_value: int, is_official: bool) -> str:

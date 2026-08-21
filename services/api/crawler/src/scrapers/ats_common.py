@@ -113,7 +113,18 @@ def fetch_json(
         try:
             return response.json()
         except ValueError as exc:
-            log.warning("JSON decode failed for %s: %s", url, exc)
+            # A 200 with unparseable body usually means we got an anti-bot
+            # challenge/HTML page instead of the real API response (some
+            # boards do this when the request looks non-browser-like), not
+            # that the board is actually empty. Log a content-type + body
+            # snippet so this is distinguishable from a genuinely stale
+            # token at a glance, instead of just "JSON decode failed".
+            content_type = response.headers.get("Content-Type", "unknown")
+            snippet = (response.text or "")[:200].replace("\n", " ")
+            log.warning(
+                "JSON decode failed for %s: %s | content-type=%s body[:200]=%r",
+                url, exc, content_type, snippet,
+            )
             return None
 
     return None

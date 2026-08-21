@@ -11,7 +11,7 @@ export default function CompanyCard({ company }: { company: Company }) {
     >
       <CompanyLogo
         company={company.company}
-        applyDomain={company.apply_domain}
+        logoDomain={company.logo_domain}
         size={44}
       />
 

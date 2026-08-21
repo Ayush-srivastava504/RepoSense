@@ -86,6 +86,7 @@ class GenericBoardsScraper(BaseScraper):
     def _scrape_board(self, board: Dict) -> List[Dict]:
         url = board["url"]
         source_tag = board.get("source_tag", self.source_name)
+        board_name = board.get("name", source_tag)
         company_hint = board.get("company_hint", "")
 
         page = self.new_page()
@@ -101,14 +102,41 @@ class GenericBoardsScraper(BaseScraper):
 
         soup = BeautifulSoup(html, "html.parser")
 
-        jobs = self._extract_jsonld(soup, url, source_tag, company_hint)
+        # Multi-company boards (JapanDev, WayUp, Prosple, ...) don't get a
+        # single company_hint in config since every listing has a different
+        # real employer. But build_job() *requires* a non-empty company, so
+        # without some fallback here, any listing whose JSON-LD is missing
+        # hiringOrganization (or that falls through to the link-heuristic
+        # path, which never had a company source at all) got silently
+        # dropped — that's why these boards logged jsonld-parsed cards yet
+        # still returned 0 jobs. Fall back to a page-level guess, and as a
+        # last resort the board's own name, so a job is never discarded
+        # purely for lacking a company string.
+        page_company = self._guess_page_company(soup) or board_name
+
+        jobs = self._extract_jsonld(soup, url, source_tag, company_hint, page_company)
 
         if not jobs:
-            jobs = self._extract_heuristic(soup, url, source_tag, company_hint)
+            jobs = self._extract_heuristic(soup, url, source_tag, company_hint, page_company)
 
         return jobs
 
-    def _extract_jsonld(self, soup, base_url: str, source_tag: str, company_hint: str) -> List[Dict]:
+    @staticmethod
+    def _guess_page_company(soup) -> str:
+        """Best-effort site-level company name from common SEO meta tags."""
+        for attrs in (
+            {"property": "og:site_name"},
+            {"name": "application-name"},
+            {"name": "author"},
+        ):
+            tag = soup.find("meta", attrs=attrs)
+            if tag and tag.get("content"):
+                value = clean(tag["content"])
+                if value:
+                    return value
+        return ""
+
+    def _extract_jsonld(self, soup, base_url: str, source_tag: str, company_hint: str, page_company: str = "") -> List[Dict]:
         out = []
 
         for script in soup.select('script[type="application/ld+json"]'):
@@ -138,7 +166,7 @@ class GenericBoardsScraper(BaseScraper):
                 company = ""
                 if isinstance(org, dict):
                     company = clean(org.get("name", ""))
-                company = company or company_hint
+                company = company or company_hint or page_company
 
                 job_location = item.get("jobLocation")
                 if isinstance(job_location, list) and job_location:
@@ -165,7 +193,7 @@ class GenericBoardsScraper(BaseScraper):
 
         return out
 
-    def _extract_heuristic(self, soup, base_url: str, source_tag: str, company_hint: str) -> List[Dict]:
+    def _extract_heuristic(self, soup, base_url: str, source_tag: str, company_hint: str, page_company: str = "") -> List[Dict]:
         out = []
         seen_titles = set()
 
@@ -192,9 +220,21 @@ class GenericBoardsScraper(BaseScraper):
             container = link.find_parent(["li", "tr", "div", "article"])
             description = clean(container.get_text(" ", strip=True)) if container else text
 
+            # Try to pull a per-listing company from a nearby element before
+            # falling back to the page-level guess — cards on aggregator
+            # sites usually carry the employer name in a sibling/child node
+            # with a "company"/"employer" class even when there's no JSON-LD.
+            listing_company = ""
+            if container:
+                company_el = container.select_one(
+                    '[class*="company"], [class*="employer"], [class*="org"]'
+                )
+                if company_el:
+                    listing_company = clean(company_el.get_text(" ", strip=True))
+
             job = build_job(
                 title=text,
-                company=company_hint or "",
+                company=listing_company or company_hint or page_company,
                 location="",
                 description=description,
                 apply_url=urljoin(base_url, href),
