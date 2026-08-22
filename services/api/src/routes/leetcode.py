@@ -8,7 +8,11 @@ from fastapi.responses import FileResponse
 from services.leetcode_service import (
     list_problems, get_problem, judge_submission,
 )
-from schemas.leetcode import SubmissionRequest, JudgeResponse
+from dataclasses import asdict
+from data.leetcode.level_problems import list_levels, get_level
+from schemas.leetcode import (
+    SubmissionRequest, JudgeResponse, LevelSummaryOut, LevelDetailOut,
+)
 
 router = APIRouter(prefix="/api/leetcode", tags=["leetcode"])
 
@@ -44,6 +48,26 @@ async def submit_solution(slug: str, submission: SubmissionRequest):
         raise HTTPException(status_code=404, detail="problem not found")
     verdict = judge_submission(slug, submission.code)
     return verdict
+
+
+@router.get("/levels", response_model=list[LevelSummaryOut])
+async def get_levels():
+    """Summary of all three practice tiers (Blind 75 / Top 150 / Top 250)."""
+    return list_levels()
+
+
+@router.get("/levels/{level_key}", response_model=LevelDetailOut)
+async def get_level_detail(level_key: str):
+    """Full problem list for one tier, e.g. 'level-1', 'level-2', 'level-3'."""
+    level = get_level(level_key)
+    if level is None:
+        raise HTTPException(status_code=404, detail="level not found")
+    return {
+        "key": level["key"],
+        "label": level["label"],
+        "description": level["description"],
+        "problems": [asdict(p) for p in level["problems"]],
+    }
 
 
 @router.get("/blind75/sheet")

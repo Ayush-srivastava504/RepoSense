@@ -24,3 +24,26 @@ class JudgeResponse(BaseModel):
     summary: Optional[str] = None
     error: Optional[str] = None
     results: list[TestResult] = []
+
+
+class LevelProblemOut(BaseModel):
+    slug: str
+    title: str
+    category: str
+    difficulty: str
+    leetcode_url: str
+    solvable: bool
+
+
+class LevelSummaryOut(BaseModel):
+    key: str
+    label: str
+    description: str
+    count: int
+
+
+class LevelDetailOut(BaseModel):
+    key: str
+    label: str
+    description: str
+    problems: list[LevelProblemOut]

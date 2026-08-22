@@ -27,6 +27,7 @@ const moreSections = [
   { href: '/japan-internships', label: 'Japan Intern' },
   { href: '/europe-jobs',       label: 'Europe' },
   { href: '/hackathons',        label: 'Hackathons' },
+  { href: '/leetcode',          label: 'LeetCode' },
   { href: '/ats-checker',       label: 'ATS Checker' },
   { href: '/cover-letter',      label: 'Cover Letter' },
   { href: '/linkedin',          label: 'LinkedIn' },
