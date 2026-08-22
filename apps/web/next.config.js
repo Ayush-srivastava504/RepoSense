@@ -47,6 +47,23 @@ const nextConfig = {
   },
 
   /**
+   * /japan-jobs and /japan-internships used to be two near-identical pages.
+   * They're now one page with a tab toggle at /japan-jobs?type=internship —
+   * this 308 forwards old links/bookmarks/search-engine results there
+   * (Next.js automatically carries over any extra query params, like
+   * ?search=... or ?page=..., onto the destination).
+   */
+  async redirects() {
+    return [
+      {
+        source: '/japan-internships',
+        destination: '/japan-jobs?type=internship',
+        permanent: true,
+      },
+    ];
+  },
+
+  /**
    * Disable webpack's persistent file cache on Windows.
    * The default cache strategy can cause "Unable to snapshot resolve dependencies"
    * errors during the build process. Switching to an in‑memory cache avoids the

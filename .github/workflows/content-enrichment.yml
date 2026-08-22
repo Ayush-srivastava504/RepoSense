@@ -62,7 +62,7 @@ jobs:
             # does not pass it in from GitHub secrets.
             docker compose -f infrastructure/docker/docker-compose.yml \
               run --rm --entrypoint python api \
-              services/api/scripts/enrich_job_content.py --limit "$LIMIT" $EXTRA_ARGS
+              scripts/enrich_job_content.py --limit "$LIMIT" $EXTRA_ARGS
         env:
           LIMIT: ${{ github.event.inputs.limit || '100' }}
           FORCE_STALE: ${{ github.event.inputs.force_stale || 'false' }}

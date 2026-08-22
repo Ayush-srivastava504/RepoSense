@@ -17,9 +17,13 @@ export async function GET() {
     { loc: `${BASE_URL}/government-jobs`, lastmod: now, changefreq: 'daily', priority: 0.9 },
     { loc: `${BASE_URL}/companies`, lastmod: now, changefreq: 'daily', priority: 0.7 },
     { loc: `${BASE_URL}/hackathons`, lastmod: now, changefreq: 'daily', priority: 0.9 },
+    // /japan-jobs and /japan-internships were merged into one page with a
+    // tab toggle (see app/japan-jobs/page.tsx); list both indexable
+    // variants here instead of the old separate URL, which now 308s.
     { loc: `${BASE_URL}/japan-jobs`, lastmod: now, changefreq: 'daily', priority: 0.8 },
-    { loc: `${BASE_URL}/japan-internships`, lastmod: now, changefreq: 'daily', priority: 0.8 },
+    { loc: `${BASE_URL}/japan-jobs?type=internship`, lastmod: now, changefreq: 'daily', priority: 0.8 },
     { loc: `${BASE_URL}/europe-jobs`, lastmod: now, changefreq: 'daily', priority: 0.8 },
+    { loc: `${BASE_URL}/leetcode`, lastmod: now, changefreq: 'weekly', priority: 0.7 },
   ]);
 
   return new Response(xml, { headers: { 'Content-Type': 'application/xml' } });

@@ -12,29 +12,100 @@ import SponsoredCard from '@/app/components/SponsoredCard';
 
 const JOBS_PER_PAGE = 12;
 
-export const metadata: Metadata = {
-  title: 'Japan Jobs — Tokyo, Osaka & Remote-for-Japan',
-  description:
-    'Full-time, contract, and part-time roles based in Japan or open to remote applicants based in Japan, sourced from Himalayas and Remote OK and refreshed daily.',
-  alternates: {
-    canonical: `${BASE_URL}/japan-jobs`,
-  },
-};
+type JapanType = 'job' | 'internship';
+
+function parseType(raw?: string): JapanType {
+  return raw === 'internship' ? 'internship' : 'job';
+}
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: { type?: string };
+}): Promise<Metadata> {
+  const type = parseType(searchParams.type);
+
+  if (type === 'internship') {
+    return {
+      title: 'Japan Internships — Tokyo, Osaka & Remote-for-Japan',
+      description:
+        'Internships based in Japan or open to remote applicants based in Japan, sourced from Himalayas and Remote OK and refreshed daily.',
+      alternates: {
+        canonical: `${BASE_URL}/japan-jobs?type=internship`,
+      },
+    };
+  }
+
+  return {
+    title: 'Japan Jobs — Tokyo, Osaka & Remote-for-Japan',
+    description:
+      'Full-time, contract, and part-time roles based in Japan or open to remote applicants based in Japan, sourced from Himalayas and Remote OK and refreshed daily.',
+    alternates: {
+      canonical: `${BASE_URL}/japan-jobs`,
+    },
+  };
+}
+
+function TypeTabs({ type, search }: { type: JapanType; search: string }) {
+  const getTabUrl = (t: JapanType) => {
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (t === 'internship') params.set('type', 'internship');
+    const qs = params.toString();
+    return `/japan-jobs${qs ? `?${qs}` : ''}`;
+  };
+
+  return (
+    <div
+      className="mt-6 inline-flex flex-wrap gap-1 rounded-lg border p-1 text-xs sm:text-sm"
+      style={{ borderColor: 'var(--border)' }}
+      role="tablist"
+      aria-label="Japan listing type"
+    >
+      <Link
+        href={getTabUrl('job')}
+        role="tab"
+        aria-selected={type === 'job'}
+        className={`rounded-md px-3 sm:px-4 py-2 touch-manipulation ${
+          type === 'job' ? 'btn-primary' : ''
+        }`}
+      >
+        Full-time jobs
+      </Link>
+      <Link
+        href={getTabUrl('internship')}
+        role="tab"
+        aria-selected={type === 'internship'}
+        className={`rounded-md px-3 sm:px-4 py-2 touch-manipulation ${
+          type === 'internship' ? 'btn-primary' : ''
+        }`}
+      >
+        Internships
+      </Link>
+    </div>
+  );
+}
 
 function Pagination({
   currentPage,
   totalPages,
   search,
+  type,
 }: {
   currentPage: number;
   totalPages: number;
   search: string;
+  type: JapanType;
 }) {
   const getPageUrl = (page: number) => {
     const params = new URLSearchParams();
 
     if (search) {
       params.set('search', search);
+    }
+
+    if (type === 'internship') {
+      params.set('type', 'internship');
     }
 
     if (page > 1) {
@@ -127,20 +198,23 @@ function Pagination({
 export default async function JapanJobsPage({
   searchParams,
 }: {
-  searchParams: { search?: string; page?: string };
+  searchParams: { search?: string; page?: string; type?: string };
 }) {
   const search = searchParams.search?.trim() || '';
+  const type = parseType(searchParams.type);
 
   const parsedPage = Number.parseInt(searchParams.page || '1', 10);
   const requestedPage = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
 
-  // country: 'Japan' matches what scrapers/japan_jobs.py tags every job
-  // it collects with. That scraper never yields internship-type postings
-  // (those go through japan_internships.py / /japan-internships instead),
-  // so no extra type filter is needed here.
+  // country: 'Japan' matches what scrapers/japan_jobs.py and
+  // scrapers/japan_internships.py both tag every listing with. Internships
+  // additionally carry type: 'internship' (see japan_internships.py), so
+  // that's the one extra filter needed to tell the two tabs apart —
+  // everything else about the query is identical.
   const allJobs = await getJobs({
     search,
     country: 'Japan',
+    ...(type === 'internship' ? { type: 'internship' } : {}),
     sort: 'ranked',
   });
 
@@ -151,20 +225,38 @@ export default async function JapanJobsPage({
   const endIndex = Math.min(startIndex + JOBS_PER_PAGE, totalJobs);
   const jobs = allJobs.slice(startIndex, endIndex);
 
-  // Japan-sourced jobs are always is_remote=true (see REMOTE_SOURCES in the
-  // crawler's normalizer.py), so their one true canonical URL is always
-  // under /remote-jobs/{slug} — link there directly rather than inventing
-  // a second URL for the same job, which would recreate the exact
-  // canonical-mismatch bug already fixed on the main jobs pages.
+  // Japan full-time/contract/part-time jobs are always is_remote=true (see
+  // REMOTE_SOURCES in the crawler's normalizer.py), so their one true
+  // canonical URL is under /remote-jobs/{slug}. Internship-type listings
+  // canonicalize to /internships/{slug} instead (internship outranks
+  // remote in canonicalCategoryForJob, see lib/slug.ts). Link to whichever
+  // one actually matches so we don't recreate the canonical-mismatch bug
+  // already fixed on the main jobs pages.
+  const basePath = type === 'internship' ? '/internships' : '/remote-jobs';
+
   const itemListSchema = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
     itemListElement: jobs.map((job, index) => ({
       '@type': 'ListItem',
       position: startIndex + index + 1,
-      url: `${BASE_URL}/remote-jobs/${jobSlug(job)}`,
+      url: `${BASE_URL}${basePath}/${jobSlug(job)}`,
     })),
   };
+
+  const heading =
+    type === 'internship'
+      ? 'Japan Internships — Tokyo, Osaka & Remote-for-Japan'
+      : 'Japan Jobs — Tokyo, Osaka & Remote-for-Japan';
+
+  const intro =
+    type === 'internship'
+      ? 'Internships based in Japan or open to remote applicants based in Japan, aggregated from Himalayas and Remote OK, refreshed daily.'
+      : 'Roles based in Japan or open to remote applicants based in Japan, aggregated from Himalayas and Remote OK, refreshed daily.';
+
+  const emptyMessage = search
+    ? `No Japan ${type === 'internship' ? 'internships' : 'jobs'} found for "${search}".`
+    : `No Japan ${type === 'internship' ? 'internships' : 'jobs'} are available right now. Please check again later.`;
 
   return (
     <div className="min-h-screen">
@@ -174,24 +266,23 @@ export default async function JapanJobsPage({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
         />
 
-        <p className="eyebrow eyebrow-accent text-xs sm:text-sm">// japan jobs</p>
+        <p className="eyebrow eyebrow-accent text-xs sm:text-sm">
+          // japan {type === 'internship' ? 'internships' : 'jobs'}
+        </p>
 
-        <h1 className="display mt-2 text-2xl sm:text-3xl font-medium">
-          Japan Jobs — Tokyo, Osaka & Remote-for-Japan
-        </h1>
+        <h1 className="display mt-2 text-2xl sm:text-3xl font-medium">{heading}</h1>
 
         <p className="mt-2 text-xs sm:text-sm" style={{ color: 'var(--ink-soft)' }}>
-          Roles based in Japan or open to remote applicants based in Japan, aggregated from
-          Himalayas and Remote OK, refreshed daily.{' '}
-          <Link href="/japan-internships" className="underline">
-            Looking for internships?
-          </Link>{' '}
+          {intro}{' '}
           <Link href="/jobs" className="underline">
             See all jobs
           </Link>
         </p>
 
+        <TypeTabs type={type} search={search} />
+
         <form method="GET" action="/japan-jobs" className="mt-6 sm:mt-8">
+          {type === 'internship' && <input type="hidden" name="type" value="internship" />}
           <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row">
             <input
               type="text"
@@ -216,7 +307,7 @@ export default async function JapanJobsPage({
 
               {search && (
                 <Link
-                  href="/japan-jobs"
+                  href={type === 'internship' ? '/japan-jobs?type=internship' : '/japan-jobs'}
                   className="btn flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 text-sm touch-manipulation"
                 >
                   Clear
@@ -237,20 +328,18 @@ export default async function JapanJobsPage({
             <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
               {jobs.map((job, index) => (
                 <div key={job.id} className="contents">
-                  <JobCard job={job} basePath="/remote-jobs" />
+                  <JobCard job={job} basePath={basePath} />
                   {(index + 1) % 6 === 0 && <SponsoredCard />}
                 </div>
               ))}
             </div>
 
-            <Pagination currentPage={currentPage} totalPages={totalPages} search={search} />
+            <Pagination currentPage={currentPage} totalPages={totalPages} search={search} type={type} />
           </>
         ) : (
           <div className="mt-16 text-center">
             <p className="text-sm" style={{ color: 'var(--muted)' }}>
-              {search
-                ? `No Japan jobs found for "${search}".`
-                : 'No Japan jobs are available right now. Please check again later.'}
+              {emptyMessage}
             </p>
           </div>
         )}

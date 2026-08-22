@@ -1,3 +1,13 @@
+// Same fallback chain as lib/hackathons.ts — some environments (local,
+// preview deploys) only ever set NEXT_PUBLIC_API_BASE_URL, not the
+// server-only API_BASE_URL. Requiring API_BASE_URL specifically here
+// silently emptied out the whole /companies page in those environments
+// even though every other data source kept working.
+const API_BASE_URL =
+  process.env.API_BASE_URL ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  'https://api.intern-flow.in';
+
 export type CompanyTier = 'top' | 'mass_hire' | 'startup';
 
 export interface Company {
@@ -45,14 +55,9 @@ const EMPTY_RESPONSE: CompaniesResponse = {
 export async function getCompanies(
   limitPerSection = 60
 ): Promise<CompaniesResponse> {
-  if (!process.env.API_BASE_URL) {
-    console.error('API_BASE_URL is not set');
-    return EMPTY_RESPONSE;
-  }
-
   try {
     const res = await fetch(
-      `${process.env.API_BASE_URL}/api/companies/?limit_per_section=${limitPerSection}`,
+      `${API_BASE_URL}/api/companies/?limit_per_section=${limitPerSection}`,
       { next: { revalidate: 3600 } }
     );
 

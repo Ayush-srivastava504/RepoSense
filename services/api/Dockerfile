@@ -18,6 +18,7 @@ COPY requirements.txt .
 RUN pip install --retries 5 --default-timeout 1000 --no-cache-dir -r requirements.txt
 
 COPY src ./src
+COPY scripts ./scripts
 COPY ./templates /app/templates
 
 # Copy migrations so entrypoint.sh can run them

@@ -20,8 +20,8 @@ Allow: /tools
 Allow: /tools/
 Allow: /japan-jobs
 Allow: /japan-jobs/
-Allow: /japan-internships
-Allow: /japan-internships/
+Allow: /leetcode
+Allow: /leetcode/
 Allow: /europe-jobs
 Allow: /europe-jobs/
 Allow: /resume

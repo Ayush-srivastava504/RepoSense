@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Logo from './Logo';
@@ -24,7 +24,7 @@ const moreSections = [
   { href: '/government-jobs',   label: 'Government' },
   { href: '/companies',         label: 'Companies' },
   { href: '/japan-jobs',        label: 'Japan' },
-  { href: '/japan-internships', label: 'Japan Intern' },
+  { href: '/japan-jobs?type=internship', label: 'Japan Intern' },
   { href: '/europe-jobs',       label: 'Europe' },
   { href: '/hackathons',        label: 'Hackathons' },
   { href: '/leetcode',          label: 'LeetCode' },
@@ -34,6 +34,66 @@ const moreSections = [
 ];
 
 const sections = [...primarySections, ...moreSections];
+
+// pathname?.startsWith(href) alone can't tell two nav items apart when they
+// share the same path and differ only by query string (e.g. '/japan-jobs'
+// vs '/japan-jobs?type=internship') — startsWith('/japan-jobs?type=...')
+// never matches because usePathname() never includes the query string.
+// This checks the path the normal way, then — only when another section
+// shares that same path — requires the query params that distinguish them
+// to actually match (falling back to "absent" for a section that doesn't
+// specify one).
+function isSectionActive(
+  href: string,
+  pathname: string | null,
+  searchParams: URLSearchParams,
+  allHrefs: string[],
+): boolean {
+  const [path, query] = href.split('?');
+
+  if (!pathname?.startsWith(path)) return false;
+
+  const siblings = allHrefs
+    .map((h) => h.split('?'))
+    .filter(([p]) => p === path);
+
+  if (siblings.length <= 1) return true;
+
+  const differentiatorKeys = new Set<string>();
+  siblings.forEach(([, q]) => {
+    new URLSearchParams(q || '').forEach((_v, k) => differentiatorKeys.add(k));
+  });
+
+  const hrefParams = new URLSearchParams(query || '');
+
+  let matches = true;
+  differentiatorKeys.forEach((key) => {
+    const hrefValue = hrefParams.get(key);
+    const currentValue = searchParams.get(key);
+    if ((hrefValue ?? '') !== (currentValue ?? '')) matches = false;
+  });
+
+  return matches;
+}
+
+// Deliberately NOT next/navigation's useSearchParams(): that hook forces
+// every page under this layout into a Suspense boundary (or opts the
+// whole route out of static rendering) in Next 14, which is way too big a
+// blast radius just to highlight a nav tab. Reading window.location.search
+// after mount gets the same result — starts empty (matches SSR, so no
+// hydration mismatch), then syncs on every render, which covers query-only
+// navigations (e.g. '/japan-jobs' -> '/japan-jobs?type=internship') that
+// don't change usePathname()'s value and so wouldn't otherwise re-trigger.
+function useCurrentSearchParams(): URLSearchParams {
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const current = window.location.search;
+    if (current !== search) setSearch(current);
+  });
+
+  return useMemo(() => new URLSearchParams(search), [search]);
+}
 
 function ThemeToggle() {
   const [dark, setDark] = useState(false);
@@ -118,9 +178,11 @@ function ThemeToggle() {
 function MoreMenu({
   active,
   pathname,
+  searchParams,
 }: {
   active: boolean;
   pathname: string | null;
+  searchParams: URLSearchParams;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -203,7 +265,12 @@ function MoreMenu({
         }}
       >
         {moreSections.map((s) => {
-          const isActive = pathname?.startsWith(s.href);
+          const isActive = isSectionActive(
+            s.href,
+            pathname,
+            searchParams,
+            moreSections.map((m) => m.href),
+          );
 
           return (
             <Link
@@ -234,6 +301,7 @@ export default function AppShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const searchParams = useCurrentSearchParams();
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -266,7 +334,12 @@ export default function AppShell({
               aria-label="Main navigation"
             >
               {primarySections.map((s) => {
-                const active = pathname?.startsWith(s.href);
+                const active = isSectionActive(
+                  s.href,
+                  pathname,
+                  searchParams,
+                  primarySections.map((p) => p.href),
+                );
 
                 return (
                   <Link
@@ -296,8 +369,11 @@ export default function AppShell({
               })}
 
               <MoreMenu
-                active={moreSections.some((s) => pathname?.startsWith(s.href))}
+                active={moreSections.some((s) =>
+                  isSectionActive(s.href, pathname, searchParams, moreSections.map((m) => m.href)),
+                )}
                 pathname={pathname}
+                searchParams={searchParams}
               />
             </nav>
           </div>
@@ -396,7 +472,12 @@ export default function AppShell({
             aria-label="Mobile navigation"
           >
             {sections.map((s) => {
-              const active = pathname?.startsWith(s.href);
+              const active = isSectionActive(
+                s.href,
+                pathname,
+                searchParams,
+                sections.map((sec) => sec.href),
+              );
 
               return (
                 <Link
