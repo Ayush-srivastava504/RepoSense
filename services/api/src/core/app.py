@@ -27,6 +27,7 @@ from routes import (
     linkedin,
     ats,
     dashboard,
+    leetcode,
 )
 from routes.async_jobs import router as async_jobs_router
 
@@ -153,6 +154,7 @@ def create_application() -> FastAPI:
     app.include_router(async_jobs_router)   # /api/async-jobs/{id}
     app.include_router(review_router)       # /api/v1/review + /api/v1/fix
     app.include_router(self_healing_router)
+    app.include_router(leetcode.router)
 
     # ── Core endpoints ────────────────────────────────────────────────────────
 
