@@ -9,7 +9,7 @@ from services.leetcode_service import (
     list_problems, get_problem, judge_submission,
 )
 from dataclasses import asdict
-from data.leetcode.level_problems import list_levels, get_level
+from data.leetcode.level_problems import list_levels, get_level, list_all_companies
 from schemas.leetcode import (
     SubmissionRequest, JudgeResponse, LevelSummaryOut, LevelDetailOut,
 )
@@ -68,6 +68,12 @@ async def get_level_detail(level_key: str):
         "description": level["description"],
         "problems": [asdict(p) for p in level["problems"]],
     }
+
+
+@router.get("/companies", response_model=list[str])
+async def get_companies():
+    """All companies with at least one tagged problem, for the filter dropdown."""
+    return list_all_companies()
 
 
 @router.get("/blind75/sheet")

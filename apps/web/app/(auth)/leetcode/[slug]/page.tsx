@@ -73,6 +73,8 @@ function SolvePageContent() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState('');
   const [verdict, setVerdict] = useState<JudgeResponse | null>(null);
+  const [notes, setNotes] = useState('');
+  const [notesSaved, setNotesSaved] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,6 +103,20 @@ function SolvePageContent() {
       cancelled = true;
     };
   }, [slug]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const raw = window.localStorage.getItem(`leetcode-notes-${slug}`);
+    setNotes(raw || '');
+  }, [slug]);
+
+  function saveNotes(value: string) {
+    setNotes(value);
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(`leetcode-notes-${slug}`, value);
+    setNotesSaved(true);
+    window.setTimeout(() => setNotesSaved(false), 1200);
+  }
 
   async function runTests() {
     if (!problem) return;
@@ -171,6 +187,22 @@ function SolvePageContent() {
             Implement <code className="font-mono">{problem.function_name}</code> below. Tests run
             server-side against a few fixed cases — no imports, no I/O, just the function body.
           </p>
+
+          <div className="mt-8">
+            <div className="flex items-center justify-between">
+              <p className="field-label">Your notes</p>
+              {notesSaved && (
+                <span className="text-[11px]" style={{ color: 'var(--green)' }}>Saved</span>
+              )}
+            </div>
+            <textarea
+              value={notes}
+              onChange={(e) => saveNotes(e.target.value)}
+              placeholder="Approach, complexity, gotchas — kept only in this browser."
+              rows={6}
+              className="field mt-2 text-xs leading-relaxed"
+            />
+          </div>
         </div>
 
         <div>

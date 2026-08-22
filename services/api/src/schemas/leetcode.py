@@ -33,6 +33,7 @@ class LevelProblemOut(BaseModel):
     difficulty: str
     leetcode_url: str
     solvable: bool
+    companies: list[str] = []
 
 
 class LevelSummaryOut(BaseModel):
