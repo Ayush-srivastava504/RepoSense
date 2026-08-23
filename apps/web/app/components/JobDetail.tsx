@@ -3,6 +3,8 @@ import { BASE_URL, getSimilarJobs } from '@/lib/jobs';
 import JobBadges from '@/app/components/JobBadges';
 import ApplyButton from '@/app/components/ApplyButton';
 import SimilarJobs from '@/app/components/SimilarJobs';
+import SaveJobButton from '@/app/components/SaveJobButton';
+import MatchScoreBadge from '@/app/components/MatchScoreBadge';
 
 /**
  * Builds JobPosting structured data following Google's
@@ -163,10 +165,13 @@ export default async function JobDetail({
         )}
       </div>
 
-      <JobBadges
-        job={job}
-        className="mt-3"
-      />
+      <div className="flex items-start justify-between gap-3">
+        <JobBadges
+          job={job}
+          className="mt-3"
+        />
+        <SaveJobButton job={job} />
+      </div>
 
       <h1 className="display mt-2 text-3xl font-medium">
         {job.title}
@@ -232,6 +237,10 @@ export default async function JobDetail({
           — apply soon
         </p>
       )}
+
+      <div className="mt-5">
+        <MatchScoreBadge job={job} variant="detailed" />
+      </div>
 
       {job.enriched_overview && (
         <div className="mt-6">

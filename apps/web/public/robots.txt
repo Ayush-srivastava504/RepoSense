@@ -18,6 +18,7 @@ Allow: /hackathons
 Allow: /hackathons/
 Allow: /tools
 Allow: /tools/
+Allow: /tracker
 Allow: /japan-jobs
 Allow: /japan-jobs/
 Allow: /leetcode

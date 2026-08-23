@@ -62,7 +62,7 @@ export const TOOLS: ToolDefinition[] = [
           'Yes. The generated README is fully editable before you copy or commit it, so you can adjust tone, add screenshots, or reorder sections.',
       },
     ],
-    relatedSlugs: ['ats-resume-checker', 'resume-builder'],
+    relatedSlugs: ['ats-resume-checker', 'resume-builder', 'application-tracker'],
   },
   {
     slug: 'ats-resume-checker',
@@ -105,7 +105,7 @@ export const TOOLS: ToolDefinition[] = [
           'No — pick your target role (Software Engineer, AI/ML Engineer, DevOps Engineer, Data Engineer, or Data Analyst) and InternFlow checks your resume against the keywords and formatting rules that role\'s applicant tracking systems actually look for.',
       },
     ],
-    relatedSlugs: ['resume-builder', 'cover-letter-generator'],
+    relatedSlugs: ['resume-builder', 'cover-letter-generator', 'job-match-score'],
   },
   {
     slug: 'resume-builder',
@@ -148,7 +148,7 @@ export const TOOLS: ToolDefinition[] = [
           'Yes, you can save multiple resume versions and tailor bullets for different roles or companies.',
       },
     ],
-    relatedSlugs: ['ats-resume-checker', 'github-readme-generator', 'cover-letter-generator'],
+    relatedSlugs: ['ats-resume-checker', 'github-readme-generator', 'cover-letter-generator', 'job-match-score', 'application-tracker'],
   },
   {
     slug: 'linkedin-optimizer',
@@ -225,6 +225,92 @@ export const TOOLS: ToolDefinition[] = [
       },
     ],
     relatedSlugs: ['resume-builder', 'ats-resume-checker'],
+  },
+  {
+    slug: 'application-tracker',
+    name: 'Job Application Tracker',
+    shortName: 'Application Tracker',
+    tagline: 'Track every internship and job application in one pipeline',
+    metaTitle: 'Free Job Application Tracker for Students — InternFlow',
+    metaDescription:
+      'Track every internship and job application from saved to offer in one free pipeline. Get deadline reminders so you never miss an application window again.',
+    heroDescription:
+      "Applying to dozens of internships across job boards means losing track of what you've applied to, what's overdue, and what deadline is coming up next. InternFlow's application tracker lets you save any listing in one click and move it through Saved → Applied → Interviewing → Offer, with deadline countdowns so nothing slips through the cracks. No account required — it stays in your browser.",
+    ctaHref: '/tracker',
+    ctaLabel: 'Open my tracker',
+    category: 'Career Tools',
+    benefits: [
+      'Save any job or internship in one click, from the listing or detail page',
+      'Move applications through Saved, Applied, Interviewing, Offer, and Rejected',
+      'See deadline countdowns and a weekly heads-up before an application window closes',
+      'No sign-up required — your pipeline stays private in your own browser',
+    ],
+    howItWorks: [
+      { name: 'Save a listing', text: 'Tap the bookmark icon on any job or internship card to add it to your tracker.' },
+      { name: 'Update its status', text: 'Move it from Saved to Applied, Interviewing, or Offer as your application progresses.' },
+      { name: 'Watch your deadlines', text: 'Open /tracker to see every upcoming deadline sorted by urgency before it is too late to apply.' },
+    ],
+    faqs: [
+      {
+        question: 'Do I need an account to use the job application tracker?',
+        answer:
+          'No. The tracker works instantly for anyone — it saves your pipeline locally in your browser, so there is nothing to sign up for.',
+      },
+      {
+        question: 'Will I lose my tracked applications if I clear my browser data?',
+        answer:
+          'Yes, since the tracker is stored locally rather than in an account, clearing your browser storage will reset it — this keeps the feature private and account-free by default.',
+      },
+      {
+        question: 'Can I track internships as well as full-time jobs?',
+        answer:
+          'Yes, the tracker works the same way for any listing on InternFlow, including internships, remote roles, and government jobs.',
+      },
+    ],
+    relatedSlugs: ['job-match-score', 'resume-builder', 'ats-resume-checker'],
+  },
+  {
+    slug: 'job-match-score',
+    name: 'AI Job Match Score',
+    shortName: 'Job Match Score',
+    tagline: 'See how well a listing fits your skills before you apply',
+    metaTitle: 'Free AI Job Match Score for Students — InternFlow',
+    metaDescription:
+      'Get an instant AI match score on every job and internship listing based on your own skills, so you know which listings are worth your time before you apply.',
+    heroDescription:
+      "Every job board shows the same listings — none of them show how well a listing actually fits you. InternFlow's job match score compares your skills against each listing's title, description, and AI-extracted keywords to give you an instant 0–100% match score, plus exactly which of your skills matched and which are missing. Add your skills once and every job or internship card shows its match score automatically.",
+    ctaHref: '/jobs',
+    ctaLabel: 'See my matched jobs',
+    category: 'Career Tools',
+    benefits: [
+      'Instant 0–100% match score on every job and internship card',
+      'Shows exactly which of your skills matched the listing and which did not',
+      'No resume upload needed — just a quick skill list, saved locally',
+      'Helps you prioritize which listings are worth your time before you click apply',
+    ],
+    howItWorks: [
+      { name: 'Add your skills', text: 'Enter a short comma-separated list of your skills — no resume upload required.' },
+      { name: 'Browse jobs and internships', text: 'Every listing on InternFlow now shows a match score chip based on your skills.' },
+      { name: 'Check the breakdown', text: 'Open a listing to see which of your skills matched and which ones are missing from that role.' },
+    ],
+    faqs: [
+      {
+        question: 'How is the job match score calculated?',
+        answer:
+          'It compares the skills you enter against a listing\'s title, AI-extracted keywords, and description, weighting a skill mentioned in the title or keywords more heavily than one only mentioned in the body text.',
+      },
+      {
+        question: 'Do I need to upload my resume to get a match score?',
+        answer:
+          'No. Just enter a short list of your skills — the match score works without a resume upload or an account.',
+      },
+      {
+        question: 'Is my skill list shared with anyone?',
+        answer:
+          'No, it is stored only in your own browser and used locally to score listings — it is not uploaded anywhere.',
+      },
+    ],
+    relatedSlugs: ['application-tracker', 'resume-builder', 'ats-resume-checker'],
   },
 ];
 

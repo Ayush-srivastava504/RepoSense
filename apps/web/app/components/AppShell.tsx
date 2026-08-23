@@ -20,6 +20,7 @@ const primarySections = [
 ];
 
 const moreSections = [
+  { href: '/tracker',           label: 'My Applications' },
   { href: '/remote-jobs',       label: 'Remote' },
   { href: '/government-jobs',   label: 'Government' },
   { href: '/companies',         label: 'Companies' },

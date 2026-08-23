@@ -4,6 +4,8 @@ import { jobSlug } from '@/lib/slug';
 import { timeAgo } from '@/lib/timeAgo';
 import JobBadges from './JobBadges';
 import CompanyLogo from './CompanyLogo';
+import SaveJobButton from './SaveJobButton';
+import MatchScoreBadge from './MatchScoreBadge';
 
 export default function JobCard({ job, basePath = '/jobs' }: { job: Job; basePath?: string }) {
   const pay = job.salary || job.stipend;
@@ -27,7 +29,10 @@ export default function JobCard({ job, basePath = '/jobs' }: { job: Job; basePat
           </p>
         </div>
 
-        <CompanyLogo company={job.company} logoDomain={job.logo_domain} size={44} />
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <CompanyLogo company={job.company} logoDomain={job.logo_domain} size={44} />
+          <SaveJobButton job={job} size="sm" />
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -36,6 +41,8 @@ export default function JobCard({ job, basePath = '/jobs' }: { job: Job; basePat
         )}
 
         {job.type && <span className="chip chip-muted text-[11px]">{job.type}</span>}
+
+        <MatchScoreBadge job={job} />
       </div>
 
       <JobBadges job={job} className="mt-2" />
