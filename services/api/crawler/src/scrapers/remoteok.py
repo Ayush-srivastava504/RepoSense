@@ -79,7 +79,7 @@ class RemoteOKScraper(BaseScraper):
             tags = []
         tags = [_clean(t).lower() for t in tags if _clean(t)]
         if keyword_set:
-            haystack = f'{title.lower()} {' '.join(tags)}'
+            haystack = f'{title.lower()} {" ".join(tags)}'
             if not any((k in haystack for k in keyword_set)):
                 if not DEFAULT_TAGS & set(tags) and (not any((t in title.lower() for t in DEFAULT_TAGS))):
                     return None

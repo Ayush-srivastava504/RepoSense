@@ -36,7 +36,7 @@ def score_resume(resume_text: str, role: str) -> Dict[str, Any]:
     checks.append(_check('no_tables_columns', 'No tables or multi-column layout', passed, 'No table/column artifacts detected.' if passed else 'Detected characters typical of tables or multi-column layouts, which many ATS parsers scramble.', 'Stick to a single-column layout — tables and text boxes often get parsed out of order or dropped.'))
     verbs_found = {v for v in ACTION_VERBS if re.search(f'\\b{re.escape(v)}\\b', lower)}
     passed = len(verbs_found) >= 5
-    checks.append(_check('action_verbs', 'Strong action verbs', passed, f'Found {len(verbs_found)} distinct strong action verbs (e.g. {', '.join(list(verbs_found)[:3]) or 'none'}).', "Start bullets with action verbs like 'built', 'led', 'optimized' instead of 'responsible for'."))
+    checks.append(_check('action_verbs', 'Strong action verbs', passed, f'Found {len(verbs_found)} distinct strong action verbs (e.g. {", ".join(list(verbs_found)[:3]) or "none"}).', "Start bullets with action verbs like 'built', 'led', 'optimized' instead of 'responsible for'."))
     numbers = re.findall('\\b\\d+[%xX]?\\b', text)
     passed = len(numbers) >= 3
     checks.append(_check('quantified_impact', 'Quantified impact', passed, f'Found {len(numbers)} numeric values in bullets/results.' if numbers else 'No numbers found — bullets read as duties, not measurable impact.', 'Add numbers where you can: users served, % improved, time saved, scale handled.'))
@@ -53,7 +53,7 @@ def score_resume(resume_text: str, role: str) -> Dict[str, Any]:
     missing = [kw for kw in all_keywords if kw not in lower]
     match_ratio = len(matched) / len(all_keywords) if all_keywords else 0
     passed = match_ratio >= 0.35
-    checks.append(_check('role_keyword_match', f'{role_data['label']} keyword match', passed, f'Matched {len(matched)}/{len(all_keywords)} keywords recruiters and ATS filters search for in {role_data['label']} resumes.', "Work the missing keywords into your bullets naturally — don't just list them once at the bottom.", extra={'matched': matched, 'missing': missing}))
+    checks.append(_check('role_keyword_match', f'{role_data["label"]} keyword match', passed, f'Matched {len(matched)}/{len(all_keywords)} keywords recruiters and ATS filters search for in {role_data["label"]} resumes.', "Work the missing keywords into your bullets naturally — don't just list them once at the bottom.", extra={'matched': matched, 'missing': missing}))
     passed = 'skill' in lower
     checks.append(_check('skills_section', 'Dedicated skills section', passed, 'Skills section found.' if passed else 'No dedicated skills section detected.', "Add a 'Skills' section listing your tools and languages — ATS keyword matching weighs this heavily."))
     passed = any((alias in lower for alias in EXPECTED_SECTIONS[2][1]))

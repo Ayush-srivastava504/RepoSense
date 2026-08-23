@@ -42,7 +42,7 @@ async def rate_limit_middleware(request: Request, call_next):
         return await call_next(request)
     user = getattr(request.state, 'user', None)
     if user and user.get('id'):
-        client_id = f'user:{user['id']}'
+        client_id = f'user:{user["id"]}'
         limit = 200
     else:
         ip = get_client_ip(request)

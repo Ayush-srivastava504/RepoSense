@@ -98,7 +98,7 @@ def parse_remoteok_entry(entry: Dict) -> Optional[Dict]:
         tags = []
     tags = [_clean(t).lower() for t in tags if _clean(t)]
     location = _clean(entry.get('location')).lower()
-    haystack = f'{location} {' '.join(tags)} {title.lower()}'
+    haystack = f'{location} {" ".join(tags)} {title.lower()}'
     if not any((hint in haystack for hint in JAPAN_HINTS)):
         return None
     apply_url = _clean(entry.get('url'))

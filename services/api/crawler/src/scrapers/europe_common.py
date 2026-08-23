@@ -145,7 +145,7 @@ def parse_remotive_entry(entry: Dict) -> Optional[Dict]:
         return None
     tags = entry.get('tags')
     skills = [_clean(t) for t in tags if _clean(t)] if isinstance(tags, list) else []
-    job_type = _job_type_from_text(f'{_clean(entry.get('job_type'))} {title}')
+    job_type = _job_type_from_text(f'{_clean(entry.get("job_type"))} {title}')
     location = _clean(entry.get('candidate_required_location')) or 'Europe'
     description = re.sub('<[^>]+>', ' ', _clean(entry.get('description')))
     description = re.sub('\\s+', ' ', description).strip()

@@ -61,7 +61,7 @@ async def main():
                 time.sleep(REQUEST_DELAY_S)
                 continue
             if args.dry_run:
-                print(f'--- {row['title']} @ {row['company']} ---')
+                print(f'--- {row["title"]} @ {row["company"]} ---')
                 print(result.overview)
                 print('keywords:', result.keywords)
                 print()

@@ -149,7 +149,7 @@ class CompanyPortalsScraper(BaseScraper):
     def _new_job(self, config: Dict) -> Dict:
         job = self._empty_job()
         job['company'] = config['name']
-        job['source'] = f'company_portal_{config['name'].lower().replace(' ', '_')}'
+        job['source'] = f'company_portal_{config["name"].lower().replace(" ", "_")}'
         return job
 
     def _search_html(self, company_key: str, config: Dict, max_pages: int) -> List[Dict]:

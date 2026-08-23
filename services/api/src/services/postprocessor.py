@@ -53,4 +53,4 @@ class Postprocessor:
             parts.append(f'{low} low')
         breakdown = ', '.join(parts)
         grade = 'A' if score >= 90 else 'B' if score >= 75 else 'C' if score >= 50 else 'D'
-        return f'Found {total} issue{('s' if total != 1 else '')} ({breakdown}). Quality score: {score}/100 (Grade {grade}).'
+        return f'Found {total} issue{("s" if total != 1 else "")} ({breakdown}). Quality score: {score}/100 (Grade {grade}).'

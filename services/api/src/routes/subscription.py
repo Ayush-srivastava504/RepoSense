@@ -26,7 +26,7 @@ async def create_checkout_session(plan: str, user=Depends(verify_token)):
     if not row:
         raise HTTPException(404, 'User not found')
     plan_details = PLANS[plan]
-    order_data = {'amount': plan_details['amount'], 'currency': plan_details['currency'], 'receipt': f'user_{user['sub']}_{int(datetime.now().timestamp())}', 'notes': {'user_id': str(user['sub']), 'plan': plan, 'email': row['email']}}
+    order_data = {'amount': plan_details['amount'], 'currency': plan_details['currency'], 'receipt': f'user_{user["sub"]}_{int(datetime.now().timestamp())}', 'notes': {'user_id': str(user['sub']), 'plan': plan, 'email': row['email']}}
     try:
         order = client.order.create(data=order_data)
     except Exception as e:

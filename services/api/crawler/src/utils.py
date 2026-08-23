@@ -44,7 +44,7 @@ else:
     PG_PASSWORD = os.getenv('PG_PASSWORD')
     PG_PORT = os.getenv('PG_PORT', '5432')
 if not all([PG_HOST, PG_DB, PG_USER, PG_PASSWORD]):
-    raise ValueError(f'PostgreSQL configuration missing. Please set DATABASE_URL or individual PG_HOST, PG_DB, PG_USER, and PG_PASSWORD environment variables.\nDATABASE_URL: {('✓' if DATABASE_URL else '✗')}\nPG_HOST: {('✓' if PG_HOST else '✗')}\nPG_DB: {('✓' if PG_DB else '✗')}\nPG_USER: {('✓' if PG_USER else '✗')}\nPG_PASSWORD: {('✓' if PG_PASSWORD else '✗')}')
+    raise ValueError(f'PostgreSQL configuration missing. Please set DATABASE_URL or individual PG_HOST, PG_DB, PG_USER, and PG_PASSWORD environment variables.\nDATABASE_URL: {("✓" if DATABASE_URL else "✗")}\nPG_HOST: {("✓" if PG_HOST else "✗")}\nPG_DB: {("✓" if PG_DB else "✗")}\nPG_USER: {("✓" if PG_USER else "✗")}\nPG_PASSWORD: {("✓" if PG_PASSWORD else "✗")}')
 
 def get_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
@@ -177,7 +177,7 @@ def job_exists(job_id: str) -> bool:
     return cursor.fetchone() is not None
 
 def make_hackathon_id(title: str, organizer: str, source_url: str) -> str:
-    raw_value = f'{title.lower().strip()}|{(organizer or '').lower().strip()}|{source_url}'
+    raw_value = f'{title.lower().strip()}|{(organizer or "").lower().strip()}|{source_url}'
     return 'hk_' + hashlib.sha256(raw_value.encode()).hexdigest()[:16]
 
 def make_hackathon_slug(title: str, hackathon_id: str) -> str:

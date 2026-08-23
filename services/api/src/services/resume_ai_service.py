@@ -25,7 +25,7 @@ class ResumeAIService:
         return parsed_json
 
     async def generate_cover_letter(self, job_description: str, resume_text: str, company_name: str=''):
-        prompt = f'You are a career writing assistant. Write a short, specific cover letter (250-350 words) for this application. No markdown, no placeholders like [Company Name] left unfilled if the company name is given below, no generic filler sentences. Reference 1-2 concrete things from the resume that match the job description. Output only the letter body text, no subject line, no explanation.\n\nCompany: {company_name or 'the company'}\nJob description: {job_description}\nCandidate resume: {resume_text}\n\nCover letter:'
+        prompt = f'You are a career writing assistant. Write a short, specific cover letter (250-350 words) for this application. No markdown, no placeholders like [Company Name] left unfilled if the company name is given below, no generic filler sentences. Reference 1-2 concrete things from the resume that match the job description. Output only the letter body text, no subject line, no explanation.\n\nCompany: {company_name or "the company"}\nJob description: {job_description}\nCandidate resume: {resume_text}\n\nCover letter:'
         async with httpx.AsyncClient(timeout=300) as client:
             response = await client.post(f'{settings.NEURAL_GENERATOR_URL}/generate', json={'prompt': prompt, 'max_tokens': 500, 'temperature': 0.4, 'top_k': 40, 'top_p': 0.9, 'repeat_penalty': 1.1})
             response.raise_for_status()

@@ -87,7 +87,7 @@ const categoryLinks = [
 export default async function LandingPage() {
     const featured = await getFeaturedJobs({ limit: 6 });
     const previewJobs = featured.length > 0 ? featured : await getJobs({ sort: 'recent', limit: 6 });
-    return (<div className="shell">
+    return (<>
       <AuthRedirect />
       
       <section className="hero-reveal relative container-xl grid items-center gap-10 overflow-hidden py-12 md:grid-cols-2 md:py-20">
@@ -257,5 +257,5 @@ export default async function LandingPage() {
           </MagneticLink>
         </div>
       </ScrollReveal>
-    </div>);
+    </>);
 }

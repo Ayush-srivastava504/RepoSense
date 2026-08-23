@@ -57,7 +57,7 @@ async def maybe_alert(result: dict) -> None:
         return
     _last_alert[key] = now
     severity = '🔴 CRITICAL' if result['critical'] else '🟡 WARNING'
-    msg = f'{severity} — *{result['service']}* is **{result['status'].upper()}**\n> error: `{result['detail'].get('error', 'unknown')}`\n> time: {datetime.now(timezone.utc).isoformat()}'
+    msg = f'{severity} — *{result["service"]}* is **{result["status"].upper()}**\n> error: `{result["detail"].get("error", "unknown")}`\n> time: {datetime.now(timezone.utc).isoformat()}'
     async with httpx.AsyncClient() as c:
         try:
             await c.post(ALERT_WEBHOOK_URL, json={'text': msg}, timeout=5)

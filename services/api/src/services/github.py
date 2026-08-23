@@ -41,8 +41,8 @@ class GitHubIntegration:
 
     async def _post_review_comment(self, pr, reviews):
         for review in reviews:
-            comment = f'## AI Review for {review['file']}\n\n'
+            comment = f'## AI Review for {review["file"]}\n\n'
             for issue in review['review']['issues']:
-                comment += f'- **{issue['severity'].upper()}**: {issue['message']}\n'
-                comment += f'  - Suggestion: {', '.join(issue['suggestions'])}\n'
+                comment += f'- **{issue["severity"].upper()}**: {issue["message"]}\n'
+                comment += f'  - Suggestion: {", ".join(issue["suggestions"])}\n'
             pr.create_issue_comment(comment)

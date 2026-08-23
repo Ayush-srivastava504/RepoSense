@@ -63,9 +63,9 @@ async def run_readme_job(job_id: str, user_id: str, github_token: str, repo_name
                         dir_items = dir_resp.json()
                         for entry in dir_items:
                             if entry['type'] == 'file' and entry['name'].split('.')[-1] in ('py', 'ts', 'tsx', 'js', 'jsx'):
-                                file_resp = await client.get(f'https://api.github.com/repos/{repo_name}/contents/{entry['path']}', headers={'Authorization': f'token {github_token}', 'Accept': 'application/vnd.github.v3.raw'})
+                                file_resp = await client.get(f'https://api.github.com/repos/{repo_name}/contents/{entry["path"]}', headers={'Authorization': f'token {github_token}', 'Accept': 'application/vnd.github.v3.raw'})
                                 if file_resp.status_code == 200:
-                                    dir_snippets.append(f'\n===== {entry['path']} =====\n{file_resp.text[:1500]}')
+                                    dir_snippets.append(f'\n===== {entry["path"]} =====\n{file_resp.text[:1500]}')
                                 break
                 except Exception:
                     pass
@@ -79,7 +79,7 @@ async def run_readme_job(job_id: str, user_id: str, github_token: str, repo_name
                 readme = readme.split(marker, 1)[-1]
         readme = readme.replace('```markdown', '').replace('```', '').strip()
         if not readme:
-            readme = f'# {repo_name.split('/')[-1]}\n\nREADME generation failed.\n'
+            readme = f'# {repo_name.split("/")[-1]}\n\nREADME generation failed.\n'
         async with httpx.AsyncClient(timeout=timeout) as client:
             encoded_content = base64.b64encode(readme.encode()).decode()
             existing_resp = await client.get(f'https://api.github.com/repos/{repo_name}/contents/README.md', headers={'Authorization': f'token {github_token}', 'Accept': 'application/vnd.github.v3+json'})

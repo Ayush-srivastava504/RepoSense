@@ -17,10 +17,16 @@ const columns = [
             { label: 'Government jobs', href: '/government-jobs' },
             { label: 'Companies', href: '/companies' },
             { label: 'Hackathons', href: '/hackathons' },
-            { label: 'Japan jobs', href: '/japan-jobs' },
-            { label: 'Japan internships', href: '/japan-jobs?type=internship' },
+            { label: 'Japan jobs & internships', href: '/japan-jobs' },
             { label: 'Europe jobs', href: '/europe-jobs' },
             { label: 'Blog', href: '/blog' },
+        ],
+    },
+    {
+        heading: 'Interview prep',
+        links: [
+            { label: 'LeetCode', href: '/leetcode' },
+            { label: 'AI code review', href: '/github' },
         ],
     },
     {

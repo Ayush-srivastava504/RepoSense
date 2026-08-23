@@ -46,11 +46,11 @@ def run_rules(profile: Dict[str, Any]) -> Dict[str, Any]:
     has_current_role = bool((profile.get('current_title') or '').strip()) and bool((profile.get('current_company') or '').strip())
     add('current_role', 'Current position filled in', 'Experience', has_current_role, 'Current title and company are set.' if has_current_role else 'Current title/company is missing.', 'Make sure your most recent role has both a title and a company — recruiters filter on this first.')
     exp_count = len(experience)
-    add('experience_count', 'At least 2 work experiences listed', 'Experience', exp_count >= 2, f'{exp_count} experience entr{('y' if exp_count == 1 else 'ies')} listed.', 'List at least 2 roles (internships count) so recruiters can see a trajectory, not just one data point.')
+    add('experience_count', 'At least 2 work experiences listed', 'Experience', exp_count >= 2, f'{exp_count} experience entr{("y" if exp_count == 1 else "ies")} listed.', 'List at least 2 roles (internships count) so recruiters can see a trajectory, not just one data point.')
     entries_with_bullets = sum((1 for e in experience if len([b for b in e.get('bullets') or [] if str(b).strip()]) >= 2))
     detail_ok = exp_count > 0 and entries_with_bullets == exp_count
     add('experience_detail', 'Experience entries have achievement bullets', 'Experience', detail_ok, f'{entries_with_bullets}/{exp_count} experience entries have 2+ bullet points.' if exp_count else 'No experience entries to check.', 'Add 2-4 bullets per role focused on impact and numbers ("Cut deploy time 40% by...") instead of just duties.')
-    add('education', 'Education listed', 'Education', len(education) > 0, f'{len(education)} education entr{('y' if len(education) == 1 else 'ies')} listed.' if education else 'No education listed.', "Add your degree(s) — even bootcamps and certifications count if you don't have a traditional degree.")
+    add('education', 'Education listed', 'Education', len(education) > 0, f'{len(education)} education entr{("y" if len(education) == 1 else "ies")} listed.' if education else 'No education listed.', "Add your degree(s) — even bootcamps and certifications count if you don't have a traditional degree.")
     skills_count = len(skills)
     add('skills_count', '10+ relevant skills added', 'Skills', skills_count >= 10, f'{skills_count} skill(s) listed.', 'List at least 10-15 skills — LinkedIn lets recruiters filter search results by skill, so under-filled skills sections are invisible.')
     recs = int(profile.get('recommendations_received') or 0)

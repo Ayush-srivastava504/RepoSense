@@ -11,6 +11,7 @@ import { BASE_URL } from '@/lib/jobs';
 import { TOOLS, getToolBySlug, getRelatedTools } from '@/app/tools/data';
 import { breadcrumbSchema, faqSchema, howToSchema, softwareApplicationSchema, } from '@/lib/structuredData';
 import TrackView from '@/app/components/TrackView';
+import { StepGrid, BulletGrid } from '@/app/components/FactGrid';
 export const dynamicParams = false;
 export function generateStaticParams() {
     return TOOLS.map((tool) => ({ tool: tool.slug }));
@@ -94,22 +95,16 @@ export default function ToolLandingPage({ params }: {
 
         <section className="mt-10">
           <h2 className="display text-xl font-medium">Why students use it</h2>
-          <ul className="mt-4 space-y-2">
-            {tool.benefits.map((benefit) => (<li key={benefit} className="flex gap-2">
-                <span aria-hidden="true">—</span>
-                <span>{benefit}</span>
-              </li>))}
-          </ul>
+          <div className="mt-4">
+            <BulletGrid items={tool.benefits}/>
+          </div>
         </section>
 
         <section className="mt-10">
           <h2 className="display text-xl font-medium">How it works</h2>
-          <ol className="mt-4 space-y-4">
-            {tool.howItWorks.map((step, index) => (<li key={step.name}>
-                <p className="font-medium">{index + 1}. {step.name}</p>
-                <p className="mt-1" style={{ color: 'var(--ink-soft)' }}>{step.text}</p>
-              </li>))}
-          </ol>
+          <div className="mt-4">
+            <StepGrid steps={tool.howItWorks}/>
+          </div>
         </section>
 
         <section className="mt-10">

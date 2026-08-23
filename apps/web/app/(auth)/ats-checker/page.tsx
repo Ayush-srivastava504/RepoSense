@@ -69,7 +69,7 @@ function AtsCheckerContent() {
             setLoading(false);
         }
     }
-    return (<div className="container-xl py-12">
+    return (<div>
       <div className="max-w-2xl">
         <p className="eyebrow eyebrow-accent mb-3">// ats resume checker</p>
         <h1 className="text-3xl font-semibold" style={{ fontFamily: 'var(--font-display)' }}>

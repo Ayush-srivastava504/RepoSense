@@ -10,6 +10,7 @@ import { BASE_URL } from '@/lib/jobs';
 import { breadcrumbSchema, faqSchema, howToSchema, softwareApplicationSchema, } from '@/lib/structuredData';
 import TrackView from '@/app/components/TrackView';
 import TrackerBoard from './TrackerBoard';
+import { StepGrid } from '@/app/components/FactGrid';
 const PAGE_URL = `${BASE_URL}/tracker`;
 const TITLE = 'My Applications — Free Job Application Tracker';
 const DESCRIPTION = 'Track every internship and job application in one free pipeline: Saved, Applied, Interviewing, Offer. Get deadline reminders so you never miss an application window — no account required.';
@@ -97,12 +98,9 @@ export default function TrackerPage() {
 
       <section className="mt-10">
         <h2 className="display text-xl font-medium">How it works</h2>
-        <ol className="mt-4 space-y-4">
-          {HOW_IT_WORKS.map((step, index) => (<li key={step.name}>
-              <p className="font-medium">{index + 1}. {step.name}</p>
-              <p className="mt-1" style={{ color: 'var(--ink-soft)' }}>{step.text}</p>
-            </li>))}
-        </ol>
+        <div className="mt-4">
+          <StepGrid steps={HOW_IT_WORKS}/>
+        </div>
       </section>
 
       <TrackerBoard />

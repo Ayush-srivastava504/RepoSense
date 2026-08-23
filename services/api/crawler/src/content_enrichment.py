@@ -59,7 +59,7 @@ def _template_result(title: str, company: str, location: str, description: str, 
 def _call_groq(title: str, company: str, location: str, description: str, job_type: str) -> Optional[Dict]:
     if not GROQ_API_KEY:
         return {**_template_result(title, company, location, description, job_type)}
-    user_prompt = '\n'.join([f'Title: {title}', f'Company: {company}', f'Location: {location or 'not specified'}', f'Listing type: {job_type or 'not specified'}', "Original description (may be short or messy — it's raw scraped text):", (description or '(no description provided)').strip()[:4000]])
+    user_prompt = '\n'.join([f'Title: {title}', f'Company: {company}', f'Location: {location or "not specified"}', f'Listing type: {job_type or "not specified"}', "Original description (may be short or messy — it's raw scraped text):", (description or '(no description provided)').strip()[:4000]])
     payload = {'model': GROQ_MODEL, 'messages': [{'role': 'system', 'content': SYSTEM_PROMPT}, {'role': 'user', 'content': user_prompt}], 'temperature': 0.4, 'response_format': {'type': 'json_object'}}
     headers = {'Authorization': f'Bearer {GROQ_API_KEY}', 'Content-Type': 'application/json'}
     try:

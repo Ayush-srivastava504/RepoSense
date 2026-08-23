@@ -170,6 +170,6 @@ async def terminal_websocket(websocket: WebSocket, token: str):
             if msg['type'] == 'terminal:start':
                 await websocket.send_text(json.dumps({'type': 'session:started', 'sessionId': msg['repoId']}))
             elif msg['type'] == 'terminal:command':
-                await websocket.send_text(json.dumps({'type': 'terminal:output', 'data': f'\r\nExecuted: {msg['command']}\r\n'}))
+                await websocket.send_text(json.dumps({'type': 'terminal:output', 'data': f'\r\nExecuted: {msg["command"]}\r\n'}))
     except WebSocketDisconnect:
         pass
