@@ -11,9 +11,9 @@ from typing import Dict, List, Optional
 import requests
 from utils import get_logger, get_pg_conn
 log = get_logger('content_enrichment')
-GROK_API_URL = 'https://api.x.ai/v1/chat/completions'
-GROK_MODEL = os.getenv('XAI_MODEL', 'grok-4.6')
-XAI_API_KEY = os.getenv('XAI_API_KEY', '')
+GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
+GROQ_MODEL = os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')
+GROQ_API_KEY = os.getenv('GROQ_API_KEY', '')
 THIN_DESCRIPTION_CHARS = int(os.getenv('THIN_DESCRIPTION_CHARS', '400'))
 BATCH_LIMIT = int(os.getenv('CONTENT_ENRICHMENT_BATCH_LIMIT', '60'))
 REQUEST_TIMEOUT_S = 30
@@ -31,26 +31,53 @@ def _extract_json(raw: str) -> Optional[dict]:
     except (json.JSONDecodeError, TypeError):
         return None
 
-def _call_grok(title: str, company: str, location: str, description: str, job_type: str) -> Optional[Dict]:
+def _template_result(title: str, company: str, location: str, description: str, job_type: str) -> Dict:
+    words = re.findall('[a-zA-Z][a-zA-Z0-9+.#]*', (title or '').lower())
+    stop = {'the', 'a', 'an', 'and', 'or', 'for', 'of', 'to', 'in', 'at', 'on', 'with'}
+    keywords = [w for w in words if w not in stop and len(w) > 2]
+    for extra in (company, location, job_type):
+        if extra:
+            keywords.append(str(extra).strip().lower())
+    seen, dedup = (set(), [])
+    for k in keywords:
+        if k not in seen:
+            seen.add(k)
+            dedup.append(k)
+    company_part = f'at {company}' if company else 'with this employer'
+    location_part = f' based in {location}' if location else ''
+    snippet = (description or '').strip()
+    snippet_part = f' The listing notes: {snippet[:200].strip()}' if snippet else ''
+    overview = (
+        f"This {job_type or 'role'} for {title} {company_part}{location_part} was sourced "
+        f"directly from the employer's own listing. While we don't have enough scraped detail "
+        f"yet to generate a full AI overview, the core details — title, company, and location "
+        f"— are accurate and kept up to date.{snippet_part} Check the original posting via the "
+        f"apply link on this page for the complete role description before applying."
+    )
+    return {'overview': overview, 'keywords': dedup[:10], 'model': 'template-fallback'}
+
+def _call_groq(title: str, company: str, location: str, description: str, job_type: str) -> Optional[Dict]:
+    if not GROQ_API_KEY:
+        return {**_template_result(title, company, location, description, job_type)}
     user_prompt = '\n'.join([f'Title: {title}', f'Company: {company}', f'Location: {location or 'not specified'}', f'Listing type: {job_type or 'not specified'}', "Original description (may be short or messy — it's raw scraped text):", (description or '(no description provided)').strip()[:4000]])
-    payload = {'model': GROK_MODEL, 'messages': [{'role': 'system', 'content': SYSTEM_PROMPT}, {'role': 'user', 'content': user_prompt}], 'temperature': 0.4, 'response_format': {'type': 'json_object'}}
-    headers = {'Authorization': f'Bearer {XAI_API_KEY}', 'Content-Type': 'application/json'}
+    payload = {'model': GROQ_MODEL, 'messages': [{'role': 'system', 'content': SYSTEM_PROMPT}, {'role': 'user', 'content': user_prompt}], 'temperature': 0.4, 'response_format': {'type': 'json_object'}}
+    headers = {'Authorization': f'Bearer {GROQ_API_KEY}', 'Content-Type': 'application/json'}
     try:
-        resp = requests.post(GROK_API_URL, headers=headers, json=payload, timeout=REQUEST_TIMEOUT_S)
+        resp = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=REQUEST_TIMEOUT_S)
         resp.raise_for_status()
         body = resp.json()
     except (requests.RequestException, ValueError) as exc:
-        log.warning('Grok request failed: %s', exc)
-        return None
+        log.warning('Groq request failed: %s — using template fallback', exc)
+        return _template_result(title, company, location, description, job_type)
     try:
         content = body['choices'][0]['message']['content']
     except (KeyError, IndexError, TypeError):
-        log.warning('Unexpected Grok response shape: %s', body)
-        return None
+        log.warning('Unexpected Groq response shape: %s — using template fallback', body)
+        return _template_result(title, company, location, description, job_type)
     parsed = _extract_json(content)
     if not parsed:
-        log.warning('Could not parse Grok JSON output')
-        return None
+        log.warning('Could not parse Groq JSON output — using template fallback')
+        return _template_result(title, company, location, description, job_type)
     overview = str(parsed.get('overview', '')).strip()
     keywords = parsed.get('keywords', [])
     if not isinstance(keywords, list):
@@ -58,33 +85,33 @@ def _call_grok(title: str, company: str, location: str, description: str, job_ty
     keywords = [str(k).strip().lower() for k in keywords if str(k).strip()]
     word_count = len(overview.split())
     if word_count < MIN_OVERVIEW_WORDS:
-        log.info('Overview too short (%d words), discarding', word_count)
-        return None
+        log.info('Overview too short (%d words) — using template fallback', word_count)
+        return _template_result(title, company, location, description, job_type)
     if word_count > MAX_OVERVIEW_WORDS:
         overview = ' '.join(overview.split()[:MAX_OVERVIEW_WORDS]) + '…'
-    return {'overview': overview, 'keywords': keywords[:10]}
+    return {'overview': overview, 'keywords': keywords[:10], 'model': GROQ_MODEL}
 
-def _write_enrichment(job_id: str, overview: str, keywords: List[str]) -> None:
+def _write_enrichment(job_id: str, overview: str, keywords: List[str], model: str) -> None:
     conn = get_pg_conn()
     cursor = conn.cursor()
-    cursor.execute('\n        UPDATE jobs\n        SET enriched_overview = %s,\n            enriched_keywords = %s,\n            enriched_model = %s,\n            enriched_at = now()\n        WHERE id = %s\n        ', (overview, keywords, GROK_MODEL, job_id))
+    cursor.execute('\n        UPDATE jobs\n        SET enriched_overview = %s,\n            enriched_keywords = %s,\n            enriched_model = %s,\n            enriched_at = now()\n        WHERE id = %s\n        ', (overview, keywords, model, job_id))
     conn.commit()
     cursor.close()
 
-def run_content_enrichment_for_new_jobs(jobs: List[Dict]) -> Dict:
-    if not XAI_API_KEY:
-        log.info('XAI_API_KEY not set — automatic content enrichment skipped for this run (daily catch-up job will still no-op safely too).')
-        return {'enabled': False, 'attempted': 0, 'enriched': 0}
-    thin_jobs = [j for j in jobs if j.get('id') and len(str(j.get('description') or '')) < THIN_DESCRIPTION_CHARS][:BATCH_LIMIT]
+def run_content_enrichment_for_new_jobs(jobs: List[Dict], bulk: bool=False) -> Dict:
+    candidate_jobs = jobs if bulk else [j for j in jobs if j.get('id') and len(str(j.get('description') or '')) < THIN_DESCRIPTION_CHARS]
+    thin_jobs = [j for j in candidate_jobs if j.get('id')][:BATCH_LIMIT]
     if not thin_jobs:
-        return {'enabled': True, 'attempted': 0, 'enriched': 0}
-    log.info('Automatic content enrichment: %d thin listing(s) from this run (capped at %d)', len(thin_jobs), BATCH_LIMIT)
+        return {'enabled': bool(GROQ_API_KEY), 'attempted': 0, 'enriched': 0}
+    if not GROQ_API_KEY:
+        log.info('GROQ_API_KEY not set — using template fallback content for this run (%d listing(s)).', len(thin_jobs))
+    log.info('Automatic content enrichment: %d listing(s) from this run (capped at %d, bulk=%s)', len(thin_jobs), BATCH_LIMIT, bulk)
     enriched_count = 0
     for job in thin_jobs:
         try:
-            result = _call_grok(title=job.get('title', ''), company=job.get('company', ''), location=job.get('location', ''), description=job.get('description', ''), job_type=job.get('type', ''))
+            result = _call_groq(title=job.get('title', ''), company=job.get('company', ''), location=job.get('location', ''), description=job.get('description', ''), job_type=job.get('type', ''))
             if result:
-                _write_enrichment(job['id'], result['overview'], result['keywords'])
+                _write_enrichment(job['id'], result['overview'], result['keywords'], result.get('model', GROQ_MODEL))
                 enriched_count += 1
         except Exception:
             log.exception('Content enrichment failed for job id=%s', job.get('id'))

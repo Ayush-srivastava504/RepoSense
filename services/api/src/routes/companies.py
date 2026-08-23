@@ -1,5 +1,5 @@
 # Module: src/routes/companies.py
-# Defines function(s): _lower_top_companies, get_companies
+# Defines function(s): _lower_top_companies, get_companies, get_company_profile
 #
 #
 
@@ -38,3 +38,16 @@ async def get_companies(limit_per_section: int=Query(default=MAX_PER_SECTION, ge
     mass_hire.sort(key=lambda c: c['job_count'], reverse=True)
     startup.sort(key=lambda c: (c['last_posted_at'] is not None, c['last_posted_at']), reverse=True)
     return {'top': {'companies': top[:limit_per_section], 'total': len(top)}, 'mass_hire': {'companies': mass_hire[:limit_per_section], 'total': len(mass_hire)}, 'startup': {'companies': startup[:limit_per_section], 'total': len(startup)}, 'mass_hire_threshold': MASS_HIRE_THRESHOLD}
+
+@router.get('/{company}/profile')
+async def get_company_profile(company: str):
+    pool = await get_db_pool()
+    if pool is None:
+        raise HTTPException(503, 'Database unavailable')
+    row = await pool.fetchrow(
+        'SELECT company, overview, culture_summary, review_snippets, keywords, model, enriched_at FROM company_profiles WHERE lower(company) = lower($1)',
+        company,
+    )
+    if row is None:
+        raise HTTPException(404, 'No enriched profile for this company yet')
+    return dict(row)

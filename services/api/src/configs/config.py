@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ''
     REQUIRE_AUTH: bool = False
     LOAD_TEST_BYPASS_KEY: str = ''
-    XAI_API_KEY: str = ''
+    GROQ_API_KEY: str = ''
 
     class Config:
         env_file = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../.env'))

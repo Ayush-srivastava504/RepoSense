@@ -37,11 +37,13 @@ async def main():
     parser.add_argument('--force-stale', action='store_true', help='Also re-enrich rows older than --re-enrich-days')
     parser.add_argument('--re-enrich-days', type=int, default=RE_ENRICH_DAYS_DEFAULT)
     parser.add_argument('--dry-run', action='store_true', help="Generate content and log it, but don't write to the DB")
+    parser.add_argument('--no-fallback', action='store_true', help='Skip rows instead of using the template fallback when GROQ_API_KEY is unset or a request fails')
     args = parser.parse_args()
     service = ContentEnrichmentService()
     if not service.enabled:
-        print('[enrich_job_content] XAI_API_KEY not set — skipping enrichment run (this is a no-op, not a failure).')
-        return
+        print('[enrich_job_content] GROQ_API_KEY not set — using template fallback content (pass --no-fallback to skip instead).' if not args.no_fallback else '[enrich_job_content] GROQ_API_KEY not set — skipping enrichment run (this is a no-op, not a failure).')
+        if args.no_fallback:
+            return
     if not settings.DATABASE_URL:
         print('[enrich_job_content] DATABASE_URL not set — cannot run.')
         sys.exit(1)
@@ -51,7 +53,7 @@ async def main():
         print(f'[enrich_job_content] {len(rows)} candidate listing(s) found')
         enriched, skipped = (0, 0)
         for row in rows:
-            result = await service.enrich(title=row['title'], company=row['company'], location=row['location'], description=row['description'], job_type=row['type'])
+            result = await service.enrich(title=row['title'], company=row['company'], location=row['location'], description=row['description'], job_type=row['type'], allow_fallback=not args.no_fallback)
             if result is None:
                 skipped += 1
                 if not args.dry_run:

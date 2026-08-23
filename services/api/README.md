@@ -1,270 +1,111 @@
-# RepoSense Core API
+# services/api — Core API
 
-> FastAPI service that is the central backend for RepoSense: email-OTP + guest authentication, GitHub integration, AI code review/self-healing, job search, resume generation, the LinkedIn Profile Optimizer, and Razorpay subscriptions.
+FastAPI backend for RepoSense: authentication, job/hackathon listings, resume
+generation, ATS scoring, AI code review, LinkedIn analysis, a GitHub-connected
+terminal, dashboard stats, subscriptions, and a LeetCode practice judge.
 
-## Overview
+## Structure
 
-The Core API (`services/api/src`) does the following:
-- **Authenticates users** via email OTP (Resend) or anonymous guest JWT sessions — there is no password-based login and GitHub is *not* the primary sign-in method (it's an optional account connection for the repo browser/terminal features)
-- **Orchestrates AI code review** — CodeBERT static analysis, LLM-based auto-fix, and a combined "self-healing" fix-and-validate endpoint, all running in-process (no separate review microservice)
-- **Calls out to two sibling microservices** — RAG (`RAG_SERVICE_URL`) for README generation, Neural Generator (`NEURAL_GENERATOR_URL`) for LLM text generation used by resume and LinkedIn features
-- **Handles Razorpay payments** — checkout creation, HMAC-verified webhooks, subscription status
-- **Runs long jobs asynchronously** — resume generation, LinkedIn analysis, and README generation are queued and polled via `/api/async-jobs/{id}`, since local LLM inference can take 30–90s+
-- **Rate-limits and logs every request** via middleware
+```
+src/
+  api/           Extra routers (code review, self-healing) mounted alongside routes/
+  core/          App factory (app.py), dependencies, exception handlers
+  configs/       Settings, DB pool, Redis client, ML config
+  data/leetcode/ Problem bank + the Blind 75 tracker spreadsheet
+  middleware/    Auth and rate-limiting middleware
+  routes/        One router per domain (see Endpoints below)
+  schemas/       Pydantic request/response models
+  services/      Business logic: analysis engine, auto-fixer, resume/PDF
+                 generation, LinkedIn rules, job queue, GitHub integration, etc.
+  utils/         Logger, crypto helpers, ML model downloader
+database/migrations/  Ordered SQL schema migrations
+templates/            LaTeX resume template
+scripts/               One-off maintenance scripts (e.g. content enrichment backfill)
+rag/, neural_generator/, crawler/, loadtest/   Sibling services — see their own READMEs
+```
 
-## Tech Stack
-
-| Component | Technology |
-|---|---|
-| Framework | FastAPI |
-| Validation | Pydantic v2 (+ `pydantic-settings`) |
-| Database | PostgreSQL, `asyncpg` |
-| Cache | Redis (optional — app degrades gracefully without it) |
-| Auth | JWT (`python-jose`) + email OTP + optional GitHub OAuth |
-| Encryption | Fernet (`cryptography`) for stored GitHub tokens |
-| Payments | `razorpay` Python SDK |
-| Code analysis | HuggingFace Transformers, CodeBERT (`microsoft/codebert-base`) |
-| Async | `asyncio`, `httpx` |
-
-## Quick Start
+## Running locally
 
 ```bash
-cd services/api
-python -m venv venv
-source venv/bin/activate      # Linux/Mac
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-
-# Create a .env — config.py looks for it 4 directories up from
-# src/configs/, i.e. at the repo root (RepoSense-master/.env)
-# See "Configuration" below for the variable list.
-
-python run_migrations.py       # runs all 12 migrations
 uvicorn src.app:app --reload --port 8000
 ```
 
-- **API:** http://localhost:8000
-- **Swagger:** http://localhost:8000/docs
-- **ReDoc:** http://localhost:8000/redoc
-
-There is no committed `.env.example` in this repo — set the variables below directly.
+Or via Docker: `docker build -t reposense-api . && docker run -p 8000:8000 reposense-api`.
 
 ## Configuration
 
-All settings are defined in `src/configs/config.py` (a Pydantic `Settings` class read from the repo-root `.env`). `src/configs/settings.py` currently defines an identical class — it appears to be leftover duplication; `config.py` is the one actually imported by the app.
+Settings are loaded from environment variables / a repo-root `.env` file
+(`src/configs/settings.py`). Key variables:
 
-```env
-# Core
-HOST=0.0.0.0
-PORT=8000
-ENVIRONMENT=development
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/internship_db
-REDIS_URL=redis://localhost:6379
-
-# Auth
-JWT_SECRET=your_secret_key_minimum_32_characters
-GITHUB_CLIENT_ID=
-GITHUB_CLIENT_SECRET=
-GITHUB_REDIRECT_URI=http://localhost:8000/api/github/callback
-GITHUB_TOKEN_ENCRYPTION_KEY=          # python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-REQUIRE_AUTH=false                     # true disables guest sessions
-
-# Frontend / CORS
-FRONTEND_URL=http://localhost:3000
-CORS_ORIGINS=["http://localhost:3000","http://localhost:8000"]
-
-# Payments — Razorpay, NOT Stripe (migrated in 007_migrate_stripe_to_razorpay.sql)
-RAZORPAY_KEY_ID=
-RAZORPAY_KEY_SECRET=
-
-# Email (OTP delivery)
-EMAIL_PROVIDER=resend
-RESEND_API_KEY=
-
-# Storage
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_REGION=us-east-1
-S3_BUCKET=resume-storage
-
-# Sibling microservices
-RAG_SERVICE_URL=http://localhost:8001
-NEURAL_GENERATOR_URL=http://localhost:8002
-```
-
-`CODEBERT_MODEL`, `DEVICE`, `MAX_TOKENS`, `MODEL_CACHE_DIR` (code-analysis model config) live separately in `src/configs/ml_config.py`, prefixed `MODEL_` — e.g. `MODEL_NAME`, `MODEL_CACHE_DIR`.
-
-There is no `DATABASE_POOL_SIZE`, `JWT_EXPIRY_HOURS`, `CACHE_TTL`, `SENTRY_DSN`, or `STRIPE_*` variable read anywhere in the current code, despite appearing in older docs.
-
-## Database Schema
-
-Tables as actually defined across the 12 migrations in `database/migrations/`:
-
-```sql
--- 001: users
-CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,       -- vestigial: OTP auth (008) doesn't use this
-    subscription_tier TEXT DEFAULT 'free',
-    github_token TEXT,                 -- Fernet-encrypted
-    created_at TIMESTAMP DEFAULT NOW()
-);
--- + is_guest BOOLEAN (012), OTP columns (008)
-
--- 002: resumes, 003: jobs, 005: repo_docs — see individual migration files for full columns
-
--- 004 + 007: subscriptions
-CREATE TABLE subscriptions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id),
-    stripe_customer_id TEXT,           -- kept for historical data, no longer written to
-    stripe_subscription_id TEXT,       -- kept for historical data, no longer written to
-    status TEXT DEFAULT 'inactive',
-    current_period_end TIMESTAMP,
-    razorpay_order_id TEXT UNIQUE,     -- added in 007, this is what's actually used now
-    razorpay_payment_id TEXT,
-    plan TEXT DEFAULT 'pro'
-);
-
--- 009: async_jobs table (resume/LinkedIn/README generation queue)
--- 010: LinkedIn optimizer tables
--- 011: job trust/ranking columns on jobs
--- 012: is_guest on users
-```
-
-There is no `reviews` table — code review results are returned synchronously in the API response and are not persisted. If you need review history, that's a gap to fill, not an existing feature.
-
-## Complete API Endpoint Reference
-
-### Auth (`/api/auth`) — email OTP + guest, no passwords
-| Method | Path | Notes |
-|---|---|---|
-| POST | `/otp/request` | `{ "email": "..." }` → sends 6-digit code via Resend, 10 min TTL |
-| POST | `/otp/verify` | `{ "email": "...", "otp": "..." }` → `{ "access_token": "<jwt>" }`, 7-day expiry |
-| POST | `/guest` | No body → mints an anonymous JWT; no-ops if already authed or `REQUIRE_AUTH=true` |
-
-### GitHub (`/api/github`) — optional account connection
-| Method | Path | Notes |
-|---|---|---|
-| GET | `/login` | Starts OAuth flow |
-| GET | `/callback` | OAuth callback |
-| GET | `/exchange` | Code exchange |
-| POST | `/disconnect` | Remove stored GitHub token |
-| GET | `/repos` | List connected user's repos |
-| GET | `/contents` | Browse repo directory |
-| GET | `/file` | Fetch a single file's content |
-| POST | `/{owner}/{repo}/auto-setup` | Generates a README via the RAG service |
-| POST | `/terminal/token` | Short-lived token for the WebSocket in-browser terminal |
-
-### Code Review (`/api/v1`)
-| Method | Path | Notes |
-|---|---|---|
-| POST | `/review` | `{ code, language, focus_areas?, include_metrics? }`, requires auth. Runs CodeBERT analysis with a 200KB payload cap and 10s analysis timeout (guardrails added 2026-06-25 alongside a ReDoS fix) |
-| POST | `/fix` | `{ code, language, issues, dry_run? }` — auto-fix using issues from `/review` |
-| POST | `/v1/self-healing/fix-and-validate` | Runs auto-fix then validates the result in one call |
-
-### Jobs (`/api/jobs`)
-| Method | Path |
+| Variable | Purpose |
 |---|---|
-| GET | `/` — search/list |
-| GET | `/featured` |
-| GET | `/{job_id}` |
+| `DATABASE_URL` | Postgres connection string |
+| `REDIS_URL` | Redis connection string |
+| `JWT_SECRET` | Signs auth tokens |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` / `GITHUB_REDIRECT_URI` | GitHub OAuth |
+| `GITHUB_TOKEN_ENCRYPTION_KEY` | Encrypts stored GitHub tokens |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Payment/subscription processing |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION` / `S3_BUCKET` | Resume/file storage |
+| `RAG_SERVICE_URL` / `NEURAL_GENERATOR_URL` | URLs of the sibling AI microservices |
+| `EMAIL_PROVIDER` / `RESEND_API_KEY` | Transactional email |
+| `CORS_ORIGINS` | Allowed frontend origins (JSON list) |
+| `REQUIRE_AUTH` | Toggle auth enforcement (used for local/dev/load-testing) |
+| `LOAD_TEST_BYPASS_KEY` | Bypasses rate limiting for load tests |
 
-### Resume (`/api/resume`)
-| Method | Path | Notes |
-|---|---|---|
-| GET | `/test` | Health/smoke endpoint |
-| POST | `/generate` | AI resume content generation |
-| POST | `/generate-structured` | Structured (section-by-section) generation |
-| POST | `/create` | Save a resume |
-| GET | `/list` | List a user's resumes |
+## Endpoints
 
-### LinkedIn Optimizer (`/api/linkedin`) — premium feature
-| Method | Path | Notes |
-|---|---|---|
-| GET | `/status` | Free/ad/pro quota state |
-| POST | `/unlock/ad` | Redeem a rewarded-ad credit |
-| POST | `/analyze` | Scores a profile against 14 rules, returns `{ job_id }` (async) |
-| GET | `/history` | Score-over-time history |
+All routes are mounted under `/api`.
 
-Free users get one lifetime analysis; further analyses require a Pro/Enterprise subscription or watching a rewarded ad.
+- **Auth** (`/api/auth`) — OTP request/verify, guest sessions
+- **GitHub** (`/api/github`) — OAuth login/callback/exchange, repo listing,
+  file/content browsing, auto-setup, terminal token issuance, disconnect
+- **Jobs** (`/api/jobs`) — listing, featured, similar jobs, job detail
+- **Companies** (`/api/companies`) — company listing, plus
+  `/api/companies/{company}/profile` for enriched overview/work-culture content
+- **Hackathons** (`/api/hackathons`) — listing, featured, ending-soon, detail
+- **Resume** (`/api/resume`) — generation, cover letters, structured
+  generation, create/list
+- **ATS** (`/api/ats`) — role list, resume-vs-role ATS check
+- **LinkedIn** (`/api/linkedin`) — unlock status, ad-unlock, profile analysis,
+  history
+- **Review** (`/api/v1`) — AI code review (`/review`) and auto-fix (`/fix`)
+- **Self-healing** (`/api/v1/self-healing`) — automated fix-and-retry routes
+- **Async jobs** (`/api/async-jobs`) — poll long-running job status
+- **Dashboard** (`/api/dashboard`) — usage stats, recent reviews/resumes
+- **Subscription** (`/api/subscription`) — checkout, webhook, status
+- **Webhooks** (`/api/webhooks`) — inbound GitHub webhook
+- **LeetCode** (`/api/leetcode`) — problem list/detail, code submission/judge,
+  level and company breakdowns, Blind 75 tracker download
 
-### Subscriptions (`/api/subscription`) — Razorpay
-| Method | Path | Notes |
-|---|---|---|
-| POST | `/create-checkout` | `plan=pro` (₹999/mo) or `plan=enterprise` (₹2999/mo) |
-| POST | `/webhook` | HMAC-signature-verified Razorpay webhook |
-| GET | `/status` | Current tier |
+## Content enrichment
 
-### Async Jobs (`/api/async-jobs`)
-| Method | Path | Notes |
-|---|---|---|
-| GET | `/{job_id}` | Poll `status ∈ {pending, running, done, failed}`. Jobs are created inside `resume.py`/`github.py`/`linkedin.py`, not here. |
+Three related pieces generate AI (Groq-backed) fallback content for pages
+that would otherwise be thin — each falls back to a deterministic template
+generator if `GROQ_API_KEY` is unset or a request fails, so runs always
+produce usable content:
 
-### Webhooks (`/api/webhooks`)
-| Method | Path |
-|---|---|
-| POST | `/github` |
-
-### Meta
-| Method | Path | Notes |
-|---|---|---|
-| GET | `/` | Service info |
-| GET | `/health` | Basic liveness |
-| GET | `/health/detailed` | Checks DB + Redis connectivity |
-
-**None of the following exist in the current code**, despite appearing in older docs: `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`, `GET /api/review/{id}`, `GET /api/review/history`, `POST /api/subscription/upgrade`, `POST /api/webhook/stripe`, `POST /api/jobs/{id}/apply`, `POST /api/jobs/match`.
-
-## Authentication & Security
-
-JWTs are signed with `JWT_SECRET` (HS256) and carry `sub` (user id), `email`, `subscription_tier`, and a 7-day `exp`. Send them as:
-
-```bash
-curl -H "Authorization: Bearer <token>" http://localhost:8000/api/jobs/featured
-```
-
-`middleware/auth.py` exposes a `verify_token` FastAPI dependency used by routes that require auth. Rate limiting is applied globally via `middleware/rate_limit.py`.
-
-## Docker
+- `crawler/src/content_enrichment.py` — runs automatically at the end of
+  every crawl, enriching newly-scraped thin job listings
+- `scripts/enrich_job_content.py` — scheduled catch-up job for job listings
+  still missing an overview (`--force-stale` to re-enrich old rows,
+  `--no-fallback` to skip instead of using the template)
+- `scripts/enrich_all_content.py` — bulk/fallback runner covering **all**
+  pages at once: every job (`--target jobs --bulk`), every company
+  (`--target companies`, writes to the new `company_profiles` table —
+  overview, work-culture summary, review-style snippets, keywords), and
+  optionally a fallback SEO blog post per company (`--blog-posts`, written
+  under `apps/web/content/blog/` in the same schema as
+  `scripts/generate-daily-posts.mjs`)
 
 ```bash
-cd services/api
-docker build -t reposense-api:latest .
+python scripts/enrich_all_content.py --target all --bulk --blog-posts
 ```
-
-Or via Compose (recommended — wires up Postgres/Redis/RAG/Neural Generator too):
-
-```bash
-docker-compose -f ../../infrastructure/docker/docker-compose.yml up -d
-```
-
-The Compose `api` service uses `entrypoint.sh` and depends on `postgres`, `redis`, and `rag` being healthy first.
 
 ## Testing
 
 ```bash
-python test_imports.py     # validates every backend module imports cleanly
-cd ../.. && pytest tests/ -v
+pytest tests/ -v          # from the repo root, or
+python test_imports.py    # sanity-check that all modules import cleanly
 ```
-
-There is no `tests/test_api.py`, `pytest -m integration`, or coverage tooling wired up yet beyond `test_imports.py` and the root `tests/test_basic.py`.
-
-## Monitoring
-
-```bash
-curl http://localhost:8000/health
-curl http://localhost:8000/health/detailed
-```
-
-`monitor.py` in this directory is a standalone script for additional health/metrics checks outside the request path — run it directly with `python monitor.py` rather than expecting it to be wired into the API automatically.
-
-## Deployment
-
-No Railway or systemd unit is currently committed for this service. The supported path today is Docker Compose. See [../../docs/DEPLOYMENT_GUIDE.md](../../docs/DEPLOYMENT_GUIDE.md).
-
-## Related Services
-
-- Frontend: [apps/web/README.md](../../apps/web/README.md)
-- Crawler: [services/api/crawler/README.md](./crawler/README.md)
-- RAG: [services/api/rag/README.md](./rag/README.md)
-- Neural Generator: [services/api/neural_generator/README.md](./neural_generator/README.md)
