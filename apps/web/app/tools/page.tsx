@@ -1,31 +1,26 @@
+// Module: app/tools/page.tsx
+// Defines component(s)/export(s): ToolsHubPage
+//
+//
+
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Script from 'next/script';
-
 import { BASE_URL } from '@/lib/jobs';
 import { TOOLS } from '@/app/tools/data';
 import { breadcrumbSchema } from '@/lib/structuredData';
-
 export const metadata: Metadata = {
-  title: 'Free AI Career Tools for Students',
-  description:
-    'Free AI tools built for engineering students: GitHub README generator, ATS resume checker, resume builder, LinkedIn optimizer, and cover letter generator.',
-  alternates: { canonical: `${BASE_URL}/tools` },
+    title: 'Free AI Career Tools for Students',
+    description: 'Free AI tools built for engineering students: GitHub README generator, ATS resume checker, resume builder, LinkedIn optimizer, and cover letter generator.',
+    alternates: { canonical: `${BASE_URL}/tools` },
 };
-
 export default function ToolsHubPage() {
-  const crumbs = breadcrumbSchema([
-    { name: 'Home', url: BASE_URL },
-    { name: 'Tools', url: `${BASE_URL}/tools` },
-  ]);
-
-  return (
-    <main className="w-full">
-      <Script
-        id="tools-hub-breadcrumb"
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}
-      />
+    const crumbs = breadcrumbSchema([
+        { name: 'Home', url: BASE_URL },
+        { name: 'Tools', url: `${BASE_URL}/tools` },
+    ]);
+    return (<main className="w-full">
+      <Script id="tools-hub-breadcrumb" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
 
       <div className="mx-auto w-full max-w-5xl px-3 py-10 sm:px-4 sm:py-14">
         <p className="eyebrow eyebrow-accent">// ai tools</p>
@@ -38,19 +33,12 @@ export default function ToolsHubPage() {
         </p>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2">
-          {TOOLS.map((tool) => (
-            <Link
-              key={tool.slug}
-              href={`/tools/${tool.slug}`}
-              className="panel block p-5 transition hover:opacity-90"
-            >
+          {TOOLS.map((tool) => (<Link key={tool.slug} href={`/tools/${tool.slug}`} className="panel block p-5 transition hover:opacity-90">
               <p className="eyebrow eyebrow-accent">// {tool.category.toLowerCase()}</p>
               <h2 className="display mt-2 text-lg font-medium">{tool.name}</h2>
               <p className="mt-2 text-sm" style={{ color: 'var(--ink-soft)' }}>{tool.tagline}</p>
-            </Link>
-          ))}
+            </Link>))}
         </div>
       </div>
-    </main>
-  );
+    </main>);
 }

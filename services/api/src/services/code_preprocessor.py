@@ -1,12 +1,11 @@
-# ml/preprocessing/code_preprocessor.py
+# Module: src/services/code_preprocessor.py
+# Defines class(es): CodePreprocessor
+#
+#
 
 class CodePreprocessor:
-    """
-    Normalises raw code before it reaches the analyser.
-    Extend this with language-specific cleaning as needed.
-    """
 
-    def preprocess(self, code: str, language: str = "python") -> str:
+    def preprocess(self, code: str, language: str='python') -> str:
         code = self._normalize_line_endings(code)
         code = self._strip_bom(code)
         code = self._expand_tabs(code)
@@ -14,14 +13,14 @@ class CodePreprocessor:
 
     @staticmethod
     def _normalize_line_endings(code: str) -> str:
-        return code.replace("\r\n", "\n").replace("\r", "\n")
+        return code.replace('\r\n', '\n').replace('\r', '\n')
 
     @staticmethod
     def _strip_bom(code: str) -> str:
-        return code.lstrip("\ufeff")
+        return code.lstrip('\ufeff')
 
     @staticmethod
-    def _expand_tabs(code: str, tab_size: int = 4) -> str:
+    def _expand_tabs(code: str, tab_size: int=4) -> str:
         return code.expandtabs(tab_size)
 
     @staticmethod

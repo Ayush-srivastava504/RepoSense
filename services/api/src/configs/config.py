@@ -1,61 +1,47 @@
+# Module: src/configs/config.py
+# Defines class(es): Settings
+#
+#
+
 from typing import List
 import json
 from pydantic_settings import BaseSettings
 import os
 
 class Settings(BaseSettings):
-    HOST: str = "0.0.0.0"
+    HOST: str = '0.0.0.0'
     PORT: int = 8000
-    ENVIRONMENT: str = "development"
-    DATABASE_URL: str = ""
-    REDIS_URL: str = "redis://redis:6379"
-    GITHUB_CLIENT_ID: str = ""
-    GITHUB_CLIENT_SECRET: str = ""
-    RAZORPAY_KEY_ID: str = ""
-    RAZORPAY_KEY_SECRET: str = ""
-    JWT_SECRET: str = ""
-    GITHUB_TOKEN_ENCRYPTION_KEY: str = ""
-    AWS_ACCESS_KEY_ID: str = ""
-    AWS_SECRET_ACCESS_KEY: str = ""
-    AWS_REGION: str = "us-east-1"
-    S3_BUCKET: str = "resume-storage"
-    CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:8000",
-    ]
-    # Vercel preview deployments get a fresh random subdomain
-    # (e.g. repo-sense-7mjn8w5ca-<team>.vercel.app) on every deploy, so
-    # they can't be listed individually in CORS_ORIGINS. This regex covers
-    # any *.vercel.app origin plus the production domain. Override via the
-    # CORS_ORIGIN_REGEX env var if the Vercel project/team slug changes.
-    CORS_ORIGIN_REGEX: str = (
-        r"^https://([a-zA-Z0-9\-]+\.)*vercel\.app$"
-        r"|^https://(www\.)?intern-flow\.in$"
-    )
-    GITHUB_REDIRECT_URI: str = ""
-    FRONTEND_URL: str = ""
-    RAG_SERVICE_URL: str = "http://localhost:8001"
-    NEURAL_GENERATOR_URL: str = "http://localhost:8002"
-    EMAIL_PROVIDER: str = "resend"
-    RESEND_API_KEY: str = ""
+    ENVIRONMENT: str = 'development'
+    DATABASE_URL: str = ''
+    REDIS_URL: str = 'redis://redis:6379'
+    GITHUB_CLIENT_ID: str = ''
+    GITHUB_CLIENT_SECRET: str = ''
+    RAZORPAY_KEY_ID: str = ''
+    RAZORPAY_KEY_SECRET: str = ''
+    JWT_SECRET: str = ''
+    GITHUB_TOKEN_ENCRYPTION_KEY: str = ''
+    AWS_ACCESS_KEY_ID: str = ''
+    AWS_SECRET_ACCESS_KEY: str = ''
+    AWS_REGION: str = 'us-east-1'
+    S3_BUCKET: str = 'resume-storage'
+    CORS_ORIGINS: List[str] = ['http://localhost:3000', 'http://localhost:8000']
+    CORS_ORIGIN_REGEX: str = '^https://([a-zA-Z0-9\\-]+\\.)*vercel\\.app$|^https://(www\\.)?intern-flow\\.in$'
+    GITHUB_REDIRECT_URI: str = ''
+    FRONTEND_URL: str = ''
+    RAG_SERVICE_URL: str = 'http://localhost:8001'
+    NEURAL_GENERATOR_URL: str = 'http://localhost:8002'
+    EMAIL_PROVIDER: str = 'resend'
+    RESEND_API_KEY: str = ''
     REQUIRE_AUTH: bool = False
-    LOAD_TEST_BYPASS_KEY: str = ""
-    # xAI Grok API key, used by the content-enrichment batch job
-    # (services/api/scripts/enrich_job_content.py) to generate short,
-    # unique overview copy for thin job/internship listings. Optional —
-    # the script logs a warning and no-ops without it rather than failing
-    # the CI run.
-    XAI_API_KEY: str = ""
+    LOAD_TEST_BYPASS_KEY: str = ''
+    XAI_API_KEY: str = ''
 
     class Config:
-        env_file = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "../../../../.env")
-        )
-        extra = "ignore"
+        env_file = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../.env'))
+        extra = 'ignore'
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if isinstance(self.CORS_ORIGINS, str):
             self.CORS_ORIGINS = json.loads(self.CORS_ORIGINS)
-
 settings = Settings()

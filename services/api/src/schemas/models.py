@@ -1,3 +1,8 @@
+# Module: src/schemas/models.py
+# Defines class(es): Language, Severity, Issue, QualityMetrics, ReviewRequest, ReviewResponse
+#
+#
+
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional, Dict, Any
 from enum import Enum
@@ -5,19 +10,19 @@ import uuid
 from datetime import datetime
 
 class Language(str, Enum):
-    PYTHON = "python"
-    JAVASCRIPT = "javascript"
-    TYPESCRIPT = "typescript"
-    JAVA = "java"
-    GO = "go"
-    RUST = "rust"
+    PYTHON = 'python'
+    JAVASCRIPT = 'javascript'
+    TYPESCRIPT = 'typescript'
+    JAVA = 'java'
+    GO = 'go'
+    RUST = 'rust'
 
 class Severity(str, Enum):
-    CRITICAL = "critical"
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
-    INFO = "info"
+    CRITICAL = 'critical'
+    HIGH = 'high'
+    MEDIUM = 'medium'
+    LOW = 'low'
+    INFO = 'info'
 
 class Issue(BaseModel):
     line: Optional[int]
@@ -40,7 +45,7 @@ class ReviewRequest(BaseModel):
     language: Language
     include_metrics: bool = True
     focus_areas: Optional[List[str]] = None
-    
+
     @validator('code')
     def validate_code_length(cls, v):
         if len(v) > 100000:

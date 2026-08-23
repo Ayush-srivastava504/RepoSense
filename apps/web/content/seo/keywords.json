@@ -940,9 +940,9 @@
     "keyword": "resume builder for engineering students",
     "category": "resume-ats",
     "priority": "high",
-    "status": "published",
-    "publishedSlug": "resume-builder-for-engineering-students-kw-0105",
-    "publishedAt": "2026-08-23T03:54:12.278Z"
+    "status": "queued",
+    "publishedSlug": null,
+    "publishedAt": null
   },
   {
     "id": "kw-0106",

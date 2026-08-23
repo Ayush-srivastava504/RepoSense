@@ -1,51 +1,45 @@
+# Module: src/configs/settings.py
+# Defines class(es): Settings
+#
+#
+
 from typing import List
 import json
 from pydantic_settings import BaseSettings
 import os
 
 class Settings(BaseSettings):
-    HOST: str = "0.0.0.0"
+    HOST: str = '0.0.0.0'
     PORT: int = 8000
-    ENVIRONMENT: str = "development"
-    DATABASE_URL: str = ""
-    REDIS_URL: str = "redis://redis:6379"
-    GITHUB_CLIENT_ID: str = ""
-    GITHUB_CLIENT_SECRET: str = ""
-    RAZORPAY_KEY_ID: str = ""
-    RAZORPAY_KEY_SECRET: str = ""
-    JWT_SECRET: str = ""
-    GITHUB_TOKEN_ENCRYPTION_KEY: str = ""
-    AWS_ACCESS_KEY_ID: str = ""
-    AWS_SECRET_ACCESS_KEY: str = ""
-    AWS_REGION: str = "us-east-1"
-    S3_BUCKET: str = "resume-storage"
-    CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:8000",
-    ]
-    GITHUB_REDIRECT_URI: str = ""
-    FRONTEND_URL: str = ""
-    RAG_SERVICE_URL: str = "http://localhost:8001"
-    NEURAL_GENERATOR_URL: str = "http://localhost:8002"
-    EMAIL_PROVIDER: str = "resend"
-    RESEND_API_KEY: str = ""
+    ENVIRONMENT: str = 'development'
+    DATABASE_URL: str = ''
+    REDIS_URL: str = 'redis://redis:6379'
+    GITHUB_CLIENT_ID: str = ''
+    GITHUB_CLIENT_SECRET: str = ''
+    RAZORPAY_KEY_ID: str = ''
+    RAZORPAY_KEY_SECRET: str = ''
+    JWT_SECRET: str = ''
+    GITHUB_TOKEN_ENCRYPTION_KEY: str = ''
+    AWS_ACCESS_KEY_ID: str = ''
+    AWS_SECRET_ACCESS_KEY: str = ''
+    AWS_REGION: str = 'us-east-1'
+    S3_BUCKET: str = 'resume-storage'
+    CORS_ORIGINS: List[str] = ['http://localhost:3000', 'http://localhost:8000']
+    GITHUB_REDIRECT_URI: str = ''
+    FRONTEND_URL: str = ''
+    RAG_SERVICE_URL: str = 'http://localhost:8001'
+    NEURAL_GENERATOR_URL: str = 'http://localhost:8002'
+    EMAIL_PROVIDER: str = 'resend'
+    RESEND_API_KEY: str = ''
     REQUIRE_AUTH: bool = False
-    # Secret shared with the k6 load-test harness only. When a request
-    # carries X-Load-Test-Key equal to this value, the rate limiter is
-    # bypassed so real server capacity can be measured. Left empty by
-    # default, which disables the bypass entirely — never set this in a
-    # public-facing environment except for the duration of a load test.
-    LOAD_TEST_BYPASS_KEY: str = ""
+    LOAD_TEST_BYPASS_KEY: str = ''
 
     class Config:
-        env_file = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "../../../../.env")
-        )
-        extra = "ignore"
+        env_file = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../.env'))
+        extra = 'ignore'
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if isinstance(self.CORS_ORIGINS, str):
             self.CORS_ORIGINS = json.loads(self.CORS_ORIGINS)
-
 settings = Settings()

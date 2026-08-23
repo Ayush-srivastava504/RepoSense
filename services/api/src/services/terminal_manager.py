@@ -1,3 +1,8 @@
+# Module: src/services/terminal_manager.py
+# Defines class(es): TerminalSession
+#
+#
+
 import asyncio
 import os
 import pty
@@ -5,6 +10,7 @@ import subprocess
 import uuid
 
 class TerminalSession:
+
     def __init__(self, user_id: str, repo_id: str):
         self.user_id = user_id
         self.repo_id = repo_id
@@ -15,15 +21,7 @@ class TerminalSession:
     async def start(self):
         master_fd, slave_fd = pty.openpty()
         self.fd = master_fd
-        self.process = await asyncio.create_subprocess_shell(
-            "bash -i",
-            stdin=slave_fd,
-            stdout=slave_fd,
-            stderr=slave_fd,
-            shell=True,
-            executable="/bin/bash",
-            preexec_fn=os.setsid
-        )
+        self.process = await asyncio.create_subprocess_shell('bash -i', stdin=slave_fd, stdout=slave_fd, stderr=slave_fd, shell=True, executable='/bin/bash', preexec_fn=os.setsid)
         return self
 
     async def write(self, data: str):
@@ -35,8 +33,8 @@ class TerminalSession:
             try:
                 return os.read(self.fd, 4096).decode()
             except BlockingIOError:
-                return ""
-        return ""
+                return ''
+        return ''
 
     async def stop(self):
         if self.process:

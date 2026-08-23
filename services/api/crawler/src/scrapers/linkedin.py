@@ -1,191 +1,88 @@
+# Module: crawler/src/scrapers/linkedin.py
+# Defines class(es): LinkedInScraper
+# Defines function(s): _clean, _infer_type
+#
+
 import os
 import random
 import re
 import time
 from typing import Dict, List, Optional
 from urllib.parse import quote
-
 from bs4 import BeautifulSoup
-
 from scrapers.base import BaseScraper
-
-
-BASE = "https://www.linkedin.com"
-
-# LinkedIn's own job-type facet (f_JT=I) filters to postings LinkedIn itself
-# classifies as "Internship" — this catches listings that never made it into
-# our keyword loop below (e.g. "Analyst, Summer Program 2027" with no
-# "intern" in the title) but that LinkedIn already tags as an internship.
-# Much higher precision than grepping titles for the word "intern".
-LINKEDIN_JOB_TYPE_INTERNSHIP = "I"
-
-# India-specific city list for the dedicated internship pass. Kept local
-# (rather than importing config.DEFAULT_LOCATIONS) so this scraper still
-# works if config's list changes shape — these are the LinkedIn-recognized
-# location strings that reliably geo-filter to India.
-INDIA_LOCATIONS: List[str] = [
-    "India",
-    "Bangalore",
-    "Mumbai",
-    "Delhi",
-    "Hyderabad",
-    "Pune",
-    "Chennai",
-    "Kolkata",
-    "Noida",
-    "Gurgaon",
-    "Ahmedabad",
-]
-
-# Role terms searched against the internship-only facet. Broader than
-# DEFAULT_KEYWORDS' single "internship" entry so the India pass isn't
-# limited to whatever the shared keyword list happens to contain.
-INDIA_INTERNSHIP_ROLES: List[str] = [
-    "software engineer intern",
-    "data analyst intern",
-    "machine learning intern",
-    "web developer intern",
-    "backend developer intern",
-    "frontend developer intern",
-    "product management intern",
-    "marketing intern",
-    "business analyst intern",
-    "summer internship",
-]
-
+BASE = 'https://www.linkedin.com'
+LINKEDIN_JOB_TYPE_INTERNSHIP = 'I'
+INDIA_LOCATIONS: List[str] = ['India', 'Bangalore', 'Mumbai', 'Delhi', 'Hyderabad', 'Pune', 'Chennai', 'Kolkata', 'Noida', 'Gurgaon', 'Ahmedabad']
+INDIA_INTERNSHIP_ROLES: List[str] = ['software engineer intern', 'data analyst intern', 'machine learning intern', 'web developer intern', 'backend developer intern', 'frontend developer intern', 'product management intern', 'marketing intern', 'business analyst intern', 'summer internship']
 
 class LinkedInScraper(BaseScraper):
+    source_name = 'linkedin'
 
-    source_name = "linkedin"
-
-    def scrape(
-        self,
-        keywords: List[str],
-        locations: List[str],
-        max_pages: int,
-    ) -> List[Dict]:
-
+    def scrape(self, keywords: List[str], locations: List[str], max_pages: int) -> List[Dict]:
         jobs: List[Dict] = []
         seen_urls = set()
-
-        # Was a hardcoded [:4]/[:3] that silently dropped most of
-        # config.DEFAULT_KEYWORDS. Now configurable, higher default, so
-        # the role list (data analyst, devops, ML engineer, etc.) is
-        # actually searched — raise LINKEDIN_MAX_KEYWORDS if needed.
-        max_keywords = int(os.getenv("LINKEDIN_MAX_KEYWORDS", "10"))
-        max_locations = int(os.getenv("LINKEDIN_MAX_LOCATIONS", "3"))
+        max_keywords = int(os.getenv('LINKEDIN_MAX_KEYWORDS', '10'))
+        max_locations = int(os.getenv('LINKEDIN_MAX_LOCATIONS', '3'))
         keywords = keywords[:max_keywords]
         locations = locations[:max_locations]
-
         for keyword in keywords:
             for location in locations:
                 batch = self._search(keyword, location, max_pages)
                 for job in batch:
-                    url = job.get("apply_url", "")
+                    url = job.get('apply_url', '')
                     if url and url in seen_urls:
                         continue
                     if url:
                         seen_urls.add(url)
                     jobs.append(job)
                 time.sleep(random.uniform(2, 4))
-
-        # Dedicated India-internships pass: LinkedIn's f_JT=I facet against
-        # a fixed set of India cities and intern-role search terms. Public
-        # search-results pages only (same as the rest of this scraper) — no
-        # login, no scraping behind LinkedIn's auth wall.
-        if os.getenv("LINKEDIN_INDIA_INTERNSHIPS", "true").lower() == "true":
-            india_max_pages = int(os.getenv("LINKEDIN_INDIA_MAX_PAGES", str(max_pages)))
-            india_locations = INDIA_LOCATIONS[
-                : int(os.getenv("LINKEDIN_INDIA_MAX_LOCATIONS", "6"))
-            ]
-            india_roles = INDIA_INTERNSHIP_ROLES[
-                : int(os.getenv("LINKEDIN_INDIA_MAX_ROLES", "6"))
-            ]
-
+        if os.getenv('LINKEDIN_INDIA_INTERNSHIPS', 'true').lower() == 'true':
+            india_max_pages = int(os.getenv('LINKEDIN_INDIA_MAX_PAGES', str(max_pages)))
+            india_locations = INDIA_LOCATIONS[:int(os.getenv('LINKEDIN_INDIA_MAX_LOCATIONS', '6'))]
+            india_roles = INDIA_INTERNSHIP_ROLES[:int(os.getenv('LINKEDIN_INDIA_MAX_ROLES', '6'))]
             for role in india_roles:
                 for location in india_locations:
-                    batch = self._search(
-                        role,
-                        location,
-                        india_max_pages,
-                        job_type=LINKEDIN_JOB_TYPE_INTERNSHIP,
-                    )
+                    batch = self._search(role, location, india_max_pages, job_type=LINKEDIN_JOB_TYPE_INTERNSHIP)
                     for job in batch:
-                        url = job.get("apply_url", "")
+                        url = job.get('apply_url', '')
                         if url and url in seen_urls:
                             continue
                         if url:
                             seen_urls.add(url)
-                        # LinkedIn already scoped these to internships in
-                        # India via the search facet + location — tag them
-                        # so downstream ranking/sorting (India-first, job
-                        # type filters) treats them correctly even if the
-                        # title itself doesn't say "intern" or "India".
-                        job["type"] = "internship"
-                        job["country"] = "India"
+                        job['type'] = 'internship'
+                        job['country'] = 'India'
                         jobs.append(job)
                     time.sleep(random.uniform(2, 4))
-
-        self.log.info("Collected %d jobs from linkedin", len(jobs))
+        self.log.info('Collected %d jobs from linkedin', len(jobs))
         return jobs
 
-    def _search(
-        self,
-        keyword: str,
-        location: str,
-        max_pages: int,
-        job_type: Optional[str] = None,
-    ) -> List[Dict]:
-
+    def _search(self, keyword: str, location: str, max_pages: int, job_type: Optional[str]=None) -> List[Dict]:
         results = []
-
         for page_num in range(max_pages):
-
             start = page_num * 25
-
-            url = (
-                f"{BASE}/jobs/search/"
-                f"?keywords={quote(keyword)}"
-                f"&location={quote(location)}"
-                f"&start={start}"
-            )
-
+            url = f'{BASE}/jobs/search/?keywords={quote(keyword)}&location={quote(location)}&start={start}'
             if job_type:
-                url += f"&f_JT={job_type}"
-
-            self.log.info("LinkedIn scrape: %s", url)
-
+                url += f'&f_JT={job_type}'
+            self.log.info('LinkedIn scrape: %s', url)
             try:
                 html = self._render_page(url)
             except Exception as e:
-                self.log.warning("LinkedIn render failed: %s", str(e))
+                self.log.warning('LinkedIn render failed: %s', str(e))
                 continue
-
-            if os.getenv("SCRAPER_DEBUG"):
-                with open(f"linkedin_debug_{page_num}.html", "w", encoding="utf-8") as f:
+            if os.getenv('SCRAPER_DEBUG'):
+                with open(f'linkedin_debug_{page_num}.html', 'w', encoding='utf-8') as f:
                     f.write(html)
-
-            soup = BeautifulSoup(html, "html.parser")
-
-            selectors = [
-                ".base-card",
-                ".job-search-card",
-                ".jobs-search__results-list li",
-                ".jobs-search-results__list-item",
-                '[data-entity-urn]',
-            ]
-
+            soup = BeautifulSoup(html, 'html.parser')
+            selectors = ['.base-card', '.job-search-card', '.jobs-search__results-list li', '.jobs-search-results__list-item', '[data-entity-urn]']
             cards = []
             for selector in selectors:
                 cards = soup.select(selector)
                 if cards:
                     break
-
-            self.log.info("LinkedIn found %d cards", len(cards))
-
+            self.log.info('LinkedIn found %d cards', len(cards))
             if not cards:
                 continue
-
             for card in cards:
                 try:
                     job = self._parse_card(card)
@@ -193,89 +90,58 @@ class LinkedInScraper(BaseScraper):
                         results.append(job)
                 except Exception:
                     continue
-
             time.sleep(random.uniform(2, 5))
-
         return results
 
     def _render_page(self, url: str) -> str:
-
         page = self.new_page()
-
         try:
             self.goto(page, url)
             page.wait_for_timeout(7000)
-
             for _ in range(3):
                 page.mouse.wheel(0, 4000)
                 page.wait_for_timeout(random.randint(1500, 3000))
-
             return page.content()
         finally:
             page.context.close()
 
     def _parse_card(self, card) -> Optional[Dict]:
-
         job = self._empty_job()
-
-        title_el = (
-            card.select_one("h3.base-search-card__title")
-            or card.select_one(".base-search-card__title")
-            or card.select_one("h3")
-            or card.select_one("a")
-        )
-
-        company_el = (
-            card.select_one("h4.base-search-card__subtitle")
-            or card.select_one(".base-search-card__subtitle")
-            or card.select_one("h4")
-        )
-
-        location_el = card.select_one(".job-search-card__location")
-
-        link_el = (
-            card.select_one("a.base-card__full-link")
-            or card.select_one("a")
-        )
-
-        time_el = card.select_one("time")
-
-        title = _clean(title_el.get_text(strip=True) if title_el else "")
-
+        title_el = card.select_one('h3.base-search-card__title') or card.select_one('.base-search-card__title') or card.select_one('h3') or card.select_one('a')
+        company_el = card.select_one('h4.base-search-card__subtitle') or card.select_one('.base-search-card__subtitle') or card.select_one('h4')
+        location_el = card.select_one('.job-search-card__location')
+        link_el = card.select_one('a.base-card__full-link') or card.select_one('a')
+        time_el = card.select_one('time')
+        title = _clean(title_el.get_text(strip=True) if title_el else '')
         if not title:
             return None
-
-        job["title"] = title
-        job["company"] = _clean(company_el.get_text(strip=True) if company_el else "")
-        job["location"] = _clean(location_el.get_text(strip=True) if location_el else "")
-        job["posted_date"] = time_el.get("datetime", "") if time_el else ""
-        job["description"] = _clean(card.get_text(" ", strip=True))
-        job["skills"] = []
-        job["salary"] = ""
-        job["experience_required"] = ""
-        job["type"] = _infer_type(job["title"])
-        job["is_remote"] = "remote" in job["location"].lower()
-
-        href = link_el.get("href") if link_el else ""
+        job['title'] = title
+        job['company'] = _clean(company_el.get_text(strip=True) if company_el else '')
+        job['location'] = _clean(location_el.get_text(strip=True) if location_el else '')
+        job['posted_date'] = time_el.get('datetime', '') if time_el else ''
+        job['description'] = _clean(card.get_text(' ', strip=True))
+        job['skills'] = []
+        job['salary'] = ''
+        job['experience_required'] = ''
+        job['type'] = _infer_type(job['title'])
+        job['is_remote'] = 'remote' in job['location'].lower()
+        href = link_el.get('href') if link_el else ''
         if href:
-            if href.startswith("http"):
-                job["apply_url"] = href.split("?")[0]
+            if href.startswith('http'):
+                job['apply_url'] = href.split('?')[0]
             else:
-                job["apply_url"] = BASE + href
+                job['apply_url'] = BASE + href
         else:
-            job["apply_url"] = ""
-
+            job['apply_url'] = ''
         return job
 
-
 def _clean(text: str) -> str:
-    return re.sub(r"\s+", " ", text or "").strip()
-
+    return re.sub('\\s+', ' ', text or '').strip()
 
 def _infer_type(title: str) -> str:
-    title = (title or "").lower()
-    if "intern" in title:
-        return "internship"
-    if "contract" in title or "freelance" in title:
-        return "contract"
-    return "full-time"
+    title = (title or '').lower()
+    if 'intern' in title:
+        return 'internship'
+    if 'contract' in title or 'freelance' in title:
+        return 'contract'
+    return 'full-time'

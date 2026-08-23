@@ -1,5 +1,9 @@
-'use client';
+// Module: app/components/AppShell.tsx
+// Defines component(s)/export(s): ThemeToggle, MoreMenu, AppShell
+// Defines function(s): isSectionActive, useCurrentSearchParams
+//
 
+'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -7,540 +11,262 @@ import Logo from './Logo';
 import Footer from './Footer';
 import PageTransition from './PageTransition';
 import { useAuth } from '@/lib/auth';
-
-// Primary items stay visible in the top-level nav; everything else lives
-// under the "More" dropdown so the header never overflows and pushes the
-// Dashboard / Sign out actions out of view.
 const primarySections = [
-  { href: '/about',          label: 'About' },
-  { href: '/github',         label: 'Code review' },
-  { href: '/jobs',           label: 'Jobs' },
-  { href: '/internships',    label: 'Internships' },
-  { href: '/resume/builder', label: 'Resume' },
+    { href: '/about', label: 'About' },
+    { href: '/github', label: 'Code review' },
+    { href: '/jobs', label: 'Jobs' },
+    { href: '/internships', label: 'Internships' },
+    { href: '/resume/builder', label: 'Resume' },
 ];
-
 const moreSections = [
-  { href: '/tracker',           label: 'My Applications' },
-  { href: '/remote-jobs',       label: 'Remote' },
-  { href: '/government-jobs',   label: 'Government' },
-  { href: '/companies',         label: 'Companies' },
-  { href: '/japan-jobs',        label: 'Japan' },
-  { href: '/japan-jobs?type=internship', label: 'Japan Intern' },
-  { href: '/europe-jobs',       label: 'Europe' },
-  { href: '/hackathons',        label: 'Hackathons' },
-  { href: '/leetcode',          label: 'LeetCode' },
-  { href: '/ats-checker',       label: 'ATS Checker' },
-  { href: '/cover-letter',      label: 'Cover Letter' },
-  { href: '/linkedin',          label: 'LinkedIn' },
+    { href: '/tracker', label: 'My Applications' },
+    { href: '/remote-jobs', label: 'Remote' },
+    { href: '/government-jobs', label: 'Government' },
+    { href: '/companies', label: 'Companies' },
+    { href: '/japan-jobs', label: 'Japan' },
+    { href: '/japan-jobs?type=internship', label: 'Japan Intern' },
+    { href: '/europe-jobs', label: 'Europe' },
+    { href: '/hackathons', label: 'Hackathons' },
+    { href: '/leetcode', label: 'LeetCode' },
+    { href: '/ats-checker', label: 'ATS Checker' },
+    { href: '/cover-letter', label: 'Cover Letter' },
+    { href: '/linkedin', label: 'LinkedIn' },
 ];
-
 const sections = [...primarySections, ...moreSections];
-
-// pathname?.startsWith(href) alone can't tell two nav items apart when they
-// share the same path and differ only by query string (e.g. '/japan-jobs'
-// vs '/japan-jobs?type=internship') — startsWith('/japan-jobs?type=...')
-// never matches because usePathname() never includes the query string.
-// This checks the path the normal way, then — only when another section
-// shares that same path — requires the query params that distinguish them
-// to actually match (falling back to "absent" for a section that doesn't
-// specify one).
-function isSectionActive(
-  href: string,
-  pathname: string | null,
-  searchParams: URLSearchParams,
-  allHrefs: string[],
-): boolean {
-  const [path, query] = href.split('?');
-
-  if (!pathname?.startsWith(path)) return false;
-
-  const siblings = allHrefs
-    .map((h) => h.split('?'))
-    .filter(([p]) => p === path);
-
-  if (siblings.length <= 1) return true;
-
-  const differentiatorKeys = new Set<string>();
-  siblings.forEach(([, q]) => {
-    new URLSearchParams(q || '').forEach((_v, k) => differentiatorKeys.add(k));
-  });
-
-  const hrefParams = new URLSearchParams(query || '');
-
-  let matches = true;
-  differentiatorKeys.forEach((key) => {
-    const hrefValue = hrefParams.get(key);
-    const currentValue = searchParams.get(key);
-    if ((hrefValue ?? '') !== (currentValue ?? '')) matches = false;
-  });
-
-  return matches;
+function isSectionActive(href: string, pathname: string | null, searchParams: URLSearchParams, allHrefs: string[]): boolean {
+    const [path, query] = href.split('?');
+    if (!pathname?.startsWith(path))
+        return false;
+    const siblings = allHrefs
+        .map((h) => h.split('?'))
+        .filter(([p]) => p === path);
+    if (siblings.length <= 1)
+        return true;
+    const differentiatorKeys = new Set<string>();
+    siblings.forEach(([, q]) => {
+        new URLSearchParams(q || '').forEach((_v, k) => differentiatorKeys.add(k));
+    });
+    const hrefParams = new URLSearchParams(query || '');
+    let matches = true;
+    differentiatorKeys.forEach((key) => {
+        const hrefValue = hrefParams.get(key);
+        const currentValue = searchParams.get(key);
+        if ((hrefValue ?? '') !== (currentValue ?? ''))
+            matches = false;
+    });
+    return matches;
 }
-
-// Deliberately NOT next/navigation's useSearchParams(): that hook forces
-// every page under this layout into a Suspense boundary (or opts the
-// whole route out of static rendering) in Next 14, which is way too big a
-// blast radius just to highlight a nav tab. Reading window.location.search
-// after mount gets the same result — starts empty (matches SSR, so no
-// hydration mismatch), then syncs on every render, which covers query-only
-// navigations (e.g. '/japan-jobs' -> '/japan-jobs?type=internship') that
-// don't change usePathname()'s value and so wouldn't otherwise re-trigger.
 function useCurrentSearchParams(): URLSearchParams {
-  const [search, setSearch] = useState('');
-
-  useEffect(() => {
-    const current = window.location.search;
-    if (current !== search) setSearch(current);
-  });
-
-  return useMemo(() => new URLSearchParams(search), [search]);
+    const [search, setSearch] = useState('');
+    useEffect(() => {
+        const current = window.location.search;
+        if (current !== search)
+            setSearch(current);
+    });
+    return useMemo(() => new URLSearchParams(search), [search]);
 }
-
 function ThemeToggle() {
-  const [dark, setDark] = useState(false);
-
-  useEffect(() => {
-    const stored = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia(
-      '(prefers-color-scheme: dark)'
-    ).matches;
-
-    const isDark = stored === 'dark' || (!stored && prefersDark);
-
-    setDark(isDark);
-
-    document.documentElement.setAttribute(
-      'data-theme',
-      isDark ? 'dark' : 'light'
-    );
-  }, []);
-
-  const toggle = () => {
-    const next = !dark;
-
-    setDark(next);
-
-    document.documentElement.setAttribute(
-      'data-theme',
-      next ? 'dark' : 'light'
-    );
-
-    localStorage.setItem('theme', next ? 'dark' : 'light');
-  };
-
-  return (
-    <button
-      onClick={toggle}
-      aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-      title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-      className="btn btn-ghost !px-2 !py-1.5 transition-transform duration-150 hover:scale-110 active:scale-95"
-    >
-      {dark ? (
-        <svg
-          width="17"
-          height="17"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <circle cx="12" cy="12" r="5" />
-          <line x1="12" y1="1" x2="12" y2="3" />
-          <line x1="12" y1="21" x2="12" y2="23" />
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-          <line x1="1" y1="12" x2="3" y2="12" />
-          <line x1="21" y1="12" x2="23" y2="12" />
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-        </svg>
-      ) : (
-        <svg
-          width="17"
-          height="17"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-        </svg>
-      )}
-    </button>
-  );
+    const [dark, setDark] = useState(false);
+    useEffect(() => {
+        const stored = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const isDark = stored === 'dark' || (!stored && prefersDark);
+        setDark(isDark);
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    }, []);
+    const toggle = () => {
+        const next = !dark;
+        setDark(next);
+        document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
+        localStorage.setItem('theme', next ? 'dark' : 'light');
+    };
+    return (<button onClick={toggle} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} title={dark ? 'Switch to light mode' : 'Switch to dark mode'} className="btn btn-ghost !px-2 !py-1.5 transition-transform duration-150 hover:scale-110 active:scale-95">
+      {dark ? (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="5"/>
+          <line x1="12" y1="1" x2="12" y2="3"/>
+          <line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/>
+          <line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>) : (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>)}
+    </button>);
 }
-
-function MoreMenu({
-  active,
-  pathname,
-  searchParams,
-}: {
-  active: boolean;
-  pathname: string | null;
-  searchParams: URLSearchParams;
+function MoreMenu({ active, pathname, searchParams, }: {
+    active: boolean;
+    pathname: string | null;
+    searchParams: URLSearchParams;
 }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', onClick);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, []);
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="nav-link relative flex items-center gap-1 pb-1 text-sm"
-        style={
-          active
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const onClick = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) {
+                setOpen(false);
+            }
+        };
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape')
+                setOpen(false);
+        };
+        document.addEventListener('mousedown', onClick);
+        document.addEventListener('keydown', onKey);
+        return () => {
+            document.removeEventListener('mousedown', onClick);
+            document.removeEventListener('keydown', onKey);
+        };
+    }, []);
+    return (<div className="relative" ref={ref}>
+      <button onClick={() => setOpen((v) => !v)} className="nav-link relative flex items-center gap-1 pb-1 text-sm" style={active
             ? { color: 'var(--ink)', fontWeight: 600 }
-            : undefined
-        }
-        aria-haspopup="menu"
-        aria-expanded={open}
-      >
+            : undefined} aria-haspopup="menu" aria-expanded={open}>
         More
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-          style={{
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{
             transition: 'transform 150ms ease',
             transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-          }}
-        >
-          <polyline points="6 9 12 15 18 9" />
+        }}>
+          <polyline points="6 9 12 15 18 9"/>
         </svg>
 
-        {active && (
-          <span
-            className="absolute -bottom-[1px] left-0 h-[2px] w-full rounded-full"
-            style={{ background: 'var(--indigo)' }}
-          />
-        )}
+        {active && (<span className="absolute -bottom-[1px] left-0 h-[2px] w-full rounded-full" style={{ background: 'var(--indigo)' }}/>)}
       </button>
 
-      <div
-        role="menu"
-        aria-hidden={!open}
-        className="absolute right-0 top-full z-50 mt-2 grid w-56 grid-cols-1 gap-0.5 rounded-[var(--radius-md)] border p-1.5"
-        style={{
-          borderColor: 'var(--line)',
-          background: 'var(--paper)',
-          boxShadow: '0 12px 32px -12px rgba(21, 23, 28, 0.35)',
-          // Rendered in the initial HTML at all times (so every link is
-          // crawlable without a click) — only its visibility/interactivity
-          // toggles with `open`. Do NOT go back to `{open && (...)}` here;
-          // that unmounts the links entirely, which is what made all 10
-          // "More" destinations invisible to Google's renderer.
-          opacity: open ? 1 : 0,
-          visibility: open ? 'visible' : 'hidden',
-          pointerEvents: open ? 'auto' : 'none',
-          transform: open ? 'translateY(0)' : 'translateY(-4px)',
-          transition: 'opacity 150ms ease, transform 150ms ease',
-        }}
-      >
+      <div role="menu" aria-hidden={!open} className="absolute right-0 top-full z-50 mt-2 grid w-56 grid-cols-1 gap-0.5 rounded-[var(--radius-md)] border p-1.5" style={{
+            borderColor: 'var(--line)',
+            background: 'var(--paper)',
+            boxShadow: '0 12px 32px -12px rgba(21, 23, 28, 0.35)',
+            opacity: open ? 1 : 0,
+            visibility: open ? 'visible' : 'hidden',
+            pointerEvents: open ? 'auto' : 'none',
+            transform: open ? 'translateY(0)' : 'translateY(-4px)',
+            transition: 'opacity 150ms ease, transform 150ms ease',
+        }}>
         {moreSections.map((s) => {
-          const isActive = isSectionActive(
-            s.href,
-            pathname,
-            searchParams,
-            moreSections.map((m) => m.href),
-          );
-
-          return (
-            <Link
-              key={s.href}
-              href={s.href}
-              role="menuitem"
-              tabIndex={open ? 0 : -1}
-              onClick={() => setOpen(false)}
-              className="rounded-[var(--radius-sm)] px-3 py-2 text-sm"
-              style={{
-                color: isActive ? 'var(--indigo)' : 'var(--ink)',
-                background: isActive ? 'var(--indigo-soft)' : 'transparent',
-                fontWeight: isActive ? 600 : 400,
-              }}
-            >
+            const isActive = isSectionActive(s.href, pathname, searchParams, moreSections.map((m) => m.href));
+            return (<Link key={s.href} href={s.href} role="menuitem" tabIndex={open ? 0 : -1} onClick={() => setOpen(false)} className="rounded-[var(--radius-sm)] px-3 py-2 text-sm" style={{
+                    color: isActive ? 'var(--indigo)' : 'var(--ink)',
+                    background: isActive ? 'var(--indigo-soft)' : 'transparent',
+                    fontWeight: isActive ? 600 : 400,
+                }}>
               {s.label}
-            </Link>
-          );
+            </Link>);
         })}
       </div>
-    </div>
-  );
+    </div>);
 }
-
-export default function AppShell({
-  children,
-}: {
-  children: React.ReactNode;
+export default function AppShell({ children, }: {
+    children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-  const searchParams = useCurrentSearchParams();
-  const { user, logout } = useAuth();
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  return (
-    <div className="shell">
-      <header
-        className={`glass-nav sticky top-0 z-40 border-b ${scrolled ? 'is-scrolled' : ''}`}
-        style={{ borderColor: 'var(--line)' }}
-      >
+    const pathname = usePathname();
+    const searchParams = useCurrentSearchParams();
+    const { user, logout } = useAuth();
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const [scrolled, setScrolled] = useState(false);
+    useEffect(() => {
+        setMobileOpen(false);
+    }, [pathname]);
+    useEffect(() => {
+        const onScroll = () => setScrolled(window.scrollY > 8);
+        onScroll();
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
+    }, []);
+    return (<div className="shell">
+      <header className={`glass-nav sticky top-0 z-40 border-b ${scrolled ? 'is-scrolled' : ''}`} style={{ borderColor: 'var(--line)' }}>
         <div className="container-xl flex h-14 items-center justify-between gap-3">
           <div className="flex items-center gap-6">
             <Link href="/dashboard" aria-label="Go to dashboard">
               <Logo />
             </Link>
 
-            <nav
-              className="hidden items-center gap-5 lg:flex"
-              aria-label="Main navigation"
-            >
+            <nav className="hidden items-center gap-5 lg:flex" aria-label="Main navigation">
               {primarySections.map((s) => {
-                const active = isSectionActive(
-                  s.href,
-                  pathname,
-                  searchParams,
-                  primarySections.map((p) => p.href),
-                );
-
-                return (
-                  <Link
-                    key={s.href}
-                    href={s.href}
-                    className="nav-link relative pb-1 text-sm whitespace-nowrap"
-                    style={
-                      active
-                        ? {
-                            color: 'var(--ink)',
-                            fontWeight: 600,
-                          }
-                        : undefined
+            const active = isSectionActive(s.href, pathname, searchParams, primarySections.map((p) => p.href));
+            return (<Link key={s.href} href={s.href} className="nav-link relative pb-1 text-sm whitespace-nowrap" style={active
+                    ? {
+                        color: 'var(--ink)',
+                        fontWeight: 600,
                     }
-                    aria-current={active ? 'page' : undefined}
-                  >
+                    : undefined} aria-current={active ? 'page' : undefined}>
                     {s.label}
 
-                    {active && (
-                      <span
-                        className="absolute -bottom-[1px] left-0 h-[2px] w-full rounded-full"
-                        style={{ background: 'var(--indigo)' }}
-                      />
-                    )}
-                  </Link>
-                );
-              })}
+                    {active && (<span className="absolute -bottom-[1px] left-0 h-[2px] w-full rounded-full" style={{ background: 'var(--indigo)' }}/>)}
+                  </Link>);
+        })}
 
-              <MoreMenu
-                active={moreSections.some((s) =>
-                  isSectionActive(s.href, pathname, searchParams, moreSections.map((m) => m.href)),
-                )}
-                pathname={pathname}
-                searchParams={searchParams}
-              />
+              <MoreMenu active={moreSections.some((s) => isSectionActive(s.href, pathname, searchParams, moreSections.map((m) => m.href)))} pathname={pathname} searchParams={searchParams}/>
             </nav>
           </div>
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
 
-            {user ? (
-              <>
-                <Link
-                  href="/dashboard"
-                  className="btn btn-primary text-sm hidden sm:inline-flex"
-                >
+            {user ? (<>
+                <Link href="/dashboard" className="btn btn-primary text-sm hidden sm:inline-flex">
                   Dashboard
                 </Link>
 
-                {!user.is_guest && (
-                  <button
-                    onClick={logout}
-                    className="btn btn-ghost !px-2 !py-1 text-sm hidden sm:inline-flex"
-                  >
+                {!user.is_guest && (<button onClick={logout} className="btn btn-ghost !px-2 !py-1 text-sm hidden sm:inline-flex">
                     Sign out
-                  </button>
-                )}
-              </>
-            ) : (
-              <Link
-                href="/login"
-                className="btn btn-secondary text-sm hidden sm:inline-flex"
-              >
+                  </button>)}
+              </>) : (<Link href="/login" className="btn btn-secondary text-sm hidden sm:inline-flex">
                 Sign in
-              </Link>
-            )}
+              </Link>)}
 
-            <button
-              className="btn btn-ghost !px-2 !py-1.5 lg:hidden"
-              aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
-              aria-expanded={mobileOpen}
-              onClick={() => setMobileOpen((v) => !v)}
-            >
-              {mobileOpen ? (
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              ) : (
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <line x1="3" y1="12" x2="21" y2="12" />
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <line x1="3" y1="18" x2="21" y2="18" />
-                </svg>
-              )}
+            <button className="btn btn-ghost !px-2 !py-1.5 lg:hidden" aria-label={mobileOpen ? 'Close menu' : 'Open menu'} aria-expanded={mobileOpen} onClick={() => setMobileOpen((v) => !v)}>
+              {mobileOpen ? (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>) : (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="3" y1="12" x2="21" y2="12"/>
+                  <line x1="3" y1="6" x2="21" y2="6"/>
+                  <line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>)}
             </button>
           </div>
         </div>
 
-        <div
-          className="border-t lg:hidden"
-          aria-hidden={!mobileOpen}
-          style={{
+        <div className="border-t lg:hidden" aria-hidden={!mobileOpen} style={{
             borderColor: 'var(--line)',
             background: 'var(--paper)',
-            // Always rendered so every nav link is present in the initial
-            // HTML (and crawlable without a click) — visibility toggles
-            // with `mobileOpen` via CSS instead of mount/unmount. On
-            // mobile this is the ONLY header nav Google's mobile-first
-            // indexing ever sees, so it must not be conditionally mounted.
             maxHeight: mobileOpen ? '600px' : '0px',
             overflow: 'hidden',
             opacity: mobileOpen ? 1 : 0,
             transition: 'max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease',
-          }}
-        >
-          <nav
-            className="container-xl flex flex-col py-3"
-            aria-label="Mobile navigation"
-          >
+        }}>
+          <nav className="container-xl flex flex-col py-3" aria-label="Mobile navigation">
             {sections.map((s) => {
-              const active = isSectionActive(
-                s.href,
-                pathname,
-                searchParams,
-                sections.map((sec) => sec.href),
-              );
-
-              return (
-                <Link
-                  key={s.href}
-                  href={s.href}
-                  tabIndex={mobileOpen ? 0 : -1}
-                  className="rounded-[var(--radius-sm)] px-3 py-3 text-sm font-medium"
-                  style={{
+            const active = isSectionActive(s.href, pathname, searchParams, sections.map((sec) => sec.href));
+            return (<Link key={s.href} href={s.href} tabIndex={mobileOpen ? 0 : -1} className="rounded-[var(--radius-sm)] px-3 py-3 text-sm font-medium" style={{
                     color: active ? 'var(--indigo)' : 'var(--ink)',
                     background: active
-                      ? 'var(--indigo-soft)'
-                      : 'transparent',
-                  }}
-                  aria-current={active ? 'page' : undefined}
-                >
+                        ? 'var(--indigo-soft)'
+                        : 'transparent',
+                }} aria-current={active ? 'page' : undefined}>
                   {s.label}
-                </Link>
-              );
-            })}
+                </Link>);
+        })}
 
-            <div
-              className="mt-2 border-t pt-3 flex items-center justify-between"
-              style={{ borderColor: 'var(--line)' }}
-            >
-              {user && !user.is_guest && (
-                <span
-                  className="eyebrow truncate max-w-[200px] px-3"
-                  title={user.email}
-                >
+            <div className="mt-2 border-t pt-3 flex items-center justify-between" style={{ borderColor: 'var(--line)' }}>
+              {user && !user.is_guest && (<span className="eyebrow truncate max-w-[200px] px-3" title={user.email}>
                   {user.email}
-                </span>
-              )}
+                </span>)}
 
-              {user ? (
-                <div className="ml-auto flex items-center gap-2">
-                  <Link
-                    href="/dashboard"
-                    tabIndex={mobileOpen ? 0 : -1}
-                    className="btn btn-primary text-sm"
-                  >
+              {user ? (<div className="ml-auto flex items-center gap-2">
+                  <Link href="/dashboard" tabIndex={mobileOpen ? 0 : -1} className="btn btn-primary text-sm">
                     Dashboard
                   </Link>
 
-                  {!user.is_guest && (
-                    <button
-                      onClick={logout}
-                      tabIndex={mobileOpen ? 0 : -1}
-                      className="btn btn-ghost !px-3 !py-2 text-sm"
-                    >
+                  {!user.is_guest && (<button onClick={logout} tabIndex={mobileOpen ? 0 : -1} className="btn btn-ghost !px-3 !py-2 text-sm">
                       Sign out
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <Link
-                  href="/login"
-                  tabIndex={mobileOpen ? 0 : -1}
-                  className="btn btn-secondary text-sm ml-auto"
-                >
+                    </button>)}
+                </div>) : (<Link href="/login" tabIndex={mobileOpen ? 0 : -1} className="btn btn-secondary text-sm ml-auto">
                   Sign in
-                </Link>
-              )}
+                </Link>)}
             </div>
           </nav>
         </div>
@@ -551,6 +277,5 @@ export default function AppShell({
       </main>
 
       <Footer />
-    </div>
-  );
+    </div>);
 }

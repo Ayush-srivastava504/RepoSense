@@ -1,69 +1,61 @@
+// Module: app/about/page.tsx
+// Defines component(s)/export(s): AboutPage
+//
+//
+
 import type { Metadata } from 'next';
 import Link from 'next/link';
-
 import { BASE_URL } from '@/lib/jobs';
 import { breadcrumbSchema } from '@/lib/structuredData';
-
 export const metadata: Metadata = {
-  title: 'About InternFlow — AI Code Review & Internship Platform',
-  description:
-    'InternFlow connects to your GitHub, reviews your code like a senior engineer would, and turns that work into an ATS-ready resume tuned for the job you want.',
-  alternates: {
-    canonical: `${BASE_URL}/about`,
-  },
-  openGraph: {
-    title: 'About InternFlow',
-    description:
-      'Built by students, for students — InternFlow turns your real GitHub work into proof and into a better resume.',
-    url: `${BASE_URL}/about`,
-  },
+    title: 'About InternFlow — AI Code Review & Internship Platform',
+    description: 'InternFlow connects to your GitHub, reviews your code like a senior engineer would, and turns that work into an ATS-ready resume tuned for the job you want.',
+    alternates: {
+        canonical: `${BASE_URL}/about`,
+    },
+    openGraph: {
+        title: 'About InternFlow',
+        description: 'Built by students, for students — InternFlow turns your real GitHub work into proof and into a better resume.',
+        url: `${BASE_URL}/about`,
+    },
 };
-
 const values = [
-  {
-    tag: 'why',
-    title: 'Built by students, for students',
-    body: 'We were tired of resumes full of vague bullet points and code reviews that only happen during a job interview. InternFlow turns the work you are already doing on GitHub into proof — and into a better resume.',
-  },
-  {
-    tag: 'how',
-    title: 'Real signal, not templates',
-    body: 'Every resume bullet is generated from your actual commits, pull requests, and AI review history — never a generic template filled in with guesses.',
-  },
-  {
-    tag: 'what',
-    title: 'A full workspace, not a single tool',
-    body: 'Code review, a connected GitHub workspace, a curated internship feed, and a resume builder — all reading from the same source of truth.',
-  },
+    {
+        tag: 'why',
+        title: 'Built by students, for students',
+        body: 'We were tired of resumes full of vague bullet points and code reviews that only happen during a job interview. InternFlow turns the work you are already doing on GitHub into proof — and into a better resume.',
+    },
+    {
+        tag: 'how',
+        title: 'Real signal, not templates',
+        body: 'Every resume bullet is generated from your actual commits, pull requests, and AI review history — never a generic template filled in with guesses.',
+    },
+    {
+        tag: 'what',
+        title: 'A full workspace, not a single tool',
+        body: 'Code review, a connected GitHub workspace, a curated internship feed, and a resume builder — all reading from the same source of truth.',
+    },
 ];
-
 const stats = [
-  { value: '1,200+', label: 'students' },
-  { value: '8,400', label: 'repos analyzed' },
-  { value: '3,100', label: 'resumes generated' },
+    { value: '1,200+', label: 'students' },
+    { value: '8,400', label: 'repos analyzed' },
+    { value: '3,100', label: 'resumes generated' },
 ];
-
 const team = [
-  {
-    name: 'Product & Engineering',
-    body: 'Small team, shipping weekly. We dogfood InternFlow on our own repos.',
-  },
+    {
+        name: 'Product & Engineering',
+        body: 'Small team, shipping weekly. We dogfood InternFlow on our own repos.',
+    },
 ];
-
 export default function AboutPage() {
-  const breadcrumb = breadcrumbSchema([
-    { name: 'Home', url: BASE_URL },
-    { name: 'About', url: `${BASE_URL}/about` },
-  ]);
-
-  return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(breadcrumb),
-        }}
-      />
+    const breadcrumb = breadcrumbSchema([
+        { name: 'Home', url: BASE_URL },
+        { name: 'About', url: `${BASE_URL}/about` },
+    ]);
+    return (<>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{
+            __html: JSON.stringify(breadcrumb),
+        }}/>
 
       <div>
         <p className="eyebrow eyebrow-accent">// about</p>
@@ -72,10 +64,7 @@ export default function AboutPage() {
           Why InternFlow exists
         </h1>
 
-        <p
-          className="mt-3 max-w-2xl text-sm leading-relaxed"
-          style={{ color: 'var(--ink-soft)' }}
-        >
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
           InternFlow connects to your GitHub, reviews your code like a senior
           engineer would, and turns that real work into a resume tuned for the
           internship you're applying to — all in one workspace.
@@ -83,16 +72,14 @@ export default function AboutPage() {
       </div>
 
       <div className="mt-8 flex flex-wrap gap-3">
-        {stats.map((s) => (
-          <div key={s.label} className="panel px-5 py-3">
+        {stats.map((s) => (<div key={s.label} className="panel px-5 py-3">
             <p className="display text-xl font-medium">{s.value}</p>
             <p className="eyebrow mt-0.5">{s.label}</p>
-          </div>
-        ))}
+          </div>))}
       </div>
 
       <div className="mt-12">
-        <hr className="hr-line mb-10" />
+        <hr className="hr-line mb-10"/>
 
         <p className="eyebrow eyebrow-accent mb-2">// the mission</p>
 
@@ -101,27 +88,22 @@ export default function AboutPage() {
         </h2>
 
         <div className="grid gap-5 sm:grid-cols-3">
-          {values.map((v) => (
-            <div key={v.tag} className="panel p-6">
+          {values.map((v) => (<div key={v.tag} className="panel p-6">
               <p className="eyebrow eyebrow-accent">// {v.tag}</p>
 
               <h3 className="display mt-3 text-lg font-medium">
                 {v.title}
               </h3>
 
-              <p
-                className="mt-2 text-sm leading-relaxed"
-                style={{ color: 'var(--ink-soft)' }}
-              >
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
                 {v.body}
               </p>
-            </div>
-          ))}
+            </div>))}
         </div>
       </div>
 
       <div className="mt-12">
-        <hr className="hr-line mb-10" />
+        <hr className="hr-line mb-10"/>
 
         <p className="eyebrow eyebrow-accent mb-2">// the team</p>
 
@@ -130,23 +112,18 @@ export default function AboutPage() {
         </h2>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          {team.map((t) => (
-            <div key={t.name} className="panel p-6">
+          {team.map((t) => (<div key={t.name} className="panel p-6">
               <p className="display text-base font-medium">{t.name}</p>
 
-              <p
-                className="mt-2 text-sm leading-relaxed"
-                style={{ color: 'var(--ink-soft)' }}
-              >
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
                 {t.body}
               </p>
-            </div>
-          ))}
+            </div>))}
         </div>
       </div>
 
       <div className="mt-12">
-        <hr className="hr-line mb-10" />
+        <hr className="hr-line mb-10"/>
 
         <p className="eyebrow eyebrow-accent mb-2">// contact</p>
 
@@ -155,18 +132,12 @@ export default function AboutPage() {
         </h2>
 
         <div className="panel p-6 max-w-md">
-          <p
-            className="text-sm leading-relaxed"
-            style={{ color: 'var(--ink-soft)' }}
-          >
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
             Questions, feedback, partnership requests, or a job/internship
             listing you'd like removed — reach out any time.
           </p>
 
-          <a
-            href="mailto:creatoramplified@gmail.com"
-            className="mt-3 inline-block text-sm font-medium underline"
-          >
+          <a href="mailto:creatoramplified@gmail.com" className="mt-3 inline-block text-sm font-medium underline">
             creatoramplified@gmail.com
           </a>
         </div>
@@ -184,14 +155,10 @@ export default function AboutPage() {
             </p>
           </div>
 
-          <Link
-            href="/dashboard"
-            className="btn btn-primary flex-shrink-0 whitespace-nowrap"
-          >
+          <Link href="/dashboard" className="btn btn-primary flex-shrink-0 whitespace-nowrap">
             Get started free
           </Link>
         </div>
       </div>
-    </>
-  );
+    </>);
 }

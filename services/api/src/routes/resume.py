@@ -1,20 +1,21 @@
+# Module: src/routes/resume.py
+# Defines class(es): ResumeData, GenerateResumeRequest, ExperienceEntry, EducationEntry, ProjectEntry, CertificationEntry
+# Defines function(s): test, generate_resume, generate_cover_letter, _strip_protocol, generate_structured_resume, create_resume, list_resumes
+#
+
 import asyncio
 import json
 import traceback
 from typing import List, Optional, Dict
-
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-
 from middleware.auth import verify_token
 from services.resume_service import ResumeService
 from services.resume_template_service import ResumeTemplateService
 from services.resume_pdf_service import ResumePDFService
 from services.job_queue import create_job, run_resume_job, run_cover_letter_job
-
-router = APIRouter(prefix="/api/resume", tags=["resume"])
-
+router = APIRouter(prefix='/api/resume', tags=['resume'])
 
 class ResumeData(BaseModel):
     title: str
@@ -31,7 +32,7 @@ class ExperienceEntry(BaseModel):
     role: str
     start: str
     end: str
-    location: Optional[str] = ""
+    location: Optional[str] = ''
     bullets: List[str] = []
 
 class EducationEntry(BaseModel):
@@ -42,204 +43,97 @@ class EducationEntry(BaseModel):
 class ProjectEntry(BaseModel):
     title: str
     tech: str
-    github: Optional[str] = ""
+    github: Optional[str] = ''
     bullets: List[str] = []
 
 class CertificationEntry(BaseModel):
     name: str
-    issuer: Optional[str] = ""
-    year: Optional[str] = ""
+    issuer: Optional[str] = ''
+    year: Optional[str] = ''
 
 class TechnicalSkills(BaseModel):
-    languages: Optional[str] = ""
-    ai_ml: Optional[str] = ""
-    backend: Optional[str] = ""
-    databases: Optional[str] = ""
-    tools: Optional[str] = ""
+    languages: Optional[str] = ''
+    ai_ml: Optional[str] = ''
+    backend: Optional[str] = ''
+    databases: Optional[str] = ''
+    tools: Optional[str] = ''
 
 class GenerateStructuredRequest(BaseModel):
     title: str
-    name: Optional[str] = ""
-    email: Optional[str] = ""
-    phone: Optional[str] = ""
+    name: Optional[str] = ''
+    email: Optional[str] = ''
+    phone: Optional[str] = ''
     summary: str
-    githubUrl: Optional[str] = ""
-    websiteUrl: Optional[str] = ""
-    skills: Optional[str] = ""                          # kept for backward compat
-    technical_skills: Optional[TechnicalSkills] = None  # new structured skills
+    githubUrl: Optional[str] = ''
+    websiteUrl: Optional[str] = ''
+    skills: Optional[str] = ''
+    technical_skills: Optional[TechnicalSkills] = None
     experience: List[ExperienceEntry] = []
     education: List[EducationEntry] = []
     projects: List[ProjectEntry] = []
     achievements: List[str] = []
     certifications: List[CertificationEntry] = []
 
-
-@router.get("/test")
+@router.get('/test')
 async def test():
-    return {"ok": True}
+    return {'ok': True}
 
-
-@router.post("/generate")
+@router.post('/generate')
 async def generate_resume(data: GenerateResumeRequest, user=Depends(verify_token)):
-    job_id = await create_job(
-        user_id=user["sub"],
-        job_type="resume",
-        payload={
-            "resume_type": data.resume_type,
-            "job_description": data.job_description,
-            "skills": data.skills,
-            "experience": data.experience,
-        },
-    )
-    asyncio.create_task(
-        run_resume_job(
-            job_id=job_id,
-            user_id=user["sub"],
-            resume_type=data.resume_type,
-            job_description=data.job_description,
-            skills=data.skills,
-            experience=data.experience,
-        )
-    )
-    return {"job_id": job_id, "status": "pending"}
-
+    job_id = await create_job(user_id=user['sub'], job_type='resume', payload={'resume_type': data.resume_type, 'job_description': data.job_description, 'skills': data.skills, 'experience': data.experience})
+    asyncio.create_task(run_resume_job(job_id=job_id, user_id=user['sub'], resume_type=data.resume_type, job_description=data.job_description, skills=data.skills, experience=data.experience))
+    return {'job_id': job_id, 'status': 'pending'}
 
 class GenerateCoverLetterRequest(BaseModel):
     job_description: str
     resume_text: str
-    company_name: Optional[str] = ""
+    company_name: Optional[str] = ''
 
-
-@router.post("/cover-letter")
+@router.post('/cover-letter')
 async def generate_cover_letter(data: GenerateCoverLetterRequest, user=Depends(verify_token)):
-    job_id = await create_job(
-        user_id=user["sub"],
-        job_type="cover_letter",
-        payload={
-            "job_description": data.job_description,
-            "resume_text": data.resume_text,
-            "company_name": data.company_name or "",
-        },
-    )
-    asyncio.create_task(
-        run_cover_letter_job(
-            job_id=job_id,
-            user_id=user["sub"],
-            job_description=data.job_description,
-            resume_text=data.resume_text,
-            company_name=data.company_name or "",
-        )
-    )
-    return {"job_id": job_id, "status": "pending"}
-
+    job_id = await create_job(user_id=user['sub'], job_type='cover_letter', payload={'job_description': data.job_description, 'resume_text': data.resume_text, 'company_name': data.company_name or ''})
+    asyncio.create_task(run_cover_letter_job(job_id=job_id, user_id=user['sub'], job_description=data.job_description, resume_text=data.resume_text, company_name=data.company_name or ''))
+    return {'job_id': job_id, 'status': 'pending'}
 
 def _strip_protocol(url: str) -> str:
     if not url:
-        return ""
-    return url.replace("https://", "").replace("http://", "").rstrip("/")
+        return ''
+    return url.replace('https://', '').replace('http://', '').rstrip('/')
 
-
-@router.post("/generate-structured")
+@router.post('/generate-structured')
 async def generate_structured_resume(data: GenerateStructuredRequest, user=Depends(verify_token)):
     try:
         template_service = ResumeTemplateService()
         pdf_service = ResumePDFService()
-
-        email = data.email or user.get("email", "")
-
-        # If new structured skills provided use them, else fall back to flat skills string
+        email = data.email or user.get('email', '')
         if data.technical_skills:
-            skills_dict = {
-                "languages": data.technical_skills.languages or "",
-                "ai_ml":     data.technical_skills.ai_ml or "",
-                "backend":   data.technical_skills.backend or "",
-                "databases": data.technical_skills.databases or "",
-                "tools":     data.technical_skills.tools or "",
-            }
+            skills_dict = {'languages': data.technical_skills.languages or '', 'ai_ml': data.technical_skills.ai_ml or '', 'backend': data.technical_skills.backend or '', 'databases': data.technical_skills.databases or '', 'tools': data.technical_skills.tools or ''}
         else:
-            skills_dict = {
-                "languages": data.skills or "",
-                "ai_ml":     "",
-                "backend":   "",
-                "databases": "",
-                "tools":     "",
-            }
-
-        # name must never be blank — an empty header line leaves LaTeX with
-        # no paragraph started before the \\[6pt] line break, which crashes
-        # pdflatex with "There's no line here to end."
-        resume_name = (data.name or data.title or "").strip() or "Resume"
-
-        structured_data = {
-            "name":            resume_name,
-            "email":           email,
-            "phone":           data.phone,
-            "github_url":      data.githubUrl,
-            "github_display":  _strip_protocol(data.githubUrl),
-            "website_url":     data.websiteUrl,
-            "website_display": _strip_protocol(data.websiteUrl),
-            "summary":         data.summary,
-            "technical_skills": skills_dict,
-            "experience": [
-                {
-                    "company":  exp.company,
-                    "role":     exp.role,
-                    "duration": f"{exp.start} – {exp.end}".strip(" –") if exp.start or exp.end else "",
-                    "location": exp.location or "",
-                    "bullets":  [b for b in exp.bullets if b.strip()],
-                }
-                for exp in data.experience
-            ],
-            "education": [
-                {
-                    "institution": edu.institution,
-                    "degree":      edu.degree,
-                    "year":        edu.year,
-                }
-                for edu in data.education
-            ],
-            "projects": [
-                {
-                    "title":   proj.title,
-                    "tech":    proj.tech,
-                    "github":  proj.github or "",
-                    "bullets": [b for b in proj.bullets if b.strip()],
-                }
-                for proj in data.projects
-            ],
-            "achievements": [a for a in data.achievements if a.strip()],
-            "certifications": [
-                {"name": c.name, "issuer": c.issuer or "", "year": c.year or ""}
-                for c in data.certifications
-                if c.name.strip()
-            ],
-        }
-
+            skills_dict = {'languages': data.skills or '', 'ai_ml': '', 'backend': '', 'databases': '', 'tools': ''}
+        resume_name = (data.name or data.title or '').strip() or 'Resume'
+        structured_data = {'name': resume_name, 'email': email, 'phone': data.phone, 'github_url': data.githubUrl, 'github_display': _strip_protocol(data.githubUrl), 'website_url': data.websiteUrl, 'website_display': _strip_protocol(data.websiteUrl), 'summary': data.summary, 'technical_skills': skills_dict, 'experience': [{'company': exp.company, 'role': exp.role, 'duration': f'{exp.start} – {exp.end}'.strip(' –') if exp.start or exp.end else '', 'location': exp.location or '', 'bullets': [b for b in exp.bullets if b.strip()]} for exp in data.experience], 'education': [{'institution': edu.institution, 'degree': edu.degree, 'year': edu.year} for edu in data.education], 'projects': [{'title': proj.title, 'tech': proj.tech, 'github': proj.github or '', 'bullets': [b for b in proj.bullets if b.strip()]} for proj in data.projects], 'achievements': [a for a in data.achievements if a.strip()], 'certifications': [{'name': c.name, 'issuer': c.issuer or '', 'year': c.year or ''} for c in data.certifications if c.name.strip()]}
         latex_resume = template_service.render_resume(structured_data)
-        pdf_path = await pdf_service.compile_latex("structured_resume", latex_resume)
-        return FileResponse(pdf_path, media_type="application/pdf", filename="resume.pdf")
-
+        pdf_path = await pdf_service.compile_latex('structured_resume', latex_resume)
+        return FileResponse(pdf_path, media_type='application/pdf', filename='resume.pdf')
     except Exception as exc:
         traceback.print_exc()
-        raise HTTPException(500, f"PDF generation failed: {str(exc)}")
+        raise HTTPException(500, f'PDF generation failed: {str(exc)}')
 
-
-@router.post("/create")
+@router.post('/create')
 async def create_resume(data: ResumeData, user=Depends(verify_token)):
     try:
         service = ResumeService()
         content_str = json.dumps(data.content) if isinstance(data.content, dict) else data.content
-        return await service.create_resume(user["sub"], data.title, content_str)
+        return await service.create_resume(user['sub'], data.title, content_str)
     except Exception as exc:
         traceback.print_exc()
-        raise HTTPException(503, f"Database unavailable: {str(exc)}")
+        raise HTTPException(503, f'Database unavailable: {str(exc)}')
 
-
-@router.get("/list")
+@router.get('/list')
 async def list_resumes(user=Depends(verify_token)):
     try:
         service = ResumeService()
-        return await service.list_resumes(user["sub"])
+        return await service.list_resumes(user['sub'])
     except Exception as exc:
         traceback.print_exc()
-        raise HTTPException(503, f"Database unavailable: {str(exc)}")
+        raise HTTPException(503, f'Database unavailable: {str(exc)}')

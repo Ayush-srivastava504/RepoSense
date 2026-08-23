@@ -1,200 +1,159 @@
+// Module: app/layout.tsx
+// Defines component(s)/export(s): BASE_URL, RootLayout
+//
+//
+
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
 import { Inter, Fraunces, IBM_Plex_Mono } from 'next/font/google';
-
 import AppShell from './components/AppShell';
-
 const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-body',
-  display: 'swap',
+    subsets: ['latin'],
+    variable: '--font-body',
+    display: 'swap',
 });
-
 const fraunces = Fraunces({
-  subsets: ['latin'],
-  weight: ['500', '600'],
-  style: ['normal', 'italic'],
-  variable: '--font-display',
-  preload: false,
-  display: 'swap',
+    subsets: ['latin'],
+    weight: ['500', '600'],
+    style: ['normal', 'italic'],
+    variable: '--font-display',
+    preload: false,
+    display: 'swap',
 });
-
 const plexMono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500'],
-  variable: '--font-mono',
-  preload: false,
-  display: 'swap',
+    subsets: ['latin'],
+    weight: ['400', '500'],
+    variable: '--font-mono',
+    preload: false,
+    display: 'swap',
 });
-
 const BASE_URL = 'https://www.intern-flow.in';
-
 export const metadata: Metadata = {
-  metadataBase: new URL(BASE_URL),
-
-  title: {
-    default: 'InternFlow — AI Code Review & Internship Platform for Students',
-    template: '%s | InternFlow',
-  },
-
-  description:
-    'InternFlow helps B.Tech and engineering students land internships faster. Get AI-powered code reviews on your GitHub commits and generate ATS-ready resume bullets automatically.',
-
-  keywords: [
-    'internship platform India',
-    'AI code review for students',
-    'GitHub code review tool',
-    'resume builder for engineers',
-    'ATS resume generator',
-    'internship finder India',
-    'B.Tech internship',
-    'software internship 2026',
-    'AI resume builder',
-    'code review tool',
-  ],
-
-  authors: [{ name: 'InternFlow', url: BASE_URL }],
-  creator: 'InternFlow',
-  publisher: 'InternFlow',
-
-  alternates: {
-    canonical: BASE_URL,
-  },
-
-  openGraph: {
-    type: 'website',
-    url: BASE_URL,
-    siteName: 'InternFlow',
-    title: 'InternFlow — AI Code Review & Internship Platform',
-    description:
-      'Connect your GitHub, get AI reviews on every commit, and turn your real work into a resume that gets you hired.',
-    images: [
-      {
-        url: `${BASE_URL}/og-image.png`,
-        width: 1200,
-        height: 630,
-        alt: 'InternFlow — AI Code Review & Internship Platform',
-      },
-    ],
-    locale: 'en_IN',
-  },
-
-  twitter: {
-    card: 'summary_large_image',
-    title: 'InternFlow — AI Code Review & Internship Platform',
-    description:
-      'Connect your GitHub, get AI reviews on every commit, and turn your real work into a resume that gets you hired.',
-    images: [`${BASE_URL}/og-image.png`],
-    creator: '@internflow_in',
-  },
-
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-snippet': -1,
-      'max-image-preview': 'large',
-      'max-video-preview': -1,
+    metadataBase: new URL(BASE_URL),
+    title: {
+        default: 'InternFlow — AI Code Review & Internship Platform for Students',
+        template: '%s | InternFlow',
     },
-  },
-
-  icons: {
-    icon: [
-      {
-        url: '/favicon.ico',
-      },
-      {
-        url: '/favicon-16x16.png',
-        sizes: '16x16',
-        type: 'image/png',
-      },
-      {
-        url: '/favicon-32x32.png',
-        sizes: '32x32',
-        type: 'image/png',
-      },
+    description: 'InternFlow helps B.Tech and engineering students land internships faster. Get AI-powered code reviews on your GitHub commits and generate ATS-ready resume bullets automatically.',
+    keywords: [
+        'internship platform India',
+        'AI code review for students',
+        'GitHub code review tool',
+        'resume builder for engineers',
+        'ATS resume generator',
+        'internship finder India',
+        'B.Tech internship',
+        'software internship 2026',
+        'AI resume builder',
+        'code review tool',
     ],
-
-    apple: [
-      {
-        url: '/apple-touch-icon.png',
-        sizes: '180x180',
-      },
-    ],
-  },
-
-  manifest: '/site.webmanifest',
+    authors: [{ name: 'InternFlow', url: BASE_URL }],
+    creator: 'InternFlow',
+    publisher: 'InternFlow',
+    alternates: {
+        canonical: BASE_URL,
+    },
+    openGraph: {
+        type: 'website',
+        url: BASE_URL,
+        siteName: 'InternFlow',
+        title: 'InternFlow — AI Code Review & Internship Platform',
+        description: 'Connect your GitHub, get AI reviews on every commit, and turn your real work into a resume that gets you hired.',
+        images: [
+            {
+                url: `${BASE_URL}/og-image.png`,
+                width: 1200,
+                height: 630,
+                alt: 'InternFlow — AI Code Review & Internship Platform',
+            },
+        ],
+        locale: 'en_IN',
+    },
+    twitter: {
+        card: 'summary_large_image',
+        title: 'InternFlow — AI Code Review & Internship Platform',
+        description: 'Connect your GitHub, get AI reviews on every commit, and turn your real work into a resume that gets you hired.',
+        images: [`${BASE_URL}/og-image.png`],
+        creator: '@internflow_in',
+    },
+    robots: {
+        index: true,
+        follow: true,
+        googleBot: {
+            index: true,
+            follow: true,
+            'max-snippet': -1,
+            'max-image-preview': 'large',
+            'max-video-preview': -1,
+        },
+    },
+    icons: {
+        icon: [
+            {
+                url: '/favicon.ico',
+            },
+            {
+                url: '/favicon-16x16.png',
+                sizes: '16x16',
+                type: 'image/png',
+            },
+            {
+                url: '/favicon-32x32.png',
+                sizes: '32x32',
+                type: 'image/png',
+            },
+        ],
+        apple: [
+            {
+                url: '/apple-touch-icon.png',
+                sizes: '180x180',
+            },
+        ],
+    },
+    manifest: '/site.webmanifest',
 };
-
-// Explicit rather than relying on Next's default — makes mobile
-// rendering intent unambiguous to crawlers/Lighthouse, and matches
-// site.webmanifest's theme_color for a consistent mobile browser chrome.
 export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  themeColor: '#ffffff',
+    width: 'device-width',
+    initialScale: 1,
+    themeColor: '#ffffff',
 };
-
 const organizationSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'Organization',
-  name: 'InternFlow',
-  url: BASE_URL,
-  logo: `${BASE_URL}/og-image.png`,
-  sameAs: ['https://twitter.com/internflow_in'],
-  description:
-    'AI-powered platform that reviews student GitHub code and generates ATS-ready resumes.',
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'InternFlow',
+    url: BASE_URL,
+    logo: `${BASE_URL}/og-image.png`,
+    sameAs: ['https://twitter.com/internflow_in'],
+    description: 'AI-powered platform that reviews student GitHub code and generates ATS-ready resumes.',
 };
-
 const websiteSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'WebSite',
-  name: 'InternFlow',
-  url: BASE_URL,
-  potentialAction: {
-    '@type': 'SearchAction',
-    target: `${BASE_URL}/jobs?search={search_term_string}`,
-    'query-input': 'required name=search_term_string',
-  },
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'InternFlow',
+    url: BASE_URL,
+    potentialAction: {
+        '@type': 'SearchAction',
+        target: `${BASE_URL}/jobs?search={search_term_string}`,
+        'query-input': 'required name=search_term_string',
+    },
 };
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
+export default function RootLayout({ children, }: Readonly<{
+    children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en">
-      {/* AdSense's loader script used to be hard-coded here in <head>, so it
-          loaded on every route — including ad-free pages like the homepage —
-          where Lighthouse flagged almost all of it as unused JavaScript.
-          AdSlot.tsx now injects it lazily, only on pages that actually
-          render an ad unit (see app/components/AdSlot.tsx). */}
-      <body
-        className={`${inter.variable} ${fraunces.variable} ${plexMono.variable} font-sans antialiased`}
-      >
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
+    return (<html lang="en">
+      
+      <body className={`${inter.variable} ${fraunces.variable} ${plexMono.variable} font-sans antialiased`}>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{
             __html: JSON.stringify(organizationSchema),
-          }}
-        />
+        }}/>
 
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
+        <script type="application/ld+json" dangerouslySetInnerHTML={{
             __html: JSON.stringify(websiteSchema),
-          }}
-        />
+        }}/>
 
-        {/* Google Analytics */}
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-2SC90HTR7G"
-          strategy="afterInteractive"
-        />
+        
+        <Script src="https://www.googletagmanager.com/gtag/js?id=G-2SC90HTR7G" strategy="afterInteractive"/>
 
         <Script id="google-analytics" strategy="afterInteractive">
           {`
@@ -216,6 +175,5 @@ export default function RootLayout({
 
         <AppShell>{children}</AppShell>
       </body>
-    </html>
-  );
+    </html>);
 }

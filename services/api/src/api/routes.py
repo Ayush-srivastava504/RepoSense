@@ -1,24 +1,28 @@
+# Module: src/api/routes.py
+# Defines class(es): ReviewRequest
+# Defines function(s): review_code, auto_fix, health
+#
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from services.ai_service import AIService
 from middleware.auth import verify_token
-
-router = APIRouter(prefix="/api/v1", tags=["review"])
+router = APIRouter(prefix='/api/v1', tags=['review'])
 
 class ReviewRequest(BaseModel):
     code: str
-    language: str = "python"
+    language: str = 'python'
 
-@router.post("/review")
+@router.post('/review')
 async def review_code(req: ReviewRequest, user=Depends(verify_token)):
     ai = AIService()
     return await ai.review_code(req.code, req.language)
 
-@router.post("/auto-fix")
+@router.post('/auto-fix')
 async def auto_fix(req: ReviewRequest, user=Depends(verify_token)):
     ai = AIService()
     return await ai.auto_fix(req.code, req.language)
 
-@router.get("/health")
+@router.get('/health')
 async def health():
-    return {"status": "alive"}
+    return {'status': 'alive'}

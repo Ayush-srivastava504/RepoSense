@@ -1,3 +1,8 @@
+# Module: rag/src/models/schemas.py
+# Defines class(es): FileContent, IndexRequest, GenerateRequest, GenerateResponse
+#
+#
+
 from pydantic import BaseModel
 from typing import List
 
@@ -11,7 +16,7 @@ class IndexRequest(BaseModel):
 
 class GenerateRequest(BaseModel):
     repo_name: str
-    prompt: str = "Generate a comprehensive README.md file for this repository"
+    prompt: str = 'Generate a comprehensive README.md file for this repository'
 
 class GenerateResponse(BaseModel):
     readme: str

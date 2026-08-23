@@ -1,3 +1,8 @@
+# Module: rag/src/services/vector_store.py
+# Defines class(es): VectorStore
+#
+#
+
 import faiss
 import numpy as np
 import pickle
@@ -6,7 +11,8 @@ from typing import List, Tuple
 from ..config import VECTOR_STORE_PATH
 
 class VectorStore:
-    def __init__(self, dimension: int = 384):
+
+    def __init__(self, dimension: int=384):
         self.dimension = dimension
         self.index = faiss.IndexFlatIP(dimension)
         self.metadata = []
@@ -16,7 +22,7 @@ class VectorStore:
         self.index.add(vectors)
         self.metadata.extend(metadata)
 
-    def search(self, query_vector: np.ndarray, k: int = 5) -> List[Tuple[float, dict]]:
+    def search(self, query_vector: np.ndarray, k: int=5) -> List[Tuple[float, dict]]:
         distances, indices = self.index.search(query_vector, k)
         results = []
         for idx, dist in zip(indices[0], distances[0]):
@@ -26,22 +32,19 @@ class VectorStore:
 
     def save(self):
         os.makedirs(VECTOR_STORE_PATH, exist_ok=True)
-        faiss.write_index(self.index, f"{VECTOR_STORE_PATH}/index.faiss")
-        with open(f"{VECTOR_STORE_PATH}/metadata.pkl", "wb") as f:
+        faiss.write_index(self.index, f'{VECTOR_STORE_PATH}/index.faiss')
+        with open(f'{VECTOR_STORE_PATH}/metadata.pkl', 'wb') as f:
             pickle.dump(self.metadata, f)
 
     def load(self):
-        """Load both index and metadata together to prevent partial load crashes."""
-        idx_path = f"{VECTOR_STORE_PATH}/index.faiss"
-        meta_path = f"{VECTOR_STORE_PATH}/metadata.pkl"
-        # Only load if both files exist to avoid partial load corruption
+        idx_path = f'{VECTOR_STORE_PATH}/index.faiss'
+        meta_path = f'{VECTOR_STORE_PATH}/metadata.pkl'
         if os.path.exists(idx_path) and os.path.exists(meta_path):
             try:
                 self.index = faiss.read_index(idx_path)
-                with open(meta_path, "rb") as f:
+                with open(meta_path, 'rb') as f:
                     self.metadata = pickle.load(f)
             except Exception as e:
-                print(f"[WARN] Failed to load vector store: {e}; starting fresh")
-                # Reset to empty state on load failure
+                print(f'[WARN] Failed to load vector store: {e}; starting fresh')
                 self.index = faiss.IndexFlatIP(self.dimension)
                 self.metadata = []

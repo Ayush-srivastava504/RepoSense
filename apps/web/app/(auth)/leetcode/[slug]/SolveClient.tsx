@@ -1,5 +1,9 @@
-'use client';
+// Module: app/(auth)/leetcode/[slug]/SolveClient.tsx
+// Defines component(s)/export(s): SolvePageContent, SolveClient
+// Defines function(s): difficultyColor, markSolved
+// Defines type(s): ProblemDetail, TestResult, JudgeResponse
 
+'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -7,168 +11,151 @@ import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import AuthGuard from '../../../components/AuthGuard';
 import { trackEvent } from '@/lib/analytics';
-
-// Split out of page.tsx so page.tsx can stay a server component and export
-// generateMetadata() — a 'use client' file can't export that, which is why
-// every problem page previously shared the same generic title/description
-// instead of one reflecting the actual problem.
-
 interface ProblemDetail {
-  slug: string;
-  title: string;
-  difficulty: string;
-  description: string;
-  function_name: string;
-  starter_code: string;
+    slug: string;
+    title: string;
+    difficulty: string;
+    description: string;
+    function_name: string;
+    starter_code: string;
 }
-
 interface TestResult {
-  input: any;
-  expected: any;
-  actual: any;
-  passed: boolean;
-  error?: string | null;
+    input: any;
+    expected: any;
+    actual: any;
+    passed: boolean;
+    error?: string | null;
 }
-
 interface JudgeResponse {
-  ok: boolean;
-  all_passed: boolean;
-  summary?: string | null;
-  error?: string | null;
-  results: TestResult[];
+    ok: boolean;
+    all_passed: boolean;
+    summary?: string | null;
+    error?: string | null;
+    results: TestResult[];
 }
-
 function difficultyColor(d: string) {
-  if (d === 'Easy') return 'var(--green)';
-  if (d === 'Hard') return 'var(--rust)';
-  return 'var(--score-amber)';
+    if (d === 'Easy')
+        return 'var(--green)';
+    if (d === 'Hard')
+        return 'var(--rust)';
+    return 'var(--score-amber)';
 }
-
 function markSolved(slug: string) {
-  // We don't know which level(s) this problem belongs to from here, so we
-  // record it against every level's progress key that already exists in
-  // localStorage — the level picker only ever reads keys for levels it has
-  // shown, so this stays harmless and self-contained per browser.
-  if (typeof window === 'undefined') return;
-  for (let i = 0; i < window.localStorage.length; i++) {
-    const key = window.localStorage.key(i);
-    if (!key || !key.startsWith('leetcode-progress-')) continue;
-    try {
-      const raw = window.localStorage.getItem(key);
-      const arr: string[] = raw ? JSON.parse(raw) : [];
-      if (!arr.includes(slug)) {
-        arr.push(slug);
-        window.localStorage.setItem(key, JSON.stringify(arr));
-      }
-    } catch {
-      // ignore malformed entries
-    }
-  }
-}
-
-function SolvePageContent() {
-  useAuth();
-  const params = useParams<{ slug: string }>();
-  const router = useRouter();
-  const slug = params.slug;
-
-  const [problem, setProblem] = useState<ProblemDetail | null>(null);
-  const [code, setCode] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [running, setRunning] = useState(false);
-  const [error, setError] = useState('');
-  const [verdict, setVerdict] = useState<JudgeResponse | null>(null);
-  const [notes, setNotes] = useState('');
-  const [notesSaved, setNotesSaved] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError('');
-      setVerdict(null);
-      try {
-        const data: ProblemDetail = await api.get(`/leetcode/problems/${slug}`);
-        if (cancelled) return;
-        setProblem(data);
-        setCode(data.starter_code);
-      } catch (e: any) {
-        if (!cancelled) {
-          setError(
-            e?.status === 404
-              ? "This problem doesn't have an in-app judge yet — try it on LeetCode directly."
-              : e?.message || 'Could not load this problem.',
-          );
+    if (typeof window === 'undefined')
+        return;
+    for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i);
+        if (!key || !key.startsWith('leetcode-progress-'))
+            continue;
+        try {
+            const raw = window.localStorage.getItem(key);
+            const arr: string[] = raw ? JSON.parse(raw) : [];
+            if (!arr.includes(slug)) {
+                arr.push(slug);
+                window.localStorage.setItem(key, JSON.stringify(arr));
+            }
         }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [slug]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const raw = window.localStorage.getItem(`leetcode-notes-${slug}`);
-    setNotes(raw || '');
-  }, [slug]);
-
-  function saveNotes(value: string) {
-    setNotes(value);
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(`leetcode-notes-${slug}`, value);
-    setNotesSaved(true);
-    window.setTimeout(() => setNotesSaved(false), 1200);
-  }
-
-  async function runTests() {
-    if (!problem) return;
-    setRunning(true);
-    setVerdict(null);
-    setError('');
-    try {
-      const result: JudgeResponse = await api.post(`/leetcode/problems/${slug}/submit`, { code });
-      setVerdict(result);
-      trackEvent('leetcode_submit', { slug, all_passed: result.all_passed });
-      if (result.all_passed) {
-        markSolved(slug);
-      }
-    } catch (e: any) {
-      setError(e?.message || 'Could not run your solution. Try again in a moment.');
-    } finally {
-      setRunning(false);
+        catch {
+        }
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="container-xl py-12">
+}
+function SolvePageContent() {
+    useAuth();
+    const params = useParams<{
+        slug: string;
+    }>();
+    const router = useRouter();
+    const slug = params.slug;
+    const [problem, setProblem] = useState<ProblemDetail | null>(null);
+    const [code, setCode] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [running, setRunning] = useState(false);
+    const [error, setError] = useState('');
+    const [verdict, setVerdict] = useState<JudgeResponse | null>(null);
+    const [notes, setNotes] = useState('');
+    const [notesSaved, setNotesSaved] = useState(false);
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            setLoading(true);
+            setError('');
+            setVerdict(null);
+            try {
+                const data: ProblemDetail = await api.get(`/leetcode/problems/${slug}`);
+                if (cancelled)
+                    return;
+                setProblem(data);
+                setCode(data.starter_code);
+            }
+            catch (e: any) {
+                if (!cancelled) {
+                    setError(e?.status === 404
+                        ? "This problem doesn't have an in-app judge yet — try it on LeetCode directly."
+                        : e?.message || 'Could not load this problem.');
+                }
+            }
+            finally {
+                if (!cancelled)
+                    setLoading(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [slug]);
+    useEffect(() => {
+        if (typeof window === 'undefined')
+            return;
+        const raw = window.localStorage.getItem(`leetcode-notes-${slug}`);
+        setNotes(raw || '');
+    }, [slug]);
+    function saveNotes(value: string) {
+        setNotes(value);
+        if (typeof window === 'undefined')
+            return;
+        window.localStorage.setItem(`leetcode-notes-${slug}`, value);
+        setNotesSaved(true);
+        window.setTimeout(() => setNotesSaved(false), 1200);
+    }
+    async function runTests() {
+        if (!problem)
+            return;
+        setRunning(true);
+        setVerdict(null);
+        setError('');
+        try {
+            const result: JudgeResponse = await api.post(`/leetcode/problems/${slug}/submit`, { code });
+            setVerdict(result);
+            trackEvent('leetcode_submit', { slug, all_passed: result.all_passed });
+            if (result.all_passed) {
+                markSolved(slug);
+            }
+        }
+        catch (e: any) {
+            setError(e?.message || 'Could not run your solution. Try again in a moment.');
+        }
+        finally {
+            setRunning(false);
+        }
+    }
+    if (loading) {
+        return (<div className="container-xl py-12">
         <p className="text-sm" style={{ color: 'var(--ink-soft)' }}>Loading problem…</p>
-      </div>
-    );
-  }
-
-  if (!problem) {
-    return (
-      <div className="container-xl py-12">
+      </div>);
+    }
+    if (!problem) {
+        return (<div className="container-xl py-12">
         <p className="eyebrow eyebrow-accent mb-3">// leetcode</p>
         <h1 className="text-2xl font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
           No in-app judge for this problem yet
         </h1>
-        {error && (
-          <p className="mt-3 text-sm" style={{ color: 'var(--ink-soft)' }}>{error}</p>
-        )}
+        {error && (<p className="mt-3 text-sm" style={{ color: 'var(--ink-soft)' }}>{error}</p>)}
         <button onClick={() => router.push('/leetcode')} className="btn btn-secondary mt-6">
           Back to problem list
         </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="container-xl py-12">
+      </div>);
+    }
+    return (<div className="container-xl py-12">
       <Link href="/leetcode" className="text-xs" style={{ color: 'var(--ink-soft)' }}>
         &larr; All problems
       </Link>
@@ -196,73 +183,38 @@ function SolvePageContent() {
           <div className="mt-8">
             <div className="flex items-center justify-between">
               <p className="field-label">Your notes</p>
-              {notesSaved && (
-                <span className="text-[11px]" style={{ color: 'var(--green)' }}>Saved</span>
-              )}
+              {notesSaved && (<span className="text-[11px]" style={{ color: 'var(--green)' }}>Saved</span>)}
             </div>
-            <textarea
-              value={notes}
-              onChange={(e) => saveNotes(e.target.value)}
-              placeholder="Approach, complexity, gotchas — kept only in this browser."
-              rows={6}
-              className="field mt-2 text-xs leading-relaxed"
-            />
+            <textarea value={notes} onChange={(e) => saveNotes(e.target.value)} placeholder="Approach, complexity, gotchas — kept only in this browser." rows={6} className="field mt-2 text-xs leading-relaxed"/>
           </div>
         </div>
 
         <div>
           <p className="field-label">Your solution</p>
-          <textarea
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            spellCheck={false}
-            rows={16}
-            className="field font-mono text-xs leading-relaxed"
-            style={{ tabSize: 4 }}
-          />
+          <textarea value={code} onChange={(e) => setCode(e.target.value)} spellCheck={false} rows={16} className="field font-mono text-xs leading-relaxed" style={{ tabSize: 4 }}/>
 
-          {error && (
-            <p className="mt-2 text-xs" style={{ color: 'var(--rust)' }} role="alert">{error}</p>
-          )}
+          {error && (<p className="mt-2 text-xs" style={{ color: 'var(--rust)' }} role="alert">{error}</p>)}
 
           <button onClick={runTests} disabled={running} className="btn btn-primary mt-3">
             {running ? 'Running…' : 'Run tests'}
           </button>
 
-          {verdict && (
-            <div className="mt-5 space-y-3">
-              <div
-                className="rounded-[var(--radius-md)] border p-4"
-                style={{
-                  borderColor: verdict.all_passed ? 'var(--green)' : 'var(--line)',
-                }}
-              >
-                <p
-                  className="text-sm font-medium"
-                  style={{ color: verdict.all_passed ? 'var(--green)' : 'var(--rust)' }}
-                >
+          {verdict && (<div className="mt-5 space-y-3">
+              <div className="rounded-[var(--radius-md)] border p-4" style={{
+                borderColor: verdict.all_passed ? 'var(--green)' : 'var(--line)',
+            }}>
+                <p className="text-sm font-medium" style={{ color: verdict.all_passed ? 'var(--green)' : 'var(--rust)' }}>
                   {verdict.ok
-                    ? verdict.summary || (verdict.all_passed ? 'All tests passed' : 'Some tests failed')
-                    : 'Could not run your code'}
+                ? verdict.summary || (verdict.all_passed ? 'All tests passed' : 'Some tests failed')
+                : 'Could not run your code'}
                 </p>
-                {verdict.error && (
-                  <pre
-                    className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs"
-                    style={{ color: 'var(--ink-soft)' }}
-                  >
+                {verdict.error && (<pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs" style={{ color: 'var(--ink-soft)' }}>
                     {verdict.error}
-                  </pre>
-                )}
+                  </pre>)}
               </div>
 
-              {verdict.results.length > 0 && (
-                <div className="space-y-2">
-                  {verdict.results.map((r, i) => (
-                    <div
-                      key={i}
-                      className="rounded-[var(--radius-sm)] border p-3 text-xs"
-                      style={{ borderColor: 'var(--line)' }}
-                    >
+              {verdict.results.length > 0 && (<div className="space-y-2">
+                  {verdict.results.map((r, i) => (<div key={i} className="rounded-[var(--radius-sm)] border p-3 text-xs" style={{ borderColor: 'var(--line)' }}>
                       <div className="flex items-center justify-between">
                         <span className="font-medium">Test case {i + 1}</span>
                         <span style={{ color: r.passed ? 'var(--green)' : 'var(--rust)' }}>
@@ -273,25 +225,16 @@ function SolvePageContent() {
                         input: {JSON.stringify(r.input)} — expected: {JSON.stringify(r.expected)}
                         {!r.passed && ` — got: ${JSON.stringify(r.actual)}`}
                       </p>
-                      {r.error && (
-                        <p className="mt-1" style={{ color: 'var(--rust)' }}>{r.error}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+                      {r.error && (<p className="mt-1" style={{ color: 'var(--rust)' }}>{r.error}</p>)}
+                    </div>))}
+                </div>)}
+            </div>)}
         </div>
       </div>
-    </div>
-  );
+    </div>);
 }
-
 export default function SolveClient() {
-  return (
-    <AuthGuard>
+    return (<AuthGuard>
       <SolvePageContent />
-    </AuthGuard>
-  );
+    </AuthGuard>);
 }
