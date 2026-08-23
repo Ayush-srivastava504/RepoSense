@@ -38,6 +38,12 @@ Allow: /cover-letter
 Allow: /skills
 Allow: /skills/
 Allow: /companies/
+Allow: /careers
+Allow: /careers/
+Allow: /resume-for
+Allow: /resume-for/
+Allow: /jobs-in
+Allow: /jobs-in/
 
 Disallow: /dashboard
 Disallow: /dashboard/
