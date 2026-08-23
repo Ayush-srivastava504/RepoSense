@@ -7,15 +7,34 @@ import { canonicalPathForJob } from '@/lib/slug';
 import { getJobs, BASE_URL } from '@/lib/jobs';
 import { buildUrlsetXml } from '@/lib/sitemapXml';
 export const dynamic = 'force-dynamic';
+// Give this route more headroom on platforms that respect it (e.g. Vercel Pro).
+// Harmless no-op elsewhere.
+export const maxDuration = 60;
 const PAGE_SIZE = 500;
 const MAX_PAGES = 30;
 export async function GET() {
-    const jobs: Awaited<ReturnType<typeof getJobs>> = [];
-    for (let page = 0; page < MAX_PAGES; page++) {
-        const batch = await getJobs({ limit: PAGE_SIZE, offset: page * PAGE_SIZE });
-        jobs.push(...batch);
-        if (batch.length < PAGE_SIZE)
-            break;
+    let jobs: Awaited<ReturnType<typeof getJobs>> = [];
+    try {
+        // Fetch all pages concurrently instead of awaiting them one at a time — up to
+        // 30 sequential round trips easily exceeds a serverless function's timeout,
+        // which cuts the response off mid-write and drops the closing </urlset> tag
+        // (surfaces in Search Console as "Sitemap can be read, but has errors —
+        // Missing XML tag"). Running them in parallel bounds wall time to the
+        // slowest single request rather than the sum of all of them.
+        const pages = await Promise.allSettled(Array.from({ length: MAX_PAGES }, (_, page) => getJobs({ limit: PAGE_SIZE, offset: page * PAGE_SIZE })));
+        for (const result of pages) {
+            // Assemble in order and stop at the first failed or short page, so we
+            // never splice in a later page while silently skipping a failed earlier
+            // one and leaving a gap in the sitemap.
+            if (result.status !== 'fulfilled')
+                break;
+            jobs = jobs.concat(result.value);
+            if (result.value.length < PAGE_SIZE)
+                break;
+        }
+    }
+    catch (err) {
+        console.error('Failed to build jobs sitemap:', err);
     }
     const xml = buildUrlsetXml(jobs
         .filter((job) => job?.id)
