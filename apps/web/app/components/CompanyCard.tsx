@@ -5,12 +5,13 @@
 
 import Link from 'next/link';
 import type { Company } from '@/lib/companies';
+import { companySlug } from '@/lib/companies';
 import { timeAgo } from '@/lib/timeAgo';
 import CompanyLogo from './CompanyLogo';
 export default function CompanyCard({ company }: {
     company: Company;
 }) {
-    return (<Link href={`/jobs?search=${encodeURIComponent(company.company)}`} className="panel group flex items-center gap-3 p-3 sm:p-4 transition-all touch-manipulation active:scale-[0.99] hover:-translate-y-1 hover:shadow-lg">
+    return (<Link href={`/companies/${companySlug(company.company)}`} className="panel group flex items-center gap-3 p-3 sm:p-4 transition-all touch-manipulation active:scale-[0.99] hover:-translate-y-1 hover:shadow-lg">
       <CompanyLogo company={company.company} logoDomain={company.logo_domain} size={40}/>
 
       <div className="min-w-0 flex-1">

@@ -34,6 +34,20 @@ const EMPTY_RESPONSE: CompaniesResponse = {
     startup: EMPTY_SECTION,
     mass_hire_threshold: 0,
 };
+export function companySlug(name: string): string {
+    return name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+}
+export async function getCompanyBySlug(slug: string): Promise<Company | null> {
+    // 200 is the API's hard cap (limit_per_section, le=200) — asking for more 422s and
+    // getCompanies() swallows that into an empty response, so this would silently 404
+    // every company page.
+    const { top, mass_hire, startup } = await getCompanies(200);
+    const all = [...top.companies, ...mass_hire.companies, ...startup.companies];
+    return all.find((c) => companySlug(c.company) === slug) ?? null;
+}
 export async function getCompanies(limitPerSection = 60): Promise<CompaniesResponse> {
     try {
         const res = await fetch(`${API_BASE_URL}/api/companies/?limit_per_section=${limitPerSection}`, { next: { revalidate: 3600 } });

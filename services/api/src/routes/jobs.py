@@ -15,7 +15,7 @@ def _lower_top_companies() -> list[str]:
     return [c.lower() for c in TOP_COMPANY_TIER]
 
 @router.get('/')
-async def get_jobs(limit: int=Query(default=200, ge=1, le=500), offset: int=Query(default=0, ge=0), source: str | None=Query(default=None), search: str | None=Query(default=None), type: str | None=Query(default=None, description="Filter by job type, e.g. 'internship'"), category: str | None=Query(default=None, pattern='^(remote|government)$', description="'remote' for is_remote=true, 'government' for is_government=true"), job_group: str | None=Query(default=None, pattern='^(software|sales|finance|other)$', description='Coarse role filter: software | sales | finance | other'), country: str | None=Query(default=None, description="Filter by country, e.g. 'Japan'. Case-insensitive exact match."), sort: str=Query(default='recent', pattern='^(recent|ranked)$', description="'recent' (default, unchanged) or 'ranked' for the boosted first-page ordering")):
+async def get_jobs(limit: int=Query(default=200, ge=1, le=500), offset: int=Query(default=0, ge=0), source: str | None=Query(default=None), search: str | None=Query(default=None), type: str | None=Query(default=None, description="Filter by job type, e.g. 'internship'"), category: str | None=Query(default=None, pattern='^(remote|government)$', description="'remote' for is_remote=true, 'government' for is_government=true"), job_group: str | None=Query(default=None, pattern='^(software|sales|finance|other)$', description='Coarse role filter: software | sales | finance | other'), country: str | None=Query(default=None, description="Filter by country, e.g. 'Japan'. Case-insensitive exact match."), company: str | None=Query(default=None, description='Filter by company name. Case-insensitive exact match, used by /companies/[slug] hub pages.'), skill: str | None=Query(default=None, description='Filter by skill/technology. Matches enriched_keywords first, falls back to title/description, used by /skills/[slug] hub pages.'), sort: str=Query(default='recent', pattern='^(recent|ranked)$', description="'recent' (default, unchanged) or 'ranked' for the boosted first-page ordering")):
     pool = await get_db_pool()
     if pool is None:
         raise HTTPException(503, 'Database unavailable')
@@ -37,6 +37,17 @@ async def get_jobs(limit: int=Query(default=200, ge=1, le=500), offset: int=Quer
     if country:
         params.append(country)
         conditions.append(f'lower(country) = lower(${len(params)})')
+    if company:
+        params.append(company)
+        conditions.append(f'lower(company) = lower(${len(params)})')
+    if skill:
+        params.append(skill)
+        n = len(params)
+        conditions.append(f"""(
+            EXISTS (SELECT 1 FROM unnest(coalesce(enriched_keywords, '{{}}')) k WHERE k ILIKE ${n})
+            OR title ILIKE '%' || ${n} || '%'
+            OR description ILIKE '%' || ${n} || '%'
+        )""")
     if search:
         params.append(f'%{search}%')
         n = len(params)

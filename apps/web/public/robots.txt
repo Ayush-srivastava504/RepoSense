@@ -21,16 +21,23 @@ Allow: /tools/
 Allow: /tracker
 Allow: /japan-jobs
 Allow: /japan-jobs/
-Allow: /leetcode
-Allow: /leetcode/
+Allow: /japan-internships
+Allow: /japan-internships/
 Allow: /europe-jobs
 Allow: /europe-jobs/
+Allow: /leetcode
+Allow: /leetcode/
 Allow: /resume
 Allow: /resume/
 Allow: /github
 Allow: /github/
 Allow: /linkedin
 Allow: /linkedin/
+Allow: /ats-checker
+Allow: /cover-letter
+Allow: /skills
+Allow: /skills/
+Allow: /companies/
 
 Disallow: /dashboard
 Disallow: /dashboard/

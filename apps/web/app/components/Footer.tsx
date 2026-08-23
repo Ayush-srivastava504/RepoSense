@@ -16,6 +16,10 @@ const columns = [
             { label: 'Remote jobs', href: '/remote-jobs' },
             { label: 'Government jobs', href: '/government-jobs' },
             { label: 'Companies', href: '/companies' },
+            { label: 'Browse by skill', href: '/skills' },
+            { label: 'Browse by city', href: '/jobs-in' },
+            { label: 'Career paths', href: '/careers' },
+            { label: 'Resume guides', href: '/resume-for' },
             { label: 'Hackathons', href: '/hackathons' },
             { label: 'Japan jobs & internships', href: '/japan-jobs' },
             { label: 'Europe jobs', href: '/europe-jobs' },
@@ -27,6 +31,17 @@ const columns = [
         links: [
             { label: 'LeetCode', href: '/leetcode' },
             { label: 'AI code review', href: '/github' },
+        ],
+    },
+    {
+        heading: 'Popular skills',
+        links: [
+            { label: 'Python jobs', href: '/skills/python' },
+            { label: 'React jobs', href: '/skills/react' },
+            { label: 'SQL jobs', href: '/skills/sql' },
+            { label: 'AWS jobs', href: '/skills/aws' },
+            { label: 'Java jobs', href: '/skills/java' },
+            { label: 'All skills', href: '/skills' },
         ],
     },
     {

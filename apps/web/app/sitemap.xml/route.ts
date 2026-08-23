@@ -13,6 +13,11 @@ export async function GET() {
         `${BASE_URL}/sitemap-hackathons.xml`,
         `${BASE_URL}/sitemap-tools.xml`,
         `${BASE_URL}/sitemap-blog.xml`,
+        `${BASE_URL}/sitemap-skills.xml`,
+        `${BASE_URL}/sitemap-companies.xml`,
+        `${BASE_URL}/sitemap-locations.xml`,
+        `${BASE_URL}/sitemap-resume.xml`,
+        `${BASE_URL}/sitemap-careers.xml`,
     ];
     const body = `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

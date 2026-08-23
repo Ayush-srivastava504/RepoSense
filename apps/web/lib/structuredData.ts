@@ -158,6 +158,10 @@ export function eventSchema(params: {
     }
     return schema;
 }
+function parseFirstNumber(text: string): number | null {
+    const match = text.replace(/,/g, '').match(/[\d.]+/);
+    return match ? Number(match[0]) : null;
+}
 export function jobPostingSchema(job: Job, canonicalUrl: string) {
     const employmentType = /intern/i.test(job.type ?? '')
         ? 'INTERN'
@@ -166,25 +170,37 @@ export function jobPostingSchema(job: Job, canonicalUrl: string) {
             : /contract/i.test(job.type ?? '')
                 ? 'CONTRACTOR'
                 : 'FULL_TIME';
+    const description = job.enriched_overview
+        ? `${job.enriched_overview}\n\n${job.description || ''}`.trim()
+        : job.description || `${job.title} at ${job.company}`;
+    // Google requires validThrough (or treats the posting as stale); fall back to
+    // posted_at + 45 days, or 30 days out, when the source never gave us a deadline.
+    const validThrough = job.deadline
+        ?? (job.posted_at
+            ? new Date(new Date(job.posted_at).getTime() + 45 * 24 * 60 * 60 * 1000).toISOString()
+            : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString());
     const schema: Record<string, any> = {
         '@context': 'https://schema.org',
         '@type': 'JobPosting',
         title: job.title,
-        description: job.description || `${job.title} at ${job.company}`,
+        description,
         identifier: {
             '@type': 'PropertyValue',
             name: job.company,
             value: job.id,
         },
         datePosted: job.posted_at,
-        ...(job.deadline ? { validThrough: job.deadline } : {}),
+        validThrough,
         employmentType,
         hiringOrganization: {
             '@type': 'Organization',
             name: job.company,
-            sameAs: job.apply_domain ? `https://${job.apply_domain}` : undefined,
+            ...(job.apply_domain ? { sameAs: `https://${job.apply_domain}` } : {}),
+            ...(job.logo_domain ? { logo: `https://www.google.com/s2/favicons?domain=${job.logo_domain}&sz=256` } : {}),
         },
-        directApply: true,
+        // These listings redirect off-site to the employer's own application flow rather
+        // than accepting an application directly on this URL.
+        directApply: false,
         url: canonicalUrl,
     };
     if (job.is_remote) {
@@ -204,14 +220,16 @@ export function jobPostingSchema(job: Job, canonicalUrl: string) {
             },
         };
     }
-    if (job.salary || job.stipend) {
+    const compensationText = job.salary || job.stipend;
+    const compensationValue = compensationText ? parseFirstNumber(compensationText) : null;
+    if (compensationValue) {
         schema.baseSalary = {
             '@type': 'MonetaryAmount',
             currency: 'INR',
             value: {
                 '@type': 'QuantitativeValue',
-                value: job.salary || job.stipend,
-                unitText: job.stipend ? 'MONTH' : 'YEAR',
+                value: compensationValue,
+                unitText: /year|annum|lpa/i.test(compensationText || '') ? 'YEAR' : 'MONTH',
             },
         };
     }

@@ -22,8 +22,15 @@ export async function GET() {
         { loc: `${BASE_URL}/tracker`, lastmod: now, changefreq: 'weekly', priority: 0.6 },
         { loc: `${BASE_URL}/japan-jobs`, lastmod: now, changefreq: 'daily', priority: 0.8 },
         { loc: `${BASE_URL}/japan-jobs?type=internship`, lastmod: now, changefreq: 'daily', priority: 0.8 },
+        { loc: `${BASE_URL}/japan-internships`, lastmod: now, changefreq: 'daily', priority: 0.8 },
         { loc: `${BASE_URL}/europe-jobs`, lastmod: now, changefreq: 'daily', priority: 0.8 },
         { loc: `${BASE_URL}/leetcode`, lastmod: now, changefreq: 'weekly', priority: 0.7 },
+        { loc: `${BASE_URL}/resume`, lastmod: now, changefreq: 'monthly', priority: 0.7 },
+        { loc: `${BASE_URL}/resume/builder`, lastmod: now, changefreq: 'monthly', priority: 0.6 },
+        { loc: `${BASE_URL}/github`, lastmod: now, changefreq: 'monthly', priority: 0.7 },
+        { loc: `${BASE_URL}/linkedin`, lastmod: now, changefreq: 'monthly', priority: 0.7 },
+        { loc: `${BASE_URL}/ats-checker`, lastmod: now, changefreq: 'monthly', priority: 0.7 },
+        { loc: `${BASE_URL}/cover-letter`, lastmod: now, changefreq: 'monthly', priority: 0.7 },
     ]);
     return new Response(xml, { headers: { 'Content-Type': 'application/xml' } });
 }
