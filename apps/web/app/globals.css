@@ -375,10 +375,12 @@ html {
   from {
     opacity: 0;
     transform: translateY(22px);
+    filter: blur(6px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
+    filter: blur(0);
   }
 }
 
@@ -386,10 +388,12 @@ html {
   from {
     opacity: 0;
     transform: translateY(28px) scale(0.96);
+    filter: blur(6px);
   }
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+    filter: blur(0);
   }
 }
 
@@ -455,6 +459,10 @@ html {
 
 .scroll-reveal.is-visible {
   animation: reveal-up 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  /* Belt-and-braces: guarantees the blur clears even if the animation is
+     skipped, interrupted, or not supported, instead of relying solely on
+     the keyframe's `to` state. */
+  filter: none;
 }
 
 .scroll-reveal-group:not(.is-visible) > * {
