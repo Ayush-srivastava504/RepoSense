@@ -41,6 +41,24 @@ const nextConfig = {
                 destination: '/japan-jobs?type=internship',
                 permanent: true,
             },
+            // Canonicalize the apex domain to www in a single hop. Every
+            // canonical tag, sitemap entry, and OG tag in this app is hardcoded
+            // to https://www.intern-flow.in, so any request that reaches the
+            // apex host needs to redirect straight to www — previously this
+            // only happened (unreliably) at the DNS/hosting layer, which is
+            // what was causing "Page with redirect" validation failures in
+            // Search Console.
+            {
+                source: '/:path*',
+                has: [
+                    {
+                        type: 'host',
+                        value: 'intern-flow.in',
+                    },
+                ],
+                destination: 'https://www.intern-flow.in/:path*',
+                permanent: true,
+            },
         ];
     },
     webpack: (config) => {

@@ -51,4 +51,13 @@ Disallow: /api/
 Disallow: /_next/
 Disallow: /static/
 
+# Listing pages already canonicalize to their bare, unparameterized URL
+# (e.g. /jobs, /internships), but nothing previously stopped Google from
+# crawling deep into pagination/search/location query strings first,
+# burning crawl budget on near-duplicate listing shells instead of reaching
+# job detail pages.
+Disallow: /*?*page=
+Disallow: /*?*search=
+Disallow: /*?*loc=
+
 Sitemap: https://www.intern-flow.in/sitemap.xml

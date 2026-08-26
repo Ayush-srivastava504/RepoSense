@@ -5,8 +5,8 @@
 
 import type { Metadata } from 'next';
 import Script from 'next/script';
-import { notFound } from 'next/navigation';
-import { jobIdFromSlug, canonicalPathForJob } from '@/lib/slug';
+import { notFound, permanentRedirect } from 'next/navigation';
+import { jobIdFromSlug, canonicalCategoryForJob, canonicalPathForJob } from '@/lib/slug';
 import { getJobById, BASE_URL } from '@/lib/jobs';
 import { jobPostingSchema, breadcrumbSchema } from '@/lib/structuredData';
 import JobDetail from '@/app/components/JobDetail';
@@ -37,6 +37,14 @@ export default async function JobDetailPage({ params, }: {
     const job = await getJobById(jobIdFromSlug(params.slug));
     if (!job) {
         notFound();
+    }
+    // A job whose true category isn't 'jobs' (internship / remote / government)
+    // must not render a second, fully-formed page here — that's what was
+    // producing duplicate 200-OK pages with a canonical pointing elsewhere.
+    // Redirect to the real canonical URL instead of just declaring it in
+    // <link rel="canonical">.
+    if (canonicalCategoryForJob(job) !== 'jobs') {
+        permanentRedirect(canonicalPathForJob(job));
     }
     const canonicalPath = canonicalPathForJob(job);
     const canonicalUrl = `${BASE_URL}${canonicalPath}`;

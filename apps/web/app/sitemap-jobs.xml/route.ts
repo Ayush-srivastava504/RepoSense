@@ -36,8 +36,21 @@ export async function GET() {
     catch (err) {
         console.error('Failed to build jobs sitemap:', err);
     }
+    // Only ship currently-live listings. Shipping the full historical backlog
+    // (including jobs past their application deadline) hands Google tens of
+    // thousands of URLs a day that are no longer worth crawling, which is a
+    // large part of why "Discovered – currently not indexed" keeps climbing —
+    // it trains Google to treat this sitemap as low-value.
+    const now = Date.now();
+    const isLive = (job: (typeof jobs)[number]) => {
+        if (!job.deadline)
+            return true;
+        const deadline = new Date(job.deadline).getTime();
+        return Number.isNaN(deadline) || deadline >= now;
+    };
     const xml = buildUrlsetXml(jobs
         .filter((job) => job?.id)
+        .filter(isLive)
         .map((job) => ({
         loc: `${BASE_URL}${canonicalPathForJob(job)}`,
         lastmod: job.posted_at ? new Date(job.posted_at).toISOString() : new Date().toISOString(),
