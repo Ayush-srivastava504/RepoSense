@@ -171,7 +171,8 @@ const faqData: FAQItem[] = [
   }
 ];
 
-export default function FAQAccordion() {
+export default function FAQAccordion({ items }: { items?: FAQItem[] } = {}) {
+  const data = items && items.length > 0 ? items : faqData;
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const toggleFAQ = (index: number) => {
@@ -180,7 +181,7 @@ export default function FAQAccordion() {
 
   return (
     <div className="space-y-3">
-      {faqData.map((faq, index) => (
+      {data.map((faq, index) => (
         <div 
           key={index}
           className="panel card-lift overflow-hidden transition-all duration-200"
@@ -191,11 +192,12 @@ export default function FAQAccordion() {
         >
           <button
             onClick={() => toggleFAQ(index)}
-            className="w-full flex items-center justify-between p-5 text-left hover:bg-[var(--bg-soft)] transition-colors duration-150"
+            aria-expanded={openIndex === index}
+            className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-[var(--bg-soft)] transition-colors duration-150 sm:p-5"
           >
-            <h3 className="display text-base font-medium pr-8">{faq.question}</h3>
+            <h3 className="display text-sm font-medium pr-2 sm:text-base sm:pr-8">{faq.question}</h3>
             <span 
-              className="flex-shrink-0 text-2xl font-light transition-transform duration-300"
+              className="flex-shrink-0 text-xl font-light transition-transform duration-300 sm:text-2xl"
               style={{ 
                 color: 'var(--ink-soft)',
                 transform: openIndex === index ? 'rotate(45deg)' : 'rotate(0deg)'
@@ -212,7 +214,7 @@ export default function FAQAccordion() {
               opacity: openIndex === index ? 1 : 0,
             }}
           >
-            <div className="px-5 pb-5">
+            <div className="px-4 pb-4 sm:px-5 sm:pb-5">
               <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
                 {faq.answer}
               </p>

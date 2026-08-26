@@ -14,6 +14,7 @@ import { SKILLS, getSkillBySlug, getRelatedSkills } from '@/app/skills/data';
 import { breadcrumbSchema, faqSchema } from '@/lib/structuredData';
 import JobCard from '@/app/components/JobCard';
 import TrackView from '@/app/components/TrackView';
+import FAQAccordion from '@/app/components/FAQAccordion';
 
 export const dynamicParams = false;
 
@@ -68,7 +69,7 @@ export default async function SkillHubPage({ params, }: {
         { name: 'Skills', url: `${BASE_URL}/skills` },
         { name: skill.name, url },
     ]);
-    const faqs = faqSchema([
+    const pageFaqs = [
         {
             question: `How many ${skill.name} jobs are open right now?`,
             answer: `InternFlow tracks active ${skill.name} jobs and internships from company career pages and job boards, refreshed daily — see the live list above for the current count.`,
@@ -83,7 +84,12 @@ export default async function SkillHubPage({ params, }: {
                 ? `Companies currently hiring for ${skill.name} on InternFlow include ${companies.slice(0, 5).join(', ')}, among others.`
                 : `Check the Companies page on InternFlow for the full list of companies actively hiring, and filter by ${skill.name} on the Jobs page.`,
         },
-    ]);
+        {
+            question: `Is ${skill.name} a hard skill, a technical skill, or a soft skill?`,
+            answer: `${skill.name} is a technical skill — a hands-on, verifiable ability specific to ${skill.category.toLowerCase()} work. It belongs in your resume's dedicated skills section and, ideally, backed by a project or a GitHub repo an interviewer can check.`,
+        },
+    ];
+    const faqs = faqSchema(pageFaqs);
 
     return (<main className="w-full">
       <Script id="skill-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
@@ -91,20 +97,20 @@ export default async function SkillHubPage({ params, }: {
       <TrackView event="skill_hub_view" params={{ skill: skill.slug }}/>
 
       <div className="mx-auto w-full max-w-5xl px-3 py-8 sm:px-4 sm:py-12">
-        <nav className="mb-6 text-sm" style={{ color: 'var(--ink-soft)' }}>
+        <nav className="mb-6 flex flex-wrap items-center gap-x-1 text-sm" style={{ color: 'var(--ink-soft)' }}>
           <Link href="/">Home</Link> <span aria-hidden="true">/</span>{' '}
-          <Link href="/skills">Skills</Link> <span aria-hidden="true">/</span> {skill.name}
+          <Link href="/skills">Skills</Link> <span aria-hidden="true">/</span> <span>{skill.name}</span>
         </nav>
 
         <p className="eyebrow eyebrow-accent">// {skill.category.toLowerCase()}</p>
         <h1 className="display mt-2 text-3xl font-medium sm:text-4xl">{skill.name} Jobs &amp; Internships</h1>
         <p className="mt-4 max-w-2xl leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{skill.heroDescription}</p>
 
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link href={`/jobs?search=${encodeURIComponent(skill.searchTerm)}`} className="btn btn-primary">
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <Link href={`/jobs?search=${encodeURIComponent(skill.searchTerm)}`} className="btn btn-primary w-full text-center sm:w-auto">
             Browse all {skill.name} jobs
           </Link>
-          <Link href="/tools/ats-resume-checker" className="btn">
+          <Link href="/tools/ats-resume-checker" className="btn w-full text-center sm:w-auto">
             Check my resume for {skill.name}
           </Link>
         </div>
@@ -163,15 +169,9 @@ export default async function SkillHubPage({ params, }: {
           </ul>
         </section>
 
-        <section className="mt-10 space-y-3">
-          <h2 className="display text-xl font-medium">Frequently asked questions</h2>
-          {[
-            { q: `How many ${skill.name} jobs are open right now?`, a: `InternFlow tracks active ${skill.name} jobs and internships from company career pages and job boards, refreshed daily.` },
-            { q: `Do I need a resume tailored for ${skill.name} roles?`, a: `Yes — listing "${skill.name}" explicitly under skills and in project bullets helps with ATS filters. Try the ATS resume checker above.` },
-          ].map((faq) => (<div key={faq.q} className="panel p-4 sm:p-5">
-              <p className="font-medium">{faq.q}</p>
-              <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{faq.a}</p>
-            </div>))}
+        <section className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
+          <h2 className="display text-xl font-medium mb-6">Frequently asked questions</h2>
+          <FAQAccordion items={pageFaqs} />
         </section>
 
         {related.length > 0 && (<section className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>

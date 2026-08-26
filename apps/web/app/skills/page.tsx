@@ -9,6 +9,7 @@ import Script from 'next/script';
 import { BASE_URL } from '@/lib/jobs';
 import { SKILLS, type SkillDefinition } from '@/app/skills/data';
 import { breadcrumbSchema, faqSchema } from '@/lib/structuredData';
+import FAQAccordion from '@/app/components/FAQAccordion';
 
 export const metadata: Metadata = {
     title: 'Skills for Resume: Hard Skills, Soft Skills & Technical Skills',
@@ -109,11 +110,11 @@ export default function SkillsIndexPage() {
           resume, with real examples.
         </p>
 
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/ats-checker" className="btn btn-primary">
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <Link href="/ats-checker" className="btn btn-primary w-full text-center sm:w-auto">
             Check my resume — free
           </Link>
-          <Link href="/tools/resume-builder" className="btn">
+          <Link href="/tools/resume-builder" className="btn w-full text-center sm:w-auto">
             Build a resume
           </Link>
         </div>
@@ -122,20 +123,55 @@ export default function SkillsIndexPage() {
         <section className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
           <h2 className="display text-xl font-medium">Hard skills vs. soft skills vs. technical skills</h2>
           <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-            These three terms get used loosely, so here&apos;s the plain distinction. <strong>Hard
-            skills</strong> are learnable, testable abilities — SQL, financial modeling, welding —
-            you either can do them or you can&apos;t, and it&apos;s usually easy to verify.{' '}
-            <strong>Technical skills</strong> are a subset of hard skills specific to a technical
-            field: programming languages, frameworks, cloud platforms, data tools. Every technical
-            skill is a hard skill, but not every hard skill is technical. <strong>Soft
-            skills</strong> are behavioral — communication, teamwork, time management — harder to
-            prove on paper, which is exactly why most resumes list too many of them with no
-            evidence.
+            These three terms get used loosely on most resumes — here&apos;s the plain,
+            point-by-point breakdown of what separates them and how each gets checked.
           </p>
+
+          <div className="mt-4 -mx-3 overflow-x-auto sm:mx-0">
+            <table className="w-full min-w-[640px] border-collapse text-sm sm:min-w-0">
+              <thead>
+                <tr className="border-b" style={{ borderColor: 'var(--line-strong)' }}>
+                  <th className="px-3 py-3 text-left font-medium">Type</th>
+                  <th className="px-3 py-3 text-left font-medium">What it means</th>
+                  <th className="px-3 py-3 text-left font-medium">Examples</th>
+                  <th className="px-3 py-3 text-left font-medium">How it&apos;s verified</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  {
+                    type: 'Hard skills',
+                    meaning: 'Learnable, testable abilities — you either can do them or you can\'t.',
+                    examples: 'SQL, financial modeling, welding, a foreign language.',
+                    verified: 'Portfolio, project, certification, or a practical test.',
+                  },
+                  {
+                    type: 'Technical skills',
+                    meaning: 'A subset of hard skills specific to a technical field.',
+                    examples: 'Python, React, AWS, Docker, machine learning frameworks.',
+                    verified: 'Code, GitHub history, technical interview, live coding round.',
+                  },
+                  {
+                    type: 'Soft skills',
+                    meaning: 'Behavioral traits — harder to prove on paper than to describe.',
+                    examples: 'Communication, teamwork, time management, adaptability.',
+                    verified: 'Bullet-point evidence, references, behavioral interview.',
+                  },
+                ].map((row) => (<tr key={row.type} className="border-b align-top" style={{ borderColor: 'var(--line)' }}>
+                    <td className="px-3 py-3 font-medium whitespace-nowrap">{row.type}</td>
+                    <td className="px-3 py-3 leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{row.meaning}</td>
+                    <td className="px-3 py-3 leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{row.examples}</td>
+                    <td className="px-3 py-3 leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{row.verified}</td>
+                  </tr>))}
+              </tbody>
+            </table>
+          </div>
+
           <p className="mt-3 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-            An ATS (applicant tracking system) mostly scans for hard and technical skills that
-            match the job description&apos;s exact wording. Soft skills matter more once a human is
-            reading — usually shown through your bullet points, not a standalone list.
+            Quick rule: every technical skill is a hard skill, but not every hard skill is
+            technical. An ATS mostly scans for hard and technical keywords that match the job
+            description exactly — soft skills matter more once a human is reading, and land best
+            inside a bullet point rather than a standalone list.
           </p>
         </section>
 
@@ -211,7 +247,7 @@ export default function SkillsIndexPage() {
           </p>
           {Array.from(grouped.entries()).map(([category, skills]) => (<div key={category} className="mt-6">
               <h3 className="text-sm font-medium" style={{ color: 'var(--ink-soft)' }}>{category}</h3>
-              <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {skills.map((s) => (<li key={s.slug}>
                     <Link href={`/skills/${s.slug}`} className="panel card-lift flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium">
                       {s.name}
@@ -223,12 +259,9 @@ export default function SkillsIndexPage() {
         </section>
 
         {/* FAQ */}
-        <section className="mt-10 border-t pt-8 space-y-3" style={{ borderColor: 'var(--line)' }}>
-          <h2 className="display text-xl font-medium">Frequently asked questions</h2>
-          {FAQS.map((faq) => (<div key={faq.q} className="panel p-4 sm:p-5">
-              <p className="font-medium">{faq.q}</p>
-              <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{faq.a}</p>
-            </div>))}
+        <section className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
+          <h2 className="display text-xl font-medium mb-6">Frequently asked questions</h2>
+          <FAQAccordion items={FAQS.map((f) => ({ question: f.q, answer: f.a }))} />
         </section>
       </div>
     </main>);
