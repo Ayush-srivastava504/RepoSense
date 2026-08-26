@@ -178,4 +178,166 @@ export default function HeroGraph() {
             Math.pow((from.x + to.x) / 2 - mousePos.x, 2) + 
             Math.pow((from.y + to.y) / 2 - mousePos.y, 2)
           );
-          mouseInfluence =
+          mouseInfluence = Math.max(0.3, 1 - mouseDist / 30);
+        }
+
+        const opacity = (0.15 + 0.35 * conn.strength) * mouseInfluence;
+        const lineWidth = 0.8 + 1.2 * conn.strength;
+        const pulse = 0.8 + 0.2 * Math.sin(time * 0.5 + conn.from + conn.to);
+
+        ctx.beginPath();
+        ctx.moveTo(
+          from.x / 100 * width,
+          from.y / 100 * height
+        );
+        ctx.lineTo(
+          to.x / 100 * width,
+          to.y / 100 * height
+        );
+        ctx.strokeStyle = `rgba(99, 102, 241, ${opacity * pulse})`;
+        ctx.lineWidth = lineWidth * pulse;
+        ctx.stroke();
+      });
+
+      // Draw nodes
+      nodePositions.forEach(node => {
+        const x = node.x / 100 * width;
+        const y = node.y / 100 * height;
+        const radius = (node.radius / 100) * Math.min(width, height) / 1.2;
+        
+        // Mouse hover effect
+        let scale = 1;
+        let glowIntensity = 1;
+        if (isHovering) {
+          const dist = Math.sqrt(
+            Math.pow(x - mousePos.x / 100 * width, 2) + 
+            Math.pow(y - mousePos.y / 100 * height, 2)
+          );
+          const threshold = 80;
+          if (dist < threshold) {
+            scale = 1 + (1 - dist / threshold) * 0.3;
+            glowIntensity = 1 + (1 - dist / threshold) * 0.5;
+          }
+        }
+
+        // Pulse effect for center node
+        const pulseSize = node.pulse ? 1 + 0.08 * Math.sin(time * 1.5) : 1;
+        const finalRadius = radius * scale * pulseSize;
+
+        // Glow
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, finalRadius * 2.5);
+        const color = node.color || 'var(--indigo)';
+        gradient.addColorStop(0, color);
+        gradient.addColorStop(1, 'transparent');
+        ctx.globalAlpha = 0.2 * glowIntensity;
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(x, y, finalRadius * 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Main circle
+        ctx.globalAlpha = 1;
+        ctx.beginPath();
+        ctx.arc(x, y, finalRadius, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+
+        // Border/ring
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Label (if node has one and is large enough)
+        if (node.label && radius > 12) {
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+          ctx.font = `${Math.min(12, radius * 1.2)}px system-ui, -apple-system, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(node.label, x, y + 1);
+        }
+
+        // Inner dot for small nodes
+        if (radius <= 12) {
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+          ctx.beginPath();
+          ctx.arc(x, y, radius * 0.3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+
+      // Draw "InternFlow" floating text in the center
+      const centerXPos = centerX / 100 * width;
+      const centerYPos = centerY / 100 * height;
+      
+      // Glow behind text
+      const textGlow = ctx.createRadialGradient(centerXPos, centerYPos, 0, centerXPos, centerYPos, 60);
+      textGlow.addColorStop(0, 'rgba(99, 102, 241, 0.3)');
+      textGlow.addColorStop(1, 'rgba(99, 102, 241, 0)');
+      ctx.fillStyle = textGlow;
+      ctx.beginPath();
+      ctx.arc(centerXPos, centerYPos, 60, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Main text
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.font = `bold ${Math.min(18, width / 20)}px system-ui, -apple-system, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(99, 102, 241, 0.5)';
+      ctx.shadowBlur = 20;
+      ctx.fillText('InternFlow', centerXPos, centerYPos);
+      ctx.shadowBlur = 0;
+      
+      // Subtitle
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.font = `${Math.min(10, width / 30)}px system-ui, -apple-system, sans-serif`;
+      ctx.fillText('AI Career Platform', centerXPos, centerYPos + Math.min(24, height / 25));
+
+      // Draw subtle orbiting particles
+      for (let i = 0; i < 15; i++) {
+        const angle = (i / 15) * Math.PI * 2 + time * 0.2;
+        const dist = 38 + Math.sin(time * 0.3 + i) * 5;
+        const x = (centerX + Math.cos(angle) * dist) / 100 * width;
+        const y = (centerY + Math.sin(angle) * dist) / 100 * height;
+        
+        const size = 1.5 + Math.sin(time * 0.5 + i * 2) * 0.5;
+        ctx.globalAlpha = 0.15 + 0.1 * Math.sin(time * 0.7 + i);
+        ctx.fillStyle = 'var(--indigo)';
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.globalAlpha = 1;
+      animationFrame = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      canvas.removeEventListener('mousemove', handleMouseMove);
+      canvas.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [mousePos, isHovering]);
+
+  return (
+    <div className="relative w-full h-full flex items-center justify-center">
+      <canvas
+        ref={canvasRef}
+        className="w-full h-full rounded-[var(--radius-lg)]"
+        style={{ 
+          background: 'radial-gradient(circle at center, rgba(99, 102, 241, 0.05) 0%, transparent 70%)',
+        }}
+      />
+      <div 
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(circle at center, transparent 60%, rgba(0,0,0,0.1) 100%)',
+          borderRadius: 'var(--radius-lg)',
+        }}
+      />
+    </div>
+  );
+}
