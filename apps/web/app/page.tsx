@@ -12,6 +12,7 @@ import AuthRedirect from '@/app/components/AuthRedirect';
 import JobCard from '@/app/components/JobCard';
 import HomeSEOContent from '@/app/components/HomeSEOContent';
 import { getFeaturedJobs, getJobs } from '@/lib/jobs';
+
 const features = [
     {
         tag: 'review',
@@ -34,6 +35,7 @@ const features = [
         body: 'A 14-point scan of your profile with AI-written fixes for your headline, summary, and experience section.',
     },
 ];
+
 const steps = [
     {
         num: '01',
@@ -51,12 +53,14 @@ const steps = [
         body: 'We turn your real commits and reviews into ATS-ready bullets for any job description.',
     },
 ];
+
 const benefits = [
     { title: 'Land internships faster', body: 'Stand out with resume bullets backed by real GitHub contributions.' },
     { title: 'Improve your GitHub profile', body: 'AI feedback makes every push better. Learn while you ship.' },
     { title: 'Learn from reviews', body: 'Understand why code is good or bad — not just that it is.' },
     { title: 'ATS-friendly resumes', body: 'Generated bullets are tuned to job descriptions, not generic templates.' },
 ];
+
 const testimonials = [
     {
         quote: "Generated way better resume bullets from my GitHub projects than anything I'd written myself. Got two shortlists from my first batch.",
@@ -74,6 +78,34 @@ const testimonials = [
         role: 'ECE, IIT Kharagpur',
     },
 ];
+
+const faqs = [
+    {
+        question: 'Is InternFlow free to use?',
+        answer: 'Yes! InternFlow is completely free for students. No credit card required, no hidden charges.'
+    },
+    {
+        question: 'Do I need a GitHub account?',
+        answer: 'Yes, you\'ll need a GitHub account to connect your repositories. We only read your code for analysis and never store it.'
+    },
+    {
+        question: 'How does the AI code review work?',
+        answer: 'Our AI analyzes your commit diffs and provides line-level feedback on code quality, security vulnerabilities, performance issues, and best practices.'
+    },
+    {
+        question: 'Can I use InternFlow without GitHub?',
+        answer: 'Currently, GitHub integration is required for code reviews and resume generation. You can still browse jobs without connecting your account.'
+    },
+    {
+        question: 'How accurate are the resume bullets?',
+        answer: 'Our AI generates bullets based on your actual commits, PR descriptions, and code changes — making them more authentic than generic templates.'
+    },
+    {
+        question: 'Is my code safe?',
+        answer: 'Absolutely. We only read your code during the review process and never store or share it. Your privacy and intellectual property are protected.'
+    },
+];
+
 const categoryLinks = [
     { href: '/jobs', label: 'All jobs', body: 'Every open listing across India, remote, and abroad.' },
     { href: '/internships', label: 'Internships', body: 'India, remote, and Japan — refreshed daily.' },
@@ -85,9 +117,11 @@ const categoryLinks = [
     { href: '/europe-jobs', label: 'Europe jobs', body: 'UK, Germany, Netherlands, and remote-for-Europe.' },
     { href: '/tools', label: 'AI career tools', body: 'Resume builder, ATS checker, and more — free.' },
 ];
+
 export default async function LandingPage() {
     const featured = await getFeaturedJobs({ limit: 6 });
     const previewJobs = featured.length > 0 ? featured : await getJobs({ sort: 'recent', limit: 6 });
+
     return (<>
       <AuthRedirect />
       
@@ -138,30 +172,6 @@ export default async function LandingPage() {
               {i < steps.length - 1 && (<div className="hidden sm:block absolute top-5 h-px w-6" style={{ background: 'var(--line)', right: '-1.5rem' }}/>)}
             </div>))}
         </ScrollReveal>
-      </ScrollReveal>
-
-      
-      <ScrollReveal as="section" className="container-xl py-14">
-        <hr className="hr-line mb-10"/>
-        <p className="eyebrow eyebrow-accent mb-2">// see the difference</p>
-        <h2 className="display text-2xl font-medium mb-8">What your resume becomes</h2>
-        <ScrollReveal as="div" stagger className="grid gap-4 md:grid-cols-2">
-          <div className="panel card-lift p-6 border-l-4" style={{ borderLeftColor: 'var(--rust)' }}>
-            <p className="chip chip-rust mb-4" style={{ width: 'fit-content' }}>before InternFlow</p>
-            <p className="text-base leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-              "Built an internship project using FastAPI and React."
-            </p>
-          </div>
-          <div className="panel card-lift p-6 border-l-4" style={{ borderLeftColor: 'var(--green)' }}>
-            <p className="chip chip-green mb-4" style={{ width: 'fit-content' }}>after InternFlow</p>
-            <p className="text-base leading-relaxed" style={{ color: 'var(--ink)' }}>
-              "Developed FastAPI backend handling <strong>10,000+ API requests/day</strong>, reducing response latency by <strong>35%</strong> through async query optimization and Redis caching."
-            </p>
-          </div>
-        </ScrollReveal>
-        <p className="mt-4 text-sm" style={{ color: 'var(--muted)' }}>
-          Generated from your actual commits, PRs, and AI review data — not thin air.
-        </p>
       </ScrollReveal>
 
       
@@ -241,6 +251,23 @@ export default async function LandingPage() {
                 {c.body}
               </p>
             </Link>))}
+        </ScrollReveal>
+      </ScrollReveal>
+
+      {/* FAQ Section */}
+      <ScrollReveal as="section" className="container-xl py-14">
+        <hr className="hr-line mb-10"/>
+        <p className="eyebrow eyebrow-accent mb-2">// got questions?</p>
+        <h2 className="display text-2xl font-medium mb-8">Frequently asked questions</h2>
+        <ScrollReveal as="div" stagger className="grid gap-4 md:grid-cols-2">
+          {faqs.map((faq, index) => (
+            <div key={index} className="panel card-lift p-6 hover:shadow-lg transition-shadow duration-200">
+              <h3 className="display text-base font-medium mb-2">{faq.question}</h3>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+                {faq.answer}
+              </p>
+            </div>
+          ))}
         </ScrollReveal>
       </ScrollReveal>
 
