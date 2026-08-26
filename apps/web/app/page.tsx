@@ -5,7 +5,6 @@
 
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import HeroGraph from '@/app/components/HeroGraph';
 import AuroraBackground from '@/app/components/AuroraBackground';
 import MagneticLink from '@/app/components/MagneticLink';
 import ScrollReveal from '@/app/components/ScrollReveal';
@@ -129,10 +128,10 @@ export default async function LandingPage() {
       <AuthRedirect />
 
       {/* Hero */}
-      <section className="hero-reveal relative container-xl grid items-center gap-10 overflow-hidden py-12 md:grid-cols-2 md:py-20">
+      <section className="hero-reveal relative container-xl grid items-center gap-10 overflow-hidden py-12 md:py-20">
         <AuroraBackground particleCount={12}/>
 
-        <div className="relative z-10">
+        <div className="relative z-10 max-w-2xl">
           <p data-reveal="0" className="eyebrow eyebrow-accent mb-3">// jobs, internships &amp; resume tools</p>
           <h1 data-reveal="1" className="display text-[2rem] font-medium leading-[1.1] sm:text-[2.75rem]">
             Your job search, internship hunt, and resume — in one place.
@@ -156,11 +155,6 @@ export default async function LandingPage() {
               Build my resume
             </Link>
           </div>
-        </div>
-
-        <div data-reveal="5" className="relative z-10 h-[280px] sm:h-[360px] md:h-[420px]">
-          <div className="absolute inset-0 rounded-[var(--radius-lg)]" style={{ background: 'radial-gradient(circle at 60% 35%, var(--indigo-soft), transparent 60%)' }}/>
-          <HeroGraph />
         </div>
       </section>
 
