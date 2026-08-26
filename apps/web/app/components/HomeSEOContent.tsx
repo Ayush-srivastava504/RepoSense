@@ -109,17 +109,5 @@ export default function HomeSEOContent() {
           </p>
         </div>
       </ScrollReveal>
-
-      <ScrollReveal as="section" className="container-xl py-14">
-        <hr className="hr-line mb-10"/>
-        <p className="eyebrow eyebrow-accent mb-2">// frequently asked</p>
-        <h2 className="display text-2xl font-medium mb-8">Questions about jobs, internships, and resumes</h2>
-        <div className="grid gap-x-8 gap-y-6 md:grid-cols-2">
-          {faqs.map((f) => (<div key={f.question}>
-              <h3 className="text-sm font-semibold mb-1.5">{f.question}</h3>
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{f.answer}</p>
-            </div>))}
-        </div>
-      </ScrollReveal>
     </>);
 }

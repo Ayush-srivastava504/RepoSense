@@ -61,69 +61,54 @@ export const metadata: Metadata = {
   },
 };
 
-const features = [
+// The simple, 4-step intern flow shown in the middle of the page.
+const internFlow = [
     {
-        tag: 'review',
-        title: 'AI code review',
-        body: 'Every push gets a real review: bugs, security gaps, and style — explained in plain language, not just flagged.',
+        num: '01',
+        tag: 'discover',
+        title: 'Find the role',
+        body: 'Search jobs, internships, and remote roles crawled daily from company career pages, Indeed, and LinkedIn Jobs.',
     },
     {
-        tag: 'github',
-        title: 'A terminal on your repos',
-        body: 'Browse files and run commands against your connected repositories without leaving the browser.',
+        num: '02',
+        tag: 'apply',
+        title: 'Apply with confidence',
+        body: 'Generate an ATS-ready resume and a tailored cover letter for the exact listing in a couple of minutes.',
+    },
+    {
+        num: '03',
+        tag: 'track',
+        title: 'Track every application',
+        body: 'Log statuses, deadlines, and follow-ups in one tracker instead of a scattered spreadsheet.',
+    },
+    {
+        num: '04',
+        tag: 'land it',
+        title: 'Prep and get hired',
+        body: 'Practice with STAR-method stories and common interview questions before the call.',
+    },
+];
+
+const features = [
+    {
+        tag: 'jobs',
+        title: 'One feed, every source',
+        body: 'Jobs, internships, remote roles, and government jobs — crawled daily and organised so you search once, not across ten tabs.',
     },
     {
         tag: 'resume',
         title: 'Resume from real work',
-        body: 'Turn the commits and reviews you already have into a resume bullet, tuned to a specific job description.',
+        body: 'Turn your GitHub commits and project work into ATS-ready resume bullets, tuned to a specific job description.',
     },
     {
-        tag: 'linkedin',
-        title: 'LinkedIn optimizer',
-        body: 'A 14-point scan of your profile with AI-written fixes for your headline, summary, and experience section.',
-    },
-];
-
-const steps = [
-    {
-        num: '01',
-        title: 'Connect your GitHub',
-        body: 'Link your repositories in under 2 minutes. We only read what you push.',
+        tag: 'ats',
+        title: 'ATS checker + cover letters',
+        body: 'Score your resume against a job description, then draft a tailored cover letter in seconds.',
     },
     {
-        num: '02',
-        title: 'Get AI code reviews',
-        body: 'Push a commit. Get line-level feedback on bugs, security, and style — instantly.',
-    },
-    {
-        num: '03',
-        title: 'Generate resume bullets',
-        body: 'We turn your real commits and reviews into ATS-ready bullets for any job description.',
-    },
-];
-
-const benefits = [
-    { title: 'Land internships faster', body: 'Stand out with resume bullets backed by real GitHub contributions.' },
-    { title: 'Improve your GitHub profile', body: 'AI feedback makes every push better. Learn while you ship.' },
-    { title: 'Learn from reviews', body: 'Understand why code is good or bad — not just that it is.' },
-    { title: 'ATS-friendly resumes', body: 'Generated bullets are tuned to job descriptions, not generic templates.' },
-];
-
-const testimonials = [
-    {
-        quote: "Generated way better resume bullets from my GitHub projects than anything I'd written myself. Got two shortlists from my first batch.",
-        name: 'Arjun S.',
-        role: 'B.Tech CSE, NIT Trichy',
-    },
-    {
-        quote: "The code reviews actually taught me things. I fixed a security issue I didn't know existed before submitting my internship assignment.",
-        name: 'Priya M.',
-        role: 'Final year, BITS Pilani',
-    },
-    {
-        quote: 'Set up in 3 minutes, connected my repo, pushed code. The review came back faster than my friends who asked seniors to review.',
-        name: 'Rahul K.',
-        role: 'ECE, IIT Kharagpur',
+        tag: 'tracker',
+        title: 'Application tracker',
+        body: 'Every application, deadline, and interview in one board so nothing slips through.',
     },
 ];
 
@@ -133,9 +118,6 @@ const categoryLinks = [
     { href: '/remote-jobs', label: 'Remote jobs', body: 'Fully remote roles from US, UK, and worldwide.' },
     { href: '/government-jobs', label: 'Government jobs', body: 'Sarkari Naukri notifications, tracked daily.' },
     { href: '/companies', label: 'Companies hiring', body: 'Top employers, mass-hiring drives, and startups.' },
-    { href: '/hackathons', label: 'Hackathons', body: 'Active hackathons worth building for.' },
-    { href: '/japan-jobs', label: 'Japan jobs', body: 'Tokyo, Osaka, and remote-for-Japan roles.' },
-    { href: '/europe-jobs', label: 'Europe jobs', body: 'UK, Germany, Netherlands, and remote-for-Europe.' },
     { href: '/tools', label: 'AI career tools', body: 'Resume builder, ATS checker, and more — free.' },
 ];
 
@@ -145,32 +127,34 @@ export default async function LandingPage() {
 
     return (<>
       <AuthRedirect />
-      
+
+      {/* Hero */}
       <section className="hero-reveal relative container-xl grid items-center gap-10 overflow-hidden py-12 md:grid-cols-2 md:py-20">
         <AuroraBackground particleCount={12}/>
 
         <div className="relative z-10">
-          <p data-reveal="0" className="eyebrow eyebrow-accent mb-3">// AI-powered internship platform</p>
+          <p data-reveal="0" className="eyebrow eyebrow-accent mb-3">// jobs, internships &amp; resume tools</p>
           <h1 data-reveal="1" className="display text-[2rem] font-medium leading-[1.1] sm:text-[2.75rem]">
-            Reviews your GitHub code and builds job-ready resumes automatically.
+            Your job search, internship hunt, and resume — in one place.
           </h1>
           <p data-reveal="2" className="mt-4 max-w-md text-base leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-            Connect a repo, push code, and get an AI review on the diff — then turn that work
-            into a resume built for the internship you actually want. No signup wall — jump
-            straight in.
+            InternFlow crawls listings from across the web every day, then helps you apply with
+            an ATS-ready resume and a tailored cover letter — without juggling ten different tabs.
           </p>
 
-          
           <div data-reveal="3" className="mt-5 flex flex-wrap gap-3">
-            <span className="chip chip-green">1,200+ students</span>
-            <span className="chip chip-green">8,400 repos analyzed</span>
-            <span className="chip chip-green">3,100 resumes generated</span>
+            <span className="chip chip-green">New listings daily</span>
+            <span className="chip chip-green">Jobs, internships &amp; remote</span>
+            <span className="chip chip-green">Free resume &amp; ATS tools</span>
           </div>
 
           <div data-reveal="4" className="mt-7 flex flex-wrap items-center gap-3">
-            <MagneticLink href="/dashboard" className="btn btn-primary">
-              Try it free
+            <MagneticLink href="/jobs" className="btn btn-primary">
+              Browse jobs
             </MagneticLink>
+            <Link href="/resume/builder" className="btn btn-secondary transition-transform duration-150 hover:scale-[1.03] active:scale-[0.98]">
+              Build my resume
+            </Link>
           </div>
         </div>
 
@@ -180,22 +164,34 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      
+      {/* Intern Flow — simple, 4-step visual in the middle of the page */}
       <ScrollReveal as="section" className="container-xl py-14">
         <hr className="hr-line mb-10"/>
-        <p className="eyebrow eyebrow-accent mb-2">// how it works</p>
-        <h2 className="display text-2xl font-medium mb-10">Three steps from code to offer</h2>
-        <ScrollReveal as="div" stagger className="grid gap-6 sm:grid-cols-3">
-          {steps.map((s, i) => (<div key={s.num} className="relative">
-              <p className="display text-4xl font-medium mb-3" style={{ color: 'var(--line-strong)' }}>{s.num}</p>
+        <p className="eyebrow eyebrow-accent mb-2">// the intern flow</p>
+        <h2 className="display text-2xl font-medium mb-2">From search to signed offer</h2>
+        <p className="max-w-xl text-sm leading-relaxed mb-10" style={{ color: 'var(--ink-soft)' }}>
+          One simple loop, start to finish — no need to piece it together across separate sites.
+        </p>
+
+        <ScrollReveal as="div" stagger className="relative grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {/* connecting line, desktop only */}
+          <div className="pointer-events-none absolute left-0 right-0 top-6 hidden lg:block" style={{ height: '1px', background: 'var(--line)' }}/>
+
+          {internFlow.map((s) => (<div key={s.num} className="relative">
+              <div
+                className="relative z-10 mb-4 flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold"
+                style={{ background: 'var(--indigo)', color: '#fff' }}
+              >
+                {s.num}
+              </div>
+              <p className="eyebrow eyebrow-accent mb-1.5">// {s.tag}</p>
               <h3 className="display text-lg font-medium">{s.title}</h3>
               <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{s.body}</p>
-              {i < steps.length - 1 && (<div className="hidden sm:block absolute top-5 h-px w-6" style={{ background: 'var(--line)', right: '-1.5rem' }}/>)}
             </div>))}
         </ScrollReveal>
       </ScrollReveal>
 
-      
+      {/* What's inside */}
       <ScrollReveal as="section" className="container-xl py-14">
         <hr className="hr-line mb-10"/>
         <p className="eyebrow eyebrow-accent mb-2">// what's inside</p>
@@ -209,38 +205,7 @@ export default async function LandingPage() {
         </ScrollReveal>
       </ScrollReveal>
 
-      
-      <ScrollReveal as="section" className="container-xl py-14">
-        <hr className="hr-line mb-10"/>
-        <p className="eyebrow eyebrow-accent mb-2">// built for students</p>
-        <h2 className="display text-2xl font-medium mb-8">Not another developer tool</h2>
-        <ScrollReveal as="div" stagger className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {benefits.map((b) => (<div key={b.title} className="panel card-lift p-5">
-              <h3 className="display text-base font-medium mb-2">{b.title}</h3>
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{b.body}</p>
-            </div>))}
-        </ScrollReveal>
-      </ScrollReveal>
-
-      
-      <ScrollReveal as="section" className="container-xl py-14">
-        <hr className="hr-line mb-10"/>
-        <p className="eyebrow eyebrow-accent mb-2">// from students</p>
-        <h2 className="display text-2xl font-medium mb-8">People who've used it</h2>
-        <ScrollReveal as="div" stagger className="grid gap-5 sm:grid-cols-3">
-          {testimonials.map((t) => (<div key={t.name} className="panel card-lift p-6 flex flex-col justify-between">
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-                "{t.quote}"
-              </p>
-              <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--line)' }}>
-                <p className="text-sm font-semibold">{t.name}</p>
-                <p className="eyebrow mt-0.5">{t.role}</p>
-              </div>
-            </div>))}
-        </ScrollReveal>
-      </ScrollReveal>
-
-      
+      {/* Featured jobs from this week's crawl */}
       {previewJobs.length > 0 && (<ScrollReveal as="section" className="container-xl py-14">
           <hr className="hr-line mb-10"/>
           <div className="flex flex-wrap items-end justify-between gap-3 mb-8">
@@ -260,7 +225,7 @@ export default async function LandingPage() {
           </p>
         </ScrollReveal>)}
 
-      
+      {/* Browse by category */}
       <ScrollReveal as="section" className="container-xl py-14">
         <hr className="hr-line mb-10"/>
         <p className="eyebrow eyebrow-accent mb-2">// browse by category</p>
@@ -275,7 +240,10 @@ export default async function LandingPage() {
         </ScrollReveal>
       </ScrollReveal>
 
-      {/* FAQ Section with Accordion */}
+      {/* About InternFlow — long-form SEO copy */}
+      <HomeSEOContent />
+
+      {/* FAQ */}
       <ScrollReveal as="section" className="container-xl py-14">
         <hr className="hr-line mb-10"/>
         <p className="eyebrow eyebrow-accent mb-2">// frequently asked</p>
@@ -283,19 +251,17 @@ export default async function LandingPage() {
         <FAQAccordion />
       </ScrollReveal>
 
-      <HomeSEOContent />
-
-      
+      {/* CTA */}
       <ScrollReveal as="section" className="container-xl pb-20">
         <div className="panel-dark flex flex-col items-start justify-between gap-6 p-7 sm:flex-row sm:items-center">
           <div>
             <p className="eyebrow" style={{ color: '#9ea3ab' }}>// ready when you are</p>
             <p className="display mt-2 text-xl font-medium text-white sm:text-2xl">
-              Push your next commit somewhere it gets read.
+              Stop hunting across ten tabs. Start applying from one.
             </p>
           </div>
-          <MagneticLink href="/dashboard" className="btn btn-primary flex-shrink-0 whitespace-nowrap">
-            Get started free
+          <MagneticLink href="/jobs" className="btn btn-primary flex-shrink-0 whitespace-nowrap">
+            Browse jobs free
           </MagneticLink>
         </div>
       </ScrollReveal>
