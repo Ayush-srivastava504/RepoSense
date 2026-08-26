@@ -180,62 +180,6 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* SEO Content Section - 800-1200 words */}
-      <ScrollReveal as="section" className="container-xl py-14">
-        <hr className="hr-line mb-10"/>
-        <div className="prose prose-invert max-w-none">
-          <h2 className="display text-2xl font-medium mb-6">Find High Paying Jobs and Internships with AI-Powered Career Tools</h2>
-          
-          <p className="text-base leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-            <strong>InternFlow</strong> is the ultimate platform for students and early-career professionals looking to land <strong>high paying jobs</strong>, <strong>remote devops jobs</strong>, <strong>AI engineer jobs</strong>, and top <strong>internships</strong>. Whether you're searching for <strong>jobs near me</strong>, <strong>internships near me</strong>, or exploring <strong>remote job opportunities</strong>, InternFlow combines AI-powered tools with a comprehensive job board to accelerate your career.
-          </p>
-
-          <h3 className="display text-xl font-medium mt-8 mb-4">AI-Powered Resume Builder and Cover Letter Templates</h3>
-          <p className="text-base leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-            Stop struggling with <strong>how to write a cover letter</strong> or wondering <strong>what is a cover letter</strong>. InternFlow's AI tools generate professional <strong>cover letter examples</strong> and <strong>cover letter templates</strong> tailored to any job description. Our <strong>resume generator</strong> creates <strong>ATS-friendly resume</strong> content from your GitHub activity, making your application stand out to recruiters using <strong>ATS systems</strong>. With <strong>resume builder free</strong> tools, you can create an <strong>ATS resume template</strong> that passes automated screening and lands you more interviews.
-          </p>
-
-          <h3 className="display text-xl font-medium mt-8 mb-4">High Paying Jobs and Career Opportunities</h3>
-          <p className="text-base leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-            Discover <strong>high paying jobs</strong> across tech, finance, healthcare, and more. From <strong>data engineer jobs</strong> and <strong>devops jobs</strong> to <strong>entry level jobs</strong> and <strong>part time jobs near me</strong>, our platform aggregates listings from <strong>Indeed jobs</strong>, <strong>Amazon jobs</strong>, <strong>LinkedIn jobs</strong>, and thousands of company career pages. Looking for <strong>government jobs near me</strong> or <strong>remote government jobs</strong>? We track <strong>Sarkari Naukri</strong> notifications and <strong>remote job openings</strong> daily. Explore <strong>cybersecurity internships</strong>, <strong>computer science internships</strong>, <strong>marketing internships</strong>, <strong>finance intern</strong> roles, and <strong>software engineer intern</strong> positions.
-          </p>
-
-          <h3 className="display text-xl font-medium mt-8 mb-4">Remote Jobs and Work From Home Opportunities</h3>
-          <p className="text-base leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-            <strong>Remote jobs</strong> are the future of work. Whether you're looking for <strong>fully remote jobs</strong>, <strong>best remote jobs</strong>, or <strong>customer service remote jobs</strong>, InternFlow helps you find <strong>remote job search</strong> opportunities that match your skills. From <strong>remote devops jobs</strong> to <strong>part time remote job</strong> roles, we list <strong>remote jobs hiring</strong> globally. Learn <strong>what is a remote job</strong> and how to succeed in a distributed team. Our platform includes <strong>remote job no experience</strong> positions for students and career changers.
-          </p>
-
-          <h3 className="display text-xl font-medium mt-8 mb-4">Interview Preparation and Career Development</h3>
-          <p className="text-base leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-            Ace your interviews with our comprehensive guides on <strong>how to prepare for an interview</strong>, <strong>common interview questions</strong>, and the <strong>STAR method for interviews</strong>. Learn <strong>what to wear to an interview</strong> and <strong>what questions to ask at the end of an interview</strong>. Our platform covers <strong>interview questions</strong> for every role, from <strong>data engineer</strong> positions to <strong>marketing intern</strong> roles. We help you prepare for <strong>phone interviews</strong>, technical rounds, and behavioral assessments.
-          </p>
-
-          <h3 className="display text-xl font-medium mt-8 mb-4">Internships and Early Career Programs</h3>
-          <p className="text-base leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-            Wondering <strong>what is an internship</strong> or <strong>do interns get paid</strong>? Our <strong>internship definition</strong> guide explains everything about <strong>the internship</strong> journey. Find <strong>google internships</strong>, <strong>ey internships</strong>, <strong>cisco intern</strong> programs, and <strong>data analyst internship</strong> opportunities. Our platform helps you understand <strong>how to apply for an internship</strong> and <strong>how to get an internship</strong> at top companies. Track <strong>vertical jobs</strong> and industry-specific roles across <strong>engineering jobs</strong>, <strong>nursing jobs</strong>, <strong>data entry jobs</strong>, and <strong>summer jobs</strong>.
-          </p>
-
-          <h3 className="display text-xl font-medium mt-8 mb-4">AI Career Tools for Resume and LinkedIn Optimization</h3>
-          <p className="text-base leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-            Our platform includes the <strong>best AI tools</strong> for career development. Create <strong>skills for resume</strong> that match job descriptions, use our <strong>resume maker</strong> to generate professional documents, and optimize your <strong>LinkedIn profile</strong> with AI suggestions. Our <strong>LinkedIn optimizer</strong> scans your <strong>LinkedIn profile</strong> and provides fixes for your headline, summary, and experience section. Use our <strong>resume now</strong> feature to instantly generate ATS-friendly resumes. For students, we offer <strong>it internships</strong>, <strong>marketing internships</strong>, and resources like <strong>my perfect resume</strong> and <strong>resume builder free</strong> tools.
-          </p>
-
-          <h3 className="display text-xl font-medium mt-8 mb-4">Data Engineering and Cloud Careers</h3>
-          <p className="text-base leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-            Specialize in <strong>data engineer</strong> roles with our comprehensive guides. Learn <strong>how to become a data engineer</strong>, understand <strong>what a data engineer does</strong>, and explore <strong>data engineer salary</strong> trends. Our platform covers <strong>data engineer jobs</strong> and provides resources for <strong>AWS data engineer certification</strong>. Whether you're targeting <strong>AI engineer jobs</strong> or <strong>devops jobs</strong>, we help you build the skills and credentials employers want.
-          </p>
-
-          <h3 className="display text-xl font-medium mt-8 mb-4">Job Search and Application Management</h3>
-          <p className="text-base leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-            Streamline your job search with our <strong>jobs near me</strong> and <strong>jobs hiring near me</strong> features. Whether you're looking for <strong>part time jobs near me</strong>, <strong>entry level jobs</strong>, or <strong>engineering jobs</strong>, our platform provides real-time listings. Apply for <strong>remote jobs</strong>, <strong>Amazon jobs</strong>, and <strong>Indeed jobs</strong> directly through our platform. Our <strong>job search</strong> tools help you track applications, set reminders, and never miss a deadline. Explore <strong>cybersecurity internships</strong>, <strong>computer science internships</strong>, and <strong>marketing internships</strong> to build your career foundation.
-          </p>
-
-          <p className="text-base leading-relaxed mt-6" style={{ color: 'var(--ink-soft)' }}>
-            <strong>InternFlow</strong> is your all-in-one platform for landing <strong>high paying jobs</strong>, securing top <strong>internships</strong>, and building a career with AI-powered tools. From <strong>resume generator</strong> and <strong>cover letter templates</strong> to <strong>interview preparation</strong> and <strong>job search</strong>, we've got everything you need to succeed. Join thousands of students and professionals who have transformed their careers with InternFlow. Start your journey today and find <strong>jobs near me</strong>, <strong>remote job opportunities</strong>, and <strong>internships near me</strong> with confidence.
-          </p>
-        </div>
-      </ScrollReveal>
-
       
       <ScrollReveal as="section" className="container-xl py-14">
         <hr className="hr-line mb-10"/>
