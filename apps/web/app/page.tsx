@@ -10,6 +10,7 @@ import MagneticLink from '@/app/components/MagneticLink';
 import ScrollReveal from '@/app/components/ScrollReveal';
 import AuthRedirect from '@/app/components/AuthRedirect';
 import JobCard from '@/app/components/JobCard';
+import HomeSEOContent from '@/app/components/HomeSEOContent';
 import { getFeaturedJobs, getJobs } from '@/lib/jobs';
 const features = [
     {
@@ -242,6 +243,8 @@ export default async function LandingPage() {
             </Link>))}
         </ScrollReveal>
       </ScrollReveal>
+
+      <HomeSEOContent />
 
       
       <ScrollReveal as="section" className="container-xl pb-20">
