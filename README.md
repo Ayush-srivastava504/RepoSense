@@ -1,97 +1,150 @@
-# RepoSense
+# RepoSense (InternFlow) — Intelligent Career & Developer Platform
 
-RepoSense is a job-search and developer-productivity platform. It aggregates
-internship/job listings and hackathons from dozens of external sources, and
-gives users AI-assisted tools to act on them — resume building, ATS scoring,
-AI code review, a LinkedIn profile analyzer, a GitHub-connected terminal, and
-a LeetCode practice judge.
+RepoSense (internally hosted as **InternFlow**) is an open-source, AI-powered developer career platform designed to help students, early-career engineers, and tech professionals land high-paying software jobs, remote roles, and internships. 
 
-> **Naming note:** the product is branded RepoSense throughout the UI, but
-> `apps/web/package.json` still uses the legacy package name `internship-web`
-> and the public site domain is `intern-flow.in` — both predate the rename
-> and are left as-is rather than churned for cosmetics. See
-> `apps/OVERVIEW.md` for details.
+It combines real-time multi-board job scraping, ATS resume optimization, AI code reviews, LaTeX resume compilation, a GitHub-connected terminal, an automated LeetCode judge, and a multilingual, internationalized SEO engine.
 
-## Repository layout
+---
+
+## 🌟 Key Highlights & Feature Matrix
+
+- **Global Job & Internship Feed**: Crawls dozens of job boards (Indeed, LinkedIn, Greenhouse, Lever, Ashby, Y Combinator, Sarkari Naukri) daily, normalizing locations, compensation, and required skill ontologies.
+- **Multilingual International SEO (i18n)**: Fully localized in **9 languages** (English, Español, 日本語, Français, Deutsch, Português, 한국어, Italiano, हिन्दी) with dynamic routing, hreflang alternate headers, structured Schema.org breadcrumbs, and localized sitemaps.
+- **AI-Powered ATS Resume Builder**: Contextual resume scoring that reverse-engineers parsing algorithms, aligns bullet points with target job descriptions, and compiles pixel-perfect PDF resumes using LaTeX.
+- **Automated AI GitHub Code Review**: Connects to public/private GitHub repositories, analyzes code architecture and commit hygiene, and drafts portfolio-ready bullet points.
+- **Interactive Developer Terminal**: In-browser xterm.js terminal with OAuth session management, command execution, and direct GitHub repo sync.
+- **LeetCode Practice Judge**: Automated code evaluation, Blind 75 tracker integration, and company-specific coding challenge breakdowns.
+- **Application Tracker**: Kanban-style job tracking board with deadlines, interview rounds, follow-up reminders, and local storage / DB synchronization.
+
+---
+
+## 🏗️ Architecture & Monorepo Layout
 
 ```
-apps/web/               Next.js frontend (App Router, TypeScript, Tailwind)
-services/api/            Python/FastAPI backend and its sub-services
-  src/                    Core API: auth, jobs, resume, ATS, review, dashboard, etc.
-  crawler/                Scheduled scraper that ingests jobs/hackathons from external boards
-  rag/                     Retrieval-augmented documentation/Q&A microservice
-  neural_generator/       Local LLM (llama.cpp) text-generation microservice
-  loadtest/                k6 load-testing scripts for the core API
-  database/migrations/     SQL schema migrations
-infrastructure/docker/   docker-compose stack for local/prod deployment
-scripts/                  Standalone maintenance/content-generation scripts
-docs/                     Setup, deployment, and migration guides
-tests/                    Repo-level Python tests
+Repo_Sense/
+├── apps/
+│   └── web/                   # Next.js 14 App Router, TypeScript, Tailwind CSS, i18n
+│       ├── app/               # Routes (jobs, internships, blog, auth, tools, tracker)
+│       ├── components/        # Reusable UI components & LanguageSwitcher
+│       ├── content/           # Multilingual blog posts (JSON) and SEO keywords queue
+│       ├── i18n/              # 9 language dictionaries, loader & config
+│       └── lib/               # API client, auth hooks, blog data loaders, structured schemas
+├── services/
+│   ├── api/                   # Core FastAPI backend (port 8000)
+│   │   ├── src/               # Auth, jobs, resume compiler, ATS checker, LeetCode judge
+│   │   ├── crawler/           # Automated scrapers for external career portals
+│   │   ├── rag/               # RAG Q&A service with vector search (port 8001)
+│   │   ├── neural_generator/  # Local LLM text generation via llama.cpp (port 8002)
+│   │   ├── loadtest/          # k6 load testing suites
+│   │   └── database/          # PostgreSQL migrations (001 to 018)
+├── infrastructure/
+│   └── docker/                # Docker compose orchestration (Postgres, Redis, APIs, Web)
+├── scripts/                   # Daily SEO generation, DB migrations, content enrichment
+└── docs/                      # Architectural setup, deployment, and model migration guides
 ```
 
-## Public SEO surface
+---
 
-Alongside the authenticated product, `apps/web` serves a set of statically
-and dynamically generated hub pages that exist purely to be crawled and
-ranked. All of them read from the same `getJobs()` plumbing in `lib/jobs.ts`
-— they're views over live listing data, not separate content databases.
+## 🌐 Public SEO & Programmatic Surface
 
-| Route | What it is | Data source |
-|---|---|---|
-| `/jobs`, `/internships` | Primary paginated listings | `getJobs()` |
-| `/remote-jobs`, `/government-jobs` | Category listings + detail pages | `getJobs({ category })` |
-| `/japan-jobs`, `/europe-jobs` | Country listings (server-side `country` filter) | `getJobs({ country })` |
-| `/jobs-in/[city]` | 5 Indian-city hub pages (Bangalore, Hyderabad, Chennai, Pune, Delhi NCR) — the API only filters by country, so city matching happens client-side against each job's `location` string | `apps/web/app/jobs-in/data.ts` |
-| `/companies`, `/companies/[company]` | Company hub pages | `getCompanies()` / `lib/companies.ts` |
-| `/skills/[skill]` | 24 skill hub pages (Python, React, AWS, etc.) | `apps/web/app/skills/data.ts` |
-| `/careers/[role]` | 5 career-path hubs — what the role does, skills, live openings, resume-guide cross-link | `apps/web/app/careers/data.ts` |
-| `/resume-for/[role]` | 5 resume guides — ATS keywords, common mistakes, bullet templates for the same 5 roles the `/ats-checker` tool supports | `apps/web/app/resume-for/data.ts` |
-| `/tools`, `/tools/[tool]` | Marketing pages for each AI tool (README generator, ATS checker, resume builder, etc.) | `apps/web/app/tools/data.ts` |
-| `/hackathons` | Hackathon listings | backend hackathons API |
-| `/blog/[slug]` | Programmatic SEO blog posts, one per targeted keyword | `content/blog/*.json`, tracked in `content/seo/keywords.json` |
+The web app serves statically generated and dynamically cached public hubs engineered for international search ranking:
 
-Every one of these has a matching `sitemap-*.xml` route, all indexed from
-`app/sitemap.xml/route.ts`. `sitemap-jobs.xml` fetches paginated batches of
-every live listing in parallel (`Promise.allSettled`) rather than
-sequentially — a prior sequential version was prone to serverless timeouts
-truncating the response mid-file.
+| Route | Functionality | Data Source |
+| :--- | :--- | :--- |
+| `/jobs` & `/internships` | Paginated live job listings with faceted search | `lib/jobs.ts` |
+| `/remote-jobs` & `/government-jobs` | Category-specific listings & regional filters | `getJobs({ category })` |
+| `/japan-jobs` & `/europe-jobs` | Country-specific listings with visa tags | `getJobs({ country })` |
+| `/jobs-in/[city]` | Indian & global tech city hub pages (Bangalore, Pune, Delhi NCR, etc.) | `app/jobs-in/data.ts` |
+| `/skills/[skill]` | 24+ skill hub pages (Python, React, AWS, Docker, PyTorch) | `app/skills/data.ts` |
+| `/careers/[role]` | Deep career path blueprints & recommended tech stacks | `app/careers/data.ts` |
+| `/resume-for/[role]` | Role-specific ATS resume templates, bullet examples & keywords | `app/resume-for/data.ts` |
+| `/tools` | Suite of free AI tools (Resume Builder, ATS Checker, Cover Letter) | `app/tools/data.ts` |
+| `/blog` & `/blog/[slug]` | High-intent engineering & career blog guides | `content/blog/*.json` |
+| `/[locale]/blog/[slug]` | Localized blog versions in **es, ja, fr, de, pt, ko, it, hi** | `content/blog/[locale]/*.json` |
 
-`content/seo/keywords.json` is the backlog: each entry tracks a target
-keyword, its category, priority, and (once written) the published slug.
-`scripts/generate-daily-posts.mjs` is the automation that turns queued
-keywords into blog posts.
+---
 
-## Services and ports
+## 🚀 Quick Start & Local Development
 
-| Service           | Path                             | Default port |
-|--------------------|-----------------------------------|---------------|
-| Core API           | `services/api/src`                | 8000          |
-| RAG service         | `services/api/rag`                | 8001          |
-| Neural generator    | `services/api/neural_generator`   | 8002          |
-| Web frontend        | `apps/web`                         | 3000          |
-| Postgres            | —                                   | 5432          |
-| Redis               | —                                   | 6379          |
+### Prerequisites
+- Node.js 18+ & npm / pnpm
+- Python 3.10+
+- Docker & Docker Compose (optional, for full containerized stack)
+- PostgreSQL & Redis
 
-## Quick start
+### 1. Starting the Entire Stack with Docker
 
 ```bash
-# start Postgres, Redis, and the microservices via Docker
+# Clone the repository
+git clone https://github.com/Ayush-srivastava504/RepoSense.git
+cd RepoSense
+
+# Start PostgreSQL, Redis, FastAPI, RAG, and Web services
 make build
-make dev          # docker-compose up + frontend/backend dev servers
-
-# run database migrations
-make migrate
-
-# run tests
-make test
+make dev
 ```
 
-`make dev` starts the Docker stack (`infrastructure/docker/docker-compose.yml`),
-then runs the Next.js dev server (`apps/web`) and the FastAPI dev server
-(`services/api`) locally with hot reload. See each sub-directory's README for
-service-specific setup, environment variables, and endpoints.
+### 2. Manual Local Development
 
-## Deployment
+#### Frontend (`apps/web`):
+```bash
+cd apps/web
+npm install
+npm run dev
+# Server running at http://localhost:3000
+```
 
-Production deploys to AWS via Terraform (`make deploy`). See
-`docs/DEPLOYMENT_GUIDE.md` for details.
+#### Core Backend (`services/api`):
+```bash
+cd services/api
+python -m venv venv
+# On Windows:
+.\venv\Scripts\activate
+# On Unix:
+source venv/bin/activate
+
+pip install -r requirements.txt
+uvicorn src.app:app --reload --port 8000
+```
+
+---
+
+## 🛠️ Environment Configuration
+
+Create a `.env` file at the root or under `services/api/` and `apps/web/`:
+
+### Frontend (`apps/web/.env.local`)
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_LOGO_DEV_TOKEN=your_logo_dev_token
+```
+
+### Backend (`services/api/.env`)
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/reposense
+REDIS_URL=redis://localhost:6379/0
+JWT_SECRET=super_secret_jwt_key_here
+GITHUB_CLIENT_ID=your_github_oauth_client_id
+GITHUB_CLIENT_SECRET=your_github_oauth_client_secret
+ANTHROPIC_API_KEY=optional_claude_api_key
+GROQ_API_KEY=optional_groq_api_key
+```
+
+---
+
+## 🧪 Testing & Code Quality
+
+```bash
+# Run backend pytest suite
+make test
+
+# Run k6 API load test
+cd services/api/loadtest
+k6 run loadtest.js
+```
+
+---
+
+## 📄 License & Attribution
+
+Built for students, early-career developers, and tech job seekers worldwide. Distributed under the MIT License.

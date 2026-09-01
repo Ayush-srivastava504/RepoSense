@@ -1,111 +1,95 @@
-# services/api — Core API
+# RepoSense Core API (`services/api`)
 
-FastAPI backend for RepoSense: authentication, job/hackathon listings, resume
-generation, ATS scoring, AI code review, LinkedIn analysis, a GitHub-connected
-terminal, dashboard stats, subscriptions, and a LeetCode practice judge.
+The primary backend service for RepoSense, powered by **FastAPI**. It provides robust RESTful APIs for authentication, job querying, ATS resume parsing, AI code review, LaTeX resume compilation, LeetCode judge evaluation, and subscription billing.
 
-## Structure
+---
+
+## 🏛️ Architecture & Folder Structure
 
 ```
-src/
-  api/           Extra routers (code review, self-healing) mounted alongside routes/
-  core/          App factory (app.py), dependencies, exception handlers
-  configs/       Settings, DB pool, Redis client, ML config
-  data/leetcode/ Problem bank + the Blind 75 tracker spreadsheet
-  middleware/    Auth and rate-limiting middleware
-  routes/        One router per domain (see Endpoints below)
-  schemas/       Pydantic request/response models
-  services/      Business logic: analysis engine, auto-fixer, resume/PDF
-                 generation, LinkedIn rules, job queue, GitHub integration, etc.
-  utils/         Logger, crypto helpers, ML model downloader
-database/migrations/  Ordered SQL schema migrations
-templates/            LaTeX resume template
-scripts/               One-off maintenance scripts (e.g. content enrichment backfill)
-rag/, neural_generator/, crawler/, loadtest/   Sibling services — see their own READMEs
+services/api/
+├── src/
+│   ├── api/               # Auxiliary routers (code review, self-healing)
+│   ├── configs/           # Pydantic settings, DB connection pooling, Redis client
+│   ├── core/              # App factory, custom middlewares, global error handlers
+│   ├── data/leetcode/     # LeetCode problem bank and Blind 75 dataset
+│   ├── middleware/        # JWT auth verification and IP/User rate limiters
+│   ├── routes/            # Core route modules (auth, jobs, resume, ats, etc.)
+│   ├── schemas/           # Pydantic request/response validation schemas
+│   ├── services/          # Business logic: ATS scorer, PDF compiler, GitHub sync
+│   └── utils/             # Cryptography helpers, logger, ML model loader
+├── database/migrations/   # Numbered SQL migrations (001_users.sql to 018_logo_domain.sql)
+├── templates/             # LaTeX resume formatting templates
+├── crawler/               # Scheduled job and hackathon scraper
+├── rag/                   # RAG microservice with vector embeddings
+├── neural_generator/      # Local LLM text generator
+└── run_migrations.py      # Automated database migration runner
 ```
 
-## Running locally
+---
+
+## 🔌 API Endpoints Reference
+
+All routes are mounted under the `/api` prefix:
+
+### 1. Authentication & Users (`/api/auth`)
+- `POST /api/auth/otp/request`: Sends one-time login passcode to email.
+- `POST /api/auth/otp/verify`: Validates OTP and issues JWT access token.
+- `POST /api/auth/guest`: Spawns a temporary anonymous session.
+
+### 2. GitHub Integration (`/api/github`)
+- `GET /api/github/login`: Initiates GitHub OAuth authentication.
+- `GET /api/github/callback`: Exchanges OAuth code for encrypted access token.
+- `GET /api/github/repos`: Fetches candidate's public and private repositories.
+- `GET /api/github/tree`: Retrieves repository directory structure for AI code review.
+
+### 3. Job Search & Companies (`/api/jobs`, `/api/companies`)
+- `GET /api/jobs`: Paginated job listings with keyword, category, and country filters.
+- `GET /api/jobs/{id}`: Full job description, salary range, and company profile.
+- `GET /api/jobs/featured`: Curated high-priority job openings.
+- `GET /api/companies/{company}/profile`: Rich company overview, engineering culture, and active listings.
+
+### 4. Resume & ATS Engine (`/api/resume`, `/api/ats`)
+- `POST /api/resume/generate`: Compiles user profile and GitHub projects into a LaTeX PDF.
+- `POST /api/ats/check`: Evaluates uploaded resume against target job description, returning a match score (0-100), missing keywords, and layout warnings.
+- `POST /api/resume/cover-letter`: Drafts a tailored cover letter based on specific job criteria.
+
+### 5. LeetCode Practice & Judge (`/api/leetcode`)
+- `GET /api/leetcode/problems`: Lists coding challenges with difficulty and tag filters.
+- `POST /api/leetcode/submit`: Runs code against test cases in an isolated execution sandbox.
+- `GET /api/leetcode/blind75`: Returns candidate's completion tracker for the Blind 75 list.
+
+---
+
+## ⚙️ Environment Variables & Configuration
+
+Configuration is loaded from environment variables via `src/configs/settings.py`:
+
+| Variable | Description | Required |
+| :--- | :--- | :--- |
+| `DATABASE_URL` | PostgreSQL connection URI | **Yes** |
+| `REDIS_URL` | Redis cache and task broker URI | **Yes** |
+| `JWT_SECRET` | Secret key for signing authentication tokens | **Yes** |
+| `GITHUB_CLIENT_ID` | GitHub OAuth Application Client ID | Optional |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth Application Client Secret | Optional |
+| `GITHUB_TOKEN_ENCRYPTION_KEY` | AES key for encrypting stored access tokens | Optional |
+| `RAZORPAY_KEY_ID` / `_SECRET` | Razorpay credentials for payment checkout | Optional |
+| `AWS_ACCESS_KEY_ID` / `_SECRET` | AWS S3 credentials for generated resume storage | Optional |
+| `GROQ_API_KEY` | Groq API key for fast cloud LLM inference | Optional |
+| `ANTHROPIC_API_KEY` | Claude API key for high-quality content generation | Optional |
+
+---
+
+## 🏃 Running Locally
 
 ```bash
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-uvicorn src.app:app --reload --port 8000
+# 1. Activate environment
+source venv/bin/activate
+
+# 2. Run migrations
+python run_migrations.py
+
+# 3. Start development server
+uvicorn src.app:app --reload --host 0.0.0.0 --port 8000
 ```
-
-Or via Docker: `docker build -t reposense-api . && docker run -p 8000:8000 reposense-api`.
-
-## Configuration
-
-Settings are loaded from environment variables / a repo-root `.env` file
-(`src/configs/settings.py`). Key variables:
-
-| Variable | Purpose |
-|---|---|
-| `DATABASE_URL` | Postgres connection string |
-| `REDIS_URL` | Redis connection string |
-| `JWT_SECRET` | Signs auth tokens |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` / `GITHUB_REDIRECT_URI` | GitHub OAuth |
-| `GITHUB_TOKEN_ENCRYPTION_KEY` | Encrypts stored GitHub tokens |
-| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Payment/subscription processing |
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION` / `S3_BUCKET` | Resume/file storage |
-| `RAG_SERVICE_URL` / `NEURAL_GENERATOR_URL` | URLs of the sibling AI microservices |
-| `EMAIL_PROVIDER` / `RESEND_API_KEY` | Transactional email |
-| `CORS_ORIGINS` | Allowed frontend origins (JSON list) |
-| `REQUIRE_AUTH` | Toggle auth enforcement (used for local/dev/load-testing) |
-| `LOAD_TEST_BYPASS_KEY` | Bypasses rate limiting for load tests |
-
-## Endpoints
-
-All routes are mounted under `/api`.
-
-- **Auth** (`/api/auth`) — OTP request/verify, guest sessions
-- **GitHub** (`/api/github`) — OAuth login/callback/exchange, repo listing,
-  file/content browsing, auto-setup, terminal token issuance, disconnect
-- **Jobs** (`/api/jobs`) — listing, featured, similar jobs, job detail
-- **Companies** (`/api/companies`) — company listing, plus
-  `/api/companies/{company}/profile` for enriched overview/work-culture content
-- **Hackathons** (`/api/hackathons`) — listing, featured, ending-soon, detail
-- **Resume** (`/api/resume`) — generation, cover letters, structured
-  generation, create/list
-- **ATS** (`/api/ats`) — role list, resume-vs-role ATS check
-- **LinkedIn** (`/api/linkedin`) — unlock status, ad-unlock, profile analysis,
-  history
-- **Review** (`/api/v1`) — AI code review (`/review`) and auto-fix (`/fix`)
-- **Self-healing** (`/api/v1/self-healing`) — automated fix-and-retry routes
-- **Async jobs** (`/api/async-jobs`) — poll long-running job status
-- **Dashboard** (`/api/dashboard`) — usage stats, recent reviews/resumes
-- **Subscription** (`/api/subscription`) — checkout, webhook, status
-- **Webhooks** (`/api/webhooks`) — inbound GitHub webhook
-- **LeetCode** (`/api/leetcode`) — problem list/detail, code submission/judge,
-  level and company breakdowns, Blind 75 tracker download
-
-## Content enrichment
-
-Three related pieces generate AI (Groq-backed) fallback content for pages
-that would otherwise be thin — each falls back to a deterministic template
-generator if `GROQ_API_KEY` is unset or a request fails, so runs always
-produce usable content:
-
-- `crawler/src/content_enrichment.py` — runs automatically at the end of
-  every crawl, enriching newly-scraped thin job listings
-- `scripts/enrich_job_content.py` — scheduled catch-up job for job listings
-  still missing an overview (`--force-stale` to re-enrich old rows,
-  `--no-fallback` to skip instead of using the template)
-- `scripts/enrich_all_content.py` — bulk/fallback runner covering **all**
-  pages at once: every job (`--target jobs --bulk`), every company
-  (`--target companies`, writes to the new `company_profiles` table —
-  overview, work-culture summary, review-style snippets, keywords), and
-  optionally a fallback SEO blog post per company (`--blog-posts`, written
-  under `apps/web/content/blog/` in the same schema as
-  `scripts/generate-daily-posts.mjs`)
-
-```bash
-python scripts/enrich_all_content.py --target all --bulk --blog-posts
-```
-
-## Testing
-
-```bash
-pytest tests/ -v          # from the repo root, or
-python test_imports.py    # sanity-check that all modules import cleanly
-```
+Visit [http://localhost:8000/docs](http://localhost:8000/docs) for the interactive OpenAPI documentation.
