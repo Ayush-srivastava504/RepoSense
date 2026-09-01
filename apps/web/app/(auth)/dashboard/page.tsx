@@ -119,9 +119,9 @@ function SectionHeader({ label, linkLabel, linkHref, }: {
     linkLabel: string;
     linkHref: string;
 }) {
-    return (<div className="mb-4 flex items-center justify-between">
+    return (<div className="mb-4 flex flex-wrap items-center justify-between gap-2">
       <p className="eyebrow">{label}</p>
-      <Link href={linkHref} className="btn btn-ghost text-xs !py-1 !px-2">
+      <Link href={linkHref} className="btn btn-ghost min-h-[36px] text-xs !py-1 !px-2">
         {linkLabel}
       </Link>
     </div>);
@@ -178,8 +178,8 @@ function DashboardContent() {
         router.push(q ? `/jobs?search=${encodeURIComponent(q)}` : '/jobs');
     };
     return (<>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <p className="eyebrow eyebrow-accent">// overview</p>
           <h1 className="display mt-2 text-2xl font-medium sm:text-3xl">
             {user ? `${greeting()}, ${firstName}` : 'Find your next internship'}
@@ -190,17 +190,17 @@ function DashboardContent() {
             : 'Search live listings right now — everything is open, no account needed.'}
           </p>
         </div>
-        <Link href="/github" className="btn btn-primary text-sm flex-shrink-0">
+        <Link href="/github" className="btn btn-primary min-h-[44px] text-sm sm:flex-shrink-0">
           Open code review
         </Link>
       </div>
 
-      <form onSubmit={handleSearch} className="panel mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2">
+      <form onSubmit={handleSearch} className="panel mt-6 flex flex-col items-stretch gap-2 p-2 sm:flex-row sm:items-center">
         <div className="flex flex-1 items-center gap-2 px-2" style={{ color: 'var(--muted)' }}>
           <SearchIcon />
           <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search internships by role, company, or skill…" className="w-full bg-transparent py-2 text-sm outline-none" style={{ color: 'var(--ink)' }}/>
         </div>
-        <button type="submit" className="btn btn-secondary text-sm w-full sm:w-auto flex-shrink-0">
+        <button type="submit" className="btn btn-secondary min-h-[44px] w-full text-sm sm:w-auto sm:flex-shrink-0">
           Search jobs
         </button>
       </form>
@@ -250,7 +250,7 @@ function DashboardContent() {
                 href: '/jobs',
                 action: 'jobs',
             },
-        ].map((item) => (<Link key={item.action} href={item.href} className="panel relative flex flex-col gap-2 p-5 transition-shadow" style={{ textDecoration: 'none' }} onClick={() => trackEvent('dashboard_quick_action', { action: item.action })} onMouseOver={(e) => (e.currentTarget.style.boxShadow = '0 4px 20px -4px rgba(0,0,0,0.12)')} onMouseOut={(e) => (e.currentTarget.style.boxShadow = '')}>
+        ].map((item) => (<Link key={item.action} href={item.href} className="panel relative flex min-h-[44px] flex-col gap-2 p-5 transition-shadow" style={{ textDecoration: 'none' }} onClick={() => trackEvent('dashboard_quick_action', { action: item.action })} onMouseOver={(e) => (e.currentTarget.style.boxShadow = '0 4px 20px -4px rgba(0,0,0,0.12)')} onMouseOut={(e) => (e.currentTarget.style.boxShadow = '')}>
               <p className="eyebrow eyebrow-accent">{item.tag}</p>
               <p className="display text-base font-medium">{item.title}</p>
               <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>

@@ -189,10 +189,10 @@ function LeetCodeContent() {
             window.open(pick.leetcode_url, '_blank', 'noopener,noreferrer');
         }
     }
-    return (<div className="container-xl py-12">
+    return (<div className="container-xl py-6 sm:py-12">
       <div className="max-w-2xl">
         <p className="eyebrow eyebrow-accent mb-3">// leetcode practice</p>
-        <h1 className="text-3xl font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+        <h1 className="text-2xl font-semibold sm:text-3xl" style={{ fontFamily: 'var(--font-display)' }}>
           Work through a curated problem set
         </h1>
         <p className="mt-3 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
@@ -206,13 +206,13 @@ function LeetCodeContent() {
         </p>)}
 
       {loading ? (<p className="mt-8 text-sm" style={{ color: 'var(--ink-soft)' }}>Loading levels…</p>) : (<>
-          <div className="mt-8 flex flex-wrap gap-2 border-b" style={{ borderColor: 'var(--line)' }}>
+          <div className="mt-8 flex gap-2 overflow-x-auto border-b pb-1 no-scrollbar sm:flex-wrap" style={{ borderColor: 'var(--line)' }}>
             {levels.map((lvl) => {
                 const active = lvl.key === activeLevel;
                 return (<button key={lvl.key} onClick={() => {
                         setActiveLevel(lvl.key);
                         trackEvent('leetcode_level_selected', { level: lvl.key });
-                    }} className="pb-3 pt-1 text-sm font-medium transition-colors" style={{
+                    }} className="min-h-[44px] flex-none whitespace-nowrap pb-3 pt-1 text-sm font-medium transition-colors" style={{
                         color: active ? 'var(--ink)' : 'var(--ink-soft)',
                         borderBottom: active ? '2px solid var(--green)' : '2px solid transparent',
                     }}>
@@ -242,24 +242,24 @@ function LeetCodeContent() {
             </div>)}
 
           <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search problems…" className="field"/>
-            <select value={company} onChange={(e) => setCompany(e.target.value)} className="field">
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search problems…" className="field min-h-[44px] w-full"/>
+            <select value={company} onChange={(e) => setCompany(e.target.value)} className="field min-h-[44px] w-full">
               {companies.map((c) => (<option key={c} value={c}>{c === 'All' ? 'All companies' : c}</option>))}
             </select>
-            <select value={category} onChange={(e) => setCategory(e.target.value)} className="field">
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="field min-h-[44px] w-full">
               {categories.map((c) => (<option key={c} value={c}>{c}</option>))}
             </select>
-            <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="field">
+            <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="field min-h-[44px] w-full">
               {['All', 'Easy', 'Medium', 'Hard'].map((d) => (<option key={d} value={d}>{d}</option>))}
             </select>
           </div>
 
-          <div className="mt-3 flex items-center justify-between">
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--ink-soft)' }}>
               <input type="checkbox" checked={starredOnly} onChange={(e) => setStarredOnly(e.target.checked)}/>
               Starred only
             </label>
-            <button onClick={surpriseMe} className="btn btn-secondary text-xs">
+            <button onClick={surpriseMe} className="btn btn-secondary min-h-[44px] text-xs sm:w-auto">
               🎲 Surprise me
             </button>
           </div>
@@ -276,7 +276,7 @@ function LeetCodeContent() {
                 const isStarred = starred.has(p.slug);
                 const visibleCompanies = p.companies.slice(0, 3);
                 const extraCount = p.companies.length - visibleCompanies.length;
-                const Row = (<div className="flex items-center justify-between gap-3 rounded-[var(--radius-sm)] border px-4 py-3 transition-colors" style={{ borderColor: 'var(--line)' }}>
+                const Row = (<div className="flex flex-col gap-2 rounded-[var(--radius-sm)] border px-3 py-3 transition-colors sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4" style={{ borderColor: 'var(--line)' }}>
                   <div className="flex min-w-0 items-center gap-3">
                     <button onClick={(e) => toggleStar(p.slug, e)} aria-label={isStarred ? 'Unstar problem' : 'Star problem'} className="flex-shrink-0 text-sm" style={{ color: isStarred ? 'var(--score-amber)' : 'var(--ink-soft)' }}>
                       {isStarred ? '★' : '☆'}
@@ -298,7 +298,10 @@ function LeetCodeContent() {
                           </span>))}
                     </div>
                   </div>
-                  <div className="flex flex-shrink-0 items-center gap-3">
+                  <div className="flex items-center justify-between gap-3 sm:flex-shrink-0">
+                    <span className="text-[11px] sm:hidden" style={{ color: 'var(--ink-soft)' }}>
+                      {p.category}
+                    </span>
                     <span className="hidden text-xs sm:inline" style={{ color: 'var(--ink-soft)' }}>
                       {p.category}
                     </span>
