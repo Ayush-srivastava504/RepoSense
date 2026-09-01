@@ -8,6 +8,7 @@
 // separate, slightly inconsistent JobPosting blocks. Don't re-add schema here.
 
 import Link from 'next/link';
+import Script from 'next/script';
 import type { Job } from '@/lib/jobs';
 import { getSimilarJobs } from '@/lib/jobs';
 import { companySlug } from '@/lib/companies';
@@ -17,6 +18,8 @@ import ApplyButton from '@/app/components/ApplyButton';
 import SimilarJobs from '@/app/components/SimilarJobs';
 import SaveJobButton from '@/app/components/SaveJobButton';
 import MatchScoreBadge from '@/app/components/MatchScoreBadge';
+
+const NATIVE_AD_CONTAINER = 'container-0ecc31c4385791c7fa0bcc3db25e36c9';
 // Matches an enriched keyword to a known /skills/[slug] hub page, if one exists, so we can
 // link it instead of rendering a dead-end chip. Falls back to null for keywords without a
 // dedicated hub (e.g. soft skills) — those still render as plain chips.
@@ -139,6 +142,12 @@ export default async function JobDetail({ job, canonicalPath, backHref, backLabe
           ← {backLabel}
         </a>
       </div>
+
+      <section className="mt-8 w-full overflow-hidden rounded-lg">
+        <div id={NATIVE_AD_CONTAINER}/>
+      </section>
+
+      <Script id="job-detail-native-banner" async data-cfasync="false" src="https://pl30201817.effectivecpmnetwork.com/0ecc31c4385791c7fa0bcc3db25e36c9/invoke.js" strategy="afterInteractive"/>
 
       <SimilarJobs jobs={similarJobs}/>
     </main>);

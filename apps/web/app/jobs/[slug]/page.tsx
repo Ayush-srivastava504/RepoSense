@@ -11,7 +11,6 @@ import { getJobById, BASE_URL } from '@/lib/jobs';
 import { jobPostingSchema, breadcrumbSchema } from '@/lib/structuredData';
 import JobDetail from '@/app/components/JobDetail';
 import TrackView from '@/app/components/TrackView';
-const NATIVE_AD_CONTAINER = 'container-0ecc31c4385791c7fa0bcc3db25e36c9';
 export async function generateMetadata({ params, }: {
     params: {
         slug: string;
@@ -62,13 +61,5 @@ export default async function JobDetailPage({ params, }: {
       <div className="mx-auto w-full max-w-5xl px-3 py-6 sm:px-4 sm:py-8">
         <JobDetail job={job} canonicalPath={canonicalPath} backHref="/jobs" backLabel="Back to jobs"/>
       </div>
-
-      <section className="mx-auto w-full max-w-3xl px-3 pb-8 sm:px-4 sm:pb-12">
-        <div className="w-full overflow-hidden rounded-lg">
-          <div id={NATIVE_AD_CONTAINER}/>
-        </div>
-      </section>
-
-      <Script id="job-detail-native-banner" async data-cfasync="false" src="https://pl30201817.effectivecpmnetwork.com/0ecc31c4385791c7fa0bcc3db25e36c9/invoke.js" strategy="afterInteractive"/>
     </main>);
 }
