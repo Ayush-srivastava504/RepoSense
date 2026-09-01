@@ -1,19 +1,30 @@
 {
   "slug": "resume-for-data-science-internship-kw-0137",
-  "title": "Resume for Data Science Internship",
-  "description": "A practical, no-fluff guide on resume for data science internship — what it actually takes, common mistakes, and a clear next step, written for engineering students and early-career job seekers.",
+  "title": "Data Science & ML Internship Resume Guide: Portfolio Projects, Metrics & Templates",
+  "description": "How to write a high-scoring Data Science, Machine Learning, and Data Analyst internship resume that gets interviews in 2026.",
   "keyword": "resume for data science internship",
-  "category": "resume-ats",
-  "publishedAt": "2026-09-01T08:28:06.313Z",
-  "body": "If you're searching for \"resume for data science internship\", you're probably trying to solve a real, specific problem this week — not read a wall of generic advice. Here's the short version, then the detail.\n\n## Why this matters\n\nResume ats decisions compound. A small improvement here — a sharper resume line, a better-timed application, a cleaner GitHub profile — tends to save you weeks of back-and-forth later, because recruiters and applicant tracking systems are both pattern-matching against thousands of near-identical submissions.\n\n## The core idea\n\n- Be specific, not impressive-sounding: concrete numbers and outcomes beat adjectives.\n- Match the exact language the posting or platform uses — this is what most ATS and recruiter search tools actually key off.\n- Ship something checkable: a public repo, a live demo, a verifiable certificate, a real reference — not just a claim.\n\n## A practical next step\n\nPick one thing from the list above and fix it today rather than trying to overhaul everything at once. Small, verifiable improvements shipped consistently outperform one large effort that never gets finished.\n\n## Where InternFlow fits in\n\nIf part of this is about your resume, GitHub profile, or LinkedIn presence, InternFlow's free tools (ATS resume checker, GitHub README generator, and AI code review) are built to shortcut exactly this kind of work — check the tools hub and run your profile through one of them in a couple of minutes.",
+  "category": "resume-tips",
+  "publishedAt": "2026-08-14T10:00:00.000Z",
+  "updatedAt": "2026-09-01T14:00:00.000Z",
+  "author": {
+    "name": "InternFlow Data Team",
+    "role": "Data Science & ML Hiring"
+  },
+  "readingTime": "8 min read",
+  "tags": ["Data Science", "Machine Learning", "Internship", "Python", "SQL", "Portfolio"],
+  "image": {
+    "url": "https://www.intern-flow.in/og-image.png",
+    "alt": "Data Science Internship Resume Architecture"
+  },
+  "body": "Data Science and Machine Learning internship recruiting has become exceptionally competitive. Hiring managers have moved past generic Iris dataset classifications and Titanic survivor predictions. In 2026, landing a top data role requires showing end-to-end data capability: exploratory data analysis (EDA), data cleaning, statistical modeling, feature engineering, and model deployment.\n\n## 1. Core Technical Skills to Include\n\n- Programming & Querying: Python (pandas, numpy, polars, scipy), SQL (PostgreSQL, BigQuery, Snowflake, CTEs, Window Functions), R.\n- Machine Learning & Deep Learning: Scikit-learn, PyTorch, XGBoost, LightGBM, Hugging Face Transformers.\n- Data Engineering & Pipelines: dbt, Apache Airflow, DuckDB, Spark/PySpark.\n- Visualization & Dashboards: Tableau, PowerBI, Streamlit, Plotly, Seaborn.\n\n## 2. 3 Standout Portfolio Projects for Data Science Internships\n\n- Project 1: Predictive Analytics with Business ROI (e.g., Customer Churn Predictor using XGBoost with SHAP explainability, deployed via FastAPI with Docker).\n- Project 2: NLP / LLM Evaluation System (e.g., Multi-Class Support Ticket Classifier using fine-tuned RoBERTa/LLaMA with 93% F1-score).\n- Project 3: End-to-End Data Pipeline & Live Dashboard (e.g., Ingesting real estate price data via APIs, transforming with dbt, and serving an interactive Streamlit dashboard).\n\n## 3. Formatting Quantitative Bullets\n\nAlways pair algorithmic choices with measurable business or model metrics:\n- Weak: 'Built a sentiment analysis model on Twitter data.'\n- Strong: 'Trained a BERT-based sentiment classifier on 120K customer reviews using PyTorch; optimized inference latency by 35% with ONNX runtime, achieving a 0.92 ROC-AUC score.'",
   "faq": [
     {
-      "q": "Is resume for data science internship something I can realistically do without prior experience?",
-      "a": "Yes — most of what matters here is presentation and consistency, not prior credentials. Start small, document what you do, and iterate."
+      "q": "Are Kaggle competitions valuable on a Data Science resume?",
+      "a": "Yes! Achieving a Kaggle Expert or Master rank, or finishing in the top 10% of a featured competition, provides strong proof of practical problem-solving capability."
     },
     {
-      "q": "How long does it usually take to see results?",
-      "a": "For most students, focused effort over 2–4 weeks (a few hours a week) is enough to see a measurable difference in response rates or outcomes."
+      "q": "Should I link my Jupyter Notebooks on my resume?",
+      "a": "Rather than linking messy exploratory notebooks, link to clean GitHub repositories containing modular Python scripts, unit tests, a clear README, and a deployed Streamlit/Gradio web demo."
     }
   ]
 }

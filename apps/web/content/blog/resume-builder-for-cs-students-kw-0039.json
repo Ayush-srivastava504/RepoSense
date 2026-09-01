@@ -1,19 +1,30 @@
 {
   "slug": "resume-builder-for-cs-students-kw-0039",
-  "title": "Resume Builder for CS Students",
-  "description": "A practical, no-fluff guide on resume builder for CS students — what it actually takes, common mistakes, and a clear next step, written for engineering students and early-career job seekers.",
-  "keyword": "resume builder for CS students",
-  "category": "resume-ats",
-  "publishedAt": "2026-08-09T04:20:49.596Z",
-  "body": "If you're searching for \"resume builder for CS students\", you're probably trying to solve a real, specific problem this week — not read a wall of generic advice. Here's the short version, then the detail.\n\n## Why this matters\n\nResume ats decisions compound. A small improvement here — a sharper resume line, a better-timed application, a cleaner GitHub profile — tends to save you weeks of back-and-forth later, because recruiters and applicant tracking systems are both pattern-matching against thousands of near-identical submissions.\n\n## The core idea\n\n- Be specific, not impressive-sounding: concrete numbers and outcomes beat adjectives.\n- Match the exact language the posting or platform uses — this is what most ATS and recruiter search tools actually key off.\n- Ship something checkable: a public repo, a live demo, a verifiable certificate, a real reference — not just a claim.\n\n## A practical next step\n\nPick one thing from the list above and fix it today rather than trying to overhaul everything at once. Small, verifiable improvements shipped consistently outperform one large effort that never gets finished.\n\n## Where InternFlow fits in\n\nIf part of this is about your resume, GitHub profile, or LinkedIn presence, InternFlow's free tools (ATS resume checker, GitHub README generator, and AI code review) are built to shortcut exactly this kind of work — check the tools hub and run your profile through one of them in a couple of minutes.",
+  "title": "Computer Science Student Resume Guide 2026: Format, Templates & Project Examples",
+  "description": "Step-by-step technical resume guide for Computer Science undergraduate and graduate students. How to land SWE internships and full-time roles.",
+  "keyword": "resume builder for cs students",
+  "category": "resume-tips",
+  "publishedAt": "2026-08-13T10:00:00.000Z",
+  "updatedAt": "2026-09-01T14:00:00.000Z",
+  "author": {
+    "name": "InternFlow Career Research",
+    "role": "CS Career Advisory"
+  },
+  "readingTime": "9 min read",
+  "tags": ["CS Students", "Resume Guide", "Software Engineering", "Internships", "LaTeX"],
+  "image": {
+    "url": "https://www.intern-flow.in/og-image.png",
+    "alt": "Computer Science Undergraduate Resume Blueprint"
+  },
+  "body": "Computer Science students face a unique challenge: translating academic coursework and personal coding projects into commercial-grade engineering capability on a single page. In 2026, tech recruiters filter through hundreds of resumes per opening, prioritizing verifiable project architecture, clean version control, and concrete technical metrics.\n\n## 1. Optimal CS Student Resume Layout\n\n- Header: Full Name, Email, Phone, LinkedIn, GitHub, and Portfolio / Live Demo URL.\n- Education: Degree (B.Tech / B.S. in Computer Science), University Name, Expected Graduation Date, GPA (if > 3.5/4.0 or > 8.0/10.0), and Key Coursework (Data Structures & Algorithms, Distributed Systems, Operating Systems, Database Management Systems).\n- Technical Skills: Programming Languages, Frameworks & Libraries, Cloud & Databases, DevOps & Tools.\n- Featured Engineering Projects (3-4 Projects): Title, Tech Stack, Live Links, and 3 XYZ impact bullets per project.\n- Work Experience / Open Source / Hackathons: Internships, research assistantships, or competitive programming achievements (LeetCode, Codeforces rating).\n\n## 2. High-Impact Project Archetypes for CS Students\n\n- Archetype 1: Distributed / Systems Project (e.g., a Redis-compatible in-memory key-value store in Go or Rust with RESP protocol support).\n- Archetype 2: Full-Stack Real-Time Application (e.g., an interactive Kanban board with WebSocket live collaboration and PostgreSQL).\n- Archetype 3: AI / LLM Application (e.g., a multi-document RAG question-answering tool with hybrid vector search and streaming UI).\n\n## 3. Formatting with LaTeX vs. Word\n\nLaTeX templates (such as Jake's Resume or Deedy Resume) remain the industry gold standard for technical resumes. They generate pristine, uncorrupted typography with zero visual layout drift across different ATS parsers.",
   "faq": [
     {
-      "q": "Is resume builder for CS students something I can realistically do without prior experience?",
-      "a": "Yes — most of what matters here is presentation and consistency, not prior credentials. Start small, document what you do, and iterate."
+      "q": "Should CS students include non-technical jobs on their resume?",
+      "a": "Only if you lack technical projects. Once you have 3 solid software projects or an internship, replace non-technical jobs with technical accomplishments."
     },
     {
-      "q": "How long does it usually take to see results?",
-      "a": "For most students, focused effort over 2–4 weeks (a few hours a week) is enough to see a measurable difference in response rates or outcomes."
+      "q": "How can I build an ATS-ready CS resume in minutes?",
+      "a": "Use InternFlow's free AI Resume Builder to convert your GitHub repositories directly into LaTeX ATS-optimized bullet points."
     }
   ]
 }

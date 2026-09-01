@@ -1,19 +1,26 @@
 {
   "slug": "ai-resume-builder-india-kw-0060",
-  "title": "AI Resume Builder India",
-  "description": "A practical, no-fluff guide on AI resume builder India — what it actually takes, common mistakes, and a clear next step, written for engineering students and early-career job seekers.",
-  "keyword": "AI resume builder India",
-  "category": "resume-ats",
-  "publishedAt": "2026-08-15T03:43:32.511Z",
-  "body": "If you're searching for \"AI resume builder India\", you're probably trying to solve a real, specific problem this week — not read a wall of generic advice. Here's the short version, then the detail.\n\n## Why this matters\n\nResume ats decisions compound. A small improvement here — a sharper resume line, a better-timed application, a cleaner GitHub profile — tends to save you weeks of back-and-forth later, because recruiters and applicant tracking systems are both pattern-matching against thousands of near-identical submissions.\n\n## The core idea\n\n- Be specific, not impressive-sounding: concrete numbers and outcomes beat adjectives.\n- Match the exact language the posting or platform uses — this is what most ATS and recruiter search tools actually key off.\n- Ship something checkable: a public repo, a live demo, a verifiable certificate, a real reference — not just a claim.\n\n## A practical next step\n\nPick one thing from the list above and fix it today rather than trying to overhaul everything at once. Small, verifiable improvements shipped consistently outperform one large effort that never gets finished.\n\n## Where InternFlow fits in\n\nIf part of this is about your resume, GitHub profile, or LinkedIn presence, InternFlow's free tools (ATS resume checker, GitHub README generator, and AI code review) are built to shortcut exactly this kind of work — check the tools hub and run your profile through one of them in a couple of minutes.",
+  "title": "AI Resume Builder for Indian Engineering Students: Crack Product & Service Placements",
+  "description": "How Indian B.Tech / MCA students can generate ATS-friendly resumes for on-campus and off-campus placements using AI tools.",
+  "keyword": "ai resume builder india",
+  "category": "resume-tips",
+  "publishedAt": "2026-08-31T10:00:00.000Z",
+  "updatedAt": "2026-09-01T14:00:00.000Z",
+  "author": {
+    "name": "InternFlow Career Research",
+    "role": "Campus Placements India"
+  },
+  "readingTime": "8 min read",
+  "tags": ["AI Resume Builder", "India Placements", "B.Tech", "Engineering Careers", "ATS"],
+  "image": {
+    "url": "https://www.intern-flow.in/og-image.png",
+    "alt": "AI Resume Builder for Indian Engineering Campus Placements"
+  },
+  "body": "Engineering students across India face intense competition during placement seasons. InternFlow's AI Resume Builder is specifically designed to help Indian students convert coursework, coding competitions, and GitHub projects into high-scoring resumes that pass both campus screening and external ATS filters.\n\n## 1. Key Sections for Indian Placement Resumes\n\n- Technical Skills: Programming Languages (C++, Java, Python, JavaScript), Core CS (DSA, OS, DBMS, Computer Networks), Web Technologies, and Database Systems.\n- Competitive Programming & Contests: Include your LeetCode, CodeChef, or Codeforces handle if you have solved significant problem sets.\n- Major & Minor Projects: Detail 2-3 full-stack or systems projects with live deployment links and GitHub repositories.\n- Internships / Experience: Document responsibilities, technical stacks used, and outcomes achieved.\n\n## 2. Instant PDF Generation with InternFlow\n\nBuild your placement-ready resume for free using InternFlow's AI resume builder, ensuring clean formatting, zero watermarks, and high ATS scores.",
   "faq": [
     {
-      "q": "Is AI resume builder India something I can realistically do without prior experience?",
-      "a": "Yes — most of what matters here is presentation and consistency, not prior credentials. Start small, document what you do, and iterate."
-    },
-    {
-      "q": "How long does it usually take to see results?",
-      "a": "For most students, focused effort over 2–4 weeks (a few hours a week) is enough to see a measurable difference in response rates or outcomes."
+      "q": "Can I use InternFlow's resume format for campus placements?",
+      "a": "Yes! InternFlow's single-column LaTeX templates comply with top engineering college placement cell standards and corporate ATS requirements."
     }
   ]
 }

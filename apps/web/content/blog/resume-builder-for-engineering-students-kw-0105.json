@@ -1,19 +1,26 @@
 {
   "slug": "resume-builder-for-engineering-students-kw-0105",
-  "title": "Resume Builder for Engineering Students",
-  "description": "A practical, no-fluff guide on resume builder for engineering students — what it actually takes, common mistakes, and a clear next step, written for engineering students and early-career job seekers.",
+  "title": "Resume Builder for Engineering Students: Step-by-Step Template & Formatting Rules",
+  "description": "The definitive technical resume building guide for engineering students: formatting rules, action verbs, project descriptions, and LaTeX templates.",
   "keyword": "resume builder for engineering students",
-  "category": "resume-ats",
-  "publishedAt": "2026-08-24T03:57:52.731Z",
-  "body": "If you're searching for \"resume builder for engineering students\", you're probably trying to solve a real, specific problem this week — not read a wall of generic advice. Here's the short version, then the detail.\n\n## Why this matters\n\nResume ats decisions compound. A small improvement here — a sharper resume line, a better-timed application, a cleaner GitHub profile — tends to save you weeks of back-and-forth later, because recruiters and applicant tracking systems are both pattern-matching against thousands of near-identical submissions.\n\n## The core idea\n\n- Be specific, not impressive-sounding: concrete numbers and outcomes beat adjectives.\n- Match the exact language the posting or platform uses — this is what most ATS and recruiter search tools actually key off.\n- Ship something checkable: a public repo, a live demo, a verifiable certificate, a real reference — not just a claim.\n\n## A practical next step\n\nPick one thing from the list above and fix it today rather than trying to overhaul everything at once. Small, verifiable improvements shipped consistently outperform one large effort that never gets finished.\n\n## Where InternFlow fits in\n\nIf part of this is about your resume, GitHub profile, or LinkedIn presence, InternFlow's free tools (ATS resume checker, GitHub README generator, and AI code review) are built to shortcut exactly this kind of work — check the tools hub and run your profile through one of them in a couple of minutes.",
+  "category": "resume-tips",
+  "publishedAt": "2026-08-18T10:00:00.000Z",
+  "updatedAt": "2026-09-01T14:00:00.000Z",
+  "author": {
+    "name": "InternFlow Career Research",
+    "role": "Engineering Resume Specialist"
+  },
+  "readingTime": "8 min read",
+  "tags": ["Engineering Resume", "College Students", "Job Applications", "Career Prep"],
+  "image": {
+    "url": "https://www.intern-flow.in/og-image.png",
+    "alt": "Engineering Student Resume Template Breakdown"
+  },
+  "body": "Engineering students often make the mistake of listing coursework and club participation while omitting the exact technical details recruiters look for. In 2026, building an engineering resume that stands out requires structuring your experiences to showcase technical depth, problem-solving methodologies, and verifiable outcomes.\n\n## 1. Golden Rules of Engineering Resume Formatting\n\n- Strict 1-Page Constraint: Engineering managers spend an average of 6 to 8 seconds scanning an initial resume. Keep your content dense, readable, and strictly on a single page.\n- Standard 0.5 to 0.75-Inch Margins: Maximizes printable area without crowding the text.\n- Consistent Date & Location Alignment: Right-aligned dates formatted consistently (`MM/YYYY` or `Month YYYY`).\n- Reverse-Chronological Order: Most recent education, internships, and projects at the top.\n\n## 2. Strong Engineering Action Verbs\n\nReplace weak verbs ('Assisted with', 'Helped build', 'Responsible for') with powerful engineering action verbs:\n- Architecture & Design: *Architected, Engineered, Formulated, Designed, Standardized.*\n- Development & Execution: *Implemented, Refactored, Deployed, Automated, Integrated.*\n- Optimization & Performance: *Benchmarked, Accelerated, Streamlined, Reduced, Scaled.*\n\n## 3. Instant LaTeX Generation with InternFlow\n\nInternFlow's free AI Resume Builder automatically formats your skills, projects, and coursework into clean, ATS-compliant LaTeX templates that guarantee perfect rendering.",
   "faq": [
     {
-      "q": "Is resume builder for engineering students something I can realistically do without prior experience?",
-      "a": "Yes — most of what matters here is presentation and consistency, not prior credentials. Start small, document what you do, and iterate."
-    },
-    {
-      "q": "How long does it usually take to see results?",
-      "a": "For most students, focused effort over 2–4 weeks (a few hours a week) is enough to see a measurable difference in response rates or outcomes."
+      "q": "Should engineering students include high school information on their resume?",
+      "a": "No. Once you enter university, remove all high school achievements unless you won a globally recognized award or Olympiad."
     }
   ]
 }

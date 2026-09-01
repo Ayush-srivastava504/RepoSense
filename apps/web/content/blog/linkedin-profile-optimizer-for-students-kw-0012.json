@@ -1,19 +1,26 @@
 {
   "slug": "linkedin-profile-optimizer-for-students-kw-0012",
-  "title": "LinkedIn Profile Optimizer for Students",
-  "description": "A practical, no-fluff guide on LinkedIn profile optimizer for students — what it actually takes, common mistakes, and a clear next step, written for engineering students and early-career job seekers.",
-  "keyword": "LinkedIn profile optimizer for students",
-  "category": "linkedin",
-  "publishedAt": "2026-08-07T14:16:36.812Z",
-  "body": "If you're searching for \"LinkedIn profile optimizer for students\", you're probably trying to solve a real, specific problem this week — not read a wall of generic advice. Here's the short version, then the detail.\n\n## Why this matters\n\nLinkedin decisions compound. A small improvement here — a sharper resume line, a better-timed application, a cleaner GitHub profile — tends to save you weeks of back-and-forth later, because recruiters and applicant tracking systems are both pattern-matching against thousands of near-identical submissions.\n\n## The core idea\n\n- Be specific, not impressive-sounding: concrete numbers and outcomes beat adjectives.\n- Match the exact language the posting or platform uses — this is what most ATS and recruiter search tools actually key off.\n- Ship something checkable: a public repo, a live demo, a verifiable certificate, a real reference — not just a claim.\n\n## A practical next step\n\nPick one thing from the list above and fix it today rather than trying to overhaul everything at once. Small, verifiable improvements shipped consistently outperform one large effort that never gets finished.\n\n## Where InternFlow fits in\n\nIf part of this is about your resume, GitHub profile, or LinkedIn presence, InternFlow's free tools (ATS resume checker, GitHub README generator, and AI code review) are built to shortcut exactly this kind of work — check the tools hub and run your profile through one of them in a couple of minutes.",
+  "title": "Complete LinkedIn Profile Optimization Guide for Tech Students & Freshers in 2026",
+  "description": "Step-by-step guide to optimizing your LinkedIn profile for tech recruiters: Headline formulas, About section blueprints, and Featured section strategies.",
+  "keyword": "linkedin profile optimizer for students",
+  "category": "career-tips",
+  "publishedAt": "2026-08-16T10:00:00.000Z",
+  "updatedAt": "2026-09-01T14:00:00.000Z",
+  "author": {
+    "name": "InternFlow Career Research",
+    "role": "Recruitment & Social Optimization"
+  },
+  "readingTime": "8 min read",
+  "tags": ["LinkedIn", "Student Careers", "Job Hunting", "Recruiter Optimization"],
+  "image": {
+    "url": "https://www.intern-flow.in/og-image.png",
+    "alt": "LinkedIn Profile Optimization Blueprint for Tech Students"
+  },
+  "body": "LinkedIn has become the primary search engine for corporate tech recruiters, startup founders, and technical sourcers. Having an incomplete profile is equivalent to not having a digital footprint. In 2026, optimizing your profile with the right keywords, featured media, and project demonstrations can generate a steady stream of recruiter inbound messages.\n\n## 1. Step-by-Step LinkedIn Profile Optimization\n\n- Professional Banner & Photo: High-resolution portrait photo against a clean background, paired with a custom GitHub / tech stack banner.\n- Search-Optimized Headline: `Role | Tech Stack | Proof Point / Key Achievement`.\n- The 'About' Section: Structure into 3 distinct sections:\n  1. Who you are & your core engineering passion.\n  2. Key technical skills grouped cleanly.\n  3. Your top 2 flagship engineering projects with links.\n- The 'Featured' Section: Pin your live portfolio link, your top starred GitHub repository, and your ATS-friendly resume PDF.\n- Experience & Projects: Detail each project with 3 bullet points highlighting technical stack, architecture choices, and metrics.\n- Skills & Endorsements: Add at least 15 relevant technical skills (e.g., Python, Docker, Next.js, PostgreSQL, AWS, Git).\n\n## 2. Increasing Your Inbound Recruiter Traffic\n\n- Toggle 'Open to Work' for Recruiters Only: This signals hiring managers without displaying a public badge.\n- Engage Consistently: Share short development logs, post-mortems of bugs you solved, or write-ups on new open-source projects you built.",
   "faq": [
     {
-      "q": "Is LinkedIn profile optimizer for students something I can realistically do without prior experience?",
-      "a": "Yes — most of what matters here is presentation and consistency, not prior credentials. Start small, document what you do, and iterate."
-    },
-    {
-      "q": "How long does it usually take to see results?",
-      "a": "For most students, focused effort over 2–4 weeks (a few hours a week) is enough to see a measurable difference in response rates or outcomes."
+      "q": "How can I audit my LinkedIn profile for free?",
+      "a": "Use InternFlow's free LinkedIn Profile Optimizer to get a complete score, keyword coverage analysis, and specific improvement tips."
     }
   ]
 }
