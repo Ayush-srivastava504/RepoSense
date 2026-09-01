@@ -1,0 +1,149 @@
+{
+  "nav": {
+    "home": "Startseite",
+    "jobs": "Stellenangebote",
+    "internships": "Praktika",
+    "remoteJobs": "Remote-Arbeit",
+    "governmentJobs": "Öffentlicher Dienst",
+    "companies": "Unternehmen",
+    "blog": "Blog",
+    "tools": "KI-Tools",
+    "about": "Über uns",
+    "dashboard": "Dashboard",
+    "tracker": "Meine Bewerbungen",
+    "signIn": "Anmelden",
+    "signOut": "Abmelden",
+    "searchJobs": "Jobs suchen…",
+    "hiring": "Stellenangebote",
+    "interview": "Vorstellungsgespräch",
+    "darkMode": "Dunkelmodus",
+    "lightMode": "Hellmodus",
+    "japanJobs": "Jobs in Japan",
+    "europeJobs": "Jobs in Europa",
+    "hackathons": "Hackathons",
+    "careerPaths": "Karrierewege",
+    "resumeGuides": "Lebenslauf-Leitfäden",
+    "jobsByCity": "Jobs nach Stadt",
+    "skills": "Nach Fähigkeit suchen",
+    "allTools": "Alle Tools",
+    "coverLetter": "Anschreiben-Generator",
+    "resumeBuilder": "Lebenslauf-Ersteller",
+    "atsChecker": "ATS-Prüfer",
+    "linkedinOptimizer": "LinkedIn-Optimierer",
+    "readmeGenerator": "README-Generator",
+    "leetcode": "LeetCode"
+  },
+  "hero": {
+    "eyebrow": "// Jobs, Praktika & Lebenslauf-Tools",
+    "title": "Ihre Jobsuche, Praktikumssuche und Ihr Lebenslauf — alles an einem Ort.",
+    "subtitle": "InternFlow durchsucht täglich Stellenangebote im gesamten Web und hilft Ihnen, sich mit einem ATS-fähigen Lebenslauf und einem maßgeschneiderten Anschreiben zu bewerben — ohne zwischen zehn verschiedenen Tabs zu jonglieren.",
+    "chipDaily": "Täglich neue Angebote",
+    "chipJobs": "Jobs, Praktika & Remote",
+    "chipFree": "Kostenlose Lebenslauf- & ATS-Tools",
+    "browseJobs": "Jobs durchsuchen",
+    "buildResume": "Meinen Lebenslauf erstellen"
+  },
+  "flow": {
+    "eyebrow": "// der Praktikums-Flow",
+    "title": "Von der Suche zum unterschriebenen Angebot",
+    "subtitle": "Ein einfacher Kreislauf, von Anfang bis Ende — kein Zusammensetzen über verschiedene Seiten nötig.",
+    "steps": [
+      {
+        "tag": "entdecken",
+        "title": "Die Stelle finden",
+        "body": "Durchsuchen Sie Jobs, Praktika und Remote-Stellen, die täglich von Karriereseiten, Indeed und LinkedIn Jobs gesammelt werden."
+      },
+      {
+        "tag": "bewerben",
+        "title": "Mit Zuversicht bewerben",
+        "body": "Erstellen Sie einen ATS-fähigen Lebenslauf und ein maßgeschneidertes Anschreiben für die genaue Stelle in wenigen Minuten."
+      },
+      {
+        "tag": "verfolgen",
+        "title": "Jede Bewerbung verfolgen",
+        "body": "Protokollieren Sie Status, Fristen und Follow-ups in einem Tracker statt in einer verstreuten Tabelle."
+      },
+      {
+        "tag": "landen",
+        "title": "Vorbereiten und eingestellt werden",
+        "body": "Üben Sie mit STAR-Methode-Geschichten und häufigen Vorstellungsgespräch-Fragen vor dem Gespräch."
+      }
+    ]
+  },
+  "features": {
+    "eyebrow": "// was enthalten ist",
+    "title": "Alles in einem Arbeitsbereich",
+    "items": [
+      {
+        "tag": "Jobs",
+        "title": "Ein Feed, alle Quellen",
+        "body": "Jobs, Praktika, Remote-Stellen und öffentlicher Dienst — täglich gesammelt und organisiert, sodass Sie nur einmal suchen müssen."
+      },
+      {
+        "tag": "Lebenslauf",
+        "title": "Lebenslauf aus echter Arbeit",
+        "body": "Verwandeln Sie Ihre GitHub-Commits und Projektarbeit in ATS-fähige Lebenslauf-Punkte, abgestimmt auf eine bestimmte Stellenbeschreibung."
+      },
+      {
+        "tag": "ATS",
+        "title": "ATS-Prüfer + Anschreiben",
+        "body": "Bewerten Sie Ihren Lebenslauf anhand einer Stellenbeschreibung und erstellen Sie dann ein maßgeschneidertes Anschreiben in Sekunden."
+      },
+      {
+        "tag": "Tracker",
+        "title": "Bewerbungstracker",
+        "body": "Jede Bewerbung, Frist und jedes Vorstellungsgespräch auf einem Board, damit nichts durchrutscht."
+      }
+    ]
+  },
+  "categories": {
+    "eyebrow": "// nach Kategorie durchsuchen",
+    "title": "Finden Sie, was Sie suchen",
+    "items": [
+      { "label": "Alle Jobs", "body": "Alle offenen Stellen in Indien, remote und im Ausland." },
+      { "label": "Praktika", "body": "Indien, Remote und Japan — täglich aktualisiert." },
+      { "label": "Remote-Arbeit", "body": "Vollständig remote Stellen aus den USA, UK und weltweit." },
+      { "label": "Öffentlicher Dienst", "body": "Regierungsstellenbenachrichtigungen, täglich verfolgt." },
+      { "label": "Einstellende Unternehmen", "body": "Top-Arbeitgeber, Masseneinstellungen und Startups." },
+      { "label": "KI-Karriere-Tools", "body": "Lebenslauf-Ersteller, ATS-Prüfer und mehr — kostenlos." }
+    ]
+  },
+  "cta": {
+    "eyebrow": "// bereit wenn Sie es sind",
+    "title": "Hören Sie auf, in zehn Tabs zu suchen. Bewerben Sie sich von einem aus.",
+    "button": "Jobs kostenlos durchsuchen"
+  },
+  "blog": {
+    "eyebrow": "// Leitfäden",
+    "title": "Karriere- & Praktikums-Leitfäden",
+    "subtitle": "Täglich neuer Leitfaden — Praktika, ATS-Lebensläufe, GitHub-Portfolios, LinkedIn und Hackathons, geschrieben für Ingenieurstudenten.",
+    "empty": "Die ersten Leitfäden sind in Vorbereitung — schauen Sie bald wieder vorbei.",
+    "backToAll": "← Alle Leitfäden",
+    "published": "Veröffentlicht am",
+    "faqTitle": "Häufig gestellte Fragen"
+  },
+  "footer": {
+    "tagline": "KI-Code-Review und Lebenslauf-Erstellung für Studierende, nicht für Unternehmen.",
+    "copyright": "© {year} InternFlow — für Studierende entwickelt, nicht für Unternehmen",
+    "madeIn": "hergestellt in Indien",
+    "product": "Produkt",
+    "interviewPrep": "Vorstellungsgespräch-Vorbereitung",
+    "popularSkills": "Beliebte Fähigkeiten",
+    "aiTools": "KI-Tools",
+    "account": "Konto",
+    "contact": "Kontakt"
+  },
+  "common": {
+    "seeAll": "Alle Angebote anzeigen",
+    "openNow": "// jetzt offen",
+    "jobsThisWeek": "Jobs und Praktika aus der Sammlung dieser Woche",
+    "browseFull": "Durchsuchen Sie den gesamten Feed und bewerben Sie sich direkt — kein Konto nötig.",
+    "faq": "// häufig gestellte Fragen",
+    "faqTitle": "Fragen zu Jobs, Praktika und Lebensläufen",
+    "language": "Sprache"
+  },
+  "meta": {
+    "title": "InternFlow — Gut bezahlte Jobs, Remote-Arbeit & Praktika + KI-Lebenslauf-Ersteller",
+    "description": "Finden Sie gut bezahlte Jobs, Remote-Arbeit, öffentliche Stellen und Praktika — KI-Ingenieur, DevOps, Dateningenieur und mehr — plus ATS-fähiger Lebenslauf-Ersteller, Anschreiben-Generator und KI-GitHub-Code-Review."
+  }
+}

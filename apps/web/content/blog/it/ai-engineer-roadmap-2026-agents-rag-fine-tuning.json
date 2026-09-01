@@ -1,0 +1,26 @@
+{
+  "slug": "ai-engineer-roadmap-2026-agents-rag-fine-tuning",
+  "title": "Roadmap per AI Engineer 2026: Da RAG e database vettoriali a sciami di agenti autonomi",
+  "description": "Roadmap completa 2026 per AI Engineer: sviluppo applicazioni LLM, architetture RAG avanzate, database vettoriali e sistemi multi-agente.",
+  "keyword": "roadmap AI engineer 2026",
+  "category": "ai-engineer",
+  "publishedAt": "2026-08-20T10:00:00.000Z",
+  "updatedAt": "2026-09-01T12:00:00.000Z",
+  "author": {
+    "name": "Team Ingegneria InternFlow",
+    "role": "IA e Sistemi Distribuiti"
+  },
+  "readingTime": "9 min di lettura",
+  "tags": ["Ingegneria IA", "LLM", "RAG", "Database Vettoriali", "Agenti", "Python"],
+  "image": {
+    "url": "https://www.intern-flow.in/og-image.png",
+    "alt": "Roadmap AI Engineer 2026"
+  },
+  "body": "Il ruolo dell'AI Engineer è maturato rapidamente. Nel 2026, creare applicazioni di intelligenza artificiale in produzione va ben oltre il semplice concatenamento di prompt. Le aziende cercano ingegneri capaci di orchestrare flussi deterministici, estrarre dati strutturati e progettare architetture di agenti autonomi affidabili.\n\n## 1. Fondamenta: Da Prompt Engineering a Output Strutturati\n\n- Validazione rigida degli schemi con Pydantic e modalità JSON.\n- Function Calling e definizione di strumenti con gestione avanzata degli errori.\n- Gestione del context window e compressione dei prompt.\n\n## 2. RAG Avanzato (Retrieval-Augmented Generation)\n\n- Ricerca Ibrida: Unione di ricerca vettoriale densa (pgvector, Qdrant) e ricerca lessicale (BM25).\n- Re-ranking: Uso di cross-encoder per selezionare con precisione i passaggi migliori.\n- GraphRAG: Integrazione di grafi di conoscenza (Neo4j) per ragionamento relazionale multi-hop.",
+  "faq": [
+    {
+      "q": "Quali linguaggi sono richiesti per un AI Engineer nel 2026?",
+      "a": "Python rimane fondamentale per modelli e orchestrazione. TypeScript è indispensabile per interfacce full-stack e Rust/C++ per motori di inferenza ad alte prestazioni."
+    }
+  ]
+}

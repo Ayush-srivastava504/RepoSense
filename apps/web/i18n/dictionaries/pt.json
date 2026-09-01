@@ -1,0 +1,149 @@
+{
+  "nav": {
+    "home": "Início",
+    "jobs": "Vagas",
+    "internships": "Estágios",
+    "remoteJobs": "Trabalho remoto",
+    "governmentJobs": "Concursos públicos",
+    "companies": "Empresas",
+    "blog": "Blog",
+    "tools": "Ferramentas IA",
+    "about": "Sobre",
+    "dashboard": "Painel",
+    "tracker": "Minhas candidaturas",
+    "signIn": "Entrar",
+    "signOut": "Sair",
+    "searchJobs": "Buscar vagas…",
+    "hiring": "Contratando",
+    "interview": "Entrevista",
+    "darkMode": "Modo escuro",
+    "lightMode": "Modo claro",
+    "japanJobs": "Vagas no Japão",
+    "europeJobs": "Vagas na Europa",
+    "hackathons": "Hackathons",
+    "careerPaths": "Trilhas de carreira",
+    "resumeGuides": "Guias de currículo",
+    "jobsByCity": "Vagas por cidade",
+    "skills": "Buscar por habilidade",
+    "allTools": "Todas as ferramentas",
+    "coverLetter": "Gerador de carta de apresentação",
+    "resumeBuilder": "Criador de currículo",
+    "atsChecker": "Verificador ATS",
+    "linkedinOptimizer": "Otimizador LinkedIn",
+    "readmeGenerator": "Gerador de README",
+    "leetcode": "LeetCode"
+  },
+  "hero": {
+    "eyebrow": "// vagas, estágios e ferramentas de currículo",
+    "title": "Sua busca de emprego, estágio e currículo — tudo em um só lugar.",
+    "subtitle": "O InternFlow rastreia vagas de toda a web todos os dias, e te ajuda a se candidatar com um currículo otimizado para ATS e uma carta de apresentação personalizada — sem ficar alternando entre dez abas diferentes.",
+    "chipDaily": "Novas vagas diárias",
+    "chipJobs": "Vagas, estágios e remoto",
+    "chipFree": "Ferramentas gratuitas de currículo e ATS",
+    "browseJobs": "Explorar vagas",
+    "buildResume": "Criar meu currículo"
+  },
+  "flow": {
+    "eyebrow": "// o fluxo do estágio",
+    "title": "Da busca à oferta assinada",
+    "subtitle": "Um ciclo simples, do início ao fim — sem precisar juntar tudo de diferentes sites.",
+    "steps": [
+      {
+        "tag": "descobrir",
+        "title": "Encontre a vaga",
+        "body": "Busque vagas, estágios e posições remotas rastreadas diariamente de páginas de carreira, Indeed e LinkedIn Jobs."
+      },
+      {
+        "tag": "candidatar",
+        "title": "Candidate-se com confiança",
+        "body": "Gere um currículo otimizado para ATS e uma carta de apresentação personalizada para a vaga exata em poucos minutos."
+      },
+      {
+        "tag": "acompanhar",
+        "title": "Acompanhe cada candidatura",
+        "body": "Registre status, prazos e follow-ups em um único rastreador em vez de uma planilha dispersa."
+      },
+      {
+        "tag": "conquistar",
+        "title": "Prepare-se e conquiste a vaga",
+        "body": "Pratique com histórias do método STAR e perguntas comuns de entrevista antes da chamada."
+      }
+    ]
+  },
+  "features": {
+    "eyebrow": "// o que está incluído",
+    "title": "Tudo em um único espaço de trabalho",
+    "items": [
+      {
+        "tag": "vagas",
+        "title": "Um feed, todas as fontes",
+        "body": "Vagas, estágios, posições remotas e concursos públicos — rastreados diariamente e organizados para que você busque uma vez só."
+      },
+      {
+        "tag": "currículo",
+        "title": "Currículo a partir do seu trabalho real",
+        "body": "Transforme seus commits do GitHub e projetos em pontos de currículo otimizados para ATS, ajustados para uma descrição de vaga específica."
+      },
+      {
+        "tag": "ATS",
+        "title": "Verificador ATS + cartas de apresentação",
+        "body": "Avalie seu currículo contra uma descrição de vaga e depois redija uma carta de apresentação personalizada em segundos."
+      },
+      {
+        "tag": "rastreador",
+        "title": "Rastreador de candidaturas",
+        "body": "Cada candidatura, prazo e entrevista em um único quadro para que nada passe despercebido."
+      }
+    ]
+  },
+  "categories": {
+    "eyebrow": "// explorar por categoria",
+    "title": "Encontre o que você procura",
+    "items": [
+      { "label": "Todas as vagas", "body": "Cada vaga aberta na Índia, remoto e no exterior." },
+      { "label": "Estágios", "body": "Índia, remoto e Japão — atualizados diariamente." },
+      { "label": "Trabalho remoto", "body": "Posições totalmente remotas dos EUA, Reino Unido e mundo todo." },
+      { "label": "Concursos públicos", "body": "Notificações de concursos, rastreadas diariamente." },
+      { "label": "Empresas contratando", "body": "Principais empregadores, contratações em massa e startups." },
+      { "label": "Ferramentas IA de carreira", "body": "Criador de currículo, verificador ATS e mais — grátis." }
+    ]
+  },
+  "cta": {
+    "eyebrow": "// pronto quando você estiver",
+    "title": "Pare de buscar em dez abas. Comece a se candidatar de uma só.",
+    "button": "Explorar vagas grátis"
+  },
+  "blog": {
+    "eyebrow": "// guias",
+    "title": "Guias de carreira e estágio",
+    "subtitle": "Novo guia publicado diariamente — estágios, currículos ATS, portfólios GitHub, LinkedIn e hackathons, escritos para estudantes de engenharia.",
+    "empty": "Os primeiros guias estão a caminho — volte em breve.",
+    "backToAll": "← Todos os guias",
+    "published": "Publicado em",
+    "faqTitle": "Perguntas frequentes"
+  },
+  "footer": {
+    "tagline": "Revisão de código com IA e geração de currículo feitos para estudantes, não para empresas.",
+    "copyright": "© {year} InternFlow — feito para estudantes, não para empresas",
+    "madeIn": "feito na Índia",
+    "product": "Produto",
+    "interviewPrep": "Preparação para entrevista",
+    "popularSkills": "Habilidades populares",
+    "aiTools": "Ferramentas IA",
+    "account": "Conta",
+    "contact": "Contato"
+  },
+  "common": {
+    "seeAll": "Ver todas as vagas",
+    "openNow": "// abertas agora",
+    "jobsThisWeek": "Vagas e estágios da coleta desta semana",
+    "browseFull": "Explore o feed completo e candidate-se diretamente — sem necessidade de conta.",
+    "faq": "// perguntas frequentes",
+    "faqTitle": "Perguntas sobre vagas, estágios e currículos",
+    "language": "Idioma"
+  },
+  "meta": {
+    "title": "InternFlow — Vagas bem pagas, trabalho remoto e estágios + Criador de currículo com IA",
+    "description": "Encontre vagas bem pagas, trabalho remoto, concursos públicos e estágios — engenheiro de IA, DevOps, engenheiro de dados e mais — além de criador de currículo compatível com ATS, gerador de carta de apresentação e revisão de código GitHub com IA."
+  }
+}

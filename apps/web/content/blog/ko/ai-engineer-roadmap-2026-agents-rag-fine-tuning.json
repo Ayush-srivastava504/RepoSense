@@ -1,0 +1,26 @@
+{
+  "slug": "ai-engineer-roadmap-2026-agents-rag-fine-tuning",
+  "title": "2026년 AI 엔지니어 로드맵: RAG & 벡터 DB부터 자율 에이전트 시스템까지",
+  "description": "2026년 AI 엔지니어 필수 로드맵: LLM 애플리케이션 개발, 고급 RAG 아키텍처, 벡터 데이터베이스, 파인튜닝 및 멀티 에이전트 시스템.",
+  "keyword": "AI 엔지니어 로드맵 2026",
+  "category": "ai-engineer",
+  "publishedAt": "2026-08-20T10:00:00.000Z",
+  "updatedAt": "2026-09-01T12:00:00.000Z",
+  "author": {
+    "name": "InternFlow 엔지니어링 팀",
+    "role": "AI 및 분산 시스템"
+  },
+  "readingTime": "9분 소요",
+  "tags": ["AI 엔지니어링", "LLM", "RAG", "벡터 DB", "에이전트", "Python"],
+  "image": {
+    "url": "https://www.intern-flow.in/og-image.png",
+    "alt": "2026 AI 엔지니어 로드맵"
+  },
+  "body": "AI 엔지니어의 역할은 급속도로 고도화되었습니다. 2026년 프로덕션 환경의 AI 애플리케이션 개발은 단순 프롬프트 연결을 뛰어넘습니다. 기업은 결정론적 오케스트레이션, 구조화된 데이터 추출, 검색 정밀도 및 신뢰할 수 있는 자율 에이전트 설계를 이해하는 엔지니어를 원합니다.\n\n## 1. 기초: 프롬프트 엔지니어링에서 구조화된 출력으로\n\n- Pydantic 및 JSON 모드를 활용한 엄격한 스키마 검증.\n- 예외 처리가 결합된 Function Calling 및 도구 정의.\n- 컨텍스트 윈도우 토큰 예산 관리 및 프롬프트 압축.\n\n## 2. 고급 검색 증강 생성 (Advanced RAG)\n\n- 하이브리드 검색: 밀집 벡터 검색(pgvector, Qdrant)과 희소 어휘 검색(BM25)의 결합.\n- 리랭킹(Re-ranking): 크로스 인코더를 통한 고정밀 구문 재정렬.\n- GraphRAG: 지식 그래프(Neo4j)와 벡터 임베딩을 결합한 다단계 관계 추론.",
+  "faq": [
+    {
+      "q": "2026년 AI 엔지니어에게 가장 중요한 프로그래밍 언어는 무엇인가요?",
+      "a": "모델 및 파이프라인 개발에는 Python이 표준이며, 풀스택 클라이언트 앱에는 TypeScript, 고속 추론 엔진에는 Rust/C++가 널리 쓰입니다."
+    }
+  ]
+}

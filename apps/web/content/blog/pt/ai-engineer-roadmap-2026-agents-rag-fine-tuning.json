@@ -1,0 +1,26 @@
+{
+  "slug": "ai-engineer-roadmap-2026-agents-rag-fine-tuning",
+  "title": "Roadmap do Engenheiro de IA 2026: De RAG e Bancos Vetoriais a Agentes Autônomos",
+  "description": "Roadmap completo de 2026 para engenheiros de IA: desenvolvimento de aplicações LLM, RAG avançado, bancos de dados vetoriais e sistemas multiagentes.",
+  "keyword": "roadmap engenheiro de IA 2026",
+  "category": "ai-engineer",
+  "publishedAt": "2026-08-20T10:00:00.000Z",
+  "updatedAt": "2026-09-01T12:00:00.000Z",
+  "author": {
+    "name": "Equipe de Engenharia InternFlow",
+    "role": "IA e Sistemas Distribuídos"
+  },
+  "readingTime": "9 min de leitura",
+  "tags": ["Engenharia de IA", "LLM", "RAG", "Bancos Vetoriais", "Agentes", "Python"],
+  "image": {
+    "url": "https://www.intern-flow.in/og-image.png",
+    "alt": "Roadmap Engenheiro de IA 2026"
+  },
+  "body": "O papel do Engenheiro de IA amadureceu rapidamente. Em 2026, criar aplicações de IA em produção vai muito além de conectar prompts básicos de API. As empresas buscam engenheiros que dominem orquestração determinística, extração estruturada de dados e arquiteturas confiáveis de agentes autônomos.\n\n## 1. Fundamentos: De Prompt Engineering a Saídas Estruturadas\n\n- Validação estrita de esquemas com Pydantic e modo JSON.\n- Chamada de funções (Function Calling) com tratamento robusto de erros.\n- Gestão de janela de contexto e compressão de prompts.\n\n## 2. RAG Avançado (Geração Aumentada por Recuperação)\n\n- Busca Híbrida: Combinação de busca vetorial semântica densa (pgvector, Qdrant) com busca léxica (BM25).\n- Reordenamento (Re-ranking): Uso de cross-encoders para selecionar os melhores trechos.\n- GraphRAG: Grafos de conhecimento integrados para raciocínio relacional complexo.",
+  "faq": [
+    {
+      "q": "Quais linguagens são essenciais para Engenheiro de IA em 2026?",
+      "a": "Python lidera para modelos e orquestração. TypeScript é padrão para clientes full-stack e Rust/C++ para motores de inferência de alto desempenho."
+    }
+  ]
+}

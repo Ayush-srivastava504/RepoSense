@@ -1,0 +1,30 @@
+{
+  "slug": "system-design-interview-primer-distributed-systems",
+  "title": "System Design for Junior to Mid Engineers: Rate Limiters, Caching, and Sharding Explained",
+  "description": "Master system design interview fundamentals: step-by-step blueprints for designing scalable distributed architectures under realistic constraints.",
+  "keyword": "system design interview for junior to mid engineers",
+  "category": "interview-prep",
+  "publishedAt": "2026-08-26T10:00:00.000Z",
+  "updatedAt": "2026-09-01T12:00:00.000Z",
+  "author": {
+    "name": "InternFlow Engineering Team",
+    "role": "Distributed Systems"
+  },
+  "readingTime": "11 min read",
+  "tags": ["System Design", "Distributed Systems", "Interviews", "Architecture", "Caching"],
+  "image": {
+    "url": "https://www.intern-flow.in/og-image.png",
+    "alt": "Distributed System Architecture Blueprint: Caching, Load Balancing, and Sharding"
+  },
+  "body": "System design interviews are no longer reserved strictly for staff engineers. Modern tech companies routinely test junior-to-mid level developers on basic architectural trade-offs, scalability bottlenecks, and distributed data storage concepts.\n\n## 1. The 4-Step Interview Framework\n\nWhen given a broad prompt (e.g., 'Design an API Rate Limiter' or 'Design TinyURL'), never jump straight into drawing boxes. Follow this structured roadmap:\n- Step 1: Clarify Scope & Functional Requirements (Who is using it? What are the core inputs and outputs? Read-heavy vs. write-heavy? Expected QPS and latency limits?)\n- Step 2: Back-of-the-Envelope Estimation (Calculate read/write QPS, peak throughput, storage growth per year, and memory caching requirements).\n- Step 3: High-Level Architecture (Define API endpoints, client-gateway routing, application services, cache layer, and database schema).\n- Step 4: Deep Dive & Bottleneck Mitigation (Address single points of failure, partition strategies, race conditions, and failover mechanisms).\n\n## 2. Core Building Blocks Every Engineer Must Know\n\n- Load Balancers: Layer 4 (TCP/UDP) vs Layer 7 (HTTP/HTTPS) routing algorithms (Round Robin, Least Connections, Consistent Hashing).\n- Caching Strategies: Cache-Aside vs Write-Through vs Write-Back. Cache eviction policies (LRU, LFU) and preventing cache stampedes with probabilistic early expiration.\n- Database Sharding & Partitioning: Range-based vs Hash-based partitioning. Managing cross-shard queries and resharding rebalances.\n- Distributed Rate Limiting: Token Bucket and Leaky Bucket algorithms vs Sliding Window Log with Redis sorted sets.\n\n## 3. Handling Data Consistency and Fault Tolerance\n\n- CAP Theorem in Practice: Understanding why distributed systems must choose between Consistency (CP) and Availability (AP) during network partitions.\n- Eventual Consistency: Using Message Queues (Kafka/RabbitMQ) for asynchronous decoupling and idempotent consumers to prevent duplicate processing.\n- Database Replication: Primary-replica setups for read scaling, replication lag management, and automatic leader election via Raft/Zookeeper.",
+  "faq": [
+    {
+      "q": "How can I practice system design without real production experience?",
+      "a": "Study real-world engineering blog posts (Netflix TechBlog, Uber Engineering, Stripe Engineering), implement miniature distributed prototypes locally (e.g., build a Redis-backed rate limiter or simple key-value store), and participate in mock interviews."
+    },
+    {
+      "q": "What is the biggest mistake candidates make in system design interviews?",
+      "a": "Assuming assumptions without asking clarifying questions, or over-engineering a complex microservices architecture when a simple modular monolith would handle the stated scale."
+    }
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "nav": {
+    "home": "Home",
+    "jobs": "Lavori",
+    "internships": "Stage",
+    "remoteJobs": "Lavoro da remoto",
+    "governmentJobs": "Concorsi pubblici",
+    "companies": "Aziende",
+    "blog": "Blog",
+    "tools": "Strumenti IA",
+    "about": "Chi siamo",
+    "dashboard": "Pannello",
+    "tracker": "Le mie candidature",
+    "signIn": "Accedi",
+    "signOut": "Esci",
+    "searchJobs": "Cerca lavori…",
+    "hiring": "Assunzioni",
+    "interview": "Colloquio",
+    "darkMode": "Modalità scura",
+    "lightMode": "Modalità chiara",
+    "japanJobs": "Lavori in Giappone",
+    "europeJobs": "Lavori in Europa",
+    "hackathons": "Hackathon",
+    "careerPaths": "Percorsi di carriera",
+    "resumeGuides": "Guide per il CV",
+    "jobsByCity": "Lavori per città",
+    "skills": "Cerca per competenza",
+    "allTools": "Tutti gli strumenti",
+    "coverLetter": "Generatore lettera di presentazione",
+    "resumeBuilder": "Creatore di CV",
+    "atsChecker": "Controllo ATS",
+    "linkedinOptimizer": "Ottimizzatore LinkedIn",
+    "readmeGenerator": "Generatore README",
+    "leetcode": "LeetCode"
+  },
+  "hero": {
+    "eyebrow": "// lavori, stage e strumenti per il CV",
+    "title": "La tua ricerca di lavoro, stage e CV — tutto in un unico posto.",
+    "subtitle": "InternFlow raccoglie offerte da tutto il web ogni giorno, poi ti aiuta a candidarti con un CV ottimizzato per ATS e una lettera di presentazione personalizzata — senza dover gestire dieci schede diverse.",
+    "chipDaily": "Nuove offerte giornaliere",
+    "chipJobs": "Lavori, stage e remoto",
+    "chipFree": "Strumenti gratuiti per CV e ATS",
+    "browseJobs": "Esplora i lavori",
+    "buildResume": "Crea il mio CV"
+  },
+  "flow": {
+    "eyebrow": "// il flusso dello stage",
+    "title": "Dalla ricerca all'offerta firmata",
+    "subtitle": "Un ciclo semplice, dall'inizio alla fine — senza dover assemblare tutto da siti diversi.",
+    "steps": [
+      {
+        "tag": "scoprire",
+        "title": "Trova la posizione",
+        "body": "Cerca lavori, stage e posizioni da remoto raccolti quotidianamente dalle pagine carriere delle aziende, Indeed e LinkedIn Jobs."
+      },
+      {
+        "tag": "candidarsi",
+        "title": "Candidati con fiducia",
+        "body": "Genera un CV ottimizzato per ATS e una lettera di presentazione personalizzata per l'offerta esatta in pochi minuti."
+      },
+      {
+        "tag": "tracciare",
+        "title": "Traccia ogni candidatura",
+        "body": "Registra stati, scadenze e follow-up in un unico tracker invece di un foglio di calcolo disperso."
+      },
+      {
+        "tag": "ottenere",
+        "title": "Preparati e ottieni il lavoro",
+        "body": "Esercitati con storie del metodo STAR e domande comuni di colloquio prima della chiamata."
+      }
+    ]
+  },
+  "features": {
+    "eyebrow": "// cosa include",
+    "title": "Tutto in un unico spazio di lavoro",
+    "items": [
+      {
+        "tag": "lavori",
+        "title": "Un feed, tutte le fonti",
+        "body": "Lavori, stage, posizioni da remoto e concorsi pubblici — raccolti e organizzati quotidianamente per cercare una volta sola."
+      },
+      {
+        "tag": "CV",
+        "title": "CV dal tuo lavoro reale",
+        "body": "Trasforma i tuoi commit GitHub e il lavoro sui progetti in punti del CV ottimizzati per ATS, adattati a una specifica descrizione del lavoro."
+      },
+      {
+        "tag": "ATS",
+        "title": "Controllo ATS + lettere di presentazione",
+        "body": "Valuta il tuo CV rispetto a una descrizione del lavoro, poi crea una lettera di presentazione personalizzata in pochi secondi."
+      },
+      {
+        "tag": "tracker",
+        "title": "Tracker delle candidature",
+        "body": "Ogni candidatura, scadenza e colloquio su un'unica bacheca per non perdere nulla."
+      }
+    ]
+  },
+  "categories": {
+    "eyebrow": "// esplora per categoria",
+    "title": "Trova quello che cerchi",
+    "items": [
+      { "label": "Tutti i lavori", "body": "Ogni offerta aperta in India, da remoto e all'estero." },
+      { "label": "Stage", "body": "India, remoto e Giappone — aggiornati quotidianamente." },
+      { "label": "Lavoro da remoto", "body": "Posizioni completamente da remoto da USA, UK e tutto il mondo." },
+      { "label": "Concorsi pubblici", "body": "Notifiche di concorsi pubblici, tracciate quotidianamente." },
+      { "label": "Aziende che assumono", "body": "Principali datori di lavoro, assunzioni di massa e startup." },
+      { "label": "Strumenti IA per la carriera", "body": "Creatore di CV, controllo ATS e altro — gratis." }
+    ]
+  },
+  "cta": {
+    "eyebrow": "// pronto quando lo sei",
+    "title": "Smetti di cercare in dieci schede. Inizia a candidarti da una.",
+    "button": "Esplora i lavori gratis"
+  },
+  "blog": {
+    "eyebrow": "// guide",
+    "title": "Guide per carriera e stage",
+    "subtitle": "Nuova guida pubblicata quotidianamente — stage, CV ATS, portfolio GitHub, LinkedIn e hackathon, scritte per studenti di ingegneria.",
+    "empty": "Le prime guide sono in arrivo — torna presto.",
+    "backToAll": "← Tutte le guide",
+    "published": "Pubblicato il",
+    "faqTitle": "Domande frequenti"
+  },
+  "footer": {
+    "tagline": "Revisione del codice con IA e generazione di CV pensati per studenti, non per aziende.",
+    "copyright": "© {year} InternFlow — pensato per studenti, non per aziende",
+    "madeIn": "realizzato in India",
+    "product": "Prodotto",
+    "interviewPrep": "Preparazione al colloquio",
+    "popularSkills": "Competenze popolari",
+    "aiTools": "Strumenti IA",
+    "account": "Account",
+    "contact": "Contatti"
+  },
+  "common": {
+    "seeAll": "Vedi tutte le offerte",
+    "openNow": "// aperte ora",
+    "jobsThisWeek": "Lavori e stage dalla raccolta di questa settimana",
+    "browseFull": "Esplora il feed completo e candidati direttamente — nessun account necessario.",
+    "faq": "// domande frequenti",
+    "faqTitle": "Domande su lavori, stage e CV",
+    "language": "Lingua"
+  },
+  "meta": {
+    "title": "InternFlow — Lavori ben pagati, lavoro da remoto e stage + Creatore di CV con IA",
+    "description": "Trova lavori ben pagati, lavoro da remoto, concorsi pubblici e stage — ingegnere IA, DevOps, ingegnere dei dati e altro — più creatore di CV compatibile ATS, generatore di lettere di presentazione e revisione del codice GitHub con IA."
+  }
+}

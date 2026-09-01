@@ -1,0 +1,149 @@
+{
+  "nav": {
+    "home": "Home",
+    "jobs": "Jobs",
+    "internships": "Internships",
+    "remoteJobs": "Remote Jobs",
+    "governmentJobs": "Government Jobs",
+    "companies": "Companies",
+    "blog": "Blog",
+    "tools": "AI Tools",
+    "about": "About",
+    "dashboard": "Dashboard",
+    "tracker": "My Applications",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "searchJobs": "Search jobs…",
+    "hiring": "Hiring",
+    "interview": "Interview",
+    "darkMode": "Dark mode",
+    "lightMode": "Light mode",
+    "japanJobs": "Japan Jobs",
+    "europeJobs": "Europe Jobs",
+    "hackathons": "Hackathons",
+    "careerPaths": "Career paths",
+    "resumeGuides": "Resume guides",
+    "jobsByCity": "Jobs by city",
+    "skills": "Browse by skill",
+    "allTools": "All tools",
+    "coverLetter": "Cover Letter Generator",
+    "resumeBuilder": "Resume Builder",
+    "atsChecker": "ATS Checker",
+    "linkedinOptimizer": "LinkedIn Optimizer",
+    "readmeGenerator": "README Generator",
+    "leetcode": "LeetCode"
+  },
+  "hero": {
+    "eyebrow": "// jobs, internships & resume tools",
+    "title": "Your job search, internship hunt, and resume — in one place.",
+    "subtitle": "InternFlow crawls listings from across the web every day, then helps you apply with an ATS-ready resume and a tailored cover letter — without juggling ten different tabs.",
+    "chipDaily": "New listings daily",
+    "chipJobs": "Jobs, internships & remote",
+    "chipFree": "Free resume & ATS tools",
+    "browseJobs": "Browse jobs",
+    "buildResume": "Build my resume"
+  },
+  "flow": {
+    "eyebrow": "// the intern flow",
+    "title": "From search to signed offer",
+    "subtitle": "One simple loop, start to finish — no need to piece it together across separate sites.",
+    "steps": [
+      {
+        "tag": "discover",
+        "title": "Find the role",
+        "body": "Search jobs, internships, and remote roles crawled daily from company career pages, Indeed, and LinkedIn Jobs."
+      },
+      {
+        "tag": "apply",
+        "title": "Apply with confidence",
+        "body": "Generate an ATS-ready resume and a tailored cover letter for the exact listing in a couple of minutes."
+      },
+      {
+        "tag": "track",
+        "title": "Track every application",
+        "body": "Log statuses, deadlines, and follow-ups in one tracker instead of a scattered spreadsheet."
+      },
+      {
+        "tag": "land it",
+        "title": "Prep and get hired",
+        "body": "Practice with STAR-method stories and common interview questions before the call."
+      }
+    ]
+  },
+  "features": {
+    "eyebrow": "// what's inside",
+    "title": "Everything in one workspace",
+    "items": [
+      {
+        "tag": "jobs",
+        "title": "One feed, every source",
+        "body": "Jobs, internships, remote roles, and government jobs — crawled daily and organised so you search once, not across ten tabs."
+      },
+      {
+        "tag": "resume",
+        "title": "Resume from real work",
+        "body": "Turn your GitHub commits and project work into ATS-ready resume bullets, tuned to a specific job description."
+      },
+      {
+        "tag": "ats",
+        "title": "ATS checker + cover letters",
+        "body": "Score your resume against a job description, then draft a tailored cover letter in seconds."
+      },
+      {
+        "tag": "tracker",
+        "title": "Application tracker",
+        "body": "Every application, deadline, and interview in one board so nothing slips through."
+      }
+    ]
+  },
+  "categories": {
+    "eyebrow": "// browse by category",
+    "title": "Find what you're looking for",
+    "items": [
+      { "label": "All jobs", "body": "Every open listing across India, remote, and abroad." },
+      { "label": "Internships", "body": "India, remote, and Japan — refreshed daily." },
+      { "label": "Remote jobs", "body": "Fully remote roles from US, UK, and worldwide." },
+      { "label": "Government jobs", "body": "Sarkari Naukri notifications, tracked daily." },
+      { "label": "Companies hiring", "body": "Top employers, mass-hiring drives, and startups." },
+      { "label": "AI career tools", "body": "Resume builder, ATS checker, and more — free." }
+    ]
+  },
+  "cta": {
+    "eyebrow": "// ready when you are",
+    "title": "Stop hunting across ten tabs. Start applying from one.",
+    "button": "Browse jobs free"
+  },
+  "blog": {
+    "eyebrow": "// guides",
+    "title": "Career & internship guides",
+    "subtitle": "New guide published daily — internships, ATS resumes, GitHub portfolios, LinkedIn, and hackathons, written for engineering students.",
+    "empty": "First guides are on the way — check back soon.",
+    "backToAll": "← All guides",
+    "published": "Published",
+    "faqTitle": "FAQs"
+  },
+  "footer": {
+    "tagline": "AI code review and resume generation built for students, not enterprises.",
+    "copyright": "© {year} InternFlow — built for students, not enterprises",
+    "madeIn": "made in India",
+    "product": "Product",
+    "interviewPrep": "Interview prep",
+    "popularSkills": "Popular skills",
+    "aiTools": "AI tools",
+    "account": "Account",
+    "contact": "Contact"
+  },
+  "common": {
+    "seeAll": "See all listings",
+    "openNow": "// open right now",
+    "jobsThisWeek": "Jobs and internships from this week's crawl",
+    "browseFull": "Browse the full feed and apply directly — no account needed.",
+    "faq": "// frequently asked",
+    "faqTitle": "Questions about jobs, internships, and resumes",
+    "language": "Language"
+  },
+  "meta": {
+    "title": "InternFlow — High Paying Jobs, Remote Jobs & Internships + AI Resume Builder",
+    "description": "Find high paying jobs, remote jobs, government jobs, and internships — AI engineer, DevOps, data engineer, and more — plus an ATS-friendly resume builder, cover letter generator, and AI GitHub code review."
+  }
+}

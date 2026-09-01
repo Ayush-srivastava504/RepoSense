@@ -1,0 +1,149 @@
+{
+  "nav": {
+    "home": "Inicio",
+    "jobs": "Empleos",
+    "internships": "Prácticas",
+    "remoteJobs": "Trabajo remoto",
+    "governmentJobs": "Empleos gubernamentales",
+    "companies": "Empresas",
+    "blog": "Blog",
+    "tools": "Herramientas IA",
+    "about": "Acerca de",
+    "dashboard": "Panel",
+    "tracker": "Mis solicitudes",
+    "signIn": "Iniciar sesión",
+    "signOut": "Cerrar sesión",
+    "searchJobs": "Buscar empleos…",
+    "hiring": "Contratación",
+    "interview": "Entrevista",
+    "darkMode": "Modo oscuro",
+    "lightMode": "Modo claro",
+    "japanJobs": "Empleos en Japón",
+    "europeJobs": "Empleos en Europa",
+    "hackathons": "Hackathons",
+    "careerPaths": "Carreras profesionales",
+    "resumeGuides": "Guías de currículum",
+    "jobsByCity": "Empleos por ciudad",
+    "skills": "Explorar por habilidad",
+    "allTools": "Todas las herramientas",
+    "coverLetter": "Generador de carta de presentación",
+    "resumeBuilder": "Creador de currículum",
+    "atsChecker": "Verificador ATS",
+    "linkedinOptimizer": "Optimizador de LinkedIn",
+    "readmeGenerator": "Generador de README",
+    "leetcode": "LeetCode"
+  },
+  "hero": {
+    "eyebrow": "// empleos, prácticas y herramientas de currículum",
+    "title": "Tu búsqueda de empleo, prácticas y currículum — todo en un solo lugar.",
+    "subtitle": "InternFlow rastrea ofertas de todo la web cada día, y te ayuda a postularte con un currículum listo para ATS y una carta de presentación personalizada — sin tener que navegar entre diez pestañas diferentes.",
+    "chipDaily": "Nuevas ofertas diarias",
+    "chipJobs": "Empleos, prácticas y remoto",
+    "chipFree": "Herramientas gratuitas de currículum y ATS",
+    "browseJobs": "Explorar empleos",
+    "buildResume": "Crear mi currículum"
+  },
+  "flow": {
+    "eyebrow": "// el flujo de prácticas",
+    "title": "De la búsqueda a la oferta firmada",
+    "subtitle": "Un ciclo simple, de principio a fin — sin necesidad de armar todo entre diferentes sitios.",
+    "steps": [
+      {
+        "tag": "descubrir",
+        "title": "Encuentra el puesto",
+        "body": "Busca empleos, prácticas y puestos remotos rastreados diariamente de páginas de carreras de empresas, Indeed y LinkedIn Jobs."
+      },
+      {
+        "tag": "postular",
+        "title": "Postúlate con confianza",
+        "body": "Genera un currículum listo para ATS y una carta de presentación personalizada para la oferta exacta en un par de minutos."
+      },
+      {
+        "tag": "rastrear",
+        "title": "Rastrea cada solicitud",
+        "body": "Registra estados, fechas límite y seguimientos en un solo rastreador en lugar de una hoja de cálculo dispersa."
+      },
+      {
+        "tag": "lograrlo",
+        "title": "Prepárate y consigue el empleo",
+        "body": "Practica con historias del método STAR y preguntas comunes de entrevista antes de la llamada."
+      }
+    ]
+  },
+  "features": {
+    "eyebrow": "// qué incluye",
+    "title": "Todo en un solo espacio de trabajo",
+    "items": [
+      {
+        "tag": "empleos",
+        "title": "Un feed, todas las fuentes",
+        "body": "Empleos, prácticas, puestos remotos y empleos gubernamentales — rastreados diariamente y organizados para que busques una vez, no en diez pestañas."
+      },
+      {
+        "tag": "currículum",
+        "title": "Currículum basado en tu trabajo real",
+        "body": "Convierte tus commits de GitHub y proyectos en viñetas de currículum listas para ATS, ajustadas a una descripción de puesto específica."
+      },
+      {
+        "tag": "ats",
+        "title": "Verificador ATS + cartas de presentación",
+        "body": "Puntúa tu currículum contra una descripción de puesto, luego redacta una carta de presentación personalizada en segundos."
+      },
+      {
+        "tag": "rastreador",
+        "title": "Rastreador de solicitudes",
+        "body": "Cada solicitud, fecha límite y entrevista en un solo tablero para que nada se te escape."
+      }
+    ]
+  },
+  "categories": {
+    "eyebrow": "// explorar por categoría",
+    "title": "Encuentra lo que buscas",
+    "items": [
+      { "label": "Todos los empleos", "body": "Cada oferta abierta en India, remoto y el extranjero." },
+      { "label": "Prácticas", "body": "India, remoto y Japón — actualizadas diariamente." },
+      { "label": "Trabajo remoto", "body": "Puestos completamente remotos desde EE.UU., Reino Unido y todo el mundo." },
+      { "label": "Empleos gubernamentales", "body": "Notificaciones de empleo público, rastreadas diariamente." },
+      { "label": "Empresas contratando", "body": "Principales empleadores, contrataciones masivas y startups." },
+      { "label": "Herramientas IA de carrera", "body": "Creador de currículum, verificador ATS y más — gratis." }
+    ]
+  },
+  "cta": {
+    "eyebrow": "// listo cuando tú lo estés",
+    "title": "Deja de buscar en diez pestañas. Empieza a postularte desde una.",
+    "button": "Explorar empleos gratis"
+  },
+  "blog": {
+    "eyebrow": "// guías",
+    "title": "Guías de carrera y prácticas",
+    "subtitle": "Nueva guía publicada diariamente — prácticas, currículums ATS, portafolios de GitHub, LinkedIn y hackathons, escritas para estudiantes de ingeniería.",
+    "empty": "Las primeras guías están en camino — vuelve pronto.",
+    "backToAll": "← Todas las guías",
+    "published": "Publicado",
+    "faqTitle": "Preguntas frecuentes"
+  },
+  "footer": {
+    "tagline": "Revisión de código IA y generación de currículum diseñados para estudiantes, no para empresas.",
+    "copyright": "© {year} InternFlow — diseñado para estudiantes, no para empresas",
+    "madeIn": "hecho en India",
+    "product": "Producto",
+    "interviewPrep": "Preparación de entrevista",
+    "popularSkills": "Habilidades populares",
+    "aiTools": "Herramientas IA",
+    "account": "Cuenta",
+    "contact": "Contacto"
+  },
+  "common": {
+    "seeAll": "Ver todas las ofertas",
+    "openNow": "// abierto ahora",
+    "jobsThisWeek": "Empleos y prácticas del rastreo de esta semana",
+    "browseFull": "Explora el feed completo y postúlate directamente — no se necesita cuenta.",
+    "faq": "// preguntas frecuentes",
+    "faqTitle": "Preguntas sobre empleos, prácticas y currículums",
+    "language": "Idioma"
+  },
+  "meta": {
+    "title": "InternFlow — Empleos bien pagados, trabajo remoto y prácticas + Creador de currículum con IA",
+    "description": "Encuentra empleos bien pagados, trabajo remoto, empleos gubernamentales y prácticas — ingeniero de IA, DevOps, ingeniero de datos y más — además de un creador de currículum compatible con ATS, generador de cartas de presentación y revisión de código de GitHub con IA."
+  }
+}

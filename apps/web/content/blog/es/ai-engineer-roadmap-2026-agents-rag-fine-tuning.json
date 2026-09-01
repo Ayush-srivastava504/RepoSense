@@ -1,0 +1,30 @@
+{
+  "slug": "ai-engineer-roadmap-2026-agents-rag-fine-tuning",
+  "title": "Hoja de ruta del Ingeniero de IA 2026: De RAG y bases de datos vectoriales a agentes autónomos",
+  "description": "Guía completa para ingenieros de IA en 2026: desarrollo de aplicaciones con LLM, arquitecturas RAG avanzadas, bases vectoriales y agentes autónomos.",
+  "keyword": "hoja de ruta ingeniero de IA 2026",
+  "category": "ai-engineer",
+  "publishedAt": "2026-08-20T10:00:00.000Z",
+  "updatedAt": "2026-09-01T12:00:00.000Z",
+  "author": {
+    "name": "Equipo de Ingeniería de InternFlow",
+    "role": "IA y Sistemas Distribuidos"
+  },
+  "readingTime": "9 min de lectura",
+  "tags": ["Ingeniería de IA", "LLM", "RAG", "Bases Vectoriales", "Agentes", "Python"],
+  "image": {
+    "url": "https://www.intern-flow.in/og-image.png",
+    "alt": "Hoja de ruta del Ingeniero de IA 2026"
+  },
+  "body": "El rol del Ingeniero de IA ha madurado a gran velocidad. En 2026, crear aplicaciones de IA en producción va mucho más allá de enlazar prompts básicos de OpenAI. Las empresas buscan ingenieros que dominen la orquestación determinista, extracción estructurada y arquitecturas de agentes autónomos confiables.\n\n## 1. Fundamentos: De Prompt Engineering a Salidas Estructuradas\n\nLa ingeniería moderna con LLMs exige respuestas estructuradas y deterministas:\n- Validación estricta de esquemas con Pydantic y modo JSON.\n- Llamada a funciones (Function Calling) y definición de herramientas con gestión robusta de errores.\n- Gestión de ventana de contexto: cálculo de presupuesto de tokens, resúmenes de ventana deslizante y compresión de prompts.\n\n## 2. Generación Aumentada por Recuperación Avanzada (RAG)\n\nEl RAG ingenuo falla en producción. Las arquitecturas avanzadas implementan:\n- Búsqueda Híbrida: Combinación de búsqueda vectorial semántica densa (pgvector, Qdrant, Pinecone) con búsqueda léxica dispersa (BM25).\n- Reordenamiento (Re-ranking): Uso de cross-encoders para puntuar los mejores 50 candidatos y seleccionar los 5 pasajes de mayor precisión.\n- GraphRAG: Integración de grafos de conocimiento (Neo4j) junto con embeddings vectoriales para razonamiento relacional de múltiples saltos.\n\n## 3. Agentes Autónomos y Orquestación Multi-Agente\n\nEl estándar industrial de 2026 se basa en sistemas de agentes gobernados por máquinas de estado:\n- LangGraph & Temporal: Flujos de agentes como grafos dirigidos con puntos de control de estado y validación humana.\n- Descomposición de tareas con bucles ReAct y auto-reflexión.\n- Colaboración multi-agente con agentes especializados (Investigador, Programador, Revisor).",
+  "faq": [
+    {
+      "q": "¿Qué lenguajes de programación se requieren para un Ingeniero de IA en 2026?",
+      "a": "Python sigue siendo el líder para orquestación y modelos. TypeScript es esencial para aplicaciones cliente de IA full-stack, y Rust/C++ para motores de inferencia de alto rendimiento."
+    },
+    {
+      "q": "¿Cuál es el mejor proyecto para incluir en el currículum de Ingeniero de IA?",
+      "a": "Una aplicación RAG o Multi-Agente en producción con métricas de evaluación cuantitativas, búsqueda híbrida, respuestas en streaming y repositorio abierto en GitHub con CI/CD y Docker."
+    }
+  ]
+}

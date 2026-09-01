@@ -87,6 +87,18 @@ export const metadata: Metadata = {
     publisher: 'InternFlow',
     alternates: {
         canonical: BASE_URL,
+        languages: {
+            'x-default': BASE_URL,
+            'en': BASE_URL,
+            'es': `${BASE_URL}/es`,
+            'ja': `${BASE_URL}/ja`,
+            'fr': `${BASE_URL}/fr`,
+            'de': `${BASE_URL}/de`,
+            'pt': `${BASE_URL}/pt`,
+            'ko': `${BASE_URL}/ko`,
+            'it': `${BASE_URL}/it`,
+            'hi': `${BASE_URL}/hi`,
+        },
     },
     openGraph: {
         type: 'website',

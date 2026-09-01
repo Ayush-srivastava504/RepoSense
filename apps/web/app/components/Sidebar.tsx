@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Logo from './Logo';
 import { useAuth } from '@/lib/auth';
+import LanguageSwitcher from './LanguageSwitcher';
 
 type NavLink = { href: string; label: string };
 type NavGroup = { key: string; label: string; icon: JSX.Element; links: NavLink[]; defaultOpen?: boolean };
@@ -252,7 +253,10 @@ export default function Sidebar({ mobileOpen, onClose, }: {
         ))}
       </div>
 
-      <div className="flex-none border-t p-2" style={{ borderColor: 'var(--line)' }}>
+      <div className="flex-none border-t p-2 space-y-1.5" style={{ borderColor: 'var(--line)' }}>
+        <div className="px-1">
+          <LanguageSwitcher />
+        </div>
         <ThemeToggle collapsed={collapsed}/>
 
         {user ? (

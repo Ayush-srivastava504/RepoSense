@@ -1,0 +1,26 @@
+{
+  "slug": "ai-engineer-roadmap-2026-agents-rag-fine-tuning",
+  "title": "Feuille de route de l'ingénieur IA 2026 : Du RAG et bases vectorielles aux essaims d'agents autonomes",
+  "description": "Feuille de route complète 2026 pour ingénieurs IA : développement d'applications LLM, architectures RAG avancées, bases de données vectorielles et agents autonomes.",
+  "keyword": "feuille de route ingénieur IA 2026",
+  "category": "ai-engineer",
+  "publishedAt": "2026-08-20T10:00:00.000Z",
+  "updatedAt": "2026-09-01T12:00:00.000Z",
+  "author": {
+    "name": "Équipe Ingénierie InternFlow",
+    "role": "IA et Systèmes Distribués"
+  },
+  "readingTime": "9 min de lecture",
+  "tags": ["Ingénierie IA", "LLM", "RAG", "Bases Vectorielles", "Agents", "Python"],
+  "image": {
+    "url": "https://www.intern-flow.in/og-image.png",
+    "alt": "Feuille de route ingénieur IA 2026"
+  },
+  "body": "Le rôle de l'ingénieur en intelligence artificielle a profondément évolué. En 2026, développer des applications d'IA en production va bien au-delà de simples appels d'API. Les entreprises recherchent des ingénieurs maîtrisant l'orchestration déterministe, l'extraction de données structurées et les architectures d'agents autonomes robustes.\n\n## 1. Fondations : Du Prompt Engineering aux sorties structurées\n\nL'ingénierie LLM moderne impose des sorties déterministes et validées :\n- Validation stricte des schémas avec Pydantic et le mode JSON.\n- Appel de fonctions (Function Calling) et outillage avec gestion d'erreurs avancée.\n- Gestion de fenêtre de contexte : calcul de budget de jetons et compression de prompts.\n\n## 2. RAG Avancé (Génération Augmentée par Récupération)\n\nLe RAG classique échoue en production. Les architectures modernes adoptent :\n- Recherche Hybride : Combinaison de recherche vectorielle sémantique (pgvector, Qdrant) et lexicale (BM25).\n- Re-ranking : Utilisation de cross-encodeurs pour reclasser les meilleurs passages.\n- GraphRAG : Utilisation de graphes de connaissances (Neo4j) pour le raisonnement relationnel complexe.",
+  "faq": [
+    {
+      "q": "Quels langages de programmation apprendre pour devenir ingénieur IA en 2026 ?",
+      "a": "Python reste indispensable pour les modèles et l'orchestration. TypeScript est essentiel pour les interfaces IA, et Rust/C++ pour les moteurs d'inférence haute performance."
+    }
+  ]
+}

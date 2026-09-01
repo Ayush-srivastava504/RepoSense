@@ -1,0 +1,149 @@
+{
+  "nav": {
+    "home": "Accueil",
+    "jobs": "Emplois",
+    "internships": "Stages",
+    "remoteJobs": "Télétravail",
+    "governmentJobs": "Emplois publics",
+    "companies": "Entreprises",
+    "blog": "Blog",
+    "tools": "Outils IA",
+    "about": "À propos",
+    "dashboard": "Tableau de bord",
+    "tracker": "Mes candidatures",
+    "signIn": "Connexion",
+    "signOut": "Déconnexion",
+    "searchJobs": "Rechercher des emplois…",
+    "hiring": "Recrutement",
+    "interview": "Entretien",
+    "darkMode": "Mode sombre",
+    "lightMode": "Mode clair",
+    "japanJobs": "Emplois au Japon",
+    "europeJobs": "Emplois en Europe",
+    "hackathons": "Hackathons",
+    "careerPaths": "Parcours professionnels",
+    "resumeGuides": "Guides de CV",
+    "jobsByCity": "Emplois par ville",
+    "skills": "Explorer par compétence",
+    "allTools": "Tous les outils",
+    "coverLetter": "Générateur de lettre de motivation",
+    "resumeBuilder": "Créateur de CV",
+    "atsChecker": "Vérificateur ATS",
+    "linkedinOptimizer": "Optimiseur LinkedIn",
+    "readmeGenerator": "Générateur README",
+    "leetcode": "LeetCode"
+  },
+  "hero": {
+    "eyebrow": "// emplois, stages et outils de CV",
+    "title": "Votre recherche d'emploi, de stage et votre CV — tout en un seul endroit.",
+    "subtitle": "InternFlow parcourt les offres sur tout le web chaque jour, puis vous aide à postuler avec un CV prêt pour les ATS et une lettre de motivation personnalisée — sans jongler entre dix onglets différents.",
+    "chipDaily": "Nouvelles offres quotidiennes",
+    "chipJobs": "Emplois, stages et télétravail",
+    "chipFree": "Outils CV et ATS gratuits",
+    "browseJobs": "Parcourir les emplois",
+    "buildResume": "Créer mon CV"
+  },
+  "flow": {
+    "eyebrow": "// le parcours du stage",
+    "title": "De la recherche à l'offre signée",
+    "subtitle": "Une boucle simple, du début à la fin — pas besoin de tout assembler entre différents sites.",
+    "steps": [
+      {
+        "tag": "découvrir",
+        "title": "Trouvez le poste",
+        "body": "Recherchez des emplois, stages et postes à distance collectés quotidiennement depuis les pages carrières des entreprises, Indeed et LinkedIn Jobs."
+      },
+      {
+        "tag": "postuler",
+        "title": "Postulez avec confiance",
+        "body": "Générez un CV prêt pour les ATS et une lettre de motivation personnalisée pour l'offre exacte en quelques minutes."
+      },
+      {
+        "tag": "suivre",
+        "title": "Suivez chaque candidature",
+        "body": "Enregistrez les statuts, les échéances et les relances dans un seul outil de suivi au lieu d'un tableur dispersé."
+      },
+      {
+        "tag": "décrocher",
+        "title": "Préparez-vous et décrochez le poste",
+        "body": "Entraînez-vous avec des histoires méthode STAR et des questions d'entretien courantes avant l'appel."
+      }
+    ]
+  },
+  "features": {
+    "eyebrow": "// ce qui est inclus",
+    "title": "Tout dans un seul espace de travail",
+    "items": [
+      {
+        "tag": "emplois",
+        "title": "Un flux, toutes les sources",
+        "body": "Emplois, stages, postes à distance et emplois publics — collectés quotidiennement et organisés pour que vous cherchiez une seule fois."
+      },
+      {
+        "tag": "CV",
+        "title": "CV basé sur votre travail réel",
+        "body": "Transformez vos commits GitHub et vos projets en points de CV prêts pour les ATS, adaptés à une description de poste spécifique."
+      },
+      {
+        "tag": "ATS",
+        "title": "Vérificateur ATS + lettres de motivation",
+        "body": "Évaluez votre CV par rapport à une description de poste, puis rédigez une lettre de motivation personnalisée en quelques secondes."
+      },
+      {
+        "tag": "suivi",
+        "title": "Suivi des candidatures",
+        "body": "Chaque candidature, échéance et entretien sur un seul tableau pour que rien ne passe entre les mailles du filet."
+      }
+    ]
+  },
+  "categories": {
+    "eyebrow": "// parcourir par catégorie",
+    "title": "Trouvez ce que vous cherchez",
+    "items": [
+      { "label": "Tous les emplois", "body": "Chaque offre ouverte en Inde, à distance et à l'étranger." },
+      { "label": "Stages", "body": "Inde, télétravail et Japon — mis à jour quotidiennement." },
+      { "label": "Télétravail", "body": "Postes entièrement à distance aux États-Unis, au Royaume-Uni et dans le monde entier." },
+      { "label": "Emplois publics", "body": "Notifications d'emplois gouvernementaux, suivies quotidiennement." },
+      { "label": "Entreprises qui recrutent", "body": "Principaux employeurs, recrutements massifs et startups." },
+      { "label": "Outils IA de carrière", "body": "Créateur de CV, vérificateur ATS et plus — gratuit." }
+    ]
+  },
+  "cta": {
+    "eyebrow": "// prêt quand vous l'êtes",
+    "title": "Arrêtez de chercher dans dix onglets. Commencez à postuler depuis un seul.",
+    "button": "Parcourir les emplois gratuitement"
+  },
+  "blog": {
+    "eyebrow": "// guides",
+    "title": "Guides de carrière et de stages",
+    "subtitle": "Nouveau guide publié quotidiennement — stages, CV ATS, portfolios GitHub, LinkedIn et hackathons, écrits pour les étudiants en ingénierie.",
+    "empty": "Les premiers guides arrivent bientôt — revenez vite.",
+    "backToAll": "← Tous les guides",
+    "published": "Publié le",
+    "faqTitle": "Questions fréquentes"
+  },
+  "footer": {
+    "tagline": "Revue de code IA et génération de CV conçues pour les étudiants, pas pour les entreprises.",
+    "copyright": "© {year} InternFlow — conçu pour les étudiants, pas pour les entreprises",
+    "madeIn": "fabriqué en Inde",
+    "product": "Produit",
+    "interviewPrep": "Préparation d'entretien",
+    "popularSkills": "Compétences populaires",
+    "aiTools": "Outils IA",
+    "account": "Compte",
+    "contact": "Contact"
+  },
+  "common": {
+    "seeAll": "Voir toutes les offres",
+    "openNow": "// ouvert maintenant",
+    "jobsThisWeek": "Emplois et stages de la collecte de cette semaine",
+    "browseFull": "Parcourez le flux complet et postulez directement — aucun compte nécessaire.",
+    "faq": "// questions fréquentes",
+    "faqTitle": "Questions sur les emplois, stages et CV",
+    "language": "Langue"
+  },
+  "meta": {
+    "title": "InternFlow — Emplois bien rémunérés, télétravail et stages + Créateur de CV IA",
+    "description": "Trouvez des emplois bien rémunérés, du télétravail, des emplois publics et des stages — ingénieur IA, DevOps, ingénieur données et plus — avec un créateur de CV compatible ATS, un générateur de lettres de motivation et une revue de code GitHub par IA."
+  }
+}

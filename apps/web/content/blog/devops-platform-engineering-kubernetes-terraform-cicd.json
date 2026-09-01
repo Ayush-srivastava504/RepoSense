@@ -1,0 +1,30 @@
+{
+  "slug": "devops-platform-engineering-kubernetes-terraform-cicd",
+  "title": "From DevOps to Platform Engineering: Kubernetes, Terraform, and Internal Developer Portals",
+  "description": "How modern infrastructure engineering has shifted to Platform Engineering: Internal Developer Portals, GitOps, Kubernetes operators, and Infrastructure as Code.",
+  "keyword": "DevOps platform engineering roadmap",
+  "category": "devops",
+  "publishedAt": "2026-08-23T10:00:00.000Z",
+  "updatedAt": "2026-09-01T12:00:00.000Z",
+  "author": {
+    "name": "InternFlow Engineering Team",
+    "role": "Cloud Platform & SRE"
+  },
+  "readingTime": "9 min read",
+  "tags": ["DevOps", "Platform Engineering", "Kubernetes", "Terraform", "GitOps", "CI/CD"],
+  "image": {
+    "url": "https://www.intern-flow.in/og-image.png",
+    "alt": "Platform Engineering Architecture with Kubernetes and GitOps"
+  },
+  "body": "The traditional DevOps model — where developers submit infrastructure requests or manage ad-hoc cloud resources — created cognitive overload and compliance bottlenecks. In 2026, engineering organizations are building Internal Developer Platforms (IDPs) that enable self-service workflows with automated guardrails.\n\n## 1. What is Platform Engineering?\n\nPlatform engineering treats infrastructure as a product, providing internal engineering teams with reusable, golden-path templates for provisioning databases, microservices, and networking without manual sysadmin tickets.\n- Internal Developer Portals: Backstage and Port providing unified service catalogs, dependency tracking, and one-click environment provisioning.\n- Declarative Control Planes: Crossplane turning Kubernetes into a universal control plane that provisions cloud resources (AWS RDS, S3, IAM) via Kubernetes CRDs.\n\n## 2. Modern Infrastructure as Code (IaC) with Terraform and OpenTofu\n\nHigh-performing platform teams manage cloud environments reproducibly:\n- Reusable Module Architecture: Standardized VPC, EKS/GKE cluster, and database blueprints with baked-in security policies.\n- Policy-as-Code: Open Policy Agent (OPA) and Trivy scanning pull requests to prevent public S3 buckets, permissive security groups, or unencrypted storage before deployment.\n- State Locking & Remote Backends: Safe team collaboration with S3/DynamoDB state locks and automated drift detection.\n\n## 3. GitOps and Continuous Deployment with ArgoCD\n\nPush-based deployments have been replaced by pull-based GitOps reconciliation loops:\n- Single Source of Truth: All Kubernetes manifests and Helm charts version-controlled in Git repositories.\n- ArgoCD / Flux: In-cluster controllers continuously reconciling desired Git state against the active cluster, auto-healing unauthorized manual changes.\n- Progressive Delivery: Flagger and Argo Rollouts managing automated Canary and Blue/Green traffic routing based on Prometheus error rates.\n\n## 4. Observability and Site Reliability Engineering\n\nProduction systems require unified telemetry across logs, metrics, and distributed traces:\n- OpenTelemetry (OTel): Vendor-neutral instrumentation standard across all backend services.\n- Prometheus, Grafana, and Loki: Real-time alerting on Service Level Objectives (SLOs) and Error Budgets.",
+  "faq": [
+    {
+      "q": "Should a beginner learn Docker and Kubernetes before Terraform?",
+      "a": "Yes. Mastering Linux fundamentals, Docker containerization, and basic networking concepts provides the essential foundation needed before understanding Kubernetes clustering and Terraform infrastructure automation."
+    },
+    {
+      "q": "What certifications are most valuable for DevOps in 2026?",
+      "a": "Certified Kubernetes Administrator (CKA), AWS Certified Solutions Architect Associate / DevOps Professional, and HashiCorp Certified Terraform Associate are the most recognized industry credentials."
+    }
+  ]
+}
