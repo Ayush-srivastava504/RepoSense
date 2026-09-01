@@ -34,7 +34,7 @@ export async function GET() {
   ];
 
   const entries = coreHubs.map((hub) => {
-    const alternates = i18n.locales.map((loc) => ({
+    const alternates: { lang: string; href: string }[] = i18n.locales.map((loc) => ({
       lang: loc,
       href: loc === 'en' ? `${BASE_URL}${hub.path}` : `${BASE_URL}/${loc}${hub.path}`,
     }));
