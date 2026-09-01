@@ -1,38 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { i18n } from './i18n/config';
-
-function getLocale(request: NextRequest): string {
-  // Check cookie first
-  const cookieLocale = request.cookies.get('NEXT_LOCALE')?.value;
-  if (cookieLocale && i18n.locales.includes(cookieLocale as any)) {
-    return cookieLocale;
-  }
-
-  // Check Accept-Language header
-  const acceptLang = request.headers.get('accept-language');
-  if (acceptLang) {
-    const preferred = acceptLang
-      .split(',')
-      .map((lang) => {
-        const [code, q] = lang.trim().split(';q=');
-        return { code: code.split('-')[0].toLowerCase(), q: q ? parseFloat(q) : 1 };
-      })
-      .sort((a, b) => b.q - a.q);
-
-    for (const { code } of preferred) {
-      if (i18n.locales.includes(code as any)) {
-        return code;
-      }
-    }
-  }
-
-  return i18n.defaultLocale;
-}
+import { i18n, type Locale } from './i18n/config';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip API routes, static files, Next.js internals
+  // Skip API routes, static files, Next.js internals, and sitemaps
   if (
     pathname.startsWith('/api') ||
     pathname.startsWith('/_next') ||
@@ -43,34 +15,30 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check if pathname already has a locale prefix
-  const pathnameHasLocale = i18n.locales.some(
-    (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
-  );
+  // Check if pathname starts with a locale prefix like /es, /es/blog, /ja, /fr, etc.
+  const pathSegments = pathname.split('/');
+  const maybeLocale = pathSegments[1] as Locale;
+  const isLocalePrefix = i18n.locales.includes(maybeLocale) && maybeLocale !== i18n.defaultLocale;
 
-  if (pathnameHasLocale) {
-    return NextResponse.next();
-  }
+  if (isLocalePrefix) {
+    // Strip locale prefix for internal Next.js App Router rewrite
+    // e.g. /es/blog -> /blog, /es -> /
+    const remainingSegments = pathSegments.slice(2);
+    const internalPath = '/' + remainingSegments.join('/');
+    const rewriteUrl = request.nextUrl.clone();
+    rewriteUrl.pathname = internalPath === '' ? '/' : internalPath;
 
-  // For default locale (en), don't redirect — serve as-is for backward compat
-  const locale = getLocale(request);
-  if (locale === i18n.defaultLocale) {
-    // Set locale header for server components
-    const response = NextResponse.next();
-    response.headers.set('x-locale', locale);
+    const response = NextResponse.rewrite(rewriteUrl);
+    response.headers.set('x-locale', maybeLocale);
+    response.cookies.set('NEXT_LOCALE', maybeLocale, {
+      path: '/',
+      maxAge: 31536000,
+      sameSite: 'lax',
+    });
     return response;
   }
 
-  // For non-default locales, rewrite (not redirect) to keep clean URLs
-  // But only if there's a cookie or strong preference
-  const cookieLocale = request.cookies.get('NEXT_LOCALE')?.value;
-  if (cookieLocale && cookieLocale !== i18n.defaultLocale) {
-    const url = request.nextUrl.clone();
-    url.pathname = `/${locale}${pathname}`;
-    return NextResponse.rewrite(url);
-  }
-
-  // Default: serve English content
+  // Default English route
   const response = NextResponse.next();
   response.headers.set('x-locale', i18n.defaultLocale);
   return response;

@@ -7,10 +7,12 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Script from 'next/script';
 import { notFound } from 'next/navigation';
+import { headers, cookies } from 'next/headers';
 import { BASE_URL } from '@/lib/jobs';
 import { getAllPosts, getPostBySlug } from '@/lib/blog';
 import { breadcrumbSchema, ORG_NAME, ORG_LOGO } from '@/lib/structuredData';
-import { i18n } from '@/i18n/config';
+import { i18n, type Locale } from '@/i18n/config';
+import { getDictionary } from '@/i18n/get-dictionary';
 
 interface Props {
   params: {
@@ -109,8 +111,13 @@ function renderBody(body: string) {
   });
 }
 
-export default function BlogPostPage({ params }: Props) {
-  const post = getPostBySlug(params.slug);
+export default async function BlogPostPage({ params }: Props) {
+  const headerList = headers();
+  const cookieStore = cookies();
+  const locale = (headerList.get('x-locale') || cookieStore.get('NEXT_LOCALE')?.value || 'en') as Locale;
+
+  const dict = await getDictionary(locale);
+  const post = getPostBySlug(params.slug, locale);
   if (!post) notFound();
 
   const crumbs = breadcrumbSchema([
@@ -173,10 +180,14 @@ export default function BlogPostPage({ params }: Props) {
       )}
 
       <article className="mx-auto w-full max-w-3xl px-3 py-10 sm:px-4 sm:py-14">
-        <Link href="/blog" className="text-sm font-medium transition hover:underline" style={{ color: 'var(--accent)' }}>
-          ← All guides
+        <Link
+          href={locale === 'en' ? '/blog' : `/${locale}/blog`}
+          className="text-sm font-medium transition hover:underline"
+          style={{ color: 'var(--accent)' }}
+        >
+          {dict.blog?.backToAll || '← All guides'}
         </Link>
-        
+
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <span className="chip chip-green text-xs uppercase tracking-wide">
             {post.category.replace(/-/g, ' ')}
@@ -192,13 +203,16 @@ export default function BlogPostPage({ params }: Props) {
           {post.title}
         </h1>
 
-        <div className="mt-4 flex items-center justify-between border-b pb-4 text-xs" style={{ borderColor: 'var(--line)', color: 'var(--ink-soft)' }}>
+        <div
+          className="mt-4 flex items-center justify-between border-b pb-4 text-xs"
+          style={{ borderColor: 'var(--line)', color: 'var(--ink-soft)' }}
+        >
           <div>
             <span>By {post.author?.name || 'InternFlow Engineering'}</span>
             <span className="mx-2">•</span>
             <span>
-              Published{' '}
-              {new Date(post.publishedAt).toLocaleDateString('en-US', {
+              {dict.blog?.published || 'Published'}{' '}
+              {new Date(post.publishedAt).toLocaleDateString(locale === 'en' ? 'en-US' : locale, {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric',
@@ -210,7 +224,11 @@ export default function BlogPostPage({ params }: Props) {
         {post.tags && post.tags.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-1.5">
             {post.tags.map((tag) => (
-              <span key={tag} className="rounded px-2 py-0.5 text-xs font-mono" style={{ background: 'var(--hover)', color: 'var(--ink-soft)' }}>
+              <span
+                key={tag}
+                className="rounded px-2 py-0.5 text-xs font-mono"
+                style={{ background: 'var(--hover)', color: 'var(--ink-soft)' }}
+              >
                 #{tag}
               </span>
             ))}
@@ -220,11 +238,20 @@ export default function BlogPostPage({ params }: Props) {
         <div className="mt-8 prose-tech">{renderBody(post.body)}</div>
 
         {post.faq && post.faq.length > 0 && (
-          <div className="mt-12 rounded-xl border p-6" style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>
-            <h2 className="text-xl font-semibold mb-4">Frequently Asked Questions</h2>
+          <div
+            className="mt-12 rounded-xl border p-6"
+            style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}
+          >
+            <h2 className="text-xl font-semibold mb-4">
+              {dict.blog?.faqTitle || 'Frequently Asked Questions'}
+            </h2>
             <div className="space-y-4">
               {post.faq.map((f, i) => (
-                <div key={i} className="border-t pt-4 first:border-t-0 first:pt-0" style={{ borderColor: 'var(--line)' }}>
+                <div
+                  key={i}
+                  className="border-t pt-4 first:border-t-0 first:pt-0"
+                  style={{ borderColor: 'var(--line)' }}
+                >
                   <p className="font-medium text-base">{f.q}</p>
                   <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
                     {f.a}
@@ -236,7 +263,10 @@ export default function BlogPostPage({ params }: Props) {
         )}
 
         {/* AI Career Tools Call to Action */}
-        <div className="mt-12 rounded-xl p-6 text-center border" style={{ background: 'var(--hover)', borderColor: 'var(--line)' }}>
+        <div
+          className="mt-12 rounded-xl p-6 text-center border"
+          style={{ background: 'var(--hover)', borderColor: 'var(--line)' }}
+        >
           <h3 className="text-lg font-medium">Accelerate Your Tech Job Search</h3>
           <p className="mt-2 text-sm max-w-md mx-auto" style={{ color: 'var(--ink-soft)' }}>
             Score your resume against any job description and generate tailored cover letters for free.
