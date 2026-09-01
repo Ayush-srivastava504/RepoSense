@@ -140,12 +140,12 @@ function SolvePageContent() {
         }
     }
     if (loading) {
-        return (<div className="container-xl py-12">
+        return (<div className="py-12">
         <p className="text-sm" style={{ color: 'var(--ink-soft)' }}>Loading problem…</p>
       </div>);
     }
     if (!problem) {
-        return (<div className="container-xl py-12">
+        return (<div className="py-12">
         <p className="eyebrow eyebrow-accent mb-3">// leetcode</p>
         <h1 className="text-2xl font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
           No in-app judge for this problem yet
@@ -163,7 +163,7 @@ function SolvePageContent() {
       { id: 'notes' as const, label: 'Notes' },
     ];
 
-    return (<div className="container-xl py-6 sm:py-12">
+    return (<div className="py-6 sm:py-12">
       <Link href="/leetcode" className="text-xs" style={{ color: 'var(--ink-soft)' }}>
         &larr; All problems
       </Link>

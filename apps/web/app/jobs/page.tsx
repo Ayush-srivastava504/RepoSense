@@ -13,6 +13,7 @@ import FeaturedJobs from '@/app/components/FeaturedJobs';
 import SponsoredCard from '@/app/components/SponsoredCard';
 import JobsSearchTracker from '@/app/components/JobsSearchTracker';
 import JobFilters, { parseLocationFilter, parseGroupFilter, } from '@/app/components/JobFilters';
+import AdSlot from '@/app/components/AdSlot';
 import { sortIndiaFirst, isIndiaJob } from '@/lib/jobPriority';
 const JOBS_PER_PAGE = 12;
 export const metadata: Metadata = {
@@ -218,6 +219,11 @@ export default async function JobsPage({ searchParams, }: {
 
         <JobFilters basePath="/jobs" search={search} location={locationFilter} group={groupFilter}/>
 
+        {/* Top Ad Slot */}
+        <div className="mt-8 sm:mt-10">
+          <AdSlot slot="1234567890" className="flex justify-center" style={{ minHeight: '280px' }}/>
+        </div>
+
         <FeaturedJobs jobs={featured} basePath="/jobs"/>
 
         {jobs.length > 0 ? (<>
@@ -227,6 +233,11 @@ export default async function JobsPage({ searchParams, }: {
 
                   {(index + 1) % 6 === 0 && (<SponsoredCard />)}
                 </div>))}
+            </div>
+
+            {/* Bottom Ad Slot */}
+            <div className="mt-8 sm:mt-10">
+              <AdSlot slot="9876543210" className="flex justify-center" style={{ minHeight: '280px' }}/>
             </div>
 
             <Pagination currentPage={currentPage} totalPages={totalPages} search={search} loc={locationFilter} role={groupFilter}/>

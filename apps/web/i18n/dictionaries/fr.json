@@ -100,12 +100,30 @@
     "eyebrow": "// parcourir par catégorie",
     "title": "Trouvez ce que vous cherchez",
     "items": [
-      { "label": "Tous les emplois", "body": "Chaque offre ouverte en Inde, à distance et à l'étranger." },
-      { "label": "Stages", "body": "Inde, télétravail et Japon — mis à jour quotidiennement." },
-      { "label": "Télétravail", "body": "Postes entièrement à distance aux États-Unis, au Royaume-Uni et dans le monde entier." },
-      { "label": "Emplois publics", "body": "Notifications d'emplois gouvernementaux, suivies quotidiennement." },
-      { "label": "Entreprises qui recrutent", "body": "Principaux employeurs, recrutements massifs et startups." },
-      { "label": "Outils IA de carrière", "body": "Créateur de CV, vérificateur ATS et plus — gratuit." }
+      {
+        "label": "Tous les emplois",
+        "body": "Chaque offre ouverte en Inde, à distance et à l'étranger."
+      },
+      {
+        "label": "Stages",
+        "body": "Inde, télétravail et Japon — mis à jour quotidiennement."
+      },
+      {
+        "label": "Télétravail",
+        "body": "Postes entièrement à distance aux États-Unis, au Royaume-Uni et dans le monde entier."
+      },
+      {
+        "label": "Emplois publics",
+        "body": "Notifications d'emplois gouvernementaux, suivies quotidiennement."
+      },
+      {
+        "label": "Entreprises qui recrutent",
+        "body": "Principaux employeurs, recrutements massifs et startups."
+      },
+      {
+        "label": "Outils IA de carrière",
+        "body": "Créateur de CV, vérificateur ATS et plus — gratuit."
+      }
     ]
   },
   "cta": {
@@ -145,5 +163,93 @@
   "meta": {
     "title": "InternFlow — Emplois bien rémunérés, télétravail et stages + Créateur de CV IA",
     "description": "Trouvez des emplois bien rémunérés, du télétravail, des emplois publics et des stages — ingénieur IA, DevOps, ingénieur données et plus — avec un créateur de CV compatible ATS, un générateur de lettres de motivation et une revue de code GitHub par IA."
+  },
+  "dashboard": {
+    "eyebrowOverview": "// overview",
+    "greetingGuestTitle": "Find your next internship",
+    "subtitleUser": "Here's what's happening across your workspace.",
+    "subtitleGuest": "Search live listings right now — everything is open, no account needed.",
+    "openCodeReview": "Open code review",
+    "searchPlaceholder": "Search internships by role, company, or skill…",
+    "searchButton": "Search jobs",
+    "statsReviewsLabel": "// reviews",
+    "statsReviewsEmpty": "No reviews yet",
+    "issuesFoundSuffix": "issues found",
+    "statsQualityLabel": "// quality score",
+    "statsQualitySub": "avg across files",
+    "statsResumesLabel": "// resumes",
+    "statsResumesSub": "AI-generated PDFs",
+    "statsReposLabel": "// repos",
+    "statsReposSub": "connected",
+    "statsListingsLabel": "// listings",
+    "statsListingsValue": "Live",
+    "statsListingsSub": "Refreshed daily from 9 sources",
+    "statsLoginLabel": "// login required",
+    "statsLoginValue": "No",
+    "statsLoginSub": "Browse, search, and apply freely",
+    "statsSourcesLabel": "// sources tracked",
+    "statsSourcesSub": "HiringCafe, LinkedIn, Internshala & more",
+    "quickActionsEyebrow": "// quick actions",
+    "actionReviewTag": "// review",
+    "actionReviewTitle": "Review a file",
+    "actionReviewBody": "Open a repo, pick a file, and get line-level AI feedback.",
+    "actionResumeTag": "// resume",
+    "actionResumeTitle": "Generate resume",
+    "actionResumeBody": "Turn your commits and reviews into ATS-ready bullets.",
+    "actionJobsTag": "// internships",
+    "actionJobsTitle": "Browse listings",
+    "actionJobsBody": "Daily-refreshed internship postings from multiple sources.",
+    "recentReviewsLabel": "// recent reviews",
+    "viewAll": "View all",
+    "noReviewsYet": "No reviews yet — open a file in GitHub to start.",
+    "goToCodeReview": "Go to code review",
+    "issueWord": "issue",
+    "issuesWord": "issues",
+    "connectedReposLabel": "// connected repos",
+    "manage": "Manage",
+    "noReposYet": "No repositories connected yet.",
+    "connectGithub": "Connect GitHub",
+    "updatedPrefix": "Updated",
+    "viewAllRepos": "View all repositories",
+    "recentResumesLabel": "// recent resumes",
+    "builderLabel": "Builder",
+    "noResumesYet": "No resumes generated yet.",
+    "generateResumeCta": "Generate resume",
+    "untitledResume": "Untitled resume",
+    "regenerate": "Regenerate",
+    "gettingStartedEyebrow": "// getting started",
+    "gettingStartedTitle": "Three things to do first",
+    "step1Title": "Connect GitHub",
+    "step1Body": "Link your account and pick a repository to analyse.",
+    "step1Cta": "Connect now",
+    "step2Title": "Run a code review",
+    "step2Body": "Open any file and get line-level AI feedback.",
+    "step2Cta": "Review a file",
+    "step3Title": "Generate your resume",
+    "step3Body": "Turn your commits into ATS-ready impact bullets.",
+    "step3Cta": "Build resume",
+    "done": "done"
+  },
+  "leetcode": {
+    "eyebrow": "// leetcode",
+    "title": "Practice problems",
+    "subtitle": "Blind 75 and company-tagged coding problems with an automated judge.",
+    "searchPlaceholder": "Search problems…",
+    "filterAll": "All",
+    "filterEasy": "Easy",
+    "filterMedium": "Medium",
+    "filterHard": "Hard",
+    "filterSolved": "Solved",
+    "filterUnsolved": "Unsolved",
+    "noProblemsFound": "No problems match your filters.",
+    "solveButton": "Solve",
+    "solvedBadge": "Solved",
+    "attemptsSuffix": "attempts",
+    "backToProblems": "Back to problems",
+    "runCode": "Run code",
+    "submit": "Submit",
+    "loading": "Loading…",
+    "starredOnly": "Starred only",
+    "surpriseMe": "Surprise me"
   }
 }

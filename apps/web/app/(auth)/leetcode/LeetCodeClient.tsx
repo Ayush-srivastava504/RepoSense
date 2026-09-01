@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import AuthGuard from '../../components/AuthGuard';
 import { trackEvent } from '@/lib/analytics';
+import { useTranslation } from '@/i18n/LanguageContext';
 interface LevelSummary {
     key: string;
     label: string;
@@ -64,6 +65,7 @@ function saveSet(key: string, set: Set<string>) {
 }
 function LeetCodeContent() {
     useAuth();
+    const { t } = useTranslation();
     const [levels, setLevels] = useState<LevelSummary[]>([]);
     const [activeLevel, setActiveLevel] = useState<string>('level-1');
     const [detail, setDetail] = useState<LevelDetail | null>(null);
@@ -189,15 +191,14 @@ function LeetCodeContent() {
             window.open(pick.leetcode_url, '_blank', 'noopener,noreferrer');
         }
     }
-    return (<div className="container-xl py-6 sm:py-12">
+    return (<div className="py-6 sm:py-12">
       <div className="max-w-2xl">
-        <p className="eyebrow eyebrow-accent mb-3">// leetcode practice</p>
+        <p className="eyebrow eyebrow-accent mb-3">{t('leetcode.eyebrow', '// leetcode')}</p>
         <h1 className="text-2xl font-semibold sm:text-3xl" style={{ fontFamily: 'var(--font-display)' }}>
-          Work through a curated problem set
+          {t('leetcode.title', 'Work through a curated problem set')}
         </h1>
         <p className="mt-3 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-          Pick a level, filter by company, category, or difficulty, and solve. A handful of
-          problems run right here against real test cases — the rest link out to LeetCode itself.
+          {t('leetcode.subtitle', 'Pick a level, filter by company, category, or difficulty, and solve. A handful of problems run right here against real test cases — the rest link out to LeetCode itself.')}
         </p>
       </div>
 
@@ -205,7 +206,7 @@ function LeetCodeContent() {
           {error}
         </p>)}
 
-      {loading ? (<p className="mt-8 text-sm" style={{ color: 'var(--ink-soft)' }}>Loading levels…</p>) : (<>
+      {loading ? (<p className="mt-8 text-sm" style={{ color: 'var(--ink-soft)' }}>{t('leetcode.loading', 'Loading…')}</p>) : (<>
           <div className="mt-8 flex gap-2 overflow-x-auto border-b pb-1 no-scrollbar sm:flex-wrap" style={{ borderColor: 'var(--line)' }}>
             {levels.map((lvl) => {
                 const active = lvl.key === activeLevel;
@@ -242,7 +243,7 @@ function LeetCodeContent() {
             </div>)}
 
           <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search problems…" className="field min-h-[44px] w-full"/>
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('leetcode.searchPlaceholder', 'Search problems…')} className="field min-h-[44px] w-full"/>
             <select value={company} onChange={(e) => setCompany(e.target.value)} className="field min-h-[44px] w-full">
               {companies.map((c) => (<option key={c} value={c}>{c === 'All' ? 'All companies' : c}</option>))}
             </select>
@@ -250,25 +251,25 @@ function LeetCodeContent() {
               {categories.map((c) => (<option key={c} value={c}>{c}</option>))}
             </select>
             <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="field min-h-[44px] w-full">
-              {['All', 'Easy', 'Medium', 'Hard'].map((d) => (<option key={d} value={d}>{d}</option>))}
+              {['All', 'Easy', 'Medium', 'Hard'].map((d) => (<option key={d} value={d}>{t(`leetcode.filter${d}`, d)}</option>))}
             </select>
           </div>
 
           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--ink-soft)' }}>
               <input type="checkbox" checked={starredOnly} onChange={(e) => setStarredOnly(e.target.checked)}/>
-              Starred only
+              {t('leetcode.starredOnly', 'Starred only')}
             </label>
             <button onClick={surpriseMe} className="btn btn-secondary min-h-[44px] text-xs sm:w-auto">
-              🎲 Surprise me
+              🎲 {t('leetcode.surpriseMe', 'Surprise me')}
             </button>
           </div>
 
           <div className="mt-6 space-y-2">
-            {detailLoading && (<p className="text-sm" style={{ color: 'var(--ink-soft)' }}>Loading problems…</p>)}
+            {detailLoading && (<p className="text-sm" style={{ color: 'var(--ink-soft)' }}>{t('leetcode.loading', 'Loading…')}</p>)}
 
             {!detailLoading && filteredProblems.length === 0 && (<p className="text-sm" style={{ color: 'var(--ink-soft)' }}>
-                No problems match your filters.
+                {t('leetcode.noProblemsFound', 'No problems match your filters.')}
               </p>)}
 
             {!detailLoading && filteredProblems.map((p) => {
