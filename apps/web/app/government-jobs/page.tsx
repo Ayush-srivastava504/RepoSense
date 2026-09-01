@@ -11,7 +11,6 @@ import { getJobs, getFeaturedJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
 import FeaturedJobs from '@/app/components/FeaturedJobs';
 import SponsoredCard from '@/app/components/SponsoredCard';
-import AdSlot from '@/app/components/AdSlot';
 const JOBS_PER_PAGE = 12;
 export const metadata: Metadata = {
     title: 'Government Jobs — Sarkari Naukri Notifications',
@@ -196,11 +195,6 @@ export default async function GovernmentJobsPage({ searchParams, }: {
             </p>)}
         </form>
 
-        {/* Top Ad Slot */}
-        <div className="mt-8 sm:mt-10">
-          <AdSlot slot="2222222222" className="flex justify-center" style={{ minHeight: '280px' }}/>
-        </div>
-
         <FeaturedJobs jobs={featured} basePath="/government-jobs"/>
 
         {jobs.length > 0 ? (<>
@@ -210,11 +204,6 @@ export default async function GovernmentJobsPage({ searchParams, }: {
 
                   {(index + 1) % 6 === 0 && (<SponsoredCard />)}
                 </div>))}
-            </div>
-
-            {/* Bottom Ad Slot */}
-            <div className="mt-8 sm:mt-10">
-              <AdSlot slot="3333333333" className="flex justify-center" style={{ minHeight: '280px' }}/>
             </div>
 
             <Pagination currentPage={currentPage} totalPages={totalPages} search={search}/>

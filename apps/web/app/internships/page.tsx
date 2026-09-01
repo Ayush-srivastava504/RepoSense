@@ -12,7 +12,6 @@ import JobCard from '@/app/components/JobCard';
 import FeaturedJobs from '@/app/components/FeaturedJobs';
 import SponsoredCard from '@/app/components/SponsoredCard';
 import JobFilters, { parseLocationFilter, parseGroupFilter, } from '@/app/components/JobFilters';
-import AdSlot from '@/app/components/AdSlot';
 import { sortIndiaFirst, isIndiaJob } from '@/lib/jobPriority';
 const JOBS_PER_PAGE = 12;
 export const metadata: Metadata = {
@@ -193,11 +192,6 @@ export default async function InternshipsPage({ searchParams, }: {
           </Link>
         </p>
 
-        {/* Top Ad Slot */}
-        <div className="mt-6 sm:mt-8 mb-6 sm:mb-8">
-          <AdSlot slot="1111111111" className="flex justify-center" style={{ minHeight: '280px' }}/>
-        </div>
-
         <form method="GET" action="/internships" className="mt-6 sm:mt-8">
           {locationFilter !== 'all' && (<input type="hidden" name="loc" value={locationFilter}/>)}
           {groupFilter !== 'all' && (<input type="hidden" name="role" value={groupFilter}/>)}
@@ -231,11 +225,6 @@ export default async function InternshipsPage({ searchParams, }: {
 
         <JobFilters basePath="/internships" search={search} location={locationFilter} group={groupFilter}/>
 
-        {/* Ad slot before featured jobs */}
-        <div className="mt-8 sm:mt-10">
-          <AdSlot slot="5555555555" className="flex justify-center" style={{ minHeight: '280px' }}/>
-        </div>
-
         <FeaturedJobs jobs={featured} basePath="/internships"/>
 
         {jobs.length > 0 ? (<>
@@ -245,11 +234,6 @@ export default async function InternshipsPage({ searchParams, }: {
 
                   {(index + 1) % 6 === 0 && (<SponsoredCard />)}
                 </div>))}
-            </div>
-
-            {/* Bottom Ad Slot */}
-            <div className="mt-8 sm:mt-10">
-              <AdSlot slot="6666666666" className="flex justify-center" style={{ minHeight: '280px' }}/>
             </div>
 
             <Pagination currentPage={currentPage} totalPages={totalPages} search={search} loc={locationFilter} role={groupFilter}/>
