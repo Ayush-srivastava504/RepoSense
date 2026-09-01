@@ -82,11 +82,16 @@ export default async function CompanyHubPage({ params, }: {
           </div>
         </div>
 
-        <p className="mt-4 max-w-2xl leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-          {company.job_count} active listing{company.job_count === 1 ? '' : 's'} at {company.company} right now
-          {company.sample_location ? `, based around ${company.sample_location}` : ''} — pulled from the same feed
-          as InternFlow's Jobs and Internships pages.
-        </p>
+        <div className="mt-4 max-w-3xl leading-relaxed text-sm sm:text-base space-y-3" style={{ color: 'var(--ink-soft)' }}>
+          <p>
+            {company.job_count} active listing{company.job_count === 1 ? '' : 's'} at {company.company} right now
+            {company.sample_location ? `, based around ${company.sample_location}` : ''} — pulled directly from the {company.company} career page and top job boards.
+          </p>
+          <p>
+            If you are preparing to apply for a role at {company.company}, make sure your resume matches the required skills. 
+            Review the live job openings and internships below, note the frequently mentioned keywords, and use our free ATS resume checker to optimize your application before submitting it.
+          </p>
+        </div>
 
         {keywords.length > 0 && (<div className="mt-5 flex flex-wrap gap-2">
             {keywords.map((kw) => (<Link key={kw} href={`/jobs?search=${encodeURIComponent(kw)}`} className="chip chip-muted text-xs">

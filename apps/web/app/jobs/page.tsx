@@ -242,18 +242,18 @@ export default async function JobsPage({ searchParams, }: {
           <p className="eyebrow eyebrow-accent text-xs sm:text-sm">// about this page</p>
 
           <h2 className="display mt-2 text-xl sm:text-2xl font-medium">
-            Find jobs and internships in India, remote, and Japan
+            Find High Paying Jobs and Internships in India, Remote, and Japan
           </h2>
 
           <div className="mt-4 grid gap-6 sm:grid-cols-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
             <div>
               <p>
                 InternFlow aggregates job and internship listings from dozens of
-                company career pages and job boards every day, so you don&apos;t have
+                company career pages and top job boards every day, so you don&apos;t have
                 to check each one yourself. Use the <strong>location filter</strong> to
-                switch between opportunities based in India, fully remote roles, or
-                jobs and internships in Japan, and the <strong>role filter</strong> to
-                narrow results down to Software Engineer, Sales, Finance, or Other
+                switch between opportunities based in India, fully remote jobs, or
+                highly sought-after jobs and internships in Japan. Use the <strong>role filter</strong> to
+                narrow results down to Software Engineer, AI Engineer, Data Engineer, Sales, Finance, or Other
                 positions.
               </p>
 
@@ -261,25 +261,24 @@ export default async function JobsPage({ searchParams, }: {
                 Every listing is checked for freshness: newly posted roles are
                 ranked first, and listings that have been open for more than
                 30 days are automatically de-ranked and eventually retired if
-                they&apos;re no longer active — so you spend less time applying to
-                jobs that have already closed.
+                they&apos;re no longer active. We prioritize high paying jobs and verified remote opportunities, ensuring you spend less time applying to
+                jobs that have already closed or do not meet your expectations.
               </p>
             </div>
 
             <div>
               <p>
                 Whether you&apos;re a computer science student looking for a
-                software engineering internship, an experienced sales
-                professional exploring account executive roles, or a finance
+                software engineering internship, an experienced DevOps engineer exploring remote roles, or a finance
                 graduate hunting for your first analyst position, our feed
                 pulls from company career pages, remote-first job boards, and
-                Japan-focused listings to give you one place to search.
+                Japan-focused listings to give you one single platform to search. Pair this with our free ATS resume builder and cover letter templates to maximize your chances of getting hired.
               </p>
 
               <p className="mt-3">
                 Have a listing to report, a company you&apos;d like to see added, or
                 general feedback? Email us at{' '}
-                <a href="mailto:creatoramplified@gmail.com" className="underline">
+                <a href="mailto:creatoramplified@gmail.com" className="underline font-medium hover:text-[color:var(--ink)] transition-colors">
                   creatoramplified@gmail.com
                 </a>
                 .

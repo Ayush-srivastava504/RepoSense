@@ -251,41 +251,42 @@ export default async function InternshipsPage({ searchParams, }: {
           <p className="eyebrow eyebrow-accent text-xs sm:text-sm">// about this page</p>
 
           <h2 className="display mt-2 text-xl sm:text-2xl font-medium">
-            Find internships in India, remote, and Japan
+            Find Software Engineering, Data, and Business Internships
           </h2>
 
           <div className="mt-4 grid gap-6 sm:grid-cols-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
             <div>
               <p>
                 This page shows the internship-only view of our job feed,
-                refreshed daily from company career pages and internship
+                refreshed daily from company career pages and top internship
                 boards. Use the <strong>location filter</strong> to switch
                 between internships based in India, fully remote internships,
-                and internships in Japan, and the <strong>role filter</strong> to
-                narrow down to Software Engineer, Sales, Finance, or Other
+                and internships in Japan. Use the <strong>role filter</strong> to
+                narrow down to Software Engineer, AI Engineer, Marketing, Sales, Finance, or Other
                 internships.
               </p>
 
               <p className="mt-3">
+                Landing a high-quality internship is crucial for launching your career. 
                 Freshly posted internships are ranked first. Listings open for
                 more than 30 days are automatically de-ranked, and eventually
-                retired once they&apos;re no longer active, so you&apos;re not
-                wasting time on internships that have already closed.
+                retired once they&apos;re no longer active, ensuring you aren&apos;t 
+                wasting time on internships that have already filled their cohorts.
               </p>
             </div>
 
             <div>
               <p>
-                Looking for your first software engineering internship, a
-                sales or business development internship, or a finance/accounting
-                internship? Our feed brings together listings from company
-                career pages, remote-first job boards, and Japan-focused
-                sources into one searchable place.
+                Whether you are looking for your first B.Tech computer science internship, a
+                marketing and business development internship, or a finance/accounting
+                internship, our feed brings together listings from top tech companies,
+                remote-first startups, and global organizations into one searchable place. 
+                Make sure your application stands out by using our ATS resume checker.
               </p>
 
               <p className="mt-3">
                 Have a listing to report or feedback for us? Email{' '}
-                <a href="mailto:creatoramplified@gmail.com" className="underline">
+                <a href="mailto:creatoramplified@gmail.com" className="underline font-medium hover:text-[color:var(--ink)] transition-colors">
                   creatoramplified@gmail.com
                 </a>
                 .
