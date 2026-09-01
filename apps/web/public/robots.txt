@@ -1,63 +1,42 @@
 User-agent: *
 Allow: /
-Allow: /about
+Allow: /es/
+Allow: /ja/
+Allow: /fr/
+Allow: /de/
+Allow: /pt/
+Allow: /ko/
+Allow: /it/
+Allow: /hi/
+Allow: /jobs
+Allow: /internships
+Allow: /remote-jobs
+Allow: /government-jobs
+Allow: /japan-jobs
+Allow: /europe-jobs
 Allow: /companies
+Allow: /hackathons
 Allow: /blog
 Allow: /blog/
-Allow: /register
-Allow: /login
-Allow: /jobs
-Allow: /jobs/
-Allow: /internships
-Allow: /internships/
-Allow: /remote-jobs
-Allow: /remote-jobs/
-Allow: /government-jobs
-Allow: /government-jobs/
-Allow: /hackathons
-Allow: /hackathons/
 Allow: /tools
-Allow: /tools/
-Allow: /tracker
-Allow: /japan-jobs
-Allow: /japan-jobs/
-Allow: /japan-internships
-Allow: /japan-internships/
-Allow: /europe-jobs
-Allow: /europe-jobs/
-Allow: /leetcode
-Allow: /leetcode/
-Allow: /resume
-Allow: /resume/
-Allow: /github
-Allow: /github/
-Allow: /linkedin
-Allow: /linkedin/
-Allow: /ats-checker
-Allow: /cover-letter
 Allow: /skills
-Allow: /skills/
-Allow: /companies/
 Allow: /careers
-Allow: /careers/
 Allow: /resume-for
-Allow: /resume-for/
 Allow: /jobs-in
-Allow: /jobs-in/
+Allow: /about
 
+# Private & API routes
 Disallow: /dashboard
 Disallow: /dashboard/
 Disallow: /api/
 Disallow: /_next/
 Disallow: /static/
 
-# Listing pages already canonicalize to their bare, unparameterized URL
-# (e.g. /jobs, /internships), but nothing previously stopped Google from
-# crawling deep into pagination/search/location query strings first,
-# burning crawl budget on near-duplicate listing shells instead of reaching
-# job detail pages.
+# Prevent crawl budget exhaustion on duplicate query permutations
 Disallow: /*?*page=
 Disallow: /*?*search=
 Disallow: /*?*loc=
+Disallow: /*?*sort=
 
+# Master Sitemap Index
 Sitemap: https://www.intern-flow.in/sitemap.xml
