@@ -127,8 +127,18 @@ export default async function CityHubPage({ params, }: {
         </nav>
 
         <p className="eyebrow eyebrow-accent">// {city.region.toLowerCase()}</p>
-        <h1 className="display mt-2 text-3xl font-medium sm:text-4xl">Jobs &amp; Internships in {city.name}</h1>
-        <p className="mt-4 max-w-2xl leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{city.heroDescription}</p>
+        <h1 className="display mt-2 text-3xl font-medium sm:text-4xl">
+          Jobs &amp; Internships in {city.name}
+        </h1>
+        
+        <div className="mt-4 max-w-3xl leading-relaxed text-sm sm:text-base space-y-3" style={{ color: 'var(--ink-soft)' }}>
+          <p>{city.heroDescription}</p>
+          <p>
+            Whether you are looking for an entry-level position, a software engineering internship, or a senior management role, 
+            explore our frequently updated list of opportunities based in {city.name}. 
+            We aggregate high-paying roles across tech, finance, and marketing so you don't have to search multiple job boards.
+          </p>
+        </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
           <Link href="/jobs" className="btn btn-primary">

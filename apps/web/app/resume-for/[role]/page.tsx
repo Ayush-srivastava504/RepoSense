@@ -92,8 +92,18 @@ export default async function ResumeForRolePage({ params, }: {
         </nav>
 
         <p className="eyebrow eyebrow-accent">// resume guide</p>
-        <h1 className="display mt-2 text-3xl font-medium sm:text-4xl">{role.name} Resume — Keywords &amp; Bullet Examples</h1>
-        <p className="mt-4 max-w-2xl leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{role.heroDescription}</p>
+        <h1 className="display mt-2 text-3xl font-medium sm:text-4xl">
+          {role.name} Resume — Keywords, ATS Optimization &amp; Bullet Examples
+        </h1>
+        
+        <div className="mt-4 max-w-3xl leading-relaxed text-sm sm:text-base space-y-3" style={{ color: 'var(--ink-soft)' }}>
+          <p>{role.heroDescription}</p>
+          <p>
+            Crafting the perfect <strong>{role.name} resume</strong> requires the right balance of technical keywords and measurable achievements. 
+            Many recruiters use Applicant Tracking Systems (ATS) to filter candidates, which means your resume needs to be optimized for both algorithms and human hiring managers. 
+            Use the bullet point templates and keywords below to build a highly effective, ATS-friendly resume for your next application.
+          </p>
+        </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
           <Link href="/ats-checker" className="btn btn-primary">
