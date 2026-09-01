@@ -1,7 +1,5 @@
 // Module: components/github/Terminal.tsx
 // Defines component(s)/export(s): Terminal
-//
-//
 
 'use client';
 import { useEffect, useRef, useState } from 'react';

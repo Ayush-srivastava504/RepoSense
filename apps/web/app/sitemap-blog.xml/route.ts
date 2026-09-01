@@ -12,7 +12,7 @@ export async function GET() {
   const now = new Date().toISOString();
   const posts = getAllPosts();
 
-  const blogIndexAlternates: { lang: string; href: string }[] = i18n.locales.map((loc) => ({
+  const blogIndexAlternates: { lang: string; href: string }[] = i18n.locales.map((loc: string) => ({
     lang: loc,
     href: loc === 'en' ? `${BASE_URL}/blog` : `${BASE_URL}/${loc}/blog`,
   }));
@@ -27,7 +27,7 @@ export async function GET() {
       alternates: blogIndexAlternates,
     },
     ...posts.map((post) => {
-      const postAlternates: { lang: string; href: string }[] = i18n.locales.map((loc) => ({
+      const postAlternates: { lang: string; href: string }[] = i18n.locales.map((loc: string) => ({
         lang: loc,
         href: loc === 'en' ? `${BASE_URL}/blog/${post.slug}` : `${BASE_URL}/${loc}/blog/${post.slug}`,
       }));

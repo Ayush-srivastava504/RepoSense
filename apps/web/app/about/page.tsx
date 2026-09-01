@@ -1,7 +1,5 @@
 // Module: app/about/page.tsx
 // Defines component(s)/export(s): AboutPage
-//
-//
 
 import type { Metadata } from 'next';
 import Link from 'next/link';

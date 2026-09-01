@@ -195,12 +195,12 @@ function DashboardContent() {
         </Link>
       </div>
 
-      <form onSubmit={handleSearch} className="panel mt-6 flex items-center gap-2 p-2">
+      <form onSubmit={handleSearch} className="panel mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2">
         <div className="flex flex-1 items-center gap-2 px-2" style={{ color: 'var(--muted)' }}>
           <SearchIcon />
           <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search internships by role, company, or skill…" className="w-full bg-transparent py-2 text-sm outline-none" style={{ color: 'var(--ink)' }}/>
         </div>
-        <button type="submit" className="btn btn-secondary text-sm flex-shrink-0">
+        <button type="submit" className="btn btn-secondary text-sm w-full sm:w-auto flex-shrink-0">
           Search jobs
         </button>
       </form>

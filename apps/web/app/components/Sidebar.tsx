@@ -433,7 +433,10 @@ export default function Sidebar({
         ))}
       </div>
 
-      <div className="flex-none border-t p-2 space-y-1.5" style={{ borderColor: 'var(--line)' }}>
+      <div className="flex-none border-t p-2 space-y-1.5" style={{
+        borderColor: 'var(--line)',
+        paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+      }}>
         <div className="px-1">
           <LanguageSwitcher />
         </div>

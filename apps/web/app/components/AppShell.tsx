@@ -41,14 +41,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         <div className="main-column">
           <header
-            className="flex h-14 flex-none items-center justify-between gap-3 border-b px-4 lg:hidden"
-            style={{ borderColor: 'var(--line)', background: 'var(--paper-nav)' }}
+            className="flex h-14 flex-none items-center justify-between gap-3 border-b lg:hidden"
+            style={{
+              borderColor: 'var(--line)',
+              background: 'var(--paper-nav)',
+              paddingLeft: 'max(1rem, env(safe-area-inset-left))',
+              paddingRight: 'max(1rem, env(safe-area-inset-right))',
+            }}
           >
             <button
               onClick={() => setMobileOpen(true)}
               aria-label="Open menu"
               aria-expanded={mobileOpen}
               className="btn btn-ghost !px-2 !py-1.5"
+              style={{ minWidth: '44px', minHeight: '44px' }}
             >
               <svg
                 width="18"
@@ -71,7 +77,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <Logo />
             </Link>
 
-            <Link href="/dashboard" aria-label="Dashboard" className="btn btn-ghost !px-2 !py-1.5">
+            <Link href="/dashboard" aria-label="Dashboard" className="btn btn-ghost !px-2 !py-1.5" style={{ minWidth: '44px', minHeight: '44px' }}>
               <svg
                 width="18"
                 height="18"
@@ -89,7 +95,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           </header>
 
-          <main className="container-xl flex-1 py-8 sm:py-10">
+          <main className="container-xl flex-1 py-6 sm:py-10">
             <PageTransition>{children}</PageTransition>
           </main>
 

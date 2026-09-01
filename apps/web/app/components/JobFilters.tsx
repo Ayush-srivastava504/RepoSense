@@ -43,11 +43,11 @@ export default function JobFilters({ basePath, search, location, group, }: {
         return qs ? `${basePath}?${qs}` : basePath;
     };
     return (<div className="mt-4 flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-        <span className="eyebrow text-[0.65rem] sm:text-xs mr-1" style={{ color: 'var(--ink-soft)' }}>
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:flex-wrap sm:pb-0">
+        <span className="eyebrow text-[0.65rem] sm:text-xs mr-1 flex-none" style={{ color: 'var(--ink-soft)' }}>
           location
         </span>
-        {LOCATION_OPTIONS.map((opt) => (<Link key={opt.value} href={buildHref(opt.value, group)} className={`chip text-[0.7rem] sm:text-xs touch-manipulation ${location === opt.value ? 'chip-indigo' : 'chip-muted'}`}>
+        {LOCATION_OPTIONS.map((opt) => (<Link key={opt.value} href={buildHref(opt.value, group)} className={`chip text-[0.7rem] sm:text-xs touch-manipulation flex-none ${location === opt.value ? 'chip-indigo' : 'chip-muted'}`}>
             {opt.label}
           </Link>))}
       </div>
@@ -72,11 +72,11 @@ export function RoleFilter({ basePath, search, group, location, }: {
         const qs = params.toString();
         return qs ? `${basePath}?${qs}` : basePath;
     };
-    return (<div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-      <span className="eyebrow text-[0.65rem] sm:text-xs mr-1" style={{ color: 'var(--ink-soft)' }}>
+    return (<div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:flex-wrap sm:pb-0">
+      <span className="eyebrow text-[0.65rem] sm:text-xs mr-1 flex-none" style={{ color: 'var(--ink-soft)' }}>
         role
       </span>
-      {GROUP_OPTIONS.map((opt) => (<Link key={opt.value} href={buildHref(opt.value)} className={`chip text-[0.7rem] sm:text-xs touch-manipulation ${group === opt.value ? 'chip-indigo' : 'chip-muted'}`}>
+      {GROUP_OPTIONS.map((opt) => (<Link key={opt.value} href={buildHref(opt.value)} className={`chip text-[0.7rem] sm:text-xs touch-manipulation flex-none ${group === opt.value ? 'chip-indigo' : 'chip-muted'}`}>
           {opt.label}
         </Link>))}
     </div>);

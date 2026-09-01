@@ -234,10 +234,10 @@ function ResumeContent() {
     const pct = Math.round(genProgress * 100);
     return (<>
       <p className="eyebrow eyebrow-accent">// resume</p>
-      <h1 className="display mt-2 text-3xl font-medium">Resume builder</h1>
+      <h1 className="display mt-2 text-2xl sm:text-3xl font-medium">Resume builder</h1>
 
       
-      <div className="mt-6 flex gap-5 border-b" style={{ borderColor: 'var(--line)' }}>
+      <div className="mt-6 flex gap-4 sm:gap-5 border-b" style={{ borderColor: 'var(--line)' }}>
         {(['handwritten', 'ai'] as Tab[]).map((t) => (<button key={t} onClick={() => { trackEvent('resume_tab_switched', { tab: t }); setTab(t); }} className="pb-2.5 text-sm font-medium transition-colors border-b-2" style={{
                 borderColor: tab === t ? 'var(--indigo)' : 'transparent',
                 color: tab === t ? 'var(--ink)' : 'var(--ink-soft)',
@@ -247,7 +247,7 @@ function ResumeContent() {
       </div>
 
       
-      {tab === 'handwritten' && (<div className="panel mt-6 space-y-6 p-5 sm:p-6" style={{ maxWidth: '42rem' }}>
+      {tab === 'handwritten' && (<div className="panel mt-6 space-y-6 p-4 sm:p-6" style={{ maxWidth: '42rem' }}>
 
           <div>
             <label className="field-label">Resume title</label>
@@ -397,7 +397,7 @@ function ResumeContent() {
         </div>)}
 
       
-      {tab === 'ai' && (<div className="panel mt-6 space-y-5 p-5 sm:p-6" style={{ maxWidth: '42rem' }}>
+      {tab === 'ai' && (<div className="panel mt-6 space-y-5 p-4 sm:p-6" style={{ maxWidth: '42rem' }}>
           <div className="rounded-[var(--radius-sm)] p-4 space-y-3" style={{ background: 'var(--paper-dim)' }}>
             <p className="eyebrow eyebrow-accent">// what you get</p>
             <div className="flex flex-col gap-2 text-sm">

@@ -53,6 +53,7 @@
 
 html {
   background: var(--paper);
+  overflow-x: hidden;
 }
 
 body {
@@ -60,6 +61,9 @@ body {
   color: var(--ink);
   font-size: 16px;
   transition: background-color 200ms ease, color 200ms ease;
+  overflow-x: hidden;
+  /* prevent iOS font size adjustment */
+  -webkit-text-size-adjust: 100%;
 }
 
 @layer base {
@@ -812,3 +816,20 @@ html {
   background: var(--green-soft);
   color: var(--green);
 }
+
+/* ─── Mobile responsiveness & Touch helpers ─────────────── */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@media (max-width: 639px) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+

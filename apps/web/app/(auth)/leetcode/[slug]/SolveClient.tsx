@@ -74,6 +74,7 @@ function SolvePageContent() {
     const [verdict, setVerdict] = useState<JudgeResponse | null>(null);
     const [notes, setNotes] = useState('');
     const [notesSaved, setNotesSaved] = useState(false);
+    const [mobileTab, setMobileTab] = useState<'problem' | 'code' | 'notes'>('problem');
     useEffect(() => {
         let cancelled = false;
         (async () => {
@@ -155,13 +156,20 @@ function SolvePageContent() {
         </button>
       </div>);
     }
-    return (<div className="container-xl py-12">
+
+    const MOBILE_TABS = [
+      { id: 'problem' as const, label: 'Problem' },
+      { id: 'code' as const, label: 'Code' },
+      { id: 'notes' as const, label: 'Notes' },
+    ];
+
+    return (<div className="container-xl py-6 sm:py-12">
       <Link href="/leetcode" className="text-xs" style={{ color: 'var(--ink-soft)' }}>
         &larr; All problems
       </Link>
 
-      <div className="mt-3 flex items-center gap-3">
-        <h1 className="text-2xl font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <h1 className="text-xl sm:text-2xl font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
           {problem.title}
         </h1>
         <span className="text-sm font-medium" style={{ color: difficultyColor(problem.difficulty) }}>
@@ -169,7 +177,28 @@ function SolvePageContent() {
         </span>
       </div>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      {/* Mobile tab strip */}
+      <div className="mt-5 flex gap-1 border-b lg:hidden" style={{ borderColor: 'var(--line)' }}>
+        {MOBILE_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setMobileTab(tab.id)}
+            className="px-4 py-2 text-sm font-medium transition-colors"
+            style={{
+              color: mobileTab === tab.id ? 'var(--indigo)' : 'var(--ink-soft)',
+              borderBottom: mobileTab === tab.id ? '2px solid var(--indigo)' : '2px solid transparent',
+              marginBottom: '-1px',
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Desktop: 2-column grid */}
+      <div className="mt-6 lg:mt-8 hidden lg:grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        {/* Left: description + notes */}
         <div>
           <p className="field-label">Description</p>
           <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
@@ -189,13 +218,14 @@ function SolvePageContent() {
           </div>
         </div>
 
+        {/* Right: code editor */}
         <div>
           <p className="field-label">Your solution</p>
           <textarea value={code} onChange={(e) => setCode(e.target.value)} spellCheck={false} rows={16} className="field font-mono text-xs leading-relaxed" style={{ tabSize: 4 }}/>
 
           {error && (<p className="mt-2 text-xs" style={{ color: 'var(--rust)' }} role="alert">{error}</p>)}
 
-          <button onClick={runTests} disabled={running} className="btn btn-primary mt-3">
+          <button onClick={runTests} disabled={running} className="btn btn-primary mt-3 w-full sm:w-auto">
             {running ? 'Running…' : 'Run tests'}
           </button>
 
@@ -231,6 +261,92 @@ function SolvePageContent() {
             </div>)}
         </div>
       </div>
+
+      {/* Mobile: tab panels */}
+      <div className="mt-4 lg:hidden">
+        {mobileTab === 'problem' && (
+          <div>
+            <p className="field-label">Description</p>
+            <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+              {problem.description}
+            </p>
+            <p className="mt-4 text-xs" style={{ color: 'var(--ink-soft)' }}>
+              Implement <code className="font-mono">{problem.function_name}</code> below. Tests run
+              server-side against a few fixed cases — no imports, no I/O, just the function body.
+            </p>
+            <button
+              onClick={() => setMobileTab('code')}
+              className="btn btn-primary mt-6 w-full"
+            >
+              Go to Code Editor →
+            </button>
+          </div>
+        )}
+
+        {mobileTab === 'code' && (
+          <div>
+            <p className="field-label">Your solution</p>
+            <textarea
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              spellCheck={false}
+              rows={16}
+              className="field font-mono text-xs leading-relaxed"
+              style={{ tabSize: 4 }}
+            />
+            {error && (<p className="mt-2 text-xs" style={{ color: 'var(--rust)' }} role="alert">{error}</p>)}
+            <button onClick={runTests} disabled={running} className="btn btn-primary mt-3 w-full">
+              {running ? 'Running…' : 'Run tests'}
+            </button>
+
+            {verdict && (<div className="mt-5 space-y-3">
+                <div className="rounded-[var(--radius-md)] border p-4" style={{
+                  borderColor: verdict.all_passed ? 'var(--green)' : 'var(--line)',
+              }}>
+                  <p className="text-sm font-medium" style={{ color: verdict.all_passed ? 'var(--green)' : 'var(--rust)' }}>
+                    {verdict.ok
+                  ? verdict.summary || (verdict.all_passed ? 'All tests passed' : 'Some tests failed')
+                  : 'Could not run your code'}
+                  </p>
+                  {verdict.error && (<pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs" style={{ color: 'var(--ink-soft)' }}>
+                      {verdict.error}
+                    </pre>)}
+                </div>
+                {verdict.results.length > 0 && (<div className="space-y-2">
+                    {verdict.results.map((r, i) => (<div key={i} className="rounded-[var(--radius-sm)] border p-3 text-xs" style={{ borderColor: 'var(--line)' }}>
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">Test case {i + 1}</span>
+                          <span style={{ color: r.passed ? 'var(--green)' : 'var(--rust)' }}>
+                            {r.passed ? 'Pass' : 'Fail'}
+                          </span>
+                        </div>
+                        <p className="mt-1" style={{ color: 'var(--ink-soft)' }}>
+                          input: {JSON.stringify(r.input)} — expected: {JSON.stringify(r.expected)}
+                          {!r.passed && ` — got: ${JSON.stringify(r.actual)}`}
+                        </p>
+                        {r.error && (<p className="mt-1" style={{ color: 'var(--rust)' }}>{r.error}</p>)}
+                      </div>))}
+                  </div>)}
+              </div>)}
+          </div>
+        )}
+
+        {mobileTab === 'notes' && (
+          <div>
+            <div className="flex items-center justify-between">
+              <p className="field-label">Your notes</p>
+              {notesSaved && (<span className="text-[11px]" style={{ color: 'var(--green)' }}>Saved</span>)}
+            </div>
+            <textarea
+              value={notes}
+              onChange={(e) => saveNotes(e.target.value)}
+              placeholder="Approach, complexity, gotchas — kept only in this browser."
+              rows={12}
+              className="field mt-2 text-xs leading-relaxed"
+            />
+          </div>
+        )}
+      </div>
     </div>);
 }
 export default function SolveClient() {
@@ -238,3 +354,5 @@ export default function SolveClient() {
       <SolvePageContent />
     </AuthGuard>);
 }
+
+  
