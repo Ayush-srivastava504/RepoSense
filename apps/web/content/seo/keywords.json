@@ -1345,9 +1345,9 @@
     "keyword": "AI resume builder",
     "category": "resume-ats",
     "priority": "high",
-    "status": "queued",
-    "publishedSlug": null,
-    "publishedAt": null
+    "status": "published",
+    "publishedSlug": "ai-resume-builder-kw-0150",
+    "publishedAt": "2026-09-04T07:51:13.921Z"
   },
   {
     "id": "kw-0151",
