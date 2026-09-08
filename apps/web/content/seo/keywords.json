@@ -1390,9 +1390,9 @@
     "keyword": "ATS resume checker for students",
     "category": "resume-ats",
     "priority": "high",
-    "status": "queued",
-    "publishedSlug": null,
-    "publishedAt": null
+    "status": "published",
+    "publishedSlug": "ats-resume-checker-for-students-kw-0155",
+    "publishedAt": "2026-09-08T07:56:35.982Z"
   },
   {
     "id": "kw-0156",
