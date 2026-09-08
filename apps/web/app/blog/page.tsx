@@ -10,6 +10,7 @@ import { getAllPosts } from '@/lib/blog';
 import { breadcrumbSchema } from '@/lib/structuredData';
 import { getDictionary } from '@/i18n/get-dictionary';
 import type { Locale } from '@/i18n/config';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 
 export const metadata: Metadata = {
   title: 'Engineering & Tech Career Guides — InternFlow Blog',
@@ -53,6 +54,7 @@ export default async function BlogIndexPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}
       />
+      <Breadcrumbs schema={crumbs}/>
 
       <div className="mx-auto w-full max-w-5xl px-3 py-10 sm:px-4 sm:py-14">
         <p className="eyebrow eyebrow-accent">{dict.blog?.eyebrow || '// guides'}</p>

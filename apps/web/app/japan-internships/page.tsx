@@ -9,6 +9,8 @@ import {
 
 import JobCard from '@/app/components/JobCard';
 import SponsoredCard from '@/app/components/SponsoredCard';
+import { breadcrumbSchema } from '@/lib/structuredData';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 
 const JOBS_PER_PAGE = 12;
 
@@ -165,6 +167,11 @@ export default async function JapanInternshipsPage({
     })),
   };
 
+  const crumbs = breadcrumbSchema([
+    { name: 'Home', url: BASE_URL },
+    { name: 'Japan Internships', url: `${BASE_URL}/japan-internships` },
+  ]);
+
   return (
     <div className="min-h-screen">
       <main className="mx-auto max-w-6xl px-3 sm:px-4 py-8 sm:py-12">
@@ -172,6 +179,11 @@ export default async function JapanInternshipsPage({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
         />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}
+        />
+        <Breadcrumbs schema={crumbs}/>
 
         <p className="eyebrow eyebrow-accent text-xs sm:text-sm">// japan internships</p>
 

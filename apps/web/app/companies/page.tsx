@@ -8,6 +8,7 @@ import { getCompanies } from '@/lib/companies';
 import { BASE_URL } from '@/lib/jobs';
 import CompanyCard from '@/app/components/CompanyCard';
 import { breadcrumbSchema } from '@/lib/structuredData';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 export const metadata: Metadata = {
     title: 'Companies Hiring — Top, Mass-Hiring & Startups',
     description: 'Every company with an active listing on InternFlow, grouped into Top Companies, companies mass-hiring right now, and startups. Refreshed daily.',
@@ -64,6 +65,7 @@ export default async function CompaniesPage() {
     ]);
     return (<main className="mx-auto max-w-6xl px-3 sm:px-4 py-8 sm:py-12">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}/>
+      <Breadcrumbs schema={breadcrumb}/>
 
       <header>
         <p className="eyebrow eyebrow-accent mb-2 text-xs sm:text-sm">// companies hiring</p>

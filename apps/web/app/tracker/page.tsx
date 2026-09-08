@@ -11,6 +11,7 @@ import { breadcrumbSchema, faqSchema, howToSchema, softwareApplicationSchema, } 
 import TrackView from '@/app/components/TrackView';
 import TrackerBoard from './TrackerBoard';
 import { StepGrid } from '@/app/components/FactGrid';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 const PAGE_URL = `${BASE_URL}/tracker`;
 const TITLE = 'My Applications — Free Job Application Tracker';
 const DESCRIPTION = 'Track every internship and job application in one free pipeline: Saved, Applied, Interviewing, Offer. Get deadline reminders so you never miss an application window — no account required.';
@@ -73,6 +74,7 @@ export default function TrackerPage() {
       <Script id="tracker-howto-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howTo) }}/>
       <Script id="tracker-faq-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqs) }}/>
       <Script id="tracker-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
+      <Breadcrumbs schema={crumbs}/>
       <TrackView event="tracker_landing_view"/>
 
       <nav className="mb-6 text-sm" style={{ color: 'var(--ink-soft)' }}>

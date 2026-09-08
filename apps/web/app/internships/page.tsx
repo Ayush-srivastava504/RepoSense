@@ -13,6 +13,8 @@ import FeaturedJobs from '@/app/components/FeaturedJobs';
 import SponsoredCard from '@/app/components/SponsoredCard';
 import JobFilters, { parseLocationFilter, parseGroupFilter, } from '@/app/components/JobFilters';
 import { sortIndiaFirst, isIndiaJob } from '@/lib/jobPriority';
+import { breadcrumbSchema } from '@/lib/structuredData';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 const JOBS_PER_PAGE = 12;
 export const metadata: Metadata = {
     title: 'Internship Listings — India, Remote & Japan — Refreshed Daily',
@@ -152,7 +154,16 @@ export default async function InternshipsPage({ searchParams, }: {
             url: `${BASE_URL}/internships/${jobSlug(job)}`,
         })),
     };
+    const crumbs = breadcrumbSchema([
+        { name: 'Home', url: BASE_URL },
+        { name: 'Internships', url: `${BASE_URL}/internships` },
+    ]);
     return (<div className="min-h-screen">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{
+          __html: JSON.stringify(crumbs),
+      }}/>
+      <Breadcrumbs schema={crumbs}/>
+
       <Script id="internships-in-page-push" strategy="afterInteractive">
         {`
           (function(s) {

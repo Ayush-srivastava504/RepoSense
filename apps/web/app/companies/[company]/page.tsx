@@ -13,6 +13,7 @@ import { breadcrumbSchema } from '@/lib/structuredData';
 import JobCard from '@/app/components/JobCard';
 import CompanyLogo from '@/app/components/CompanyLogo';
 import TrackView from '@/app/components/TrackView';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 
 export const dynamicParams = true;
 
@@ -66,6 +67,7 @@ export default async function CompanyHubPage({ params, }: {
 
     return (<main className="w-full">
       <Script id="company-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
+      <Breadcrumbs schema={crumbs}/>
       <TrackView event="company_hub_view" params={{ company: company.company }}/>
 
       <div className="mx-auto w-full max-w-5xl px-3 py-8 sm:px-4 sm:py-12">

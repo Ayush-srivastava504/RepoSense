@@ -12,6 +12,7 @@ import { TOOLS, getToolBySlug, getRelatedTools } from '@/app/tools/data';
 import { breadcrumbSchema, faqSchema, howToSchema, softwareApplicationSchema, } from '@/lib/structuredData';
 import TrackView from '@/app/components/TrackView';
 import { StepGrid, BulletGrid } from '@/app/components/FactGrid';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 export const dynamicParams = false;
 export function generateStaticParams() {
     return TOOLS.map((tool) => ({ tool: tool.slug }));
@@ -76,6 +77,7 @@ export default function ToolLandingPage({ params }: {
       <Script id="tool-howto-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howTo) }}/>
       <Script id="tool-faq-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqs) }}/>
       <Script id="tool-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
+      <Breadcrumbs schema={crumbs}/>
       <TrackView event="tool_landing_view" params={{ tool: tool.slug }}/>
 
       <div className="mx-auto w-full max-w-3xl px-3 py-10 sm:px-4 sm:py-14">

@@ -9,6 +9,7 @@ import Script from 'next/script';
 import { BASE_URL } from '@/lib/jobs';
 import { TOOLS } from '@/app/tools/data';
 import { breadcrumbSchema } from '@/lib/structuredData';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 export const metadata: Metadata = {
     title: 'Free AI Career Tools for Students',
     description: 'Free AI tools built for engineering students: GitHub README generator, ATS resume checker, resume builder, LinkedIn optimizer, and cover letter generator.',
@@ -21,6 +22,7 @@ export default function ToolsHubPage() {
     ]);
     return (<main className="w-full">
       <Script id="tools-hub-breadcrumb" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
+      <Breadcrumbs schema={crumbs}/>
 
       <div className="mx-auto w-full max-w-5xl px-3 py-10 sm:px-4 sm:py-14">
         <p className="eyebrow eyebrow-accent">// ai tools</p>

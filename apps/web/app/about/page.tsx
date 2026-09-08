@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BASE_URL } from '@/lib/jobs';
 import { breadcrumbSchema } from '@/lib/structuredData';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 export const metadata: Metadata = {
     title: 'About InternFlow — AI Code Review & Internship Platform',
     description: 'InternFlow connects to your GitHub, reviews your code like a senior engineer would, and turns that work into an ATS-ready resume tuned for the job you want.',
@@ -54,6 +55,7 @@ export default function AboutPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{
             __html: JSON.stringify(breadcrumb),
         }}/>
+      <Breadcrumbs schema={breadcrumb}/>
 
       <div>
         <p className="eyebrow eyebrow-accent">// about</p>

@@ -9,6 +9,8 @@ import { jobSlug } from '@/lib/slug';
 import { getJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
 import SponsoredCard from '@/app/components/SponsoredCard';
+import { breadcrumbSchema } from '@/lib/structuredData';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 const JOBS_PER_PAGE = 12;
 type JapanType = 'job' | 'internship';
 function parseType(raw?: string): JapanType {
@@ -161,9 +163,17 @@ export default async function JapanJobsPage({ searchParams, }: {
     const emptyMessage = search
         ? `No Japan ${type === 'internship' ? 'internships' : 'jobs'} found for "${search}".`
         : `No Japan ${type === 'internship' ? 'internships' : 'jobs'} are available right now. Please check again later.`;
+    const crumbs = breadcrumbSchema([
+        { name: 'Home', url: BASE_URL },
+        type === 'internship'
+            ? { name: 'Japan Internships', url: `${BASE_URL}/japan-jobs?type=internship` }
+            : { name: 'Japan Jobs', url: `${BASE_URL}/japan-jobs` },
+    ]);
     return (<div className="min-h-screen">
       <main className="mx-auto max-w-6xl px-3 sm:px-4 py-8 sm:py-12">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}/>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
+        <Breadcrumbs schema={crumbs}/>
 
         <p className="eyebrow eyebrow-accent text-xs sm:text-sm">
           // japan {type === 'internship' ? 'internships' : 'jobs'}

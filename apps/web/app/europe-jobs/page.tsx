@@ -9,6 +9,8 @@ import { jobSlug } from '@/lib/slug';
 import { getJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
 import SponsoredCard from '@/app/components/SponsoredCard';
+import { breadcrumbSchema } from '@/lib/structuredData';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 const JOBS_PER_PAGE = 12;
 export const metadata: Metadata = {
     title: 'Europe Jobs — UK, Germany, Netherlands & Remote-for-Europe',
@@ -102,9 +104,15 @@ export default async function EuropeJobsPage({ searchParams, }: {
             url: `${BASE_URL}/remote-jobs/${jobSlug(job)}`,
         })),
     };
+    const crumbs = breadcrumbSchema([
+        { name: 'Home', url: BASE_URL },
+        { name: 'Europe Jobs', url: `${BASE_URL}/europe-jobs` },
+    ]);
     return (<div className="min-h-screen">
       <main className="mx-auto max-w-6xl px-3 sm:px-4 py-8 sm:py-12">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}/>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
+        <Breadcrumbs schema={crumbs}/>
 
         <p className="eyebrow eyebrow-accent text-xs sm:text-sm">// europe jobs</p>
 

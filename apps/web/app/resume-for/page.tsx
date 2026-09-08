@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { BASE_URL } from '@/lib/jobs';
 import { RESUME_ROLES } from '@/app/resume-for/data';
 import { breadcrumbSchema } from '@/lib/structuredData';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 
 export const metadata: Metadata = {
     title: 'Resume Guides by Role — Keywords, Bullets & ATS Tips',
@@ -23,6 +24,7 @@ export default function ResumeForIndexPage() {
 
     return (<main className="mx-auto w-full max-w-5xl px-3 py-8 sm:px-4 sm:py-12">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
+      <Breadcrumbs schema={crumbs}/>
 
       <p className="eyebrow eyebrow-accent">// resume guides</p>
       <h1 className="display mt-2 text-3xl font-medium sm:text-4xl">Resume Guides by Role</h1>

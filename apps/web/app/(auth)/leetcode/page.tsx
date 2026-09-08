@@ -5,7 +5,9 @@
 
 import type { Metadata } from 'next';
 import { BASE_URL } from '@/lib/jobs';
+import { breadcrumbSchema } from '@/lib/structuredData';
 import LeetCodeClient from './LeetCodeClient';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 export const metadata: Metadata = {
     title: 'Free LeetCode Practice — Blind 75, Top 150 & Top 250 by Company',
     description: 'Practice curated LeetCode problem sets — Blind 75, Top 150, and Top 250 — filterable by company, category, and difficulty. Solve select problems right in the browser against real test cases, or jump straight to LeetCode.',
@@ -35,8 +37,14 @@ export default function LeetCodePage() {
         description: 'Curated Blind 75, Top 150, and Top 250 LeetCode problem sets, filterable by company, category, and difficulty.',
         url: `${BASE_URL}/leetcode`,
     };
+    const crumbs = breadcrumbSchema([
+        { name: 'Home', url: BASE_URL },
+        { name: 'LeetCode Practice', url: `${BASE_URL}/leetcode` },
+    ]);
     return (<>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}/>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
+      <Breadcrumbs schema={crumbs}/>
       <LeetCodeClient />
     </>);
 }

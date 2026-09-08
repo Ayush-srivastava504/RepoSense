@@ -12,6 +12,8 @@ import JobCard from '@/app/components/JobCard';
 import FeaturedJobs from '@/app/components/FeaturedJobs';
 import SponsoredCard from '@/app/components/SponsoredCard';
 import { RoleFilter, parseGroupFilter } from '@/app/components/JobFilters';
+import { breadcrumbSchema } from '@/lib/structuredData';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 const JOBS_PER_PAGE = 12;
 export const metadata: Metadata = {
     title: 'Remote Jobs — US, UK & Worldwide',
@@ -133,7 +135,16 @@ export default async function RemoteJobsPage({ searchParams, }: {
             url: `${BASE_URL}/remote-jobs/${jobSlug(job)}`,
         })),
     };
+    const crumbs = breadcrumbSchema([
+        { name: 'Home', url: BASE_URL },
+        { name: 'Remote Jobs', url: `${BASE_URL}/remote-jobs` },
+    ]);
     return (<div className="min-h-screen">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{
+          __html: JSON.stringify(crumbs),
+      }}/>
+      <Breadcrumbs schema={crumbs}/>
+
       <Script id="remote-jobs-in-page-push" strategy="afterInteractive">
         {`
           (function(s) {

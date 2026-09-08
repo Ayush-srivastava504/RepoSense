@@ -10,6 +10,7 @@ import { BASE_URL } from '@/lib/jobs';
 import { SKILLS, type SkillDefinition } from '@/app/skills/data';
 import { breadcrumbSchema, faqSchema } from '@/lib/structuredData';
 import FAQAccordion from '@/app/components/FAQAccordion';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 
 export const metadata: Metadata = {
     title: 'Skills for Resume: Hard Skills, Soft Skills & Technical Skills',
@@ -96,6 +97,7 @@ export default function SkillsIndexPage() {
 
     return (<main className="w-full">
       <Script id="skills-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
+      <Breadcrumbs schema={crumbs}/>
       <Script id="skills-faq-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqs) }}/>
 
       <div className="mx-auto w-full max-w-5xl px-3 py-8 sm:px-4 sm:py-12">

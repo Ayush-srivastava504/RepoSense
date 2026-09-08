@@ -11,6 +11,7 @@ import { getJobById, BASE_URL } from '@/lib/jobs';
 import { jobPostingSchema, breadcrumbSchema } from '@/lib/structuredData';
 import JobDetail from '@/app/components/JobDetail';
 import TrackView from '@/app/components/TrackView';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 export async function generateMetadata({ params, }: {
     params: {
         slug: string;
@@ -56,6 +57,7 @@ export default async function JobDetailPage({ params, }: {
     return (<main className="w-full">
       <Script id="job-posting-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jobSchema) }}/>
       <Script id="job-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
+      <Breadcrumbs schema={crumbs}/>
       <TrackView event="job_view" params={{ job_id: job.id, job_title: job.title, company: job.company }}/>
 
       <div className="mx-auto w-full max-w-5xl px-3 py-6 sm:px-4 sm:py-8">

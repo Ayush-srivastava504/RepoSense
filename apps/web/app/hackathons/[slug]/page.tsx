@@ -9,6 +9,7 @@ import { getHackathonBySlug, formatDeadline, BASE_URL } from '@/lib/hackathons';
 import HackathonApplyButton from '@/app/components/HackathonApplyButton';
 import TrackView from '@/app/components/TrackView';
 import { breadcrumbSchema, eventSchema } from '@/lib/structuredData';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 export async function generateMetadata({ params, }: {
     params: Promise<{
         slug: string;
@@ -74,6 +75,7 @@ export default async function HackathonDetailPage({ params, }: {
       {event && (<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(event) }}/>)}
 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}/>
+      <Breadcrumbs schema={breadcrumb}/>
 
       <TrackView event="hackathon_viewed" params={{ slug: hackathon.slug, source: hackathon.source }}/>
       <p className="eyebrow">{hackathon.organizer || 'Hackathon'}</p>

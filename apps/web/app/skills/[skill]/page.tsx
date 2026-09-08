@@ -15,6 +15,7 @@ import { breadcrumbSchema, faqSchema } from '@/lib/structuredData';
 import JobCard from '@/app/components/JobCard';
 import TrackView from '@/app/components/TrackView';
 import FAQAccordion from '@/app/components/FAQAccordion';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 
 export const dynamicParams = false;
 
@@ -93,6 +94,7 @@ export default async function SkillHubPage({ params, }: {
 
     return (<main className="w-full">
       <Script id="skill-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
+      <Breadcrumbs schema={crumbs}/>
       <Script id="skill-faq-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqs) }}/>
       <TrackView event="skill_hub_view" params={{ skill: skill.slug }}/>
 

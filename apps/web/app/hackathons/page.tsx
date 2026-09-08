@@ -9,6 +9,7 @@ import { getHackathons, getHackathonsEndingSoon, BASE_URL, } from '@/lib/hackath
 import HackathonCard from '@/app/components/HackathonCard';
 import TrackView from '@/app/components/TrackView';
 import { breadcrumbSchema } from '@/lib/structuredData';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 export const metadata: Metadata = {
     title: 'Hackathons — Active Hackathons Worth Building For',
     description: 'A short, daily-refreshed list of the best active hackathons — online, India, and global. Curated for quality, not volume.',
@@ -78,6 +79,7 @@ export default async function HackathonsPage({ searchParams, }: {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}/>
 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}/>
+      <Breadcrumbs schema={breadcrumb}/>
 
       <TrackView event="hackathon_page_viewed" params={{
             result_count: hackathons.length,

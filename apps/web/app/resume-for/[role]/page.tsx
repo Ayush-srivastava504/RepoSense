@@ -14,6 +14,7 @@ import { getCareerBySlug } from '@/app/careers/data';
 import { breadcrumbSchema, faqSchema } from '@/lib/structuredData';
 import JobCard from '@/app/components/JobCard';
 import TrackView from '@/app/components/TrackView';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 
 export const dynamicParams = false;
 
@@ -82,6 +83,7 @@ export default async function ResumeForRolePage({ params, }: {
 
     return (<main className="w-full">
       <Script id="resume-role-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
+      <Breadcrumbs schema={crumbs}/>
       <Script id="resume-role-faq-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqs) }}/>
       <TrackView event="resume_role_view" params={{ role: role.slug }}/>
 

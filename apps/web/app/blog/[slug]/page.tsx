@@ -13,6 +13,7 @@ import { getAllPosts, getPostBySlug } from '@/lib/blog';
 import { breadcrumbSchema, ORG_NAME, ORG_LOGO } from '@/lib/structuredData';
 import { i18n, type Locale } from '@/i18n/config';
 import { getDictionary } from '@/i18n/get-dictionary';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 
 interface Props {
   params: {
@@ -166,6 +167,7 @@ export default async function BlogPostPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}
       />
+      <Breadcrumbs schema={crumbs}/>
       <Script
         id={`blog-post-article-${post.slug}`}
         type="application/ld+json"

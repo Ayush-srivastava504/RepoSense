@@ -11,6 +11,8 @@ import { getJobs, getFeaturedJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
 import FeaturedJobs from '@/app/components/FeaturedJobs';
 import SponsoredCard from '@/app/components/SponsoredCard';
+import { breadcrumbSchema } from '@/lib/structuredData';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 const JOBS_PER_PAGE = 12;
 export const metadata: Metadata = {
     title: 'Government Jobs — Sarkari Naukri Notifications',
@@ -126,7 +128,16 @@ export default async function GovernmentJobsPage({ searchParams, }: {
             url: `${BASE_URL}/government-jobs/${jobSlug(job)}`,
         })),
     };
+    const crumbs = breadcrumbSchema([
+        { name: 'Home', url: BASE_URL },
+        { name: 'Government Jobs', url: `${BASE_URL}/government-jobs` },
+    ]);
     return (<div className="min-h-screen">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{
+          __html: JSON.stringify(crumbs),
+      }}/>
+      <Breadcrumbs schema={crumbs}/>
+
       <Script id="government-jobs-in-page-push" strategy="afterInteractive">
         {`
           (function(s) {

@@ -7,6 +7,7 @@ import type { Metadata } from 'next';
 import { BASE_URL } from '@/lib/jobs';
 import { breadcrumbSchema } from '@/lib/structuredData';
 import SolveClient from './SolveClient';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 const API_BASE_URL = process.env.API_BASE_URL ||
     process.env.NEXT_PUBLIC_API_BASE_URL ||
     'https://api.intern-flow.in';
@@ -80,6 +81,7 @@ export default async function SolvePage({ params, }: {
     ]);
     return (<>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
+      <Breadcrumbs schema={crumbs}/>
       <SolveClient />
     </>);
 }

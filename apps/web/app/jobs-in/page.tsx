@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { BASE_URL } from '@/lib/jobs';
 import { CITIES } from '@/app/jobs-in/data';
 import { breadcrumbSchema } from '@/lib/structuredData';
+import Breadcrumbs from '@/app/components/Breadcrumbs';
 
 export const metadata: Metadata = {
     title: 'Browse Jobs & Internships by City',
@@ -23,6 +24,7 @@ export default function CitiesIndexPage() {
 
     return (<main className="mx-auto w-full max-w-5xl px-3 py-8 sm:px-4 sm:py-12">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
+      <Breadcrumbs schema={crumbs}/>
 
       <p className="eyebrow eyebrow-accent">// browse by city</p>
       <h1 className="display mt-2 text-3xl font-medium sm:text-4xl">Jobs &amp; Internships by City</h1>
