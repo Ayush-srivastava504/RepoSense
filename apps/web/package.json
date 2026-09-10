@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "seo:generate": "node ../../scripts/generate-daily-posts.mjs"
+    "seo:generate": "node ../../scripts/generate-daily-posts.mjs",
+    "indexnow:submit": "node ../../scripts/indexnow-submit.mjs"
   },
   "browserslist": [
     "> 0.3%",

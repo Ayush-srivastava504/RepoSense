@@ -4,7 +4,6 @@
 //
 
 import type { Metadata } from 'next';
-import Script from 'next/script';
 import { notFound } from 'next/navigation';
 import { jobIdFromSlug, canonicalPathForJob } from '@/lib/slug';
 import { getJobById, BASE_URL } from '@/lib/jobs';
@@ -46,8 +45,8 @@ export default async function RemoteJobDetailPage({ params, }: {
         { name: job.title, url: canonicalUrl },
     ]);
     return (<main className="w-full">
-      <Script id="remote-job-posting-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingSchema(job, canonicalUrl)) }}/>
-      <Script id="remote-job-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{
+      <script id="remote-job-posting-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingSchema(job, canonicalUrl)) }}/>
+      <script id="remote-job-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{
             __html: JSON.stringify(crumbs),
         }}/>
       <Breadcrumbs schema={crumbs}/>

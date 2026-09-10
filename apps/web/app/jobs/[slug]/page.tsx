@@ -4,7 +4,6 @@
 //
 
 import type { Metadata } from 'next';
-import Script from 'next/script';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { jobIdFromSlug, canonicalCategoryForJob, canonicalPathForJob } from '@/lib/slug';
 import { getJobById, BASE_URL } from '@/lib/jobs';
@@ -56,8 +55,8 @@ export default async function JobDetailPage({ params, }: {
         { name: job.title, url: canonicalUrl },
     ]);
     return (<main className="w-full">
-      <Script id="job-posting-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jobSchema) }}/>
-      <Script id="job-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
+      <script id="job-posting-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jobSchema) }}/>
+      <script id="job-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
       <Breadcrumbs schema={crumbs}/>
       <TrackView event="job_view" params={{ job_id: job.id, job_title: job.title, company: job.company }}/>
 
