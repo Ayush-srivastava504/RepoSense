@@ -8,7 +8,7 @@ import Script from 'next/script';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { jobIdFromSlug, canonicalCategoryForJob, canonicalPathForJob } from '@/lib/slug';
 import { getJobById, BASE_URL } from '@/lib/jobs';
-import { jobPostingSchema, breadcrumbSchema } from '@/lib/structuredData';
+import {  jobPostingSchema, breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import JobDetail from '@/app/components/JobDetail';
 import TrackView from '@/app/components/TrackView';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -26,6 +26,7 @@ export async function generateMetadata({ params, }: {
         description: `Apply for ${job.title} at ${job.company}${job.location ? ` in ${job.location}` : ''}. View eligibility, skills, salary, and application details.`,
         alternates: {
             canonical: `${BASE_URL}${canonicalPathForJob(job)}`,
+            languages: languageAlternates(canonicalPathForJob(job)),
         },
     };
 }

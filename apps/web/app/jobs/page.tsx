@@ -13,7 +13,7 @@ import SponsoredCard from '@/app/components/SponsoredCard';
 import JobsSearchTracker from '@/app/components/JobsSearchTracker';
 import JobFilters, { parseLocationFilter, parseGroupFilter, } from '@/app/components/JobFilters';
 import { sortIndiaFirst, isIndiaJob } from '@/lib/jobPriority';
-import { breadcrumbSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 const JOBS_PER_PAGE = 12;
 export const metadata: Metadata = {
@@ -21,6 +21,7 @@ export const metadata: Metadata = {
     description: 'Browse the latest software engineering, sales, and finance jobs and internships from India, remote companies, and Japan. Updated daily, no login required.',
     alternates: {
         canonical: `${BASE_URL}/jobs`,
+        languages: languageAlternates('/jobs'),
     },
 };
 function Pagination({ currentPage, totalPages, search, loc, role, }: {

@@ -7,13 +7,13 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BASE_URL } from '@/lib/jobs';
 import { CAREERS } from '@/app/careers/data';
-import { breadcrumbSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 
 export const metadata: Metadata = {
     title: 'Career Paths for Engineering Students',
     description: 'What each engineering career path actually involves, the skills employers screen for, live jobs and internships, and the resume tools to apply — Software Engineer, AI/ML Engineer, DevOps Engineer, Data Engineer, and Data Analyst.',
-    alternates: { canonical: `${BASE_URL}/careers` },
+    alternates: { canonical: `${BASE_URL}/careers`, languages: languageAlternates('/careers') },
 };
 
 export default function CareersIndexPage() {

@@ -8,7 +8,7 @@ import { notFound } from 'next/navigation';
 import { getHackathonBySlug, formatDeadline, BASE_URL } from '@/lib/hackathons';
 import HackathonApplyButton from '@/app/components/HackathonApplyButton';
 import TrackView from '@/app/components/TrackView';
-import { breadcrumbSchema, eventSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, eventSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 export async function generateMetadata({ params, }: {
     params: Promise<{
@@ -25,6 +25,7 @@ export async function generateMetadata({ params, }: {
             `${hackathon.title} — registration details, prizes, and how to apply.`,
         alternates: {
             canonical: `${BASE_URL}/hackathons/${slug}`,
+            languages: languageAlternates(`/hackathons/${slug}`),
         },
     };
 }

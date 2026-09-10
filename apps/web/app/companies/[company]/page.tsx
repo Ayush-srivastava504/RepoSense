@@ -9,7 +9,7 @@ import Script from 'next/script';
 import { notFound } from 'next/navigation';
 import { BASE_URL, getJobs } from '@/lib/jobs';
 import { getCompanies, getCompanyBySlug, companySlug } from '@/lib/companies';
-import { breadcrumbSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import JobCard from '@/app/components/JobCard';
 import CompanyLogo from '@/app/components/CompanyLogo';
 import TrackView from '@/app/components/TrackView';
@@ -35,7 +35,7 @@ export async function generateMetadata({ params, }: {
     return {
         title,
         description,
-        alternates: { canonical: url },
+        alternates: { canonical: url, languages: languageAlternates(`/companies/${params.company}`) },
         openGraph: {
             type: 'website',
             url,

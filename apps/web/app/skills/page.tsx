@@ -8,7 +8,7 @@ import Link from 'next/link';
 import Script from 'next/script';
 import { BASE_URL } from '@/lib/jobs';
 import { SKILLS, type SkillDefinition } from '@/app/skills/data';
-import { breadcrumbSchema, faqSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, faqSchema, languageAlternates } from '@/lib/structuredData';
 import FAQAccordion from '@/app/components/FAQAccordion';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
         'soft skills',
         'technical skills',
     ],
-    alternates: { canonical: `${BASE_URL}/skills` },
+    alternates: { canonical: `${BASE_URL}/skills`, languages: languageAlternates('/skills') },
     openGraph: {
         type: 'website',
         url: `${BASE_URL}/skills`,

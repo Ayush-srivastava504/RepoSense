@@ -7,13 +7,13 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BASE_URL } from '@/lib/jobs';
 import { RESUME_ROLES } from '@/app/resume-for/data';
-import { breadcrumbSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 
 export const metadata: Metadata = {
     title: 'Resume Guides by Role — Keywords, Bullets & ATS Tips',
     description: 'Role-specific resume guides with the ATS keywords, common mistakes, and bullet-point templates for Software Engineer, AI/ML Engineer, DevOps Engineer, Data Engineer, and Data Analyst roles.',
-    alternates: { canonical: `${BASE_URL}/resume-for` },
+    alternates: { canonical: `${BASE_URL}/resume-for`, languages: languageAlternates('/resume-for') },
 };
 
 export default function ResumeForIndexPage() {

@@ -35,6 +35,28 @@ export function breadcrumbSchema(items: {
         })),
     };
 }
+// Builds the full hreflang map (including x-default) for a given relative
+// path, e.g. languageAlternates('/jobs') ->
+// { 'x-default': BASE_URL+'/jobs', en: BASE_URL+'/jobs', es: BASE_URL+'/es/jobs', ... }.
+// Every locale in i18n/config.ts is served at BASE_URL/{locale}{path} via the
+// middleware rewrite, so every indexable page should point to all nine
+// variants here — not just the homepage — or Google has no way to know the
+// other-language URLs exist.
+export function languageAlternates(path: string): Record<string, string> {
+    const clean = path === '/' ? '' : path;
+    return {
+        'x-default': `${BASE_URL}${clean}`,
+        en: `${BASE_URL}${clean}`,
+        es: `${BASE_URL}/es${clean}`,
+        ja: `${BASE_URL}/ja${clean}`,
+        fr: `${BASE_URL}/fr${clean}`,
+        de: `${BASE_URL}/de${clean}`,
+        pt: `${BASE_URL}/pt${clean}`,
+        ko: `${BASE_URL}/ko${clean}`,
+        it: `${BASE_URL}/it${clean}`,
+        hi: `${BASE_URL}/hi${clean}`,
+    };
+}
 export function faqSchema(faqs: {
     question: string;
     answer: string;

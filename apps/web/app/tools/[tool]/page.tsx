@@ -9,7 +9,7 @@ import Script from 'next/script';
 import { notFound } from 'next/navigation';
 import { BASE_URL } from '@/lib/jobs';
 import { TOOLS, getToolBySlug, getRelatedTools } from '@/app/tools/data';
-import { breadcrumbSchema, faqSchema, howToSchema, softwareApplicationSchema, } from '@/lib/structuredData';
+import {  breadcrumbSchema, faqSchema, howToSchema, softwareApplicationSchema, languageAlternates, } from '@/lib/structuredData';
 import TrackView from '@/app/components/TrackView';
 import { StepGrid, BulletGrid } from '@/app/components/FactGrid';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -29,7 +29,7 @@ export async function generateMetadata({ params, }: {
     return {
         title: tool.metaTitle,
         description: tool.metaDescription,
-        alternates: { canonical: url },
+        alternates: { canonical: url, languages: languageAlternates(`/tools/${tool.slug}`) },
         openGraph: {
             type: 'website',
             url,

@@ -7,7 +7,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Script from 'next/script';
 import { BASE_URL } from '@/lib/jobs';
-import { breadcrumbSchema, faqSchema, howToSchema, softwareApplicationSchema, } from '@/lib/structuredData';
+import {  breadcrumbSchema, faqSchema, howToSchema, softwareApplicationSchema, languageAlternates, } from '@/lib/structuredData';
 import TrackView from '@/app/components/TrackView';
 import TrackerBoard from './TrackerBoard';
 import { StepGrid } from '@/app/components/FactGrid';
@@ -18,7 +18,7 @@ const DESCRIPTION = 'Track every internship and job application in one free pipe
 export const metadata: Metadata = {
     title: TITLE,
     description: DESCRIPTION,
-    alternates: { canonical: PAGE_URL },
+    alternates: { canonical: PAGE_URL, languages: languageAlternates('/tracker') },
     openGraph: {
         type: 'website',
         url: PAGE_URL,

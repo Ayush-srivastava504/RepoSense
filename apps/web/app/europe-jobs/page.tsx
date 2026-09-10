@@ -9,7 +9,7 @@ import { jobSlug } from '@/lib/slug';
 import { getJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
 import SponsoredCard from '@/app/components/SponsoredCard';
-import { breadcrumbSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 const JOBS_PER_PAGE = 12;
 export const metadata: Metadata = {
@@ -17,6 +17,7 @@ export const metadata: Metadata = {
     description: 'Full-time, contract, and part-time roles based in Europe or open to remote applicants, sourced from Jobicy, Arbeitnow, Remotive, and more — refreshed daily.',
     alternates: {
         canonical: `${BASE_URL}/europe-jobs`,
+        languages: languageAlternates('/europe-jobs'),
     },
 };
 function Pagination({ currentPage, totalPages, search, }: {

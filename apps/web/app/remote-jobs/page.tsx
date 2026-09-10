@@ -12,7 +12,7 @@ import JobCard from '@/app/components/JobCard';
 import FeaturedJobs from '@/app/components/FeaturedJobs';
 import SponsoredCard from '@/app/components/SponsoredCard';
 import { RoleFilter, parseGroupFilter } from '@/app/components/JobFilters';
-import { breadcrumbSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 const JOBS_PER_PAGE = 12;
 export const metadata: Metadata = {
@@ -20,6 +20,7 @@ export const metadata: Metadata = {
     description: 'Remote software, product, and data roles from Himalayas, Remote OK, We Work Remotely, and Remotive. Refreshed daily, open to India, US, UK, and worldwide.',
     alternates: {
         canonical: `${BASE_URL}/remote-jobs`,
+        languages: languageAlternates('/remote-jobs'),
     },
 };
 function Pagination({ currentPage, totalPages, search, role, }: {

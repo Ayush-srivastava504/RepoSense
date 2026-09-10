@@ -9,7 +9,7 @@ import {
 
 import JobCard from '@/app/components/JobCard';
 import SponsoredCard from '@/app/components/SponsoredCard';
-import { breadcrumbSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 
 const JOBS_PER_PAGE = 12;
@@ -20,6 +20,7 @@ export const metadata: Metadata = {
     'Internships based in Japan or open to remote applicants based in Japan, sourced from Himalayas and Remote OK and refreshed daily.',
   alternates: {
     canonical: `${BASE_URL}/japan-internships`,
+    languages: languageAlternates('/japan-internships'),
   },
 };
 

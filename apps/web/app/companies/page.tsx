@@ -7,13 +7,14 @@ import type { Metadata } from 'next';
 import { getCompanies } from '@/lib/companies';
 import { BASE_URL } from '@/lib/jobs';
 import CompanyCard from '@/app/components/CompanyCard';
-import { breadcrumbSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 export const metadata: Metadata = {
     title: 'Companies Hiring — Top, Mass-Hiring & Startups',
     description: 'Every company with an active listing on InternFlow, grouped into Top Companies, companies mass-hiring right now, and startups. Refreshed daily.',
     alternates: {
         canonical: `${BASE_URL}/companies`,
+        languages: languageAlternates('/companies'),
     },
 };
 function Section({ id, eyebrow, title, description, companies, total, accent, }: {

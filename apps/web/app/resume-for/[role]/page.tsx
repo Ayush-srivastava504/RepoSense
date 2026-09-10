@@ -11,7 +11,7 @@ import { BASE_URL, getJobs } from '@/lib/jobs';
 import { canonicalPathForJob } from '@/lib/slug';
 import { RESUME_ROLES, getResumeRoleBySlug, getRelatedResumeRoles } from '@/app/resume-for/data';
 import { getCareerBySlug } from '@/app/careers/data';
-import { breadcrumbSchema, faqSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, faqSchema, languageAlternates } from '@/lib/structuredData';
 import JobCard from '@/app/components/JobCard';
 import TrackView from '@/app/components/TrackView';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -32,7 +32,7 @@ export async function generateMetadata({ params, }: {
     return {
         title: role.metaTitle,
         description: role.metaDescription,
-        alternates: { canonical: url },
+        alternates: { canonical: url, languages: languageAlternates(`/resume-for/${role.slug}`) },
         openGraph: {
             type: 'website',
             url,

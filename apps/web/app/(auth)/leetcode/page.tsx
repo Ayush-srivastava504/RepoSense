@@ -5,7 +5,7 @@
 
 import type { Metadata } from 'next';
 import { BASE_URL } from '@/lib/jobs';
-import { breadcrumbSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import LeetCodeClient from './LeetCodeClient';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 export const metadata: Metadata = {
@@ -21,6 +21,7 @@ export const metadata: Metadata = {
     ],
     alternates: {
         canonical: `${BASE_URL}/leetcode`,
+        languages: languageAlternates('/leetcode'),
     },
     openGraph: {
         title: 'Free LeetCode Practice — Blind 75, Top 150 & Top 250 by Company',

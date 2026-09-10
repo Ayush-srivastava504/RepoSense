@@ -9,7 +9,7 @@ import { jobSlug } from '@/lib/slug';
 import { getJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
 import SponsoredCard from '@/app/components/SponsoredCard';
-import { breadcrumbSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 const JOBS_PER_PAGE = 12;
 type JapanType = 'job' | 'internship';
@@ -28,6 +28,7 @@ export async function generateMetadata({ searchParams, }: {
             description: 'Internships based in Japan or open to remote applicants based in Japan, sourced from Himalayas and Remote OK and refreshed daily.',
             alternates: {
                 canonical: `${BASE_URL}/japan-jobs?type=internship`,
+                languages: languageAlternates('/japan-jobs?type=internship'),
             },
         };
     }
@@ -36,6 +37,7 @@ export async function generateMetadata({ searchParams, }: {
         description: 'Full-time, contract, and part-time roles based in Japan or open to remote applicants based in Japan, sourced from Himalayas and Remote OK and refreshed daily.',
         alternates: {
             canonical: `${BASE_URL}/japan-jobs`,
+            languages: languageAlternates('/japan-jobs'),
         },
     };
 }

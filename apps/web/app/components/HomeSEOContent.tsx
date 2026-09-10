@@ -6,7 +6,7 @@
 import Script from 'next/script';
 import Link from 'next/link';
 import ScrollReveal from '@/app/components/ScrollReveal';
-import { faqSchema } from '@/lib/structuredData';
+import {  faqSchema } from '@/lib/structuredData';
 
 const faqs: { question: string; answer: string }[] = [
     { question: 'What is an internship?', answer: 'An internship is a short, structured work placement — usually a few weeks to a few months — where a student or recent graduate works on real tasks inside a company to build job-ready skills. Internships can be paid or unpaid, remote or in-office, and often lead to a full-time offer.' },

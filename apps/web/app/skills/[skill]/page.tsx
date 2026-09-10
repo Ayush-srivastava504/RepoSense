@@ -11,7 +11,7 @@ import { BASE_URL, getJobs } from '@/lib/jobs';
 import { canonicalPathForJob } from '@/lib/slug';
 import { companySlug } from '@/lib/companies';
 import { SKILLS, getSkillBySlug, getRelatedSkills } from '@/app/skills/data';
-import { breadcrumbSchema, faqSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, faqSchema, languageAlternates } from '@/lib/structuredData';
 import JobCard from '@/app/components/JobCard';
 import TrackView from '@/app/components/TrackView';
 import FAQAccordion from '@/app/components/FAQAccordion';
@@ -33,7 +33,7 @@ export async function generateMetadata({ params, }: {
     return {
         title: skill.metaTitle,
         description: skill.metaDescription,
-        alternates: { canonical: url },
+        alternates: { canonical: url, languages: languageAlternates(`/skills/${skill.slug}`) },
         openGraph: {
             type: 'website',
             url,

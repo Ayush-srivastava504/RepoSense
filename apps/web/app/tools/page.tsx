@@ -8,12 +8,12 @@ import Link from 'next/link';
 import Script from 'next/script';
 import { BASE_URL } from '@/lib/jobs';
 import { TOOLS } from '@/app/tools/data';
-import { breadcrumbSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 export const metadata: Metadata = {
     title: 'Free AI Career Tools for Students',
     description: 'Free AI tools built for engineering students: GitHub README generator, ATS resume checker, resume builder, LinkedIn optimizer, and cover letter generator.',
-    alternates: { canonical: `${BASE_URL}/tools` },
+    alternates: { canonical: `${BASE_URL}/tools`, languages: languageAlternates('/tools') },
 };
 export default function ToolsHubPage() {
     const crumbs = breadcrumbSchema([

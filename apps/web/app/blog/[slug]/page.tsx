@@ -10,7 +10,7 @@ import { notFound } from 'next/navigation';
 import { headers, cookies } from 'next/headers';
 import { BASE_URL } from '@/lib/jobs';
 import { getAllPosts, getPostBySlug } from '@/lib/blog';
-import { breadcrumbSchema, ORG_NAME, ORG_LOGO } from '@/lib/structuredData';
+import {  breadcrumbSchema, ORG_NAME, ORG_LOGO } from '@/lib/structuredData';
 import { i18n, type Locale } from '@/i18n/config';
 import { getDictionary } from '@/i18n/get-dictionary';
 import Breadcrumbs from '@/app/components/Breadcrumbs';

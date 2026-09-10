@@ -11,7 +11,7 @@ import { BASE_URL, getJobs, type Job } from '@/lib/jobs';
 import { canonicalPathForJob } from '@/lib/slug';
 import { companySlug } from '@/lib/companies';
 import { CITIES, getCityBySlug, getRelatedCities, type CityDefinition } from '@/app/jobs-in/data';
-import { breadcrumbSchema, faqSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, faqSchema, languageAlternates } from '@/lib/structuredData';
 import JobCard from '@/app/components/JobCard';
 import TrackView from '@/app/components/TrackView';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -48,7 +48,7 @@ export async function generateMetadata({ params, }: {
     return {
         title: city.metaTitle,
         description: city.metaDescription,
-        alternates: { canonical: url },
+        alternates: { canonical: url, languages: languageAlternates(`/jobs-in/${city.slug}`) },
         openGraph: {
             type: 'website',
             url,

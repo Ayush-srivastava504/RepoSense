@@ -5,7 +5,7 @@
 
 import type { Metadata } from 'next';
 import { BASE_URL } from '@/lib/jobs';
-import { breadcrumbSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import SolveClient from './SolveClient';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 const API_BASE_URL = process.env.API_BASE_URL ||
@@ -46,6 +46,7 @@ export async function generateMetadata({ params, }: {
             title: 'LeetCode Problem — Practice',
             alternates: {
                 canonical: `${BASE_URL}/leetcode/${params.slug}`,
+                languages: languageAlternates(`/leetcode/${params.slug}`),
             },
         };
     }
@@ -56,6 +57,7 @@ export async function generateMetadata({ params, }: {
         description,
         alternates: {
             canonical: `${BASE_URL}/leetcode/${problem.slug}`,
+            languages: languageAlternates(`/leetcode/${problem.slug}`),
         },
         openGraph: {
             title,

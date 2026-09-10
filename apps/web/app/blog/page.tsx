@@ -7,7 +7,7 @@ import Script from 'next/script';
 import { headers, cookies } from 'next/headers';
 import { BASE_URL } from '@/lib/jobs';
 import { getAllPosts } from '@/lib/blog';
-import { breadcrumbSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import { getDictionary } from '@/i18n/get-dictionary';
 import type { Locale } from '@/i18n/config';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -17,18 +17,7 @@ export const metadata: Metadata = {
   description: 'In-depth, actionable guides on AI engineering, modern data stacks, DevOps, system design, ATS resume algorithms, and global remote developer hiring.',
   alternates: {
     canonical: `${BASE_URL}/blog`,
-    languages: {
-      'x-default': `${BASE_URL}/blog`,
-      'en': `${BASE_URL}/blog`,
-      'es': `${BASE_URL}/es/blog`,
-      'ja': `${BASE_URL}/ja/blog`,
-      'fr': `${BASE_URL}/fr/blog`,
-      'de': `${BASE_URL}/de/blog`,
-      'pt': `${BASE_URL}/pt/blog`,
-      'ko': `${BASE_URL}/ko/blog`,
-      'it': `${BASE_URL}/it/blog`,
-      'hi': `${BASE_URL}/hi/blog`,
-    },
+    languages: languageAlternates('/blog'),
   },
 };
 

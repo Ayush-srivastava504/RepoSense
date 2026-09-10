@@ -7,13 +7,13 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BASE_URL } from '@/lib/jobs';
 import { CITIES } from '@/app/jobs-in/data';
-import { breadcrumbSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 
 export const metadata: Metadata = {
     title: 'Browse Jobs & Internships by City',
     description: 'Find live jobs and internships by city — Bangalore, Hyderabad, Chennai, Pune, Delhi NCR — with the companies hiring in each, updated daily.',
-    alternates: { canonical: `${BASE_URL}/jobs-in` },
+    alternates: { canonical: `${BASE_URL}/jobs-in`, languages: languageAlternates('/jobs-in') },
 };
 
 export default function CitiesIndexPage() {

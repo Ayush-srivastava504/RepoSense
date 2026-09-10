@@ -8,13 +8,14 @@ import Link from 'next/link';
 import { getHackathons, getHackathonsEndingSoon, BASE_URL, } from '@/lib/hackathons';
 import HackathonCard from '@/app/components/HackathonCard';
 import TrackView from '@/app/components/TrackView';
-import { breadcrumbSchema } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 export const metadata: Metadata = {
     title: 'Hackathons — Active Hackathons Worth Building For',
     description: 'A short, daily-refreshed list of the best active hackathons — online, India, and global. Curated for quality, not volume.',
     alternates: {
         canonical: `${BASE_URL}/hackathons`,
+        languages: languageAlternates('/hackathons'),
     },
 };
 const FILTERS = [
