@@ -15,22 +15,36 @@ const MAX_PAGES = 30;
 export async function GET() {
     let jobs: Awaited<ReturnType<typeof getJobs>> = [];
     try {
-        // Fetch all pages concurrently instead of awaiting them one at a time — up to
-        // 30 sequential round trips easily exceeds a serverless function's timeout,
-        // which cuts the response off mid-write and drops the closing </urlset> tag
-        // (surfaces in Search Console as "Sitemap can be read, but has errors —
-        // Missing XML tag"). Running them in parallel bounds wall time to the
-        // slowest single request rather than the sum of all of them.
-        const pages = await Promise.allSettled(Array.from({ length: MAX_PAGES }, (_, page) => getJobs({ limit: PAGE_SIZE, offset: page * PAGE_SIZE })));
-        for (const result of pages) {
-            // Assemble in order and stop at the first failed or short page, so we
-            // never splice in a later page while silently skipping a failed earlier
-            // one and leaving a gap in the sitemap.
-            if (result.status !== 'fulfilled')
-                break;
-            jobs = jobs.concat(result.value);
-            if (result.value.length < PAGE_SIZE)
-                break;
+        // Fetch pages in small concurrent batches rather than either (a) fully
+        // sequentially, which for a large job count can exceed a serverless
+        // function's timeout and cut the response off mid-write, dropping the
+        // closing </urlset> tag (Search Console: "Missing XML tag"), or (b) all
+        // MAX_PAGES at once, which fires 30 requests from one IP against an API
+        // that rate-limits unauthenticated callers at 50/min — a burst that size
+        // alone eats most of the budget, and getJobs() swallows a 429 into an
+        // empty array, which this loop then reads as "no more pages" and stops
+        // at page 1, producing an empty sitemap. Batching keeps concurrency (and
+        // therefore requests-per-minute) low while still bounding wall time, and
+        // the common case of a few hundred jobs only ever needs one batch.
+        const BATCH_CONCURRENCY = 5;
+        outer: for (let batchStart = 0; batchStart < MAX_PAGES; batchStart += BATCH_CONCURRENCY) {
+            const batchPages = Array.from(
+                { length: Math.min(BATCH_CONCURRENCY, MAX_PAGES - batchStart) },
+                (_, i) => batchStart + i
+            );
+            const results = await Promise.allSettled(
+                batchPages.map((page) => getJobs({ limit: PAGE_SIZE, offset: page * PAGE_SIZE }))
+            );
+            for (const result of results) {
+                // Assemble in order and stop at the first failed or short page, so we
+                // never splice in a later page while silently skipping a failed earlier
+                // one and leaving a gap in the sitemap.
+                if (result.status !== 'fulfilled')
+                    break outer;
+                jobs = jobs.concat(result.value);
+                if (result.value.length < PAGE_SIZE)
+                    break outer;
+            }
         }
     }
     catch (err) {

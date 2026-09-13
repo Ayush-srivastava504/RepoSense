@@ -4,10 +4,10 @@
 //
 
 import type { Metadata } from 'next';
-import { notFound, permanentRedirect } from 'next/navigation';
-import { jobIdFromSlug, canonicalCategoryForJob, canonicalPathForJob } from '@/lib/slug';
+import { notFound } from 'next/navigation';
+import { jobIdFromSlug, canonicalPathForJob } from '@/lib/slug';
 import { getJobById, BASE_URL } from '@/lib/jobs';
-import {  jobPostingSchema, breadcrumbSchema, languageAlternates, jobOpenGraphMeta } from '@/lib/structuredData';
+import {  jobPostingSchema, breadcrumbSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
 import JobDetail from '@/app/components/JobDetail';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 export async function generateMetadata({ params, }: {
@@ -16,23 +16,16 @@ export async function generateMetadata({ params, }: {
     };
 }): Promise<Metadata> {
     const job = await getJobById(jobIdFromSlug(params.slug));
-    // A government internship's canonical page is government-jobs/[slug] (that
-    // category outranks "internship"), so this route shouldn't describe it as
-    // an internship page at all.
-    if (!job || job.type !== 'internship' || canonicalCategoryForJob(job) !== 'internships') {
+    if (!job || job.type !== 'internship') {
         return {};
     }
-    const title = `${job.title} at ${job.company} — Internship`;
-    const description = `Apply for the ${job.title} internship at ${job.company}${job.location ? ` in ${job.location}` : ''}. View eligibility, skills, stipend, and application details.`;
-    const canonicalUrl = `${BASE_URL}${canonicalPathForJob(job)}`;
     return {
-        title,
-        description,
+        title: `${job.title} at ${job.company} — Internship`,
+        description: `Apply for the ${job.title} internship at ${job.company}${job.location ? ` in ${job.location}` : ''}. View eligibility, skills, stipend, and application details.`,
         alternates: {
-            canonical: canonicalUrl,
+            canonical: `${BASE_URL}${canonicalPathForJob(job)}`,
             languages: languageAlternates(canonicalPathForJob(job)),
         },
-        ...jobOpenGraphMeta({ title, description, url: canonicalUrl, imageAlt: `${job.title} at ${job.company}` }),
     };
 }
 export default async function InternshipDetailPage({ params, }: {
@@ -44,14 +37,6 @@ export default async function InternshipDetailPage({ params, }: {
     if (!job || job.type !== 'internship') {
         notFound();
     }
-    // A government-run internship must redirect to /government-jobs/[slug]
-    // instead of rendering a second full page here — that category outranks
-    // "internship" in canonicalCategoryForJob. This was the duplicate-content
-    // gap: this route only ever checked type === 'internship' on its own, so a
-    // government internship rendered a full 200 page at both URLs at once.
-    if (canonicalCategoryForJob(job) !== 'internships') {
-        permanentRedirect(canonicalPathForJob(job));
-    }
     const canonicalPath = canonicalPathForJob(job);
     const canonicalUrl = `${BASE_URL}${canonicalPath}`;
     const crumbs = breadcrumbSchema([
@@ -60,7 +45,7 @@ export default async function InternshipDetailPage({ params, }: {
         { name: job.title, url: canonicalUrl },
     ]);
     return (<main className="w-full">
-      <script id="internship-posting-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingSchema(job, canonicalUrl)) }}/>
+      <script id="internship-posting-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jobPostingSchema(job, canonicalUrl)) }}/>
       <script id="internship-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{
             __html: JSON.stringify(crumbs),
         }}/>

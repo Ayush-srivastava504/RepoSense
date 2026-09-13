@@ -7,7 +7,7 @@ import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { jobIdFromSlug, canonicalCategoryForJob, canonicalPathForJob } from '@/lib/slug';
 import { getJobById, BASE_URL } from '@/lib/jobs';
-import {  jobPostingSchema, breadcrumbSchema, languageAlternates, jobOpenGraphMeta } from '@/lib/structuredData';
+import {  jobPostingSchema, breadcrumbSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
 import JobDetail from '@/app/components/JobDetail';
 import TrackView from '@/app/components/TrackView';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -20,17 +20,13 @@ export async function generateMetadata({ params, }: {
     if (!job) {
         return {};
     }
-    const title = `${job.title} at ${job.company} — Job`;
-    const description = `Apply for ${job.title} at ${job.company}${job.location ? ` in ${job.location}` : ''}. View eligibility, skills, salary, and application details.`;
-    const canonicalUrl = `${BASE_URL}${canonicalPathForJob(job)}`;
     return {
-        title,
-        description,
+        title: `${job.title} at ${job.company} — Job`,
+        description: `Apply for ${job.title} at ${job.company}${job.location ? ` in ${job.location}` : ''}. View eligibility, skills, salary, and application details.`,
         alternates: {
-            canonical: canonicalUrl,
+            canonical: `${BASE_URL}${canonicalPathForJob(job)}`,
             languages: languageAlternates(canonicalPathForJob(job)),
         },
-        ...jobOpenGraphMeta({ title, description, url: canonicalUrl, imageAlt: `${job.title} at ${job.company}` }),
     };
 }
 export default async function JobDetailPage({ params, }: {
@@ -59,8 +55,8 @@ export default async function JobDetailPage({ params, }: {
         { name: job.title, url: canonicalUrl },
     ]);
     return (<main className="w-full">
-      <script id="job-posting-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jobSchema) }}/>
-      <script id="job-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
+      <script id="job-posting-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jobSchema) }}/>
+      <script id="job-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(crumbs) }}/>
       <Breadcrumbs schema={crumbs}/>
       <TrackView event="job_view" params={{ job_id: job.id, job_title: job.title, company: job.company }}/>
 

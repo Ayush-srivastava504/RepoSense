@@ -4,10 +4,10 @@
 //
 
 import type { Metadata } from 'next';
-import { notFound, permanentRedirect } from 'next/navigation';
-import { jobIdFromSlug, canonicalCategoryForJob, canonicalPathForJob } from '@/lib/slug';
+import { notFound } from 'next/navigation';
+import { jobIdFromSlug, canonicalPathForJob } from '@/lib/slug';
 import { getJobById, BASE_URL } from '@/lib/jobs';
-import {  jobPostingSchema, breadcrumbSchema, languageAlternates, jobOpenGraphMeta } from '@/lib/structuredData';
+import {  jobPostingSchema, breadcrumbSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
 import JobDetail from '@/app/components/JobDetail';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 export async function generateMetadata({ params, }: {
@@ -16,20 +16,16 @@ export async function generateMetadata({ params, }: {
     };
 }): Promise<Metadata> {
     const job = await getJobById(jobIdFromSlug(params.slug));
-    if (!job || !job.is_government || canonicalCategoryForJob(job) !== 'government-jobs') {
+    if (!job || !job.is_government) {
         return {};
     }
-    const title = `${job.title}${job.department ? ` — ${job.department}` : ''}`;
-    const description = `${job.department ? `${job.department} recruitment: ` : ''}${job.title}${job.vacancies ? `. ${job.vacancies} vacancies.` : '.'} View eligibility, notification details, and the official application link.`;
-    const canonicalUrl = `${BASE_URL}${canonicalPathForJob(job)}`;
     return {
-        title,
-        description,
+        title: `${job.title}${job.department ? ` — ${job.department}` : ''}`,
+        description: `${job.department ? `${job.department} recruitment: ` : ''}${job.title}${job.vacancies ? `. ${job.vacancies} vacancies.` : '.'} View eligibility, notification details, and the official application link.`,
         alternates: {
-            canonical: canonicalUrl,
+            canonical: `${BASE_URL}${canonicalPathForJob(job)}`,
             languages: languageAlternates(canonicalPathForJob(job)),
         },
-        ...jobOpenGraphMeta({ title, description, url: canonicalUrl, imageAlt: title }),
     };
 }
 export default async function GovernmentJobDetailPage({ params, }: {
@@ -41,14 +37,6 @@ export default async function GovernmentJobDetailPage({ params, }: {
     if (!job || !job.is_government) {
         notFound();
     }
-    // government-jobs is the top priority in canonicalCategoryForJob, so this
-    // is currently a no-op safety net rather than a live bug like the other two
-    // pages — but it's kept consistent with jobs/[slug], remote-jobs/[slug],
-    // and internships/[slug] so a future change to the priority order can't
-    // silently reintroduce a duplicate-page bug here.
-    if (canonicalCategoryForJob(job) !== 'government-jobs') {
-        permanentRedirect(canonicalPathForJob(job));
-    }
     const canonicalPath = canonicalPathForJob(job);
     const canonicalUrl = `${BASE_URL}${canonicalPath}`;
     const crumbs = breadcrumbSchema([
@@ -57,7 +45,7 @@ export default async function GovernmentJobDetailPage({ params, }: {
         { name: job.title, url: canonicalUrl },
     ]);
     return (<main className="w-full">
-      <script id="government-job-posting-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingSchema(job, canonicalUrl)) }}/>
+      <script id="government-job-posting-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jobPostingSchema(job, canonicalUrl)) }}/>
       <script id="government-job-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{
             __html: JSON.stringify(crumbs),
         }}/>
