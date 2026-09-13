@@ -15,7 +15,12 @@ GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 GROQ_MODEL = os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')
 GROQ_API_KEY = os.getenv('GROQ_API_KEY', '')
 THIN_DESCRIPTION_CHARS = int(os.getenv('THIN_DESCRIPTION_CHARS', '400'))
-BATCH_LIMIT = int(os.getenv('CONTENT_ENRICHMENT_BATCH_LIMIT', '60'))
+# Was hardcoded at 60/run against a backlog in the thousands — mathematically
+# could never catch up. Decoupled from a single constant: env-overridable,
+# and the daily cron already passes --limit 100 separately, so raise the
+# per-invocation default and let the two compose instead of each silently
+# capping the other.
+BATCH_LIMIT = int(os.getenv('CONTENT_ENRICHMENT_BATCH_LIMIT', '250'))
 REQUEST_TIMEOUT_S = 30
 REQUEST_DELAY_S = 1.0
 MIN_OVERVIEW_WORDS = 60
@@ -100,21 +105,41 @@ def _write_enrichment(job_id: str, overview: str, keywords: List[str], model: st
 
 def run_content_enrichment_for_new_jobs(jobs: List[Dict], bulk: bool=False) -> Dict:
     candidate_jobs = jobs if bulk else [j for j in jobs if j.get('id') and len(str(j.get('description') or '')) < THIN_DESCRIPTION_CHARS]
-    thin_jobs = [j for j in candidate_jobs if j.get('id')][:BATCH_LIMIT]
+    candidate_jobs = [j for j in candidate_jobs if j.get('id')]
+    # Was previously first-N-in-scrape-order, which has no relationship to
+    # which jobs actually need enrichment most. Sort thinnest-description
+    # first (and, when quality.py has already scored the job, lowest
+    # quality_score first as a tiebreak) so a capped batch always spends
+    # its budget on the jobs that need it most instead of whatever
+    # happened to scrape first.
+    candidate_jobs.sort(key=lambda j: (len(str(j.get('description') or '')), j.get('quality_score', 100)))
+    thin_jobs = candidate_jobs[:BATCH_LIMIT]
     if not thin_jobs:
-        return {'enabled': bool(GROQ_API_KEY), 'attempted': 0, 'enriched': 0}
+        return {'enabled': bool(GROQ_API_KEY), 'attempted': 0, 'ai_enriched': 0, 'template_fallback': 0, 'enriched': 0}
     if not GROQ_API_KEY:
         log.info('GROQ_API_KEY not set — using template fallback content for this run (%d listing(s)).', len(thin_jobs))
-    log.info('Automatic content enrichment: %d listing(s) from this run (capped at %d, bulk=%s)', len(thin_jobs), BATCH_LIMIT, bulk)
-    enriched_count = 0
+    log.info('Automatic content enrichment: %d listing(s) from this run (capped at %d, bulk=%s, priority=thinnest-first)', len(thin_jobs), BATCH_LIMIT, bulk)
+    ai_enriched_count = 0
+    template_fallback_count = 0
     for job in thin_jobs:
         try:
             result = _call_groq(title=job.get('title', ''), company=job.get('company', ''), location=job.get('location', ''), description=job.get('description', ''), job_type=job.get('type', ''))
             if result:
-                _write_enrichment(job['id'], result['overview'], result['keywords'], result.get('model', GROQ_MODEL))
-                enriched_count += 1
+                model = result.get('model', GROQ_MODEL)
+                _write_enrichment(job['id'], result['overview'], result['keywords'], model)
+                # Previously both paths were counted identically as
+                # "enriched" — you could not tell from the summary whether
+                # a run produced real AI overviews or copies of the same
+                # boilerplate paragraph. Split them here.
+                if model == 'template-fallback':
+                    template_fallback_count += 1
+                else:
+                    ai_enriched_count += 1
         except Exception:
             log.exception('Content enrichment failed for job id=%s', job.get('id'))
         time.sleep(REQUEST_DELAY_S)
-    log.info('Automatic content enrichment done: %d/%d enriched', enriched_count, len(thin_jobs))
-    return {'enabled': True, 'attempted': len(thin_jobs), 'enriched': enriched_count}
+    total = ai_enriched_count + template_fallback_count
+    log.info('Automatic content enrichment done: %d/%d enriched (%d real AI, %d template fallback)', total, len(thin_jobs), ai_enriched_count, template_fallback_count)
+    if thin_jobs and template_fallback_count == total and total > 0:
+        log.warning('This entire enrichment run (%d listings) fell back to template content — GROQ_API_KEY is likely missing or the Groq API is failing on every call. Check the box .env.', total)
+    return {'enabled': True, 'attempted': len(thin_jobs), 'ai_enriched': ai_enriched_count, 'template_fallback': template_fallback_count, 'enriched': total}

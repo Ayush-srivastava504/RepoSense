@@ -41,6 +41,12 @@ class UnstopScraper(BaseScraper):
                 cards = soup.select(selector)
                 if cards:
                     break
+            # Wildcard selectors like '[class*="card"]' can match both a
+            # wrapper div and its own nested children (e.g. an
+            # "opportunity-card" containing a "card-body"), which would
+            # produce 2+ near-duplicate job entries per real listing.
+            # Keep only the outermost match of each contiguous match-tree.
+            cards = _drop_nested(cards)
             self.log.info('Found %d cards on Unstop', len(cards))
             if not cards:
                 continue
@@ -93,6 +99,21 @@ class UnstopScraper(BaseScraper):
         else:
             job['apply_url'] = ''
         return job
+
+def _drop_nested(cards: List) -> List:
+    """Given a set of matched elements, drop any that are a descendant of
+    another matched element, keeping doc order. Prevents wildcard
+    selectors from double-counting a card and one of its own children.
+    Uses identity (`is`), not bs4's structural __eq__, to avoid false
+    positives between unrelated-but-identical-looking elements."""
+    matched_ids = {id(c) for c in cards}
+    result = []
+    for card in cards:
+        if any((id(p) in matched_ids for p in card.parents)):
+            continue
+        result.append(card)
+    return result
+
 
 def _clean(text) -> str:
     return re.sub('\\s+', ' ', str(text or '')).strip()

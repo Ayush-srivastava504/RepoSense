@@ -11,6 +11,7 @@ import httpx
 from configs.config import settings
 GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 GROQ_MODEL = 'llama-3.3-70b-versatile'
+FALLBACK_MODEL = 'template-fallback'
 REQUEST_TIMEOUT_S = 30
 MAX_OVERVIEW_WORDS = 220
 MIN_OVERVIEW_WORDS = 60
@@ -81,7 +82,7 @@ class ContentEnrichmentService:
         return EnrichmentResult(
             overview=_template_overview(title, company, location, description, job_type),
             keywords=_template_keywords(title, company, location, job_type),
-            model='template-fallback',
+            model=FALLBACK_MODEL,
         )
 
     async def enrich(self, *, title: str, company: str, location: Optional[str]=None, description: Optional[str]=None, job_type: Optional[str]=None, allow_fallback: bool=True) -> Optional[EnrichmentResult]:

@@ -12,8 +12,10 @@ from processors.dedupe import deduplicate, deduplicate_incremental
 from processors.enricher import enrich_batch
 from processors.normalizer import normalize_batch
 from processors.trust import score_batch
+from processors.quality import filter_and_score
 from content_enrichment import run_content_enrichment_for_new_jobs
-from utils import get_logger, save_to_s3, upsert_jobs, deactivate_stale_jobs, utcnow
+from structured_enrichment import run_structured_enrichment_for_jobs
+from utils import get_logger, save_to_s3, upsert_jobs, deactivate_stale_jobs, check_liveness_for_aging_jobs, utcnow
 log = get_logger('handler')
 
 def _load_scrapers() -> Dict:
@@ -136,10 +138,18 @@ def run_pipeline(keywords: List[str]=None, locations: List[str]=None, max_pages:
     enriched = enrich_batch(deduped)
     log.info('Enriched %d jobs', len(enriched))
     enriched = score_batch(enriched)
+    # Quality gate (was previously entirely absent): reject dead-end apply
+    # URLs outright, and flag surviving-but-thin postings instead of
+    # silently publishing them at full trust. Runs after trust scoring so
+    # it can see apply_domain/is_official_domain if we want to fold those
+    # signals in later; for now it works off apply_url + description +
+    # compensation, matching FresherFlow's legitimacy-detector inputs.
+    enriched, rejected_jobs = filter_and_score(enriched)
     written = 0
     s3_key = ''
     deactivated = 0
     content_enrichment_summary = {'enabled': False, 'attempted': 0, 'enriched': 0}
+    structured_enrichment_summary = {'enabled': False, 'attempted': 0}
     if not dry_run and enriched:
         try:
             s3_key = save_to_s3(enriched, source='pipeline')
@@ -157,13 +167,30 @@ def run_pipeline(keywords: List[str]=None, locations: List[str]=None, max_pages:
             log.exception('Automatic content enrichment step failed unexpectedly')
             content_enrichment_summary = {'enabled': False, 'attempted': 0, 'enriched': 0}
         try:
+            # Structured breakdown (Education/Requirements/Key Skills/Notes
+            # — see structured_enrichment.py) is a separate pass from the
+            # overview/keywords enrichment above so a failure here can
+            # never take down the already-tested overview path.
+            structured_enrichment_summary = run_structured_enrichment_for_jobs(enriched)
+        except Exception:
+            log.exception('Structured enrichment step failed unexpectedly')
+            structured_enrichment_summary = {'enabled': False, 'attempted': 0}
+        try:
             deactivated = deactivate_stale_jobs(days=30)
         except Exception:
             log.exception('Stale job deactivation failed')
+        try:
+            # Passive 30-day staleness is too slow for internship/fresher
+            # postings that often close within days. This actively
+            # HEAD-checks a batch of aging (2-14 day) active jobs and
+            # deactivates any whose apply link now 404s/410s.
+            deactivated += check_liveness_for_aging_jobs()
+        except Exception:
+            log.exception('Liveness check for aging jobs failed')
     elif dry_run:
         log.info('Dry run enabled, skipping writes')
     elapsed = round(time.time() - started, 1)
-    summary = {'status': 'ok', 'started_at': started_at, 'elapsed_sec': elapsed, 'source_counts': source_counts, 'raw_total': len(raw_jobs), 'normalized': len(normalized), 'deduplicated': len(deduped), 'enriched': len(enriched), 'written_db': written, 'deactivated_stale': deactivated, 'content_enrichment': content_enrichment_summary, 's3_key': s3_key}
+    summary = {'status': 'ok', 'started_at': started_at, 'elapsed_sec': elapsed, 'source_counts': source_counts, 'raw_total': len(raw_jobs), 'normalized': len(normalized), 'deduplicated': len(deduped), 'enriched': len(enriched), 'quality_rejected': len(rejected_jobs), 'quality_thin_flagged': sum((1 for j in enriched if j.get('is_thin'))), 'written_db': written, 'deactivated_stale': deactivated, 'content_enrichment': content_enrichment_summary, 'structured_enrichment': structured_enrichment_summary, 's3_key': s3_key}
     log.info('Pipeline done in %.1fs | summary=%s', elapsed, json.dumps(summary))
     return summary
 

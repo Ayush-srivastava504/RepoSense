@@ -150,8 +150,8 @@ def upsert_jobs(jobs: List[Dict]) -> int:
     for job in jobs:
         posted_at = job.get('posted_date') or job.get('posted_at') or None
         deadline = job.get('deadline') or None
-        rows.append((job.get('id'), job.get('title'), job.get('company'), job.get('description'), job.get('apply_url'), job.get('source'), job.get('location'), job.get('salary'), job.get('stipend'), job.get('type'), posted_at, job.get('confidence_score', 0), job.get('confidence_label', 'unverified'), job.get('apply_domain'), job.get('logo_domain'), bool(job.get('is_official_domain', False)), job.get('domain_similarity', 0.0), deadline, bool(job.get('is_remote', False)), bool(job.get('is_government', False)), job.get('country') or None, job.get('department') or None, job.get('vacancies') or None, job.get('notification_number') or None, job.get('job_group') or 'other'))
-    execute_batch(cursor, "\n        INSERT INTO jobs (\n            id,\n            title,\n            company,\n            description,\n            url,\n            source,\n            location,\n            salary,\n            stipend,\n            type,\n            posted_at,\n            confidence_score,\n            confidence_label,\n            apply_domain,\n            logo_domain,\n            is_official_domain,\n            domain_similarity,\n            deadline,\n            is_remote,\n            is_government,\n            country,\n            department,\n            vacancies,\n            notification_number,\n            job_group,\n            last_seen_at\n        )\n        VALUES (\n            %s,%s,%s,%s,%s,\n            %s,%s,%s,%s,%s,%s,\n            %s,%s,%s,%s,%s,%s,\n            %s,%s,%s,%s,%s,%s,\n            %s,%s,\n            CURRENT_TIMESTAMP\n        )\n        ON CONFLICT (url)\n        DO UPDATE SET\n            -- Still-live listing seen again by the crawler: bring it back\n            -- from a stale de-rank/deactivation instead of leaving it\n            -- hidden forever. Content fields are left untouched so we\n            -- don't clobber any manual/enrichment edits made since the\n            -- first insert.\n            is_active     = TRUE,\n            last_seen_at  = CURRENT_TIMESTAMP,\n            job_group     = COALESCE(jobs.job_group, EXCLUDED.job_group)\n        ", rows)
+        rows.append((job.get('id'), job.get('title'), job.get('company'), job.get('description'), job.get('apply_url'), job.get('source'), job.get('location'), job.get('salary'), job.get('stipend'), job.get('type'), posted_at, job.get('confidence_score', 0), job.get('confidence_label', 'unverified'), job.get('apply_domain'), job.get('logo_domain'), bool(job.get('is_official_domain', False)), job.get('domain_similarity', 0.0), deadline, bool(job.get('is_remote', False)), bool(job.get('is_government', False)), job.get('country') or None, job.get('department') or None, job.get('vacancies') or None, job.get('notification_number') or None, job.get('job_group') or 'other', job.get('legitimacy_state'), job.get('legitimacy_reasons') or [], job.get('quality_score'), bool(job.get('is_thin', False))))
+    execute_batch(cursor, "\n        INSERT INTO jobs (\n            id,\n            title,\n            company,\n            description,\n            url,\n            source,\n            location,\n            salary,\n            stipend,\n            type,\n            posted_at,\n            confidence_score,\n            confidence_label,\n            apply_domain,\n            logo_domain,\n            is_official_domain,\n            domain_similarity,\n            deadline,\n            is_remote,\n            is_government,\n            country,\n            department,\n            vacancies,\n            notification_number,\n            job_group,\n            legitimacy_state,\n            legitimacy_reasons,\n            quality_score,\n            is_thin,\n            last_seen_at\n        )\n        VALUES (\n            %s,%s,%s,%s,%s,\n            %s,%s,%s,%s,%s,%s,\n            %s,%s,%s,%s,%s,%s,\n            %s,%s,%s,%s,%s,%s,\n            %s,%s,\n            %s,%s,%s,%s,\n            CURRENT_TIMESTAMP\n        )\n        ON CONFLICT (url)\n        DO UPDATE SET\n            -- Still-live listing seen again by the crawler: bring it back\n            -- from a stale de-rank/deactivation instead of leaving it\n            -- hidden forever. Content fields are left untouched so we\n            -- don't clobber any manual/enrichment edits made since the\n            -- first insert.\n            is_active         = TRUE,\n            last_seen_at      = CURRENT_TIMESTAMP,\n            job_group         = COALESCE(jobs.job_group, EXCLUDED.job_group),\n            legitimacy_state  = EXCLUDED.legitimacy_state,\n            legitimacy_reasons= EXCLUDED.legitimacy_reasons,\n            quality_score     = EXCLUDED.quality_score,\n            is_thin           = EXCLUDED.is_thin\n        ", rows)
     conn.commit()
     written = len(rows)
     log.info('Inserted %d jobs into PostgreSQL at %s:%s/%s', written, PG_HOST, PG_PORT, PG_DB)
@@ -169,6 +169,44 @@ def deactivate_stale_jobs(days: int=30) -> int:
     deactivated = cursor.rowcount
     log.info('Deactivated %d stale jobs (older than %d days)', deactivated, days)
     return deactivated
+
+def check_liveness_for_aging_jobs(min_age_days: int=2, max_age_days: int=14, batch_size: int=300, timeout: int=8) -> int:
+    """Active liveness check for aging (but not yet stale) active jobs.
+
+    deactivate_stale_jobs() only fires at `days`+ of no re-crawl (default
+    30), which is far too slow for fresher/internship postings that
+    routinely close within days. This does a lightweight HEAD request
+    against a sample of active jobs aged between min_age_days and
+    max_age_days and deactivates the ones whose apply link is dead
+    (404/410/DNS failure), instead of waiting out the full passive window.
+    """
+    conn = get_pg_conn()
+    cursor = conn.cursor()
+    cursor.execute("\n        SELECT id, url\n        FROM jobs\n        WHERE is_active = TRUE\n          AND COALESCE(last_seen_at, posted_at, created_at)\n              BETWEEN NOW() - INTERVAL '1 day' * %s AND NOW() - INTERVAL '1 day' * %s\n        ORDER BY COALESCE(last_seen_at, posted_at, created_at) ASC\n        LIMIT %s\n        ", (max_age_days, min_age_days, batch_size))
+    candidates = cursor.fetchall()
+    if not candidates:
+        log.info('Liveness check: no aging active jobs in the %d-%d day window', min_age_days, max_age_days)
+        return 0
+    session = make_session(retries=1)
+    dead_ids = []
+    for job_id, url in candidates:
+        if not url:
+            continue
+        try:
+            rate_limiter.wait(urlparse(url).netloc or 'global')
+            resp = session.head(url, timeout=timeout, allow_redirects=True)
+            if resp.status_code in (404, 410):
+                dead_ids.append(job_id)
+        except requests.exceptions.RequestException:
+            # Network/DNS failure on a HEAD isn't conclusive enough to kill
+            # a listing on its own (many ATSs block HEAD or bare requests);
+            # only explicit 404/410 counts as dead here.
+            continue
+    if dead_ids:
+        cursor.execute('UPDATE jobs SET is_active = FALSE WHERE id = ANY(%s)', (dead_ids,))
+        conn.commit()
+    log.info('Liveness check: checked %d aging jobs, deactivated %d dead links', len(candidates), len(dead_ids))
+    return len(dead_ids)
 
 def job_exists(job_id: str) -> bool:
     conn = get_pg_conn()

@@ -18,6 +18,7 @@ import ApplyButton from '@/app/components/ApplyButton';
 import SimilarJobs from '@/app/components/SimilarJobs';
 import SaveJobButton from '@/app/components/SaveJobButton';
 import MatchScoreBadge from '@/app/components/MatchScoreBadge';
+import StructuredDetails from '@/app/components/StructuredDetails';
 
 const NATIVE_AD_CONTAINER = 'container-0ecc31c4385791c7fa0bcc3db25e36c9';
 // Matches an enriched keyword to a known /skills/[slug] hub page, if one exists, so we can
@@ -127,10 +128,12 @@ export default async function JobDetail({ job, canonicalPath, backHref, backLabe
             </div>)}
         </div>)}
 
+      <StructuredDetails job={job}/>
+
       <p className="mt-4 whitespace-pre-line text-sm leading-relaxed" style={{
             color: 'var(--ink-soft)',
         }}>
-        {job.description}
+        {job.structured_description || job.description}
       </p>
 
       <div className="mt-8 flex flex-wrap items-center gap-3">

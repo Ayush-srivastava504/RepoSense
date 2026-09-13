@@ -38,6 +38,20 @@ export interface Job {
     last_seen_at?: string;
     enriched_overview?: string;
     enriched_keywords?: string[];
+    // Structured breakdown — see migrations/021_structured_job_details.sql
+    // and crawler/src/structured_enrichment.py. All optional/nullable:
+    // NULL until the next enrichment pass has run for a given job.
+    allowed_degrees?: string[];
+    allowed_courses?: string[];
+    allowed_specializations?: string[];
+    allowed_passout_years?: number[];
+    required_skills?: string[];
+    notes_highlights?: string;
+    work_mode?: string;
+    experience_min?: number;
+    experience_max?: number;
+    job_function?: string;
+    structured_description?: string;
 }
 interface JobsResponse {
     jobs?: Job[];

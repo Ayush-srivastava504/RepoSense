@@ -154,7 +154,7 @@ class HiringCafeScraper(BaseScraper):
         anchors = [a for a in soup.find_all('a', href=True) if link_pattern.search(a['href'])]
         jobs = []
         seen = set()
-        for a in anchors:
+        for idx, a in enumerate(anchors):
             title = _clean(a.get_text(' ', strip=True))
             if not title or len(title) < 4:
                 continue
@@ -163,10 +163,22 @@ class HiringCafeScraper(BaseScraper):
             if apply_url in seen:
                 continue
             seen.add(apply_url)
+            # Walking a fixed number of ancestor hops (previously always
+            # 4) can land on a container several *other* job anchors also
+            # share once cards are only lightly nested, pulling other
+            # listings' text into this one's description. Walk up hop by
+            # hop instead and stop as soon as we'd swallow another job
+            # anchor, so descriptions stay scoped to this listing only.
+            other_hrefs = {anchors[i]['href'] for i in range(len(anchors)) if i != idx}
             container = a
             for _ in range(4):
-                if container.parent:
-                    container = container.parent
+                if not container.parent:
+                    break
+                candidate = container.parent
+                candidate_hrefs = {link.get('href') for link in candidate.find_all('a', href=True)}
+                if candidate_hrefs & other_hrefs:
+                    break
+                container = candidate
             description = _clean(container.get_text(' ', strip=True))[:500]
             jobs.append({'title': title, 'company': '', 'location': 'Remote', 'type': 'full-time', 'description': description, 'apply_url': apply_url, 'is_remote': True, 'country': 'Worldwide'})
         return jobs

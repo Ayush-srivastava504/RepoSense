@@ -18,17 +18,23 @@ class InternshalaScaper(BaseScraper):
 
     def scrape(self, keywords: List[str], locations: List[str], max_pages: int) -> List[Dict]:
         jobs: List[Dict] = []
-        keyword_str = ' '.join(keywords[:3]) if keywords else 'software engineer'
-        location_str = locations[0] if locations else 'India'
-        jobs.extend(self._scrape_category('internships', keyword_str, location_str, max_pages, 'internship'))
-        jobs.extend(self._scrape_category('jobs', keyword_str, location_str, max_pages, 'full-time'))
+        # Bug fix: the old code joined keywords into one garbled string
+        # (e.g. "internship fresher graduate trainee") which 404s/empties on
+        # Internshala's keyword search. Fetch the main unfiltered feed first
+        # (highest yield, no keyword needed), then run each keyword
+        # separately as a secondary, narrower pass.
+        jobs.extend(self._scrape_category('internships', None, max_pages, 'internship'))
+        jobs.extend(self._scrape_category('jobs', None, max_pages, 'full-time'))
+        for kw in (keywords or [])[:3]:
+            jobs.extend(self._scrape_category('internships', kw, max(1, max_pages // 2), 'internship'))
+            jobs.extend(self._scrape_category('jobs', kw, max(1, max_pages // 2), 'full-time'))
         self.log.info('Collected %d jobs from internshala', len(jobs))
         return jobs
 
-    def _scrape_category(self, category: str, keyword: str, location: str, max_pages: int, job_type: str) -> List[Dict]:
+    def _scrape_category(self, category: str, keyword: Optional[str], max_pages: int, job_type: str) -> List[Dict]:
         results = []
         for page_num in range(1, max_pages + 1):
-            url = f'{BASE}/{category}/keywords-{quote(keyword)}'
+            url = f'{BASE}/{category}/keywords-{quote(keyword)}' if keyword else f'{BASE}/{category}'
             self.log.info('Internshala scrape: %s', url)
             try:
                 html = self._render_page(url, page_num)

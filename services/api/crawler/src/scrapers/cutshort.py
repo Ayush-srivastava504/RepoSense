@@ -36,9 +36,10 @@ class CutshortScraper(BaseScraper):
                 soup = BeautifulSoup(html, 'html.parser')
                 cards = self._find_cards(soup)
                 self.log.info('Cutshort [%s] found %d cards', slug, len(cards))
-                for card in cards:
+                for idx, card in enumerate(cards):
+                    next_h2 = cards[idx + 1] if idx + 1 < len(cards) else None
                     try:
-                        job = self._parse_card(card)
+                        job = self._parse_card(card, next_h2)
                         if not job:
                             continue
                         apply_url = job.get('apply_url')
@@ -68,8 +69,21 @@ class CutshortScraper(BaseScraper):
             return ''
         return response.text
 
+    # NOTE: previously this walked up to 4 ancestor levels from each <h2>
+    # looking for a container that also contains an <h3>. On pages where
+    # several job cards share a common ancestor (e.g. the whole list is
+    # one wrapper <div>, or cards are only lightly nested), that walk
+    # could land on the SAME wide ancestor for multiple different job
+    # postings. _parse_card then did card.find('h2') / card.find('h3'),
+    # which returns the *first* match in that shared container — so
+    # every card after the first silently got the first job's title and
+    # company. Fixed by never re-searching a container: each card now
+    # carries the exact <h2> that matched it, and we scope the company
+    # lookup + description text to the DOM range between this <h2> and
+    # the next one (or end of document for the last card), so unrelated
+    # cards can no longer bleed into each other regardless of nesting.
     def _find_cards(self, soup: BeautifulSoup) -> List:
-        cards = []
+        h2s = []
         seen = set()
         for h2 in soup.find_all('h2'):
             title_link = h2.find('a', href=True)
@@ -81,36 +95,45 @@ class CutshortScraper(BaseScraper):
             href = title_link.get('href', '')
             if not href or href in seen:
                 continue
-            container = h2.find_parent(['article', 'div', 'li'])
-            hops = 0
-            while container and (not container.find('h3')) and (hops < 4):
-                container = container.find_parent(['article', 'div', 'li'])
-                hops += 1
-            if not container:
-                continue
             seen.add(href)
-            cards.append(container)
-        return cards
+            h2s.append(h2)
+        return h2s
 
-    def _parse_card(self, card) -> Optional[Dict]:
-        job = self._empty_job()
-        h2 = card.find('h2')
-        title_link = h2.find('a', href=True) if h2 else None
+    def _parse_card(self, h2, next_h2=None) -> Optional[Dict]:
+        title_link = h2.find('a', href=True)
         if not title_link:
             return None
         title = _clean(title_link.get_text(' ', strip=True))
         if not title:
             return None
+
+        job = self._empty_job()
         job['title'] = title
-        h3 = card.find('h3')
-        company_link = h3.find('a') if h3 else None
-        if company_link:
-            job['company'] = _clean(company_link.get_text(' ', strip=True))
-        elif h3:
-            job['company'] = _clean(h3.get_text(' ', strip=True))
+
+        # Walk forward in document order from this h2, stopping the
+        # instant we reach the next card's h2 (or after a sane element
+        # cap, for the last card on the page where there is no next_h2).
+        h3 = None
+        text_parts = []
+        for i, el in enumerate(h2.next_elements):
+            if next_h2 is not None and el is next_h2:
+                break
+            if i > 800:  # bound work for the last card / malformed pages
+                break
+            if getattr(el, 'name', None) == 'h3' and h3 is None:
+                h3 = el
+            if isinstance(el, str):
+                stripped = el.strip()
+                if stripped:
+                    text_parts.append(stripped)
+
+        if h3 is not None:
+            company_link = h3.find('a') if hasattr(h3, 'find') else None
+            job['company'] = _clean(company_link.get_text(' ', strip=True)) if company_link else _clean(h3.get_text(' ', strip=True))
         else:
             job['company'] = ''
-        text_blob = _clean(card.get_text(' ', strip=True))
+
+        text_blob = _clean(' '.join(text_parts))
         is_remote = bool(re.search('\\bremote\\b', text_blob, re.IGNORECASE))
         salary_match = re.search('₹[\\d.,LKlakhs\\s\\-/yrmo]+', text_blob, re.IGNORECASE)
         href = title_link.get('href', '')
