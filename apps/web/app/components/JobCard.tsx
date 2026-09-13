@@ -8,6 +8,7 @@ import type { Job } from '@/lib/jobs';
 import { jobSlug } from '@/lib/slug';
 import { timeAgo } from '@/lib/timeAgo';
 import JobBadges from './JobBadges';
+import JobTags from './JobTags';
 import CompanyLogo from './CompanyLogo';
 import SaveJobButton from './SaveJobButton';
 import MatchScoreBadge from './MatchScoreBadge';
@@ -44,6 +45,8 @@ export default function JobCard({ job, basePath = '/jobs' }: {
 
       <JobBadges job={job} className="mt-2"/>
 
+      <JobTags job={job} variant="card" className="mt-2"/>
+
       {job.is_government && (job.department || job.vacancies) && (<p className="mt-2 text-[11px]" style={{ color: 'var(--ink-soft)' }}>
           {job.department && <span>{job.department}</span>}
           {job.department && job.vacancies && ' · '}
@@ -53,6 +56,10 @@ export default function JobCard({ job, basePath = '/jobs' }: {
       <p className="mt-4 flex-1 text-sm leading-7" style={{ color: 'var(--ink-soft)' }}>
         {job.description ? `${job.description.substring(0, 160)}...` : 'No description available.'}
       </p>
+
+      {job.notes_highlights && (<p className="mt-2 text-[11px] font-medium" style={{ color: 'var(--rust)' }}>
+          ⚡ {job.notes_highlights}
+        </p>)}
 
       <div className="mt-4 flex items-center justify-between gap-2 border-t pt-3" style={{ borderColor: 'var(--line)' }}>
         <div className="flex flex-col text-[11px]" style={{ color: 'var(--muted)' }}>

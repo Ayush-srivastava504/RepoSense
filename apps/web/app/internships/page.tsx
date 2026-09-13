@@ -11,7 +11,8 @@ import { getJobs, getFeaturedJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
 import FeaturedJobs from '@/app/components/FeaturedJobs';
 import SponsoredCard from '@/app/components/SponsoredCard';
-import JobFilters, { parseLocationFilter, parseGroupFilter, } from '@/app/components/JobFilters';
+import JobFilters, { parseLocationFilter, parseGroupFilter, parseWorkModeFilter, } from '@/app/components/JobFilters';
+import PopularSkills from '@/app/components/PopularSkills';
 import { sortIndiaFirst, isIndiaJob } from '@/lib/jobPriority';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -106,11 +107,13 @@ export default async function InternshipsPage({ searchParams, }: {
         page?: string;
         loc?: string;
         role?: string;
+        mode?: string;
     };
 }) {
     const search = searchParams.search?.trim() || '';
     const locationFilter = parseLocationFilter(searchParams.loc);
     const groupFilter = parseGroupFilter(searchParams.role);
+    const workModeFilter = parseWorkModeFilter(searchParams.mode);
     const parsedPage = Number.parseInt(searchParams.page || '1', 10);
     const requestedPage = Number.isNaN(parsedPage) || parsedPage < 1
         ? 1
@@ -122,6 +125,7 @@ export default async function InternshipsPage({ searchParams, }: {
         ...(locationFilter === 'remote' ? { category: 'remote' as const } : {}),
         ...(locationFilter === 'japan' ? { country: 'Japan' } : {}),
         ...(groupFilter !== 'all' ? { job_group: groupFilter } : {}),
+        ...(workModeFilter !== 'all' ? { work_mode: workModeFilter } : {}),
     };
     const showFeatured = !search && requestedPage === 1;
     const [fetchedJobs, fetchedFeatured] = await Promise.all([
@@ -207,6 +211,7 @@ export default async function InternshipsPage({ searchParams, }: {
         <form method="GET" action="/internships" className="mt-6 sm:mt-8">
           {locationFilter !== 'all' && (<input type="hidden" name="loc" value={locationFilter}/>)}
           {groupFilter !== 'all' && (<input type="hidden" name="role" value={groupFilter}/>)}
+          {workModeFilter !== 'all' && (<input type="hidden" name="mode" value={workModeFilter}/>)}
 
           <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row">
             <input type="text" name="search" defaultValue={search} placeholder="Search title, company, skills, location..." className="w-full flex-1 rounded-lg border px-3 sm:px-4 py-2.5 sm:py-3 text-sm" style={{
@@ -235,7 +240,9 @@ export default async function InternshipsPage({ searchParams, }: {
             </p>)}
         </form>
 
-        <JobFilters basePath="/internships" search={search} location={locationFilter} group={groupFilter}/>
+        <JobFilters basePath="/internships" search={search} location={locationFilter} group={groupFilter} mode={workModeFilter}/>
+
+        <PopularSkills className="mt-3"/>
 
         <FeaturedJobs jobs={featured} basePath="/internships"/>
 

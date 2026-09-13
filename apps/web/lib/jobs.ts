@@ -77,6 +77,8 @@ export async function getJobs(options: {
     country?: string;
     company?: string;
     skill?: string;
+    work_mode?: 'ONSITE' | 'REMOTE' | 'HYBRID';
+    course?: string;
     sort?: 'recent' | 'ranked';
     limit?: number;
     offset?: number;
@@ -105,6 +107,10 @@ export async function getJobs(options: {
             params.set('company', options.company);
         if (options.skill)
             params.set('skill', options.skill);
+        if (options.work_mode)
+            params.set('work_mode', options.work_mode);
+        if (options.course)
+            params.set('course', options.course);
         const res = await fetch(`${process.env.API_BASE_URL}/api/jobs/?${params.toString()}`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             console.error('Jobs API returned', res.status);

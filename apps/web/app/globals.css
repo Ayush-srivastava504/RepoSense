@@ -19,6 +19,8 @@
   --indigo-soft: #e8e8fb;
   --rust: #b5482a;
   --rust-soft: #f6e7e1;
+  --purple: #6d28d9;
+  --purple-soft: #efe6fb;
   --score-amber: #92400e;
   --score-orange: #9a3412;
 
@@ -45,6 +47,8 @@
   --indigo-soft: #1e1e40;
   --rust: #d4724e;
   --rust-soft: #2d1a12;
+  --purple: #a78bfa;
+  --purple-soft: #241a3d;
   --score-amber: #fbbf24;
   --score-orange: #fb923c;
 
@@ -325,6 +329,11 @@ body {
   .chip-indigo {
     background: var(--indigo-soft);
     color: var(--indigo);
+  }
+
+  .chip-purple {
+    background: var(--purple-soft);
+    color: var(--purple);
   }
 
   .chip-active {

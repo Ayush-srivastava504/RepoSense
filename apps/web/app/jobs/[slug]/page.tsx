@@ -7,7 +7,7 @@ import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { jobIdFromSlug, canonicalCategoryForJob, canonicalPathForJob } from '@/lib/slug';
 import { getJobById, BASE_URL } from '@/lib/jobs';
-import {  jobPostingSchema, breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
+import {  jobPostingSchema, breadcrumbSchema, languageAlternates, jobOpenGraphMeta } from '@/lib/structuredData';
 import JobDetail from '@/app/components/JobDetail';
 import TrackView from '@/app/components/TrackView';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -20,13 +20,17 @@ export async function generateMetadata({ params, }: {
     if (!job) {
         return {};
     }
+    const title = `${job.title} at ${job.company} — Job`;
+    const description = `Apply for ${job.title} at ${job.company}${job.location ? ` in ${job.location}` : ''}. View eligibility, skills, salary, and application details.`;
+    const canonicalUrl = `${BASE_URL}${canonicalPathForJob(job)}`;
     return {
-        title: `${job.title} at ${job.company} — Job`,
-        description: `Apply for ${job.title} at ${job.company}${job.location ? ` in ${job.location}` : ''}. View eligibility, skills, salary, and application details.`,
+        title,
+        description,
         alternates: {
-            canonical: `${BASE_URL}${canonicalPathForJob(job)}`,
+            canonical: canonicalUrl,
             languages: languageAlternates(canonicalPathForJob(job)),
         },
+        ...jobOpenGraphMeta({ title, description, url: canonicalUrl, imageAlt: `${job.title} at ${job.company}` }),
     };
 }
 export default async function JobDetailPage({ params, }: {

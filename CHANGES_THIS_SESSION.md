@@ -119,3 +119,71 @@ sections extracted into structured fields. Ported that pipeline:
 - FresherFlow-side changes: not touched. This pass only ported patterns
   *from* FresherFlow *into* RepoSense; nothing in the FresherFlow repo
   itself was modified.
+
+## 7. Wiring the structured-enrichment data through to the UI (new pass)
+Root cause of "thin content" cards vs. FresherFlow: the previous pass's
+`structured_enrichment.py` + migration 021 were writing `required_skills`,
+`allowed_courses`, `allowed_degrees`, `work_mode`, `job_function`,
+`notes_highlights` to every job row, and `lib/jobs.ts`'s `Job` type and
+`StructuredDetails.tsx` already expected them — but the API route never
+selected those columns, so **none of it ever reached the frontend**, on
+any job from any source. This pass wires the existing data through
+instead of touching the 30 individual scrapers, so every job/internship
+benefits immediately regardless of which scraper produced it.
+
+- **`services/api/src/routes/jobs.py`**: `JOB_COLUMNS` now selects the
+  ten structured-enrichment columns. `skill` filter now checks
+  `required_skills` (structured, exact match) before falling back to
+  `enriched_keywords` then raw title/description text. Added `work_mode`
+  (`ONSITE`/`REMOTE`/`HYBRID`) and `course` (matches `allowed_courses`)
+  as new query filters, both used by the frontend additions below.
+- **`apps/web/lib/jobs.ts`**: `getJobs()` passes `work_mode`/`course`
+  through to the API.
+- **New `app/components/JobTags.tsx`**: the FresherFlow-style descriptive
+  chip row (see the "Trade Apprentice" reference screenshot) — work mode,
+  eligible education, source ATS (mapped from the raw `source_name` slug
+  to a display label, e.g. `smartrecruiters` → "SmartRecruiters"), job
+  function, and up to 4 individual skill tags on cards / all of them on
+  the detail page. Renders `null` when a job has none of this yet
+  (pre-enrichment), same fallback pattern as `StructuredDetails.tsx`.
+- **`JobCard.tsx`**: renders `JobTags` plus a `notes_highlights` callout
+  line (shift timing / bond clauses / etc., when the pipeline found one).
+- **`globals.css`**: added a `--purple`/`--purple-soft` token pair (light
+  + dark) and `.chip-purple` for the new source-ATS badge — the four
+  existing chip colors (green/rust/muted/indigo) were already spoken for.
+- **`JobFilters.tsx`**: new `WorkModeFilter` type + a third filter row
+  (Onsite/Remote/Hybrid), composable with the existing location/role
+  filters via a `mode` query param. `RoleFilter` and the URL-builders
+  updated to preserve `mode` across filter changes.
+- **New `app/components/PopularSkills.tsx`**: a curated 8-skill chip strip
+  linking into the already-existing `/skills/[slug]` hub pages — gives
+  jobs/internships list pages a persistent skills entry point (matching
+  FresherFlow's top-nav "Skills" item) without duplicating the taxonomy
+  in `app/skills/data.ts`.
+- **`app/jobs/page.tsx`, `app/internships/page.tsx`**: read/parse the new
+  `mode` search param, pass `work_mode` into `getJobs`/`getFeaturedJobs`,
+  preserve it as a hidden form field, and render `PopularSkills` under
+  the filter row. `remote-jobs/page.tsx` uses `RoleFilter` only (no
+  location filter on an already-remote-only page) and needed no changes
+  — `mode` is optional on that component.
+- Verified with `python3 -m py_compile` (API route) and a `tsc --noEmit
+  --noResolve` transpile pass per changed file (same method as the prior
+  session — no `node_modules` installed in this sandbox, so this catches
+  syntax errors, not full type errors against React/Next's real types).
+  The only diagnostics were the expected "can't resolve React/Next types"
+  noise from `--noResolve`, identical to what the same check produces on
+  unmodified files in this repo (e.g. `lib/jobs.ts`'s pre-existing
+  `next: { revalidate }` fetch option) — nothing specific to this change.
+
+### Not done in this pass
+- No `npm install` was run, so this hasn't been checked against the
+  app's real `tsconfig`/React types or actually rendered in a browser —
+  worth a quick `npm run build` before deploying.
+- The `course` filter and `PopularSkills` strip aren't yet cross-linked
+  (e.g. a course chip row analogous to skills) — straightforward
+  follow-up if you want a `/courses/[course]` hub page like `/skills`.
+- Scraper/adapter quality itself (`company_portals.py`, `unstop.py`,
+  `cutshort.py`, dynamic board discovery) — unchanged, still the
+  standing item from the note above. This pass was about surfacing the
+  richness the pipeline was *already* extracting, not extracting more of
+  it at the source.
