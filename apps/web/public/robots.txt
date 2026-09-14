@@ -38,13 +38,17 @@ Disallow: /*?*search=
 Disallow: /*?*loc=
 Disallow: /*?*sort=
 
-# AI crawlers with explicit access policy. Normal search-engine crawlers
-# (Googlebot, Bingbot, etc.) remain governed by the `*` block above.
+# AI training crawlers — blocked site-wide, independent of the `User-agent: *`
+# block above (a bot only obeys its own explicit block, or falls back to `*`
+# if it has none; listing these here means they never fall through to the
+# permissive `*` rules). Normal search-engine crawlers (Googlebot, Bingbot,
+# etc.) are untouched and still governed by the `*` block above. Mirrors
+# FresherFlow's robots.ts GPTBot/CCBot policy.
 User-agent: GPTBot
-Allow: /
+Disallow: /
 
 User-agent: ChatGPT-User
-Allow: /
+Disallow: /
 
 User-agent: CCBot
 Disallow: /
@@ -59,10 +63,10 @@ User-agent: Bytespider
 Disallow: /
 
 User-agent: ClaudeBot
-Allow: /
+Disallow: /
 
 User-agent: anthropic-ai
-Allow: /
+Disallow: /
 
 User-agent: cohere-ai
 Disallow: /
