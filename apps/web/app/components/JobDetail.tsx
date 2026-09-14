@@ -19,6 +19,7 @@ import SimilarJobs from '@/app/components/SimilarJobs';
 import SaveJobButton from '@/app/components/SaveJobButton';
 import MatchScoreBadge from '@/app/components/MatchScoreBadge';
 import StructuredDetails from '@/app/components/StructuredDetails';
+import ExploreRelated from '@/app/components/ExploreRelated';
 
 const NATIVE_AD_CONTAINER = 'container-0ecc31c4385791c7fa0bcc3db25e36c9';
 // Matches an enriched keyword to a known /skills/[slug] hub page, if one exists, so we can
@@ -28,6 +29,24 @@ function matchSkillSlug(keyword: string): string | null {
     const normalized = keyword.trim().toLowerCase();
     const found = SKILLS.find((s) => s.name.toLowerCase() === normalized || s.searchTerm.toLowerCase() === normalized || s.slug === normalized.replace(/[^a-z0-9]+/g, '-'));
     return found ? found.slug : null;
+}
+// PHASE 1 thin-content fix: some scraped postings carry only a couple of
+// sentences of raw description and haven't been through the
+// overview/structured enrichment passes yet (crawler/src/content_enrichment.py
+// / structured_enrichment.py run async after ingest, so there's a window
+// where a freshly-scraped job has neither). Rather than render a near-empty
+// page in that window, fall back to a short templated summary built from
+// fields we always have (title/company/location/type/compensation) —
+// still true, still specific to the posting, never invented facts.
+const THIN_DESCRIPTION_THRESHOLD = 220;
+function buildFallbackSummary(job: Job): string | null {
+    const hasRichContent = Boolean(job.enriched_overview) || Boolean(job.structured_description);
+    const descriptionLength = (job.description ?? '').trim().length;
+    if (hasRichContent || descriptionLength >= THIN_DESCRIPTION_THRESHOLD) return null;
+    const typeLabel = job.type === 'internship' ? 'internship' : job.type === 'contract' ? 'contract role' : 'position';
+    const locationClause = job.is_remote ? 'as a remote role' : job.location ? `in ${job.location}` : '';
+    const compClause = job.stipend || job.salary ? ` Compensation: ${job.stipend || job.salary}.` : '';
+    return `${job.company} is hiring for the ${job.title} ${typeLabel} ${locationClause}.${compClause} See the Education, Key Skills, and Notes below for the full eligibility breakdown, or use the Apply button to view the original listing for complete details.`.replace(/\s+/g, ' ').trim();
 }
 export default async function JobDetail({ job, canonicalPath, backHref, backLabel, }: {
     job: Job;
@@ -130,11 +149,20 @@ export default async function JobDetail({ job, canonicalPath, backHref, backLabe
 
       <StructuredDetails job={job}/>
 
+      {(() => {
+            const fallback = buildFallbackSummary(job);
+            return fallback ? (<p className="mt-4 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+              {fallback}
+            </p>) : null;
+        })()}
+
       <p className="mt-4 whitespace-pre-line text-sm leading-relaxed" style={{
             color: 'var(--ink-soft)',
         }}>
         {job.structured_description || job.description}
       </p>
+
+      <ExploreRelated job={job} basePath={backHref}/>
 
       <div className="mt-8 flex flex-wrap items-center gap-3">
         {job.url ? (<ApplyButton url={job.url} jobId={job.id}/>) : (<a href="/login" className="btn btn-primary">

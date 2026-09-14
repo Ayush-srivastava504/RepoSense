@@ -47,6 +47,17 @@ export function getCityBySlug(slug: string): CityDefinition | undefined {
     return CITIES.find((c) => c.slug === slug);
 }
 
+// Reverse lookup used by ExploreRelated.tsx: given a job's raw `location`
+// string (e.g. "Bengaluru, Karnataka"), find the matching /jobs-in/[city]
+// hub page, if any, so the job detail page can link to it. Returns
+// undefined for locations with no dedicated hub (e.g. tier-2 cities) —
+// callers should just omit the link rather than force a match.
+export function getCityForLocation(location: string | undefined | null): CityDefinition | undefined {
+    if (!location) return undefined;
+    const normalized = location.toLowerCase();
+    return CITIES.find((c) => c.matchers.some((m) => normalized.includes(m)));
+}
+
 export function getRelatedCities(current: CityDefinition): CityDefinition[] {
     return current.relatedSlugs
         .map((slug) => getCityBySlug(slug))

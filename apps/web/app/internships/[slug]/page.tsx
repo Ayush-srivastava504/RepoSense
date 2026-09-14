@@ -8,6 +8,7 @@ import { notFound } from 'next/navigation';
 import { jobIdFromSlug, canonicalPathForJob } from '@/lib/slug';
 import { getJobById, BASE_URL } from '@/lib/jobs';
 import {  jobPostingSchema, breadcrumbSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
+import { buildJobTitle, truncateDescription, isStaleForIndexing } from '@/lib/seo/seoMetrics';
 import JobDetail from '@/app/components/JobDetail';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 export async function generateMetadata({ params, }: {
@@ -19,13 +20,23 @@ export async function generateMetadata({ params, }: {
     if (!job || job.type !== 'internship') {
         return {};
     }
+    const title = buildJobTitle({
+        title: job.title,
+        company: job.company,
+        type: 'internship',
+        location: job.location,
+        isRemote: job.is_remote,
+    });
+    const rawDescription = job.enriched_overview ||
+        `Apply for the ${job.title} internship at ${job.company}${job.location ? ` in ${job.location}` : ''}. View eligibility, skills, stipend, and application details.`;
     return {
-        title: `${job.title} at ${job.company} — Internship`,
-        description: `Apply for the ${job.title} internship at ${job.company}${job.location ? ` in ${job.location}` : ''}. View eligibility, skills, stipend, and application details.`,
+        title,
+        description: truncateDescription(rawDescription),
         alternates: {
             canonical: `${BASE_URL}${canonicalPathForJob(job)}`,
             languages: languageAlternates(canonicalPathForJob(job)),
         },
+        ...(isStaleForIndexing(job) ? { robots: { index: false, follow: true } } : {}),
     };
 }
 export default async function InternshipDetailPage({ params, }: {

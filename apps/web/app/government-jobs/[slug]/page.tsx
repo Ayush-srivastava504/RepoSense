@@ -8,6 +8,7 @@ import { notFound } from 'next/navigation';
 import { jobIdFromSlug, canonicalPathForJob } from '@/lib/slug';
 import { getJobById, BASE_URL } from '@/lib/jobs';
 import {  jobPostingSchema, breadcrumbSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
+import { truncateTitleForSerp, truncateDescription, isStaleForIndexing } from '@/lib/seo/seoMetrics';
 import JobDetail from '@/app/components/JobDetail';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 export async function generateMetadata({ params, }: {
@@ -19,13 +20,16 @@ export async function generateMetadata({ params, }: {
     if (!job || !job.is_government) {
         return {};
     }
+    const title = truncateTitleForSerp(`${job.title}${job.department ? ` — ${job.department}` : ''}`);
+    const rawDescription = `${job.department ? `${job.department} recruitment: ` : ''}${job.title}${job.vacancies ? `. ${job.vacancies} vacancies.` : '.'} View eligibility, notification details, and the official application link.`;
     return {
-        title: `${job.title}${job.department ? ` — ${job.department}` : ''}`,
-        description: `${job.department ? `${job.department} recruitment: ` : ''}${job.title}${job.vacancies ? `. ${job.vacancies} vacancies.` : '.'} View eligibility, notification details, and the official application link.`,
+        title,
+        description: truncateDescription(rawDescription),
         alternates: {
             canonical: `${BASE_URL}${canonicalPathForJob(job)}`,
             languages: languageAlternates(canonicalPathForJob(job)),
         },
+        ...(isStaleForIndexing(job) ? { robots: { index: false, follow: true } } : {}),
     };
 }
 export default async function GovernmentJobDetailPage({ params, }: {

@@ -253,6 +253,32 @@ export function jobPostingSchema(job: Job, canonicalUrl: string) {
             },
         };
     }
+    // Structured breakdown fields (structured_enrichment.py) feed the
+    // skills/education/experience properties Google's Jobs rich result
+    // actually surfaces to searchers filtering by qualification — these
+    // were previously only rendered in StructuredDetails.tsx (visible to
+    // people) but never passed into the JobPosting schema (visible to
+    // Google). A job with no structured breakdown yet simply omits these,
+    // same optional-field pattern as the rest of this function.
+    if (job.required_skills && job.required_skills.length > 0) {
+        schema.skills = job.required_skills.join(', ');
+    }
+    const educationParts = [
+        ...(job.allowed_degrees ?? []),
+        ...(job.allowed_courses ?? []),
+    ];
+    if (educationParts.length > 0) {
+        schema.educationRequirements = {
+            '@type': 'EducationalOccupationalCredential',
+            credentialCategory: educationParts.join(', '),
+        };
+    }
+    if (typeof job.experience_min === 'number') {
+        schema.experienceRequirements = {
+            '@type': 'OccupationalExperienceRequirements',
+            monthsOfExperience: Math.round(job.experience_min * 12),
+        };
+    }
     const compensationText = job.salary || job.stipend;
     const compensationValue = compensationText ? parseFirstNumber(compensationText) : null;
     if (compensationValue) {

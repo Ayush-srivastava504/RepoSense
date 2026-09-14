@@ -38,5 +38,41 @@ Disallow: /*?*search=
 Disallow: /*?*loc=
 Disallow: /*?*sort=
 
+# AI training crawlers — blocked site-wide, independent of the `User-agent: *`
+# block above (a bot only obeys its own explicit block, or falls back to `*`
+# if it has none; listing these here means they never fall through to the
+# permissive `*` rules). Normal search-engine crawlers (Googlebot, Bingbot,
+# etc.) are untouched and still governed by the `*` block above. Mirrors
+# FresherFlow's robots.ts GPTBot/CCBot policy.
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: cohere-ai
+Disallow: /
+
+User-agent: PerplexityBot
+Disallow: /
+
 # Master Sitemap Index
 Sitemap: https://www.intern-flow.in/sitemap.xml

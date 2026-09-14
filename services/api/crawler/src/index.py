@@ -92,13 +92,27 @@ def _load_scrapers() -> Dict:
         registry['freejobalert'] = FreeJobAlertScraper
     except ImportError as exc:
         log.warning('freejobalert scraper unavailable: %s', exc)
-    _ats_scrapers = [('greenhouse', 'scrapers.greenhouse', 'GreenhouseScraper'), ('lever', 'scrapers.lever', 'LeverScraper'), ('ashby', 'scrapers.ashby', 'AshbyScraper'), ('smartrecruiters', 'scrapers.smartrecruiters', 'SmartRecruitersScraper'), ('workable', 'scrapers.workable', 'WorkableScraper')]
+    _ats_scrapers = [('greenhouse', 'scrapers.greenhouse', 'GreenhouseScraper'), ('lever', 'scrapers.lever', 'LeverScraper'), ('ashby', 'scrapers.ashby', 'AshbyScraper'), ('smartrecruiters', 'scrapers.smartrecruiters', 'SmartRecruitersScraper'), ('workable', 'scrapers.workable', 'WorkableScraper'), ('recruitee', 'scrapers.recruitee', 'RecruiteeScraper'), ('teamtailor', 'scrapers.teamtailor', 'TeamtailorScraper'), ('bamboohr', 'scrapers.bamboohr', 'BambooHRScraper'), ('breezyhr', 'scrapers.breezyhr', 'BreezyHRScraper'), ('personio', 'scrapers.personio', 'PersonioScraper'), ('freshteam', 'scrapers.freshteam', 'FreshteamScraper')]
     for _source_name, _module_name, _class_name in _ats_scrapers:
         try:
             _module = __import__(_module_name, fromlist=[_class_name])
             registry[_source_name] = getattr(_module, _class_name)
         except ImportError as exc:
             log.warning('%s scraper unavailable: %s', _source_name, exc)
+    try:
+        from scrapers.naukri import NaukriScraper
+        registry['naukri'] = NaukriScraper
+    except ImportError as exc:
+        log.warning('naukri scraper unavailable: %s', exc)
+    try:
+        # Discovery scraper — see scrapers/dorker.py header for why this
+        # exists: it finds ATS boards the static ATS_COMPANIES lists above
+        # don't know about yet, via search-engine dork queries, rather
+        # than only ever crawling a hand-maintained company list.
+        from scrapers.dorker import DorkerScraper
+        registry['dorker'] = DorkerScraper
+    except ImportError as exc:
+        log.warning('dorker scraper unavailable: %s', exc)
     try:
         from scrapers.generic_boards import GenericBoardsScraper
         registry['generic_boards'] = GenericBoardsScraper

@@ -8,6 +8,7 @@ import { notFound } from 'next/navigation';
 import { jobIdFromSlug, canonicalPathForJob } from '@/lib/slug';
 import { getJobById, BASE_URL } from '@/lib/jobs';
 import {  jobPostingSchema, breadcrumbSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
+import { buildJobTitle, truncateDescription, isStaleForIndexing } from '@/lib/seo/seoMetrics';
 import JobDetail from '@/app/components/JobDetail';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 export async function generateMetadata({ params, }: {
@@ -19,13 +20,22 @@ export async function generateMetadata({ params, }: {
     if (!job || !job.is_remote) {
         return {};
     }
+    const title = buildJobTitle({
+        title: job.title,
+        company: job.company,
+        type: job.type,
+        isRemote: true,
+    });
+    const rawDescription = job.enriched_overview ||
+        `Apply for the remote ${job.title} role at ${job.company}${job.location ? ` (${job.location})` : ''}. View skills, compensation, and application details.`;
     return {
-        title: `${job.title} at ${job.company} — Remote`,
-        description: `Apply for the remote ${job.title} role at ${job.company}${job.location ? ` (${job.location})` : ''}. View skills, compensation, and application details.`,
+        title,
+        description: truncateDescription(rawDescription),
         alternates: {
             canonical: `${BASE_URL}${canonicalPathForJob(job)}`,
             languages: languageAlternates(canonicalPathForJob(job)),
         },
+        ...(isStaleForIndexing(job) ? { robots: { index: false, follow: true } } : {}),
     };
 }
 export default async function RemoteJobDetailPage({ params, }: {

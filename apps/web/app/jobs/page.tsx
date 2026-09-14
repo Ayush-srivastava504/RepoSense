@@ -12,10 +12,13 @@ import FeaturedJobs from '@/app/components/FeaturedJobs';
 import SponsoredCard from '@/app/components/SponsoredCard';
 import JobsSearchTracker from '@/app/components/JobsSearchTracker';
 import JobFilters, { parseLocationFilter, parseGroupFilter, parseWorkModeFilter, } from '@/app/components/JobFilters';
+import AdvancedJobFilters from '@/app/components/AdvancedJobFilters';
 import PopularSkills from '@/app/components/PopularSkills';
 import { sortIndiaFirst, isIndiaJob } from '@/lib/jobPriority';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import { buildFacetCounts } from '@/lib/facets';
+import { parseAdvancedFilters, applyAdvancedFilters } from '@/lib/filterJobs';
 const JOBS_PER_PAGE = 12;
 export const metadata: Metadata = {
     title: 'Job & Internship Listings — India, Remote & Japan — Refreshed Daily',
@@ -25,12 +28,13 @@ export const metadata: Metadata = {
         languages: languageAlternates('/jobs'),
     },
 };
-function Pagination({ currentPage, totalPages, search, loc, role, }: {
+function Pagination({ currentPage, totalPages, search, loc, role, extraParams, }: {
     currentPage: number;
     totalPages: number;
     search: string;
     loc: string;
     role: string;
+    extraParams?: Record<string, string | undefined>;
 }) {
     const getPageUrl = (page: number) => {
         const params = new URLSearchParams();
@@ -42,6 +46,9 @@ function Pagination({ currentPage, totalPages, search, loc, role, }: {
         }
         if (role !== 'all') {
             params.set('role', role);
+        }
+        for (const [key, value] of Object.entries(extraParams ?? {})) {
+            if (value) params.set(key, value);
         }
         if (page > 1) {
             params.set('page', String(page));
@@ -102,12 +109,18 @@ export default async function JobsPage({ searchParams, }: {
         loc?: string;
         role?: string;
         mode?: string;
+        skills?: string;
+        course?: string;
+        source?: string;
+        batch?: string;
+        company?: string;
     };
 }) {
     const search = searchParams.search?.trim() || '';
     const locationFilter = parseLocationFilter(searchParams.loc);
     const groupFilter = parseGroupFilter(searchParams.role);
     const workModeFilter = parseWorkModeFilter(searchParams.mode);
+    const advancedFilters = parseAdvancedFilters(searchParams);
     const parsedPage = Number.parseInt(searchParams.page || '1', 10);
     const requestedPage = Number.isNaN(parsedPage) || parsedPage < 1
         ? 1
@@ -137,12 +150,19 @@ export default async function JobsPage({ searchParams, }: {
         : locationFilter === 'all'
             ? sortIndiaFirst(fetchedFeatured)
             : fetchedFeatured;
-    const totalJobs = allJobs.length;
+    // Facet counts (Skills/Course/Source/Batch/Company) are computed from the
+    // location+role+mode-scoped set BEFORE the advanced filters themselves are
+    // applied, so a selected "Skills: React" chip doesn't shrink its own count
+    // list down to just React — the dropdown should show what else is still
+    // reachable, same behaviour as FresherFlow's filter panel.
+    const facets = buildFacetCounts(allJobs);
+    const advancedFilteredJobs = applyAdvancedFilters(allJobs, advancedFilters);
+    const totalJobs = advancedFilteredJobs.length;
     const totalPages = Math.max(1, Math.ceil(totalJobs / JOBS_PER_PAGE));
     const currentPage = Math.min(requestedPage, totalPages);
     const startIndex = (currentPage - 1) * JOBS_PER_PAGE;
     const endIndex = Math.min(startIndex + JOBS_PER_PAGE, totalJobs);
-    const jobs = allJobs.slice(startIndex, endIndex);
+    const jobs = advancedFilteredJobs.slice(startIndex, endIndex);
     const itemListSchema = {
         '@context': 'https://schema.org',
         '@type': 'ItemList',
@@ -187,8 +207,11 @@ export default async function JobsPage({ searchParams, }: {
           // jobs
         </p>
 
-        <h1 className="display mt-2 text-2xl sm:text-3xl font-medium">
+        <h1 className="display mt-2 flex flex-wrap items-baseline gap-2 text-2xl sm:text-3xl font-medium">
           Jobs in India
+          <span className="text-sm font-normal sm:text-base" style={{ color: 'var(--ink-soft)' }}>
+            {totalJobs} found
+          </span>
         </h1>
 
         <p className="mt-2 text-xs sm:text-sm" style={{ color: 'var(--ink-soft)' }}>
@@ -234,6 +257,8 @@ export default async function JobsPage({ searchParams, }: {
 
         <JobFilters basePath="/jobs" search={search} location={locationFilter} group={groupFilter} mode={workModeFilter}/>
 
+        <AdvancedJobFilters basePath="/jobs" search={search} location={locationFilter} group={groupFilter} mode={workModeFilter} skills={advancedFilters.skills} courses={advancedFilters.courses} sources={advancedFilters.sources} batches={advancedFilters.batches} companies={advancedFilters.companies} facets={facets} resultCount={totalJobs}/>
+
         <PopularSkills className="mt-3"/>
 
         <FeaturedJobs jobs={featured} basePath="/jobs"/>
@@ -247,7 +272,14 @@ export default async function JobsPage({ searchParams, }: {
                 </div>))}
             </div>
 
-            <Pagination currentPage={currentPage} totalPages={totalPages} search={search} loc={locationFilter} role={groupFilter}/>
+            <Pagination currentPage={currentPage} totalPages={totalPages} search={search} loc={locationFilter} role={groupFilter} extraParams={{
+                mode: workModeFilter !== 'all' ? workModeFilter : undefined,
+                skills: searchParams.skills,
+                course: searchParams.course,
+                source: searchParams.source,
+                batch: searchParams.batch,
+                company: searchParams.company,
+            }}/>
           </>) : (<div className="mt-16 text-center">
             <p className="text-sm" style={{ color: 'var(--muted)' }}>
               {search

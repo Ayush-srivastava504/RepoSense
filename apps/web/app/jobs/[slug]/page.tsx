@@ -8,9 +8,11 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { jobIdFromSlug, canonicalCategoryForJob, canonicalPathForJob } from '@/lib/slug';
 import { getJobById, BASE_URL } from '@/lib/jobs';
 import {  jobPostingSchema, breadcrumbSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
+import { buildJobTitle, truncateDescription, isStaleForIndexing } from '@/lib/seo/seoMetrics';
 import JobDetail from '@/app/components/JobDetail';
 import TrackView from '@/app/components/TrackView';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+
 export async function generateMetadata({ params, }: {
     params: {
         slug: string;
@@ -20,13 +22,30 @@ export async function generateMetadata({ params, }: {
     if (!job) {
         return {};
     }
+    const title = buildJobTitle({
+        title: job.title,
+        company: job.company,
+        type: job.type,
+        location: job.location,
+        isRemote: job.is_remote,
+    });
+    const rawDescription = job.enriched_overview ||
+        `Apply for ${job.title} at ${job.company}${job.location ? ` in ${job.location}` : ''}. View eligibility, skills, salary, and application details.`;
+    const description = truncateDescription(rawDescription);
     return {
-        title: `${job.title} at ${job.company} — Job`,
-        description: `Apply for ${job.title} at ${job.company}${job.location ? ` in ${job.location}` : ''}. View eligibility, skills, salary, and application details.`,
+        title,
+        description,
         alternates: {
             canonical: `${BASE_URL}${canonicalPathForJob(job)}`,
             languages: languageAlternates(canonicalPathForJob(job)),
         },
+        // Defense in depth alongside the JobPosting schema's validThrough:
+        // Search Console can take days to re-crawl and honor a stale
+        // validThrough, so this header/meta noindex acts immediately on
+        // the next crawl instead of waiting for schema-driven cleanup.
+        ...(isStaleForIndexing(job)
+            ? { robots: { index: false, follow: true } }
+            : {}),
     };
 }
 export default async function JobDetailPage({ params, }: {
