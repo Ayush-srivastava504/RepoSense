@@ -179,19 +179,58 @@ a smaller push.
 
 ## Status
 
-- Phase 0: in progress (self-check hand-off to site owner, not yet
-  confirmed)
-- Phase A, B: not started
-- Phase C: done — `jobPostingSchema()` now falls back `datePosted` to
-  `last_seen_at` and `jobLocation` to a country-level `Place`. See
+Re-audited against the actual code this session (not just this doc's
+prior status lines, which had drifted from what was really implemented).
+
+- **Phase 0: still in progress.** This is the one item that's
+  inherently a manual check ("does the live site actually show X"), not
+  something verifiable from a code drop. Self-check remains handed to
+  the site owner (canonical tag on a live job page, one vs. two filter
+  bars on `/jobs`, live `robots.txt` contents, a `/companies/[x]` hub
+  page, deploy-pipeline mechanics).
+- **Phase A: done, verified in code.** `routes/jobs.py`'s `JOB_COLUMNS`
+  selects both `is_thin` and `quality_score`; `sitemap-jobs.xml` excludes
+  thin-and-unenriched jobs entirely rather than just downranking them;
+  all four detail templates (`jobs`, `internships`, `remote-jobs`,
+  `government-jobs` `[slug]`) set `robots: { index: false }` for the
+  same condition via the shared `isThinAndUnenriched()` /
+  `isStaleForIndexing()` helpers.
+- **Phase B: partially done.**
+  - Overview backfill (`enriched_overview`/`enriched_keywords`):
+    `scripts/enrich_job_content.py` already queries the full backlog
+    directly (`is_active = true AND` thin `AND enriched_at IS NULL`,
+    not scoped to a single crawl run) and runs on a schedule via
+    `content-enrichment.yml`. This half was already closed before this
+    session.
+  - Structured-field backfill (`allowed_degrees`, `required_skills`,
+    etc. — migrations/021): `scripts/enrich_all_content.py --target
+    structured --bulk` existed and does the same full-backlog query
+    shape, but **nothing scheduled it** — it only ran if someone SSHed
+    in and triggered it by hand. **Closed this session**: added
+    `.github/workflows/phase-b-structured-backfill.yml`, daily, same
+    SSH-into-EC2 shape as the other scheduled jobs. See
+    CHANGES_THIS_SESSION.md for the one caveat on that new file (the
+    real `content-enrichment.yml`/`phase-f-priority-index.yml` weren't
+    available to copy from directly — see the note at the top of the
+    new workflow file).
+- **Phase C: done** — `jobPostingSchema()` now falls back `datePosted`
+  to `last_seen_at` and `jobLocation` to a country-level `Place`. See
   CHANGES_THIS_SESSION.md.
-- Phase D: done — breadcrumb JSON-LD + `<Breadcrumbs>` were already
+- **Phase D: done** — breadcrumb JSON-LD + `<Breadcrumbs>` were already
   wired into every hub/list page from earlier sessions; this session's
   actual fix was removing a duplicate hand-written `<nav>` breadcrumb
   left over on seven pages. See CHANGES_THIS_SESSION.md.
-- Phase E: not started (blocked on A/B landing and a 2-3 week re-crawl
-  window)
-- Phase F: code complete — needs the Google service-account
-  setup above before its Google leg is live; IndexNow leg works as soon as
-  `INDEXNOW_KEY`/`INDEXNOW_HOST` are set (or left at their defaults) and
-  migration 022 has run
+- **Phase E: not started** (correctly still pending — blocked on A/B
+  fully landing plus a 2-3 week re-crawl window; not a code task).
+- **Phase F: code complete, verified** — `phase_f_priority_index_push.py`,
+  migration 022, and the six-times-a-day workflow all check out against
+  the plan above. Still needs `GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON` set
+  on the EC2 box before its Google Indexing API leg activates; the
+  IndexNow leg works without it.
+
+**Net effect of this session's Phase B work:** once
+`phase-b-structured-backfill.yml` is confirmed against the real
+scheduling pattern and merged, Phase B has no remaining code gap —
+both halves of the enrichment backlog (overview and structured) now run
+on an unattended schedule against the full backlog, not just each
+crawl's newly-scraped rows.

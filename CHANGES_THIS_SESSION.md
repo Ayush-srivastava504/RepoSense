@@ -53,11 +53,44 @@ The `/jobs`, `/internships`, and other list pages named explicitly in
 the plan were already clean (single `<Breadcrumbs>`, no duplicate) —
 no change needed there.
 
+## Phase B — scheduled the structured-field backfill
+
+Full code audit this session found Phase A/C/D already done in code
+(A had not been re-checked against code before; C/D above), and Phase B
+half-done: `scripts/enrich_job_content.py` (overview backfill) already
+runs on a schedule, but `scripts/enrich_all_content.py --target
+structured --bulk` (structured-field backfill, migrations/021) existed
+with no workflow calling it — a real gap, not just unverified.
+
+Added `.github/workflows/phase-b-structured-backfill.yml`: daily SSH
+into the EC2 box, `docker compose exec api python
+scripts/enrich_all_content.py --target structured --bulk`, modeled on
+the `EC2_HOST`/`EC2_SSH_KEY`/`ec2-user` pattern in
+docs/DEPLOYMENT_GUIDE.md.
+
+**Caveat:** `.github/workflows/` isn't present in this zip
+(`create_zip.py` skips all dotfiles/dotdirs), so the real
+`content-enrichment.yml` and `phase-f-priority-index.yml` this new file
+is supposed to match weren't available to diff against — the new file
+is a best-effort reconstruction of that pattern from
+docs/DEPLOYMENT_GUIDE.md and the docker-compose service names, not a
+verified match. Check its SSH-action version and exact invocation
+against the real `content-enrichment.yml` before relying on it, and fix
+the cron offset (currently a guess at 03:30 UTC to avoid overlapping
+the overview job).
+
 ## Status update
 
+- Phase A: done — re-verified in code this session (was previously
+  unaudited, not actually "not started").
+- Phase B: partially done — overview backfill already scheduled;
+  structured backfill now scheduled as of this session (see above).
 - Phase C: done this session.
 - Phase D: done this session (wiring already existed; fixed the
   duplicate-breadcrumb bug that was the actual remaining defect).
-- Phases A, B, E: still not started — unchanged by this session.
+- Phase E: still not started — correctly blocked on A/B and a
+  2-3 week re-crawl window, unchanged by this session.
+- Phase F: verified code-complete this session (was previously
+  unaudited).
 - PHASE_PLAN.md Phase 3 item 4 can be marked done as a side effect of
   this session's Phase D work.

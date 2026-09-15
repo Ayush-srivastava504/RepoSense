@@ -1,31 +1,31 @@
-# Bulk / fallback content-enrichment runner for every page type on the
-# site: job overview content (all of them, not just thin ones, in --bulk
-# mode), structured fields (allowed_degrees/required_skills/etc. — Phase B
-# of INDEXING_RECOVERY_PLAN.md, same bulk backfill shape as the overview
-# pass), company pages (overview + work-culture + review-style keywords,
-# via CompanyEnrichmentService), and optional SEO blog posts about hiring
-# at top companies. Meant as the fallback content pass that runs after the
-# targeted enrich_job_content.py job — same Groq-backed pattern, but with
-# a deterministic template/rule-based fallback (see
-# content_enrichment_service.py / structured_enrichment_service.py /
-# company_enrichment_service.py) so a run always produces usable content
-# even without GROQ_API_KEY set or if a request fails, and can be pointed
-# at the whole table instead of only thin/never-enriched rows.
+# Bulk / fallback content-enrichment runner for jobs and internships (both
+# live in the same `jobs` table, distinguished by the `type` column — no
+# separate handling needed): job overview content (all of them, not just
+# thin ones, in --bulk mode), and structured fields
+# (allowed_degrees/required_skills/etc. — Phase B of
+# INDEXING_RECOVERY_PLAN.md, same bulk backfill shape as the overview
+# pass). Meant as the fallback content pass that runs after the targeted
+# enrich_job_content.py job — same Groq-backed pattern, but with a
+# deterministic template/rule-based fallback (see
+# content_enrichment_service.py / structured_enrichment_service.py) so a
+# run always produces usable content even without GROQ_API_KEY set or if
+# a request fails, and can be pointed at the whole table instead of only
+# thin/never-enriched rows.
+#
+# Company-page and SEO-blog-post enrichment (CompanyEnrichmentService)
+# was removed — this deployment's frontend is Vercel-only with no blog
+# content pipeline wired to consume it, so that pass had nowhere to go.
 #
 # Usage:
 #   python scripts/enrich_all_content.py --target jobs --bulk --limit 500
 #   python scripts/enrich_all_content.py --target structured --bulk --limit 500
-#   python scripts/enrich_all_content.py --target companies --limit 200
 #   python scripts/enrich_all_content.py --target all --bulk
-#   python scripts/enrich_all_content.py --target companies --blog-posts --limit 20
 
 import argparse
 import asyncio
 import json
-import re
 import sys
 import time
-from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
@@ -33,18 +33,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 import asyncpg
 from configs.config import settings
 from services.content_enrichment_service import ContentEnrichmentService
-from services.company_enrichment_service import CompanyEnrichmentService
 from services.structured_enrichment_service import StructuredEnrichmentService
 
 BATCH_LIMIT_DEFAULT = 200
 REQUEST_DELAY_S = 1.0
-BLOG_DIR = Path(__file__).resolve().parents[3] / 'apps' / 'web' / 'content' / 'blog'
-
-
-def slugify(value: str) -> str:
-    value = value.lower()
-    value = re.sub('[^a-z0-9]+', '-', value)
-    return value.strip('-')[:80]
 
 
 async def enrich_jobs(pool, args) -> dict:
@@ -129,105 +121,12 @@ async def enrich_structured(pool, args) -> dict:
     return {'attempted': len(rows), 'enriched': enriched}
 
 
-async def _fetch_company_rows(pool, limit: int):
-    return await pool.fetch(
-        """
-        SELECT
-            company,
-            (array_agg(DISTINCT title))[1:10]    AS sample_titles,
-            (array_agg(DISTINCT location) FILTER (WHERE location IS NOT NULL)) AS locations,
-            count(*)                              AS job_count
-        FROM jobs
-        WHERE is_active = true AND company IS NOT NULL AND company != ''
-        GROUP BY company
-        ORDER BY job_count DESC
-        LIMIT $1
-        """,
-        limit,
-    )
-
-
-async def enrich_companies(pool, args) -> dict:
-    service = CompanyEnrichmentService()
-    rows = await _fetch_company_rows(pool, args.limit)
-    if not args.bulk:
-        existing = await pool.fetch('SELECT company FROM company_profiles')
-        already = {r['company'] for r in existing}
-        rows = [r for r in rows if r['company'] not in already]
-    print(f'[enrich_all_content] companies: {len(rows)} candidate(s) (bulk={args.bulk}, ai_enabled={service.enabled})')
-    enriched = 0
-    blog_posts_written = 0
-    for row in rows:
-        sample_titles = row['sample_titles'] or []
-        locations = row['locations'] or []
-        result = await service.enrich(company=row['company'], sample_titles=sample_titles, locations=locations)
-        if result is None:
-            time.sleep(REQUEST_DELAY_S)
-            continue
-        if not args.dry_run:
-            await pool.execute(
-                """
-                INSERT INTO company_profiles (company, overview, culture_summary, review_snippets, keywords, model, enriched_at)
-                VALUES ($1, $2, $3, $4, $5, $6, now())
-                ON CONFLICT (company) DO UPDATE SET
-                    overview = EXCLUDED.overview,
-                    culture_summary = EXCLUDED.culture_summary,
-                    review_snippets = EXCLUDED.review_snippets,
-                    keywords = EXCLUDED.keywords,
-                    model = EXCLUDED.model,
-                    enriched_at = now()
-                """,
-                row['company'], result.overview, result.culture_summary,
-                json.dumps(result.review_snippets), result.keywords, result.model,
-            )
-        enriched += 1
-        if args.blog_posts:
-            if _write_company_blog_post(row['company'], result):
-                blog_posts_written += 1
-        time.sleep(REQUEST_DELAY_S)
-    print(f'[enrich_all_content] companies: enriched {enriched}/{len(rows)}, blog posts written {blog_posts_written}')
-    return {'attempted': len(rows), 'enriched': enriched, 'blog_posts_written': blog_posts_written}
-
-
-def _write_company_blog_post(company: str, result) -> bool:
-    """Write a fallback SEO blog post JSON (same schema as
-    scripts/generate-daily-posts.mjs) covering work culture/reviews at
-    this company, for pages/keywords the daily post generator hasn't
-    reached yet. Skips companies that already have a post."""
-    slug = slugify(f'{company}-work-culture-reviews')
-    BLOG_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = BLOG_DIR / f'{slug}.json'
-    if out_path.exists():
-        return False
-    body_parts = [
-        result.overview,
-        '## Work culture',
-        result.culture_summary,
-    ]
-    if result.review_snippets:
-        body_parts.append('## What candidates typically look for')
-        body_parts.append('\n'.join(f'- {s}' for s in result.review_snippets))
-    post = {
-        'slug': slug,
-        'title': f'{company}: Work Culture & What to Know Before Applying',
-        'description': f'An overview of {company} as an employer — what they hire for, and what candidates typically want to know before applying.',
-        'keyword': f'{company.lower()} work culture',
-        'category': 'company-culture',
-        'publishedAt': datetime.now(timezone.utc).isoformat(),
-        'body': '\n\n'.join(body_parts),
-        'faq': [],
-    }
-    out_path.write_text(json.dumps(post, indent=2), encoding='utf-8')
-    return True
-
-
 async def main():
-    parser = argparse.ArgumentParser(description='Bulk/fallback content enrichment for jobs, companies, and SEO blog posts')
-    parser.add_argument('--target', choices=['jobs', 'structured', 'companies', 'all'], default='all')
+    parser = argparse.ArgumentParser(description='Bulk/fallback content enrichment for jobs and internships')
+    parser.add_argument('--target', choices=['jobs', 'structured', 'all'], default='all')
     parser.add_argument('--limit', type=int, default=BATCH_LIMIT_DEFAULT)
     parser.add_argument('--bulk', action='store_true', help='Process all rows, not just never-enriched ones — for backfilling every page at once')
-    parser.add_argument('--blog-posts', action='store_true', help='Also write a fallback work-culture/review blog post per enriched company')
-    parser.add_argument('--dry-run', action='store_true', help="Generate content and log/write blog posts, but don't write to the DB")
+    parser.add_argument('--dry-run', action='store_true', help="Generate content and log it, but don't write to the DB")
     args = parser.parse_args()
 
     if not settings.DATABASE_URL:
@@ -241,8 +140,6 @@ async def main():
             summary['jobs'] = await enrich_jobs(pool, args)
         if args.target in ('structured', 'all'):
             summary['structured'] = await enrich_structured(pool, args)
-        if args.target in ('companies', 'all'):
-            summary['companies'] = await enrich_companies(pool, args)
         print('[enrich_all_content] done:', json.dumps(summary))
     finally:
         await pool.close()
