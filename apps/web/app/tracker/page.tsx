@@ -77,10 +77,6 @@ export default function TrackerPage() {
       <Breadcrumbs schema={crumbs}/>
       <TrackView event="tracker_landing_view"/>
 
-      <nav className="mb-6 text-sm" style={{ color: 'var(--ink-soft)' }}>
-        <Link href="/">Home</Link> <span aria-hidden="true">/</span> My Applications
-      </nav>
-
       <p className="eyebrow eyebrow-accent">// career tools</p>
       <h1 className="display mt-2 text-3xl font-medium sm:text-4xl">
         My Applications

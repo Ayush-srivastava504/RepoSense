@@ -36,6 +36,24 @@ class Settings(BaseSettings):
     LOAD_TEST_BYPASS_KEY: str = ''
     GROQ_API_KEY: str = ''
 
+    # Phase F — same-day priority indexing push (see
+    # INDEXING_RECOVERY_PLAN.md and scripts/phase_f_priority_index_push.py).
+    # INDEXNOW_KEY must match the deployed key file at
+    # https://<host>/<key>.txt (apps/web/public/<key>.txt) — same key
+    # scripts/indexnow-submit.mjs already uses, kept as the same default
+    # here so the two don't silently drift apart if neither env var is set.
+    INDEXNOW_KEY: str = '97f076150822494092783dfc5c2c8a09'
+    INDEXNOW_HOST: str = 'www.intern-flow.in'
+    # Raw service-account JSON (the whole key file's contents, as one
+    # env var) for Google's Indexing API. Only ever used to push URLs for
+    # pages that carry JobPosting structured data — see the script header
+    # for why that scoping isn't optional. Leave empty to skip the Google
+    # leg and push to IndexNow only.
+    GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON: str = ''
+    # Default Indexing API quota is 200 requests/day per GCP project;
+    # leave headroom below that rather than assuming a quota increase.
+    GOOGLE_INDEXING_DAILY_QUOTA: int = 180
+
     class Config:
         env_file = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../.env'))
         extra = 'ignore'

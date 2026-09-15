@@ -71,11 +71,6 @@ export default async function CompanyHubPage({ params, }: {
       <TrackView event="company_hub_view" params={{ company: company.company }}/>
 
       <div className="mx-auto w-full max-w-5xl px-3 py-8 sm:px-4 sm:py-12">
-        <nav className="mb-6 text-sm" style={{ color: 'var(--ink-soft)' }}>
-          <Link href="/">Home</Link> <span aria-hidden="true">/</span>{' '}
-          <Link href="/companies">Companies</Link> <span aria-hidden="true">/</span> {company.company}
-        </nav>
-
         <div className="flex items-center gap-4">
           <CompanyLogo company={company.company} logoDomain={company.logo_domain} size={56}/>
           <div>

@@ -123,11 +123,6 @@ export default async function CityHubPage({ params, }: {
       <TrackView event="city_hub_view" params={{ city: city.slug }}/>
 
       <div className="mx-auto w-full max-w-5xl px-3 py-8 sm:px-4 sm:py-12">
-        <nav className="mb-6 text-sm" style={{ color: 'var(--ink-soft)' }}>
-          <Link href="/">Home</Link> <span aria-hidden="true">/</span>{' '}
-          <Link href="/jobs-in">Jobs by city</Link> <span aria-hidden="true">/</span> {city.name}
-        </nav>
-
         <p className="eyebrow eyebrow-accent">// {city.region.toLowerCase()}</p>
         <h1 className="display mt-2 text-3xl font-medium sm:text-4xl">
           Jobs &amp; Internships in {city.name}

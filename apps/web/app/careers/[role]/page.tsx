@@ -93,10 +93,6 @@ export default async function CareerHubPage({ params, }: {
       <TrackView event="career_hub_view" params={{ career: careerRole.slug }}/>
 
       <div className="mx-auto w-full max-w-5xl px-3 py-8 sm:px-4 sm:py-12">
-        <nav className="mb-6 text-sm" style={{ color: 'var(--ink-soft)' }}>
-          <Link href="/">Home</Link> <span aria-hidden="true">/</span>{' '}
-          <Link href="/careers">Careers</Link> <span aria-hidden="true">/</span> {careerRole.name}
-        </nav>
 
         <p className="eyebrow eyebrow-accent">// career path</p>
         <h1 className="display mt-2 text-3xl font-medium sm:text-4xl">{careerRole.name} Career Path</h1>

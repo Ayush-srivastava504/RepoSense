@@ -99,11 +99,6 @@ export default async function SkillHubPage({ params, }: {
       <TrackView event="skill_hub_view" params={{ skill: skill.slug }}/>
 
       <div className="mx-auto w-full max-w-5xl px-3 py-8 sm:px-4 sm:py-12">
-        <nav className="mb-6 flex flex-wrap items-center gap-x-1 text-sm" style={{ color: 'var(--ink-soft)' }}>
-          <Link href="/">Home</Link> <span aria-hidden="true">/</span>{' '}
-          <Link href="/skills">Skills</Link> <span aria-hidden="true">/</span> <span>{skill.name}</span>
-        </nav>
-
         <p className="eyebrow eyebrow-accent">// {skill.category.toLowerCase()}</p>
         <h1 className="display mt-2 text-3xl font-medium sm:text-4xl">{skill.name} Jobs &amp; Internships</h1>
         <p className="mt-4 max-w-2xl leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{skill.heroDescription}</p>

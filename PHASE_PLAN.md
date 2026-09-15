@@ -206,7 +206,11 @@ and `index.py`'s `_load_scrapers()` registry.
    `og-image.png` for every job page.
 4. **BreadcrumbList on every hub page**, not just job-detail pages
    (`Breadcrumbs.tsx` + `breadcrumbSchema()` already exist — this is
-   wiring, not new infrastructure).
+   wiring, not new infrastructure). **Done** — see
+   INDEXING_RECOVERY_PLAN.md Phase D / CHANGES_THIS_SESSION.md; the
+   wiring already existed on every hub page, the actual fix was
+   removing a duplicate hand-written breadcrumb `<nav>` left over on
+   seven of them.
 5. **hreflang audit for the new filter query params** — confirm
    `languageAlternates()` entries for `/jobs` and `/internships` don't
    break when `?skills=...&batch=...` are present (they shouldn't, since

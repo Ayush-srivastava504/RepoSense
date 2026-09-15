@@ -81,11 +81,6 @@ export default function ToolLandingPage({ params }: {
       <TrackView event="tool_landing_view" params={{ tool: tool.slug }}/>
 
       <div className="mx-auto w-full max-w-3xl px-3 py-10 sm:px-4 sm:py-14">
-        <nav className="mb-6 text-sm" style={{ color: 'var(--ink-soft)' }}>
-          <Link href="/">Home</Link> <span aria-hidden="true">/</span>{' '}
-          <Link href="/tools">Tools</Link> <span aria-hidden="true">/</span> {tool.name}
-        </nav>
-
         <p className="eyebrow eyebrow-accent">// {tool.category.toLowerCase()}</p>
         <h1 className="display mt-2 text-3xl font-medium sm:text-4xl">{tool.name}</h1>
         <p className="mt-3 text-lg" style={{ color: 'var(--ink-soft)' }}>{tool.tagline}</p>

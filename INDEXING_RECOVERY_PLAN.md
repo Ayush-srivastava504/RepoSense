@@ -123,8 +123,75 @@ After A–D ship and Google re-crawls (allow 2-3 weeks), re-check the same
 four GSC reports. The "Discovered — not indexed" trend line flattening
 or reversing is the real pass/fail signal, more than any single number.
 
+## Phase F — Same-day priority indexing push
+
+Phases A-E fix the *pull* side: they stop feeding Google low-value pages
+and make the sitemap something worth re-crawling. But a sitemap is still
+a signal Google chooses when (or whether) to act on. Phase F adds a
+*push* side on top, specifically for the highest-value slice of each
+day's scrape — a known/big company, a high `confidence_score`, posted
+today — instead of waiting for organic re-crawl:
+
+1. **Selection** — `services/api/scripts/phase_f_priority_index_push.py`
+   selects, per run: up to `--job-cap` (default 60, keep in the 50-60
+   range) non-internship jobs and up to `--internship-cap` (default 10)
+   internships, scoped to `created_at::date = today` (the crawler's
+   first-ever-seen timestamp — see `utils.py`'s `upsert_jobs`, which never
+   overwrites `created_at` on a re-crawl), ranked by the same
+   top-company/`confidence_score` signal `routes/jobs.py`'s
+   `RANKING_EXPRESSION`/`TOP_COMPANY_TIER` already use, and excluding
+   thin-and-unenriched listings (same rule as the sitemap's
+   `isThinAndUnenriched`, Phase A above).
+2. **IndexNow** — one batched POST per run to `api.indexnow.org`, fanning
+   out to Bing/Yandex/Seznam/Naver. No topic restriction; reuses the same
+   key already deployed for `scripts/indexnow-submit.mjs`.
+3. **Google Indexing API** — one POST per URL to
+   `indexing.googleapis.com`, auth'd via a service-account JWT-bearer flow
+   (self-contained, no new dependency — signs with `cryptography`, calls
+   out with `httpx`, both already in `requirements.txt`). **Scoped
+   deliberately to job/internship detail pages only** — Google's own docs
+   restrict the Indexing API to pages with `JobPosting` or
+   `BroadcastEvent` structured data, which this site's detail pages
+   already emit (`lib/structuredData.ts`'s `jobPostingSchema()`); this is
+   why the script never touches hub pages, blog posts, or anything else.
+   There is no bulk-push equivalent for Search Console itself — GSC's UI
+   only has a manual, one-at-a-time "Request Indexing" button — so the
+   Indexing API is the actual mechanism behind what's usually meant by
+   "push to GSC" for a job board specifically.
+4. **Idempotency + audit** — migration `022_priority_index_push.sql` adds
+   `jobs.indexnow_submitted_at`/`jobs.google_indexing_submitted_at` (so a
+   job already pushed today is never resubmitted by a later run) and a
+   `priority_index_log` table (one row per submission attempt, for
+   debugging and for watching Google Indexing API quota usage — default
+   200 requests/day per GCP project, `GOOGLE_INDEXING_DAILY_QUOTA`
+   defaults to 180 to leave headroom).
+5. **Schedule** — `.github/workflows/phase-f-priority-index.yml` runs six
+   times a day (SSH into EC2, same pattern as `content-enrichment.yml`)
+   so listings scraped mid-day don't sit unpushed for 24h waiting on a
+   once-daily cron.
+
+**Setup required before this does anything on the Google side:** a GCP
+service account with the Indexing API enabled, added as an Owner on this
+site's Search Console property, with its key JSON set as
+`GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON` in the EC2 box's `.env`. Without
+that, the script logs it and pushes to IndexNow only — not an error, just
+a smaller push.
+
 ## Status
 
 - Phase 0: in progress (self-check hand-off to site owner, not yet
   confirmed)
-- Phases A–E: not started
+- Phase A, B: not started
+- Phase C: done — `jobPostingSchema()` now falls back `datePosted` to
+  `last_seen_at` and `jobLocation` to a country-level `Place`. See
+  CHANGES_THIS_SESSION.md.
+- Phase D: done — breadcrumb JSON-LD + `<Breadcrumbs>` were already
+  wired into every hub/list page from earlier sessions; this session's
+  actual fix was removing a duplicate hand-written `<nav>` breadcrumb
+  left over on seven pages. See CHANGES_THIS_SESSION.md.
+- Phase E: not started (blocked on A/B landing and a 2-3 week re-crawl
+  window)
+- Phase F: code complete — needs the Google service-account
+  setup above before its Google leg is live; IndexNow leg works as soon as
+  `INDEXNOW_KEY`/`INDEXNOW_HOST` are set (or left at their defaults) and
+  migration 022 has run

@@ -206,11 +206,16 @@ export function jobPostingSchema(job: Job, canonicalUrl: string) {
     const description = job.enriched_overview
         ? `${job.enriched_overview}\n\n${job.description || ''}`.trim()
         : job.description || `${job.title} at ${job.company}`;
+    // Google requires datePosted. Some sources give us no posted_at at all — falling
+    // back to last_seen_at ("when we first saw this listing") is honest and still
+    // gives Google a real date to anchor on, versus emitting an invalid/missing field.
+    const datePosted = job.posted_at || job.last_seen_at;
     // Google requires validThrough (or treats the posting as stale); fall back to
-    // posted_at + 45 days, or 30 days out, when the source never gave us a deadline.
+    // datePosted + 45 days, or 30 days out, when neither posted_at nor last_seen_at
+    // is available.
     const validThrough = job.deadline
-        ?? (job.posted_at
-            ? new Date(new Date(job.posted_at).getTime() + 45 * 24 * 60 * 60 * 1000).toISOString()
+        ?? (datePosted
+            ? new Date(new Date(datePosted).getTime() + 45 * 24 * 60 * 60 * 1000).toISOString()
             : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString());
     const schema: Record<string, any> = {
         '@context': 'https://schema.org',
@@ -222,7 +227,9 @@ export function jobPostingSchema(job: Job, canonicalUrl: string) {
             name: job.company,
             value: job.id,
         },
-        datePosted: job.posted_at,
+        // Omit rather than emit an empty/invalid datePosted when the source gave us
+        // neither a posted date nor a last-seen timestamp.
+        ...(datePosted ? { datePosted } : {}),
         validThrough,
         employmentType,
         hiringOrganization: {
@@ -249,6 +256,19 @@ export function jobPostingSchema(job: Job, canonicalUrl: string) {
             address: {
                 '@type': 'PostalAddress',
                 addressLocality: job.location,
+                addressCountry: job.country || 'IN',
+            },
+        };
+    }
+    else {
+        // No city string and not remote — Google's Jobs rich result requires
+        // jobLocation for non-TELECOMMUTE postings, so fall back to a
+        // country-level Place rather than omitting the field (which is what
+        // was producing the "Missing field jobLocation" validation error).
+        schema.jobLocation = {
+            '@type': 'Place',
+            address: {
+                '@type': 'PostalAddress',
                 addressCountry: job.country || 'IN',
             },
         };

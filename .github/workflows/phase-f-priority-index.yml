@@ -1,0 +1,139 @@
+name: Phase F Priority Index Push
+
+# Same-day priority indexing push — see INDEXING_RECOVERY_PLAN.md's Phase F
+# and scripts/phase_f_priority_index_push.py's header for the full design.
+# Postgres is only reachable from the EC2 box itself, so — same pattern as
+# content-enrichment.yml — this SSHes in and runs the script there against
+# the docker-compose .env, rather than connecting out from the runner.
+#
+# Runs several times a day (not just once) so newly-scraped high-value
+# listings get topped up into the day's push as they clear the bar,
+# instead of only catching whatever existed at a single fixed time.
+# indexnow_submitted_at/google_indexing_submitted_at (migration 022) make
+# repeated runs safe — a job already pushed today is never re-selected.
+
+on:
+  schedule:
+    # 05:00, 08:00, 11:00, 14:00, 17:00, 20:00 UTC = 10:30, 13:30, 16:30,
+    # 19:30, 22:30, 01:30 IST — spread across the day rather than one
+    # single burst, so a company posting mid-afternoon IST doesn't sit
+    # unpushed for 24h waiting on a once-a-day cron.
+    - cron: '0 5,8,11,14,17,20 * * *'
+  workflow_dispatch:
+    inputs:
+      job_cap:
+        description: 'Max non-internship jobs to push this run (50-60 recommended)'
+        required: false
+        default: '60'
+      internship_cap:
+        description: 'Max internships to push this run'
+        required: false
+        default: '10'
+      dry_run:
+        description: 'Select + log only, no submissions (true/false)'
+        required: false
+        default: 'false'
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run priority index push on EC2
+        id: push
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          timeout: 60s
+          command_timeout: 15m
+          script_stop: true
+          envs: JOB_CAP,INTERNSHIP_CAP,DRY_RUN
+          capture_stdout: true
+          script: |
+            set -e
+            cd /home/ec2-user/RepoSense
+
+            JOB_CAP="${JOB_CAP:-60}"
+            INTERNSHIP_CAP="${INTERNSHIP_CAP:-10}"
+            EXTRA_ARGS=""
+            if [ "${DRY_RUN:-false}" = "true" ]; then
+              EXTRA_ARGS="--dry-run"
+            fi
+
+            echo "Running Phase F priority push (job_cap=$JOB_CAP, internship_cap=$INTERNSHIP_CAP, dry_run=${DRY_RUN:-false})"
+
+            # --entrypoint python skips entrypoint.sh (migrations + uvicorn
+            # boot) and just runs the one-off script. env_file: .env
+            # (already configured on this box for the api service) supplies
+            # DATABASE_URL, INDEXNOW_KEY/HOST, and
+            # GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON if set. This workflow
+            # does not pass any of those in from GitHub secrets.
+            docker compose -f infrastructure/docker/docker-compose.yml \
+              run --rm --entrypoint python api \
+              scripts/phase_f_priority_index_push.py \
+              --job-cap "$JOB_CAP" --internship-cap "$INTERNSHIP_CAP" $EXTRA_ARGS
+        env:
+          JOB_CAP: ${{ github.event.inputs.job_cap || '60' }}
+          INTERNSHIP_CAP: ${{ github.event.inputs.internship_cap || '10' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+
+      - name: Build job summary (IndexNow vs Google, per-URL)
+        if: always()
+        shell: bash
+        env:
+          # Passed via env, not interpolated directly into the script body,
+          # so nothing inside the captured output — which ultimately traces
+          # back to scraped job titles/companies — can be read as shell
+          # syntax.
+          SSH_STDOUT: ${{ steps.push.outputs.stdout }}
+        run: |
+          set -e
+          # phase_f_priority_index_push.py prints one line per (job, target)
+          # submission, e.g.:
+          #   PRIORITY_PUSH_ROW|indexnow|OK|https://.../jobs/acme-123|SDE Intern @ Acme
+          #   PRIORITY_PUSH_ROW|google_indexing|FAIL|https://.../jobs/beta-456|SRE @ Beta
+          printf '%s' "$SSH_STDOUT" > /tmp/ssh_stdout.txt
+
+          rows_file=/tmp/priority_push_rows.txt
+          grep '^PRIORITY_PUSH_ROW|' /tmp/ssh_stdout.txt > "$rows_file" || true
+
+          indexnow_ok=$(grep -c '^PRIORITY_PUSH_ROW|indexnow|OK|' "$rows_file" || true)
+          indexnow_fail=$(grep -c '^PRIORITY_PUSH_ROW|indexnow|FAIL|' "$rows_file" || true)
+          google_ok=$(grep -c '^PRIORITY_PUSH_ROW|google_indexing|OK|' "$rows_file" || true)
+          google_fail=$(grep -c '^PRIORITY_PUSH_ROW|google_indexing|FAIL|' "$rows_file" || true)
+
+          {
+            echo "## Phase F priority index push"
+            echo
+            echo "| Target | OK | Failed |"
+            echo "|---|---|---|"
+            echo "| IndexNow | ${indexnow_ok:-0} | ${indexnow_fail:-0} |"
+            echo "| Google Indexing API | ${google_ok:-0} | ${google_fail:-0} |"
+            echo
+
+            if [ -s "$rows_file" ]; then
+              echo "<details><summary>Per-URL breakdown</summary>"
+              echo
+              echo "| Target | Result | Job | URL |"
+              echo "|---|---|---|---|"
+              while IFS='|' read -r _ target status url job; do
+                case "$status" in
+                  OK) icon="✅ OK" ;;
+                  FAIL) icon="❌ Fail" ;;
+                  *) icon="$status" ;;
+                esac
+                if [ -n "$url" ]; then
+                  link="[link]($url)"
+                else
+                  link="—"
+                fi
+                echo "| $target | $icon | $job | $link |"
+              done < "$rows_file"
+              echo
+              echo "</details>"
+            else
+              echo "_No per-URL rows were captured — check the raw step log above (likely nothing new qualified this run)._"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
