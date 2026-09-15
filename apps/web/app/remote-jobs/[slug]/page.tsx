@@ -9,6 +9,7 @@ import { jobIdFromSlug, canonicalPathForJob } from '@/lib/slug';
 import { getJobById, BASE_URL } from '@/lib/jobs';
 import {  jobPostingSchema, breadcrumbSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
 import { buildJobTitle, truncateDescription, isStaleForIndexing, isThinAndUnenriched } from '@/lib/seo/seoMetrics';
+import { jobOgImageUrl } from '@/lib/seo/ogImage';
 import JobDetail from '@/app/components/JobDetail';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 export async function generateMetadata({ params, }: {
@@ -34,6 +35,19 @@ export async function generateMetadata({ params, }: {
         alternates: {
             canonical: `${BASE_URL}${canonicalPathForJob(job)}`,
             languages: languageAlternates(canonicalPathForJob(job)),
+        },
+        openGraph: {
+            type: 'website',
+            url: `${BASE_URL}${canonicalPathForJob(job)}`,
+            title,
+            description: truncateDescription(rawDescription),
+            images: [{ url: jobOgImageUrl(job), width: 1200, height: 630, alt: title }],
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title,
+            description: truncateDescription(rawDescription),
+            images: [jobOgImageUrl(job)],
         },
         ...(isStaleForIndexing(job) || isThinAndUnenriched(job) ? { robots: { index: false, follow: true } } : {}),
     };

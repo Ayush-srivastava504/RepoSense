@@ -9,6 +9,7 @@ import { jobIdFromSlug, canonicalCategoryForJob, canonicalPathForJob } from '@/l
 import { getJobById, BASE_URL } from '@/lib/jobs';
 import {  jobPostingSchema, breadcrumbSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
 import { buildJobTitle, truncateDescription, isStaleForIndexing, isThinAndUnenriched } from '@/lib/seo/seoMetrics';
+import { jobOgImageUrl } from '@/lib/seo/ogImage';
 import JobDetail from '@/app/components/JobDetail';
 import TrackView from '@/app/components/TrackView';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -32,12 +33,26 @@ export async function generateMetadata({ params, }: {
     const rawDescription = job.enriched_overview ||
         `Apply for ${job.title} at ${job.company}${job.location ? ` in ${job.location}` : ''}. View eligibility, skills, salary, and application details.`;
     const description = truncateDescription(rawDescription);
+    const ogImage = jobOgImageUrl(job);
     return {
         title,
         description,
         alternates: {
             canonical: `${BASE_URL}${canonicalPathForJob(job)}`,
             languages: languageAlternates(canonicalPathForJob(job)),
+        },
+        openGraph: {
+            type: 'website',
+            url: `${BASE_URL}${canonicalPathForJob(job)}`,
+            title,
+            description,
+            images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title,
+            description,
+            images: [ogImage],
         },
         // Defense in depth alongside the JobPosting schema's validThrough:
         // Search Console can take days to re-crawl and honor a stale

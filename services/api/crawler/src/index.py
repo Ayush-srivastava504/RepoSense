@@ -164,31 +164,38 @@ def run_pipeline(keywords: List[str]=None, locations: List[str]=None, max_pages:
     deactivated = 0
     content_enrichment_summary = {'enabled': False, 'attempted': 0, 'enriched': 0}
     structured_enrichment_summary = {'enabled': False, 'attempted': 0}
-    if not dry_run and enriched:
-        try:
-            s3_key = save_to_s3(enriched, source='pipeline')
-        except Exception as exc:
-            log.warning('S3 backup write failed (non-fatal, DB insert is authoritative): %s', exc)
-        try:
-            log.info('Attempting to insert %d jobs into PostgreSQL', len(enriched))
-            written = upsert_jobs(enriched)
-            log.info('Successfully inserted %d jobs into PostgreSQL', written)
-        except Exception:
-            log.exception('PostgreSQL write failed')
-        try:
-            content_enrichment_summary = run_content_enrichment_for_new_jobs(enriched)
-        except Exception:
-            log.exception('Automatic content enrichment step failed unexpectedly')
-            content_enrichment_summary = {'enabled': False, 'attempted': 0, 'enriched': 0}
-        try:
-            # Structured breakdown (Education/Requirements/Key Skills/Notes
-            # — see structured_enrichment.py) is a separate pass from the
-            # overview/keywords enrichment above so a failure here can
-            # never take down the already-tested overview path.
-            structured_enrichment_summary = run_structured_enrichment_for_jobs(enriched)
-        except Exception:
-            log.exception('Structured enrichment step failed unexpectedly')
-            structured_enrichment_summary = {'enabled': False, 'attempted': 0}
+    if not dry_run:
+        if enriched:
+            try:
+                s3_key = save_to_s3(enriched, source='pipeline')
+            except Exception as exc:
+                log.warning('S3 backup write failed (non-fatal, DB insert is authoritative): %s', exc)
+            try:
+                log.info('Attempting to insert %d jobs into PostgreSQL', len(enriched))
+                written = upsert_jobs(enriched)
+                log.info('Successfully inserted %d jobs into PostgreSQL', written)
+            except Exception:
+                log.exception('PostgreSQL write failed')
+            try:
+                content_enrichment_summary = run_content_enrichment_for_new_jobs(enriched)
+            except Exception:
+                log.exception('Automatic content enrichment step failed unexpectedly')
+                content_enrichment_summary = {'enabled': False, 'attempted': 0, 'enriched': 0}
+            try:
+                # Structured breakdown (Education/Requirements/Key Skills/Notes
+                # — see structured_enrichment.py) is a separate pass from the
+                # overview/keywords enrichment above so a failure here can
+                # never take down the already-tested overview path.
+                structured_enrichment_summary = run_structured_enrichment_for_jobs(enriched)
+            except Exception:
+                log.exception('Structured enrichment step failed unexpectedly')
+                structured_enrichment_summary = {'enabled': False, 'attempted': 0}
+        # Deliberately OUTSIDE the `enriched` check above (that was the
+        # actual bug): a crawl pass that finds zero new jobs — source
+        # outage, an empty keyword pass, etc. — still needs to run
+        # cleanup, or is_active = true rows for postings that have since
+        # gone stale/dead just pile up indefinitely, which is what
+        # inflated the /jobs and /internships page counts.
         try:
             deactivated = deactivate_stale_jobs(days=30)
         except Exception:
@@ -201,7 +208,7 @@ def run_pipeline(keywords: List[str]=None, locations: List[str]=None, max_pages:
             deactivated += check_liveness_for_aging_jobs()
         except Exception:
             log.exception('Liveness check for aging jobs failed')
-    elif dry_run:
+    else:
         log.info('Dry run enabled, skipping writes')
     elapsed = round(time.time() - started, 1)
     summary = {'status': 'ok', 'started_at': started_at, 'elapsed_sec': elapsed, 'source_counts': source_counts, 'raw_total': len(raw_jobs), 'normalized': len(normalized), 'deduplicated': len(deduped), 'enriched': len(enriched), 'quality_rejected': len(rejected_jobs), 'quality_thin_flagged': sum((1 for j in enriched if j.get('is_thin'))), 'written_db': written, 'deactivated_stale': deactivated, 'content_enrichment': content_enrichment_summary, 'structured_enrichment': structured_enrichment_summary, 's3_key': s3_key}

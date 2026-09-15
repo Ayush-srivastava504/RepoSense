@@ -12,6 +12,7 @@ import { canonicalPathForJob } from '@/lib/slug';
 import { companySlug } from '@/lib/companies';
 import { CITIES, getCityBySlug, getRelatedCities, type CityDefinition } from '@/app/jobs-in/data';
 import {  breadcrumbSchema, faqSchema, languageAlternates } from '@/lib/structuredData';
+import { LOCATION_MIN_JOBS, belowHubThreshold } from '@/lib/seo/hubThresholds';
 import JobCard from '@/app/components/JobCard';
 import TrackView from '@/app/components/TrackView';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -45,10 +46,19 @@ export async function generateMetadata({ params, }: {
     if (!city)
         return {};
     const url = `${BASE_URL}/jobs-in/${city.slug}`;
+    // PHASE_PLAN.md Phase 3 item 2: same getJobs() call the page component
+    // makes below, deduped by Next.js's fetch cache within one request.
+    const [jobs, internships] = await Promise.all([
+        getJobsInCity(city, undefined),
+        getJobsInCity(city, 'internship'),
+    ]);
     return {
         title: city.metaTitle,
         description: city.metaDescription,
         alternates: { canonical: url, languages: languageAlternates(`/jobs-in/${city.slug}`) },
+        ...(belowHubThreshold(jobs.length + internships.length, LOCATION_MIN_JOBS)
+            ? { robots: { index: false, follow: true } }
+            : {}),
         openGraph: {
             type: 'website',
             url,

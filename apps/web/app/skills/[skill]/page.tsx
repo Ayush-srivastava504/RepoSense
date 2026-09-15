@@ -12,6 +12,7 @@ import { canonicalPathForJob } from '@/lib/slug';
 import { companySlug } from '@/lib/companies';
 import { SKILLS, getSkillBySlug, getRelatedSkills } from '@/app/skills/data';
 import {  breadcrumbSchema, faqSchema, languageAlternates } from '@/lib/structuredData';
+import { SKILL_MIN_JOBS, belowHubThreshold } from '@/lib/seo/hubThresholds';
 import JobCard from '@/app/components/JobCard';
 import TrackView from '@/app/components/TrackView';
 import FAQAccordion from '@/app/components/FAQAccordion';
@@ -30,10 +31,21 @@ export async function generateMetadata({ params, }: {
     if (!skill)
         return {};
     const url = `${BASE_URL}/skills/${skill.slug}`;
+    // PHASE_PLAN.md Phase 3 item 2: same fetch getJobs() makes below in the
+    // page component — Next.js's fetch cache dedupes this across
+    // generateMetadata and the page render within a single request, so this
+    // isn't a second round-trip.
+    const [jobs, internships] = await Promise.all([
+        getJobs({ skill: skill.searchTerm, type: undefined, limit: 9, sort: 'ranked' }),
+        getJobs({ skill: skill.searchTerm, type: 'internship', limit: 6, sort: 'ranked' }),
+    ]);
     return {
         title: skill.metaTitle,
         description: skill.metaDescription,
         alternates: { canonical: url, languages: languageAlternates(`/skills/${skill.slug}`) },
+        ...(belowHubThreshold(jobs.length + internships.length, SKILL_MIN_JOBS)
+            ? { robots: { index: false, follow: true } }
+            : {}),
         openGraph: {
             type: 'website',
             url,

@@ -194,26 +194,77 @@ and `index.py`'s `_load_scrapers()` registry.
 
 1. **Batch/passout-year hub pages** (`/batch/2026`, `/batch/2027`, ...),
    mirroring the existing `/skills/[slug]` and `/jobs-in/[city]` hub
-   pattern, backed by a new `sitemap-batches.xml` entry.
+   pattern, backed by a new `sitemap-batches.xml` entry. **Done** —
+   `app/batch/data.ts` curates five years (2025–2029); `app/batch/[year]/
+   page.tsx` mirrors `app/skills/[skill]/page.tsx` exactly (live jobs/
+   internships via `getJobs({ batches: [year] })`, the Phase 2
+   `batches=` param routes/jobs.py already supported; companies hiring;
+   FAQ schema; related-batch links); `app/batch/page.tsx` is the index,
+   mirroring `app/jobs-in/page.tsx`. `sitemap-batches.xml` added and
+   wired into `sitemap.xml`. Linked from the footer, the sidebar nav, and
+   `ExploreRelated.tsx` (one batch-hub chip per job detail page, when the
+   job's `allowed_passout_years` matches a curated year) so the new pages
+   have real internal links pointing at them, not just a sitemap entry.
 2. **Minimum-listing thresholds for hub pages**, matching FresherFlow's
    `SKILL_MIN_JOBS`/`LOCATION_MIN_JOBS` gating in `staticFeed.service.ts`
    — audit `/skills/[slug]` and `/jobs-in/[city]` to confirm they already
    404/noindex below some floor, and add the same gate to the new batch
-   hub pages from item 1.
+   hub pages from item 1. **Done** — audit found neither had any floor:
+   a 0-job skill or city rendered a normal 200-OK indexable page and
+   stayed in its sitemap. Added `lib/seo/hubThresholds.ts`
+   (`SKILL_MIN_JOBS = 5`, `LOCATION_MIN_JOBS = 3` — the exact FresherFlow
+   numbers `lib/facets.ts`'s own comment already cited — plus
+   `BATCH_MIN_JOBS = 3` for the new batch hubs). Applied as a **soft**
+   gate: `robots: { index: false, follow: true }` in each hub's
+   `generateMetadata` below threshold (same pattern
+   `lib/seo/seoMetrics.ts`'s `isStaleForIndexing`/`isThinAndUnenriched`
+   already use on job-detail pages), not a hard 404 — these hub pages
+   carry real evergreen content (FAQs, related links, interview-prep
+   panels) beyond the live job grid, so they're not worthless at zero
+   jobs, just not worth an index slot right now, and the gate clears
+   automatically once enough jobs are scraped. `sitemap-skills.xml`,
+   `sitemap-locations.xml`, and `sitemap-batches.xml` all exclude
+   below-threshold entries too, so a sitemap never points at a page that
+   then noindexes itself.
 3. **Pre-generated OG images** per job (`/og/{id}.png`), cached rather
    than rendered per-crawl-hit, matching FresherFlow's approach —
    currently RepoSense likely falls back to a single static
-   `og-image.png` for every job page.
+   `og-image.png` for every job page. **Done** — confirmed the suspicion:
+   none of the four job-detail routes set `openGraph`/`twitter` at all,
+   so they inherited the root layout's generic default image.
+   `app/og/[filename]/route.tsx` renders a branded 1200×630 card (title /
+   company / location / type) via Next 14's built-in `next/og`
+   `ImageResponse` — no new dependency — on the edge runtime, parsing the
+   job id back out of the `{id}.png` filename segment (a literal `.png`
+   suffix can't be matched directly by an App Router dynamic segment).
+   "Cached rather than rendered per-crawl-hit" is a `Cache-Control:
+   public, max-age=86400, s-maxage=2592000, stale-while-revalidate=604800`
+   header rather than build-time pre-rendering — job ids number in the
+   thousands and change hourly, so `generateStaticParams` isn't viable
+   the way it is for the curated skill/city/batch hubs. Unknown/missing
+   job ids get a generic branded fallback image (shorter-lived cache)
+   instead of a broken image or a 404, since link-preview scrapers handle
+   a valid-but-generic image far better than an error response.
+   `lib/seo/ogImage.ts`'s `jobOgImageUrl()` is the one place building this
+   URL; all four job-detail routes (`jobs/internships/remote-jobs/
+   government-jobs [slug]`) now set real `openGraph`/`twitter` blocks
+   pointing at it instead of falling through to the layout default.
 4. **BreadcrumbList on every hub page**, not just job-detail pages
    (`Breadcrumbs.tsx` + `breadcrumbSchema()` already exist — this is
    wiring, not new infrastructure). **Done** — see
    INDEXING_RECOVERY_PLAN.md Phase D / CHANGES_THIS_SESSION.md; the
    wiring already existed on every hub page, the actual fix was
    removing a duplicate hand-written breadcrumb `<nav>` left over on
-   seven of them.
+   seven of them. (The new `/batch` hubs from item 1 above also wire this
+   in from the start.)
 5. **hreflang audit for the new filter query params** — confirm
    `languageAlternates()` entries for `/jobs` and `/internships` don't
    break when `?skills=...&batch=...` are present (they shouldn't, since
    `alternates.languages` is keyed off the canonical path, not the full
    query string, but worth a explicit check once Phase 2's server-side
-   filtering changes the canonical query shape).
+   filtering changes the canonical query shape). **Done, no code change
+   needed** — audited both `generateMetadata` functions: `canonical` and
+   `languages` are built from the hardcoded `/jobs`/`/internships`
+   string literal, never from `searchParams`, so the filter query string
+   (including the new Phase 2 `skills=`/`batch=`/etc. params) can't
+   affect them either way. Confirmed safe as-is.

@@ -318,6 +318,7 @@ export default function Sidebar({
         { href: '/hackathons', label: 'Hackathons', key: 'hackathons' },
         { href: '/companies', label: 'Companies', key: 'companies' },
         { href: '/jobs-in', label: 'Jobs by city', key: 'jobsByCity' },
+        { href: '/batch', label: 'Jobs by batch', key: 'jobsByBatch' },
         { href: '/careers', label: 'Career paths', key: 'careerPaths' },
         { href: '/resume-for', label: 'Resume guides', key: 'resumeGuides' },
         { href: '/blog', label: 'Blog', key: 'blog' },

@@ -16,6 +16,31 @@ RANKING_EXPRESSION = "\n    (\n        CASE WHEN lower(company) = ANY(:top_compa
 def _lower_top_companies() -> list[str]:
     return [c.lower() for c in TOP_COMPANY_TIER]
 
+def _freshness_conditions() -> list[str]:
+    """Belt-and-suspenders filter alongside is_active = true.
+
+    is_active is supposed to get flipped to false by the crawler once a
+    posting goes stale, but that only happens on crawl passes that
+    actually run deactivate_stale_jobs()/check_liveness_for_aging_jobs()
+    (see crawler/src/index.py). A crawl run that found zero new jobs
+    (source outage, empty keyword pass, etc.) used to skip that cleanup
+    entirely, so is_active = true rows could pile up for months. This
+    adds an independent, query-time cutoff so listing/count/facet
+    results stay sane even if a cleanup pass gets missed: exclude
+    anything whose stated deadline has passed, or that's past its
+    type-specific max age with no deadline signal at all — internships
+    turn over much faster than full-time/other postings, so they get a
+    tighter 10-day window vs. 20 days for everything else.
+    """
+    return [
+        '(deadline IS NULL OR deadline > now())',
+        """(
+            posted_at IS NULL
+            OR (type = 'internship' AND posted_at > now() - interval '10 days')
+            OR (type <> 'internship' AND posted_at > now() - interval '20 days')
+        )""",
+    ]
+
 # Phase 2 pagination follow-up (PHASE_PLAN.md item 2's leftover note):
 # mirrors apps/web/lib/jobPriority.ts's bucket()/isIndiaJob()/sortIndiaFirst()
 # exactly, so the same "India first, then remote, then Japan, then other"
@@ -83,7 +108,7 @@ def _build_facet_scope_conditions(params: list, *, search: str | None, type: str
     facets endpoint computes options FOR, so applying them here would
     make each dropdown shrink its own option list down to just the
     already-selected value (see jobs/page.tsx's comment on this)."""
-    conditions = ['is_active = true']
+    conditions = ['is_active = true', *_freshness_conditions()]
     if type:
         params.append(type)
         conditions.append(f'type = ${len(params)}')
@@ -175,7 +200,7 @@ async def get_jobs(limit: int=Query(default=200, ge=1, le=500), offset: int=Quer
     pool = await get_db_pool()
     if pool is None:
         raise HTTPException(503, 'Database unavailable')
-    conditions = ['is_active = true']
+    conditions = ['is_active = true', *_freshness_conditions()]
     params: list = []
     if source:
         params.append(source)
@@ -352,7 +377,8 @@ async def get_similar_jobs(job_id: str, limit: int=Query(default=6, ge=1, le=12)
     placeholder = '$6'
     badges_sql = BADGE_EXPRESSIONS.replace(':top_companies', placeholder)
     ranking_sql = SIMILAR_JOBS_EXPRESSION.replace(':self_title', '$2').replace(':self_job_group', '$3').replace(':self_type', '$4').replace(':self_is_remote', '$5').replace(':self_location', '$7')
-    rows = await pool.fetch(f'\n        SELECT\n            {JOB_COLUMNS},\n            {badges_sql},\n            ({ranking_sql}) AS match_score\n        FROM jobs\n        WHERE is_active = true\n          AND id != $1\n          AND (\n              job_group = $3\n              OR type = $4\n              OR similarity(title, $2) > 0.15\n          )\n        ORDER BY match_score DESC, posted_at DESC\n        LIMIT $8\n        ', job_id, self_job['title'] or '', self_job['job_group'] or 'other', self_job['type'] or '', self_job['is_remote'] or False, _lower_top_companies(), self_job['location'] or '', limit)
+    freshness_sql = ' AND '.join(_freshness_conditions())
+    rows = await pool.fetch(f'\n        SELECT\n            {JOB_COLUMNS},\n            {badges_sql},\n            ({ranking_sql}) AS match_score\n        FROM jobs\n        WHERE is_active = true\n          AND {freshness_sql}\n          AND id != $1\n          AND (\n              job_group = $3\n              OR type = $4\n              OR similarity(title, $2) > 0.15\n          )\n        ORDER BY match_score DESC, posted_at DESC\n        LIMIT $8\n        ', job_id, self_job['title'] or '', self_job['job_group'] or 'other', self_job['type'] or '', self_job['is_remote'] or False, _lower_top_companies(), self_job['location'] or '', limit)
     return {'jobs': [dict(row) for row in rows]}
 
 @router.get('/{job_id}')

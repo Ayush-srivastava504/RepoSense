@@ -22,6 +22,7 @@ import type { Job } from '@/lib/jobs';
 import { companySlug } from '@/lib/companies';
 import { getCityForLocation } from '@/app/jobs-in/data';
 import { SKILLS } from '@/app/skills/data';
+import { getBatchByYear } from '@/app/batch/data';
 
 const ROLE_LABELS: Record<string, string> = {
     software: 'Software Engineer',
@@ -75,6 +76,19 @@ export default function ExploreRelated({ job, basePath = '/jobs' }: { job: Job; 
         const skillDef = SKILLS.find((s) => s.slug === slug);
         links.push({ href: `/skills/${slug}`, label: `${skillDef?.name ?? kw} Jobs`, icon: 'tag' });
         if (seenSkillSlugs.size >= 2) break;
+    }
+
+    // PHASE_PLAN.md Phase 3 item 1: link to the batch hub for the earliest
+    // matching passout year the job's structured breakdown lists — only
+    // when that year actually has a curated hub page (app/batch/data.ts),
+    // same "never fabricate a link" rule the rest of this component
+    // follows.
+    const batchYear = job.allowed_passout_years
+        ?.map(String)
+        .sort()
+        .find((year) => getBatchByYear(year));
+    if (batchYear && links.length < 6) {
+        links.push({ href: `/batch/${batchYear}`, label: `${batchYear} Batch Jobs`, icon: 'role' });
     }
 
     if (job.job_group && ROLE_LABELS[job.job_group]) {

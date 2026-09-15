@@ -16,6 +16,7 @@ export async function GET() {
         `${BASE_URL}/sitemap-skills.xml`,
         `${BASE_URL}/sitemap-companies.xml`,
         `${BASE_URL}/sitemap-locations.xml`,
+        `${BASE_URL}/sitemap-batches.xml`,
         `${BASE_URL}/sitemap-resume.xml`,
         `${BASE_URL}/sitemap-careers.xml`,
     ];

@@ -23,6 +23,7 @@ export default function Footer() {
         { labelKey: 'nav.companies', fallback: 'Companies', href: '/companies' },
         { labelKey: 'nav.skills', fallback: 'Browse by skill', href: '/skills' },
         { labelKey: 'nav.jobsByCity', fallback: 'Browse by city', href: '/jobs-in' },
+        { labelKey: 'nav.jobsByBatch', fallback: 'Browse by batch', href: '/batch' },
         { labelKey: 'nav.careerPaths', fallback: 'Career paths', href: '/careers' },
         { labelKey: 'nav.resumeGuides', fallback: 'Resume guides', href: '/resume-for' },
         { labelKey: 'nav.hackathons', fallback: 'Hackathons', href: '/hackathons' },

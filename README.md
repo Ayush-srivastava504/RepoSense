@@ -26,7 +26,7 @@ Repo_Sense/
 │   └── web/                   # Next.js 14 App Router, TypeScript, Tailwind CSS, i18n
 │       ├── app/               # Routes (jobs, internships, blog, auth, tools, tracker)
 │       ├── components/        # Reusable UI components & LanguageSwitcher
-│       ├── content/           # Multilingual blog posts (JSON) and SEO keywords queue
+│       ├── content/           # Multilingual blog posts (JSON, authored manually)
 │       ├── i18n/              # 9 language dictionaries, loader & config
 │       └── lib/               # API client, auth hooks, blog data loaders, structured schemas
 ├── services/

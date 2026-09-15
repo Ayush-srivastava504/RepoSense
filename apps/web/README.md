@@ -26,7 +26,7 @@ The Next.js 14 frontend for the RepoSense platform. Built with React 18, TypeScr
   - LinkedIn Profile Optimizer
   - In-Browser xterm.js Terminal
   - Interactive LeetCode Problem Judge
-- **Programmatic SEO Engine**: Automated generation of localized blog guides, company profiles, skill hubs, city directories, and high-performance multi-part sitemaps.
+- **Programmatic SEO Engine**: Automated generation of company profiles, skill hubs, city directories, and high-performance multi-part sitemaps. Blog posts are authored manually as JSON (see "Adding New Blog Posts" below).
 
 ---
 
@@ -71,8 +71,6 @@ apps/web/
 │   │   ├── ko/                # Korean blog translations
 │   │   ├── it/                # Italian blog translations
 │   │   └── hi/                # Hindi blog translations
-│   └── seo/
-│       └── keywords.json      # Programmatic SEO keyword queue & tracker
 ├── i18n/
 │   ├── config.ts              # Supported locales and metadata
 │   ├── get-dictionary.ts      # Lazy JSON dictionary loader
