@@ -52,6 +52,15 @@ export interface Job {
     experience_max?: number;
     job_function?: string;
     structured_description?: string;
+    // Quality gate — see migrations/020_job_quality_gate.sql and
+    // crawler/src/processors/quality.py. is_thin is a heuristic on
+    // description length at scrape time; enriched_overview (above) is the
+    // stronger, later signal that a job has since gotten a real AI
+    // overview. Sitemap priority and indexability both key off "thin AND
+    // still unenriched" rather than is_thin alone, since a thin job clears
+    // automatically once enrichment fills it in.
+    is_thin?: boolean;
+    quality_score?: number;
 }
 interface JobsResponse {
     jobs?: Job[];

@@ -62,9 +62,19 @@ export async function GET() {
         const deadline = new Date(job.deadline).getTime();
         return Number.isNaN(deadline) || deadline >= now;
     };
+    // Thin-and-unenriched jobs render as near-identical templated pages
+    // (see JobDetail.tsx's buildFallbackSummary()) — shipping every one of
+    // them in the sitemap at the same priority as a fully enriched listing
+    // is exactly the "large fraction of pages look low-value" pattern that
+    // makes Google stop crawling the sitemap altogether. Once a job gets a
+    // real AI overview this clears on its own, so the filter only ever
+    // needs is_thin + the absence of enriched_overview, not a persistent
+    // exclusion list.
+    const isThinAndUnenriched = (job: (typeof jobs)[number]) => job.is_thin === true && !job.enriched_overview;
     const xml = buildUrlsetXml(jobs
         .filter((job) => job?.id)
         .filter(isLive)
+        .filter((job) => !isThinAndUnenriched(job))
         .map((job) => ({
         loc: `${BASE_URL}${canonicalPathForJob(job)}`,
         lastmod: job.posted_at ? new Date(job.posted_at).toISOString() : new Date().toISOString(),

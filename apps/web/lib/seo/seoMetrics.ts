@@ -100,3 +100,15 @@ export function isStaleForIndexing(job: { deadline?: string; posted_at?: string 
             : null;
     return expiry !== null && !Number.isNaN(expiry) && expiry < Date.now();
 }
+
+// A job counts as low-value for indexing purposes while it's both flagged
+// is_thin (crawler/src/processors/quality.py's description-length
+// heuristic) and hasn't yet received a real AI overview. This is the same
+// condition sitemap-jobs.xml uses to drop a job from the sitemap entirely
+// — noindex-ing the page itself too means Google isn't relying solely on
+// the sitemap omission (it can still discover the URL via internal links).
+// Clears automatically the moment enrichment backfills enriched_overview,
+// same as isStaleForIndexing clears once a deadline resolves.
+export function isThinAndUnenriched(job: { is_thin?: boolean; enriched_overview?: string }): boolean {
+    return job.is_thin === true && !job.enriched_overview;
+}
