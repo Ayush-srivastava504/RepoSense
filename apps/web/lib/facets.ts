@@ -1,24 +1,29 @@
 // Module: lib/facets.ts
-// Defines function(s): slugifyFacet, buildFacetCounts, getFacetSnapshot
+// Defines function(s): slugifyFacet, buildFacetCounts, getJobFacets
 // Defines type(s): FacetOption, FacetSnapshot
 //
-// PHASE 1 — computes the option lists (with live counts) that back the
+// Computes the option lists (with live counts) that back the
 // dropdown-popover filters in AdvancedJobFilters.tsx: Skills, Course,
 // Source, Batch (passout year), and Company. This mirrors what
 // FresherFlow's sitemap/facet generation does server-side in
-// staticFeed.service.ts, except computed here in the Next.js layer over
-// the already-fetched job array (getJobs() pulls up to `limit` jobs per
-// request) rather than a dedicated backend facets endpoint.
+// staticFeed.service.ts.
 //
-// This is a deliberate Phase 1 scope call: it is correct and fast for the
-// current catalog size, but does not scale past the `limit` passed to
-// getJobs(). Phase 2 should add a real `/api/jobs/facets` endpoint that
-// computes these counts against the full table server-side (see
-// PHASE_PLAN.md) — swap the call site in jobs/page.tsx /
-// internships/page.tsx for that endpoint's response and this file's
-// public shape (`FacetSnapshot`) can stay the same.
+// PHASE 1 shipped `buildFacetCounts()`, computed client-side (well,
+// server-component-side) over the already-fetched job array — correct
+// but bounded by whatever `limit` was passed to getJobs(), so it didn't
+// scale past that page of jobs.
+//
+// PHASE 2 (PHASE_PLAN.md item 1) adds `getJobFacets()` below, which
+// calls the real `GET /api/jobs/facets` backend endpoint — it aggregates
+// against the FULL active-jobs table, not just the fetched page. Its
+// response shape matches `FacetSnapshot` exactly (routes/jobs.py's
+// `get_jobs_facets` was written to mirror this file), so this was a
+// pure call-site swap in jobs/page.tsx / internships/page.tsx.
+// `buildFacetCounts()` is kept for tests/tooling that want to compute
+// counts over an arbitrary in-memory Job[] rather than round-trip to the
+// API, but the list pages themselves now call `getJobFacets()`.
 
-import type { Job } from './jobs';
+import type { Job, JobGroup } from './jobs';
 
 export interface FacetOption {
     value: string;
@@ -153,4 +158,65 @@ export function buildFacetCounts(jobs: Job[]): FacetSnapshot {
         batches: toSortedOptions(batchCounts).sort((a, b) => Number(b.value) - Number(a.value)),
         companies: toSortedOptions(companyCounts),
     };
+}
+
+const EMPTY_FACETS: FacetSnapshot = {
+    skills: [],
+    courses: [],
+    sources: [],
+    batches: [],
+    companies: [],
+};
+
+// Phase 2 (PHASE_PLAN.md item 1): fetches facet option counts from the
+// backend, scoped by the same location/role/mode/search params getJobs()
+// takes — deliberately NOT including skills/courses/sources/batches/
+// companies themselves, so a selected "Skills: React" chip doesn't
+// shrink its own dropdown's option list down to just React (matches
+// routes/jobs.py's `_build_facet_scope_conditions` comment).
+export async function getJobFacets(options: {
+    search?: string;
+    type?: string;
+    category?: 'remote' | 'government';
+    job_group?: JobGroup;
+    country?: string;
+    work_mode?: 'ONSITE' | 'REMOTE' | 'HYBRID';
+} = {}): Promise<FacetSnapshot> {
+    if (!process.env.API_BASE_URL) {
+        console.error('API_BASE_URL is not set');
+        return EMPTY_FACETS;
+    }
+    try {
+        const params = new URLSearchParams();
+        if (options.search)
+            params.set('search', options.search);
+        if (options.type)
+            params.set('type', options.type);
+        if (options.category)
+            params.set('category', options.category);
+        if (options.job_group)
+            params.set('job_group', options.job_group);
+        if (options.country)
+            params.set('country', options.country);
+        if (options.work_mode)
+            params.set('work_mode', options.work_mode);
+        const qs = params.toString();
+        const res = await fetch(`${process.env.API_BASE_URL}/api/jobs/facets${qs ? `?${qs}` : ''}`, { next: { revalidate: 3600 } });
+        if (!res.ok) {
+            console.error('Facets API returned', res.status);
+            return EMPTY_FACETS;
+        }
+        const data = await res.json();
+        return {
+            skills: Array.isArray(data.skills) ? data.skills : [],
+            courses: Array.isArray(data.courses) ? data.courses : [],
+            sources: Array.isArray(data.sources) ? data.sources : [],
+            batches: Array.isArray(data.batches) ? data.batches : [],
+            companies: Array.isArray(data.companies) ? data.companies : [],
+        };
+    }
+    catch (err) {
+        console.error('Failed to fetch job facets:', err);
+        return EMPTY_FACETS;
+    }
 }

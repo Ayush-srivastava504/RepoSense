@@ -57,6 +57,7 @@ interface JobsResponse {
     jobs?: Job[];
     data?: Job[];
     results?: Job[];
+    total?: number;
 }
 function coerceJobs(data: JobsResponse | Job[]): Job[] {
     if (Array.isArray(data))
@@ -69,7 +70,7 @@ function coerceJobs(data: JobsResponse | Job[]): Job[] {
         return data.results;
     return [];
 }
-export async function getJobs(options: {
+interface GetJobsOptions {
     search?: string;
     type?: string;
     category?: 'remote' | 'government';
@@ -82,35 +83,71 @@ export async function getJobs(options: {
     sort?: 'recent' | 'ranked';
     limit?: number;
     offset?: number;
-} = {}): Promise<Job[]> {
+    // Phase 2 (PHASE_PLAN.md item 2): multi-select facet filters, applied
+    // server-side. Each is a list of facet-option slugs (FacetOption.value
+    // from getJobFacets()); a job matches if it has ANY of the listed
+    // values, ANDed across the five filter groups. Joined into the
+    // comma-separated `skills=`/`courses=`/etc params routes/jobs.py's
+    // `_parse_multi()` expects.
+    skills?: string[];
+    courses?: string[];
+    sources?: string[];
+    batches?: string[];
+    companies?: string[];
+    // Phase 2 pagination follow-up (PHASE_PLAN.md item 2's leftover note):
+    // server-side equivalents of lib/jobPriority.ts's isIndiaJob()/
+    // sortIndiaFirst(), so /jobs and /internships can paginate the
+    // "India" location filter with real LIMIT/OFFSET — see getJobsPage().
+    indiaOnly?: boolean;
+    indiaFirst?: boolean;
+}
+function buildJobsParams(options: GetJobsOptions): URLSearchParams {
+    const params = new URLSearchParams({
+        limit: String(options.limit ?? 500),
+        offset: String(options.offset ?? 0),
+        sort: options.sort ?? 'recent',
+    });
+    if (options.search)
+        params.set('search', options.search);
+    if (options.type)
+        params.set('type', options.type);
+    if (options.category)
+        params.set('category', options.category);
+    if (options.job_group)
+        params.set('job_group', options.job_group);
+    if (options.country)
+        params.set('country', options.country);
+    if (options.company)
+        params.set('company', options.company);
+    if (options.skill)
+        params.set('skill', options.skill);
+    if (options.work_mode)
+        params.set('work_mode', options.work_mode);
+    if (options.course)
+        params.set('course', options.course);
+    if (options.skills?.length)
+        params.set('skills', options.skills.join(','));
+    if (options.courses?.length)
+        params.set('courses', options.courses.join(','));
+    if (options.sources?.length)
+        params.set('sources', options.sources.join(','));
+    if (options.batches?.length)
+        params.set('batches', options.batches.join(','));
+    if (options.companies?.length)
+        params.set('companies', options.companies.join(','));
+    if (options.indiaOnly)
+        params.set('india_only', 'true');
+    if (options.indiaFirst)
+        params.set('india_first', 'true');
+    return params;
+}
+export async function getJobs(options: GetJobsOptions = {}): Promise<Job[]> {
     if (!process.env.API_BASE_URL) {
         console.error('API_BASE_URL is not set');
         return [];
     }
     try {
-        const params = new URLSearchParams({
-            limit: String(options.limit ?? 500),
-            offset: String(options.offset ?? 0),
-            sort: options.sort ?? 'recent',
-        });
-        if (options.search)
-            params.set('search', options.search);
-        if (options.type)
-            params.set('type', options.type);
-        if (options.category)
-            params.set('category', options.category);
-        if (options.job_group)
-            params.set('job_group', options.job_group);
-        if (options.country)
-            params.set('country', options.country);
-        if (options.company)
-            params.set('company', options.company);
-        if (options.skill)
-            params.set('skill', options.skill);
-        if (options.work_mode)
-            params.set('work_mode', options.work_mode);
-        if (options.course)
-            params.set('course', options.course);
+        const params = buildJobsParams(options);
         const res = await fetch(`${process.env.API_BASE_URL}/api/jobs/?${params.toString()}`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             console.error('Jobs API returned', res.status);
@@ -121,6 +158,38 @@ export async function getJobs(options: {
     catch (err) {
         console.error('Failed to fetch jobs:', err);
         return [];
+    }
+}
+// Phase 2 pagination follow-up (PHASE_PLAN.md item 2's leftover note):
+// same request as getJobs(), but also returns the backend's real `total`
+// (a COUNT(*) over the full filtered table, not just the fetched page) so
+// callers can paginate with actual LIMIT/OFFSET instead of over-fetching
+// up to 500 rows and slicing client-side. Kept as a separate function
+// rather than changing getJobs()'s return type, since getJobs() is called
+// from many hub/sitemap pages that only ever want the array.
+export async function getJobsPage(options: GetJobsOptions = {}): Promise<{ jobs: Job[]; total: number }> {
+    if (!process.env.API_BASE_URL) {
+        console.error('API_BASE_URL is not set');
+        return { jobs: [], total: 0 };
+    }
+    try {
+        const params = buildJobsParams(options);
+        const res = await fetch(`${process.env.API_BASE_URL}/api/jobs/?${params.toString()}`, { next: { revalidate: 3600 } });
+        if (!res.ok) {
+            console.error('Jobs API returned', res.status);
+            return { jobs: [], total: 0 };
+        }
+        const data: JobsResponse = await res.json();
+        const jobs = coerceJobs(data);
+        // Fall back to the fetched page length only if the backend response
+        // doesn't include `total` (e.g. an older/mocked API) — keeps this
+        // degrading gracefully instead of breaking pagination outright.
+        const total = typeof data.total === 'number' ? data.total : jobs.length;
+        return { jobs, total };
+    }
+    catch (err) {
+        console.error('Failed to fetch jobs:', err);
+        return { jobs: [], total: 0 };
     }
 }
 export async function getFeaturedJobs(options: {

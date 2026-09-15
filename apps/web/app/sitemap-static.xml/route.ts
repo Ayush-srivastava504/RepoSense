@@ -29,8 +29,10 @@ export async function GET() {
     { path: '/cover-letter', changefreq: 'monthly' as const, priority: 0.7 },
     { path: '/github', changefreq: 'monthly' as const, priority: 0.7 },
     { path: '/linkedin', changefreq: 'monthly' as const, priority: 0.7 },
-    { path: '/register', changefreq: 'monthly' as const, priority: 0.6 },
-    { path: '/login', changefreq: 'monthly' as const, priority: 0.5 },
+    // /login and /register deliberately excluded — noindexed via
+    // middleware.ts's NOINDEX_PREFIXES (Phase 2 audit, PHASE_PLAN.md
+    // item 7); a sitemap entry for a noindexed page is a conflicting
+    // signal to crawlers.
   ];
 
   const entries = coreHubs.map((hub) => {

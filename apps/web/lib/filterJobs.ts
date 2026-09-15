@@ -1,15 +1,22 @@
 // Module: lib/filterJobs.ts
-// Defines function(s): parseMultiParam, encodeMultiParam, applyAdvancedFilters
+// Defines function(s): parseMultiParam, encodeMultiParam, parseAdvancedFilters,
+//   hasActiveAdvancedFilters, applyAdvancedFilters
 // Defines type(s): AdvancedFilters
 //
-// PHASE 1 — applies the multi-select Skills / Course / Source / Batch /
-// Company filters (from AdvancedJobFilters.tsx) over an already-fetched
-// Job[] array. Location, Role, and Work Mode stay server-side (passed to
-// getJobs()) since the API already supports them as single-value filters;
-// these five are additive client/server-post-filters layered on top so we
-// don't need backend API changes to ship the FresherFlow-style filter bar.
-// See lib/facets.ts for why this is a Phase 1 scope call, not a permanent
-// architecture.
+// parseAdvancedFilters()/encodeMultiParam() read and write the
+// ?skills=/&course=/&source=/&batch=/&company= query params the
+// AdvancedJobFilters.tsx dropdown bar uses — these are still the source
+// of truth for URL state regardless of where filtering happens.
+//
+// PHASE 1 also applied the resulting filters client-side, in-process,
+// over an already-fetched Job[] array (see applyAdvancedFilters() below).
+// PHASE 2 (PHASE_PLAN.md item 2) pushed that filtering server-side
+// instead — jobs/page.tsx / internships/page.tsx now pass
+// advancedFilters straight into getJobs()'s skills/courses/sources/
+// batches/companies params, which routes/jobs.py applies in SQL. This
+// scales past whatever `limit` getJobs() fetches, unlike the Phase 1
+// array filter. applyAdvancedFilters() is kept here as a pure fallback/
+// testing utility — it's no longer called from either list page.
 
 import type { Job } from './jobs';
 import { slugifyFacet } from './facets';

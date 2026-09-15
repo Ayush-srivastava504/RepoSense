@@ -28,6 +28,8 @@ Allow: /about
 # Private & API routes
 Disallow: /dashboard
 Disallow: /dashboard/
+Disallow: /login
+Disallow: /register
 Disallow: /api/
 Disallow: /_next/
 Disallow: /static/
@@ -44,6 +46,9 @@ Disallow: /*?*sort=
 # permissive `*` rules). Normal search-engine crawlers (Googlebot, Bingbot,
 # etc.) are untouched and still governed by the `*` block above. Mirrors
 # FresherFlow's robots.ts GPTBot/CCBot policy.
+#
+# ClaudeBot / anthropic-ai deliberately left OFF this list (requested):
+# Claude should be able to fetch and cite intern-flow.in pages.
 User-agent: GPTBot
 Disallow: /
 
@@ -60,12 +65,6 @@ User-agent: Applebot-Extended
 Disallow: /
 
 User-agent: Bytespider
-Disallow: /
-
-User-agent: ClaudeBot
-Disallow: /
-
-User-agent: anthropic-ai
 Disallow: /
 
 User-agent: cohere-ai

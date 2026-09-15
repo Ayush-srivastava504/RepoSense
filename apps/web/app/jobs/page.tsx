@@ -6,19 +6,19 @@ import Link from 'next/link';
 
 import Script from 'next/script';
 import { jobSlug } from '@/lib/slug';
-import { getJobs, getFeaturedJobs, BASE_URL, } from '@/lib/jobs';
+import { getJobsPage, getFeaturedJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
 import FeaturedJobs from '@/app/components/FeaturedJobs';
 import SponsoredCard from '@/app/components/SponsoredCard';
 import JobsSearchTracker from '@/app/components/JobsSearchTracker';
-import JobFilters, { parseLocationFilter, parseGroupFilter, parseWorkModeFilter, } from '@/app/components/JobFilters';
+import { parseLocationFilter, parseGroupFilter, parseWorkModeFilter, } from '@/app/components/JobFilters';
 import AdvancedJobFilters from '@/app/components/AdvancedJobFilters';
 import PopularSkills from '@/app/components/PopularSkills';
 import { sortIndiaFirst, isIndiaJob } from '@/lib/jobPriority';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
-import { buildFacetCounts } from '@/lib/facets';
-import { parseAdvancedFilters, applyAdvancedFilters } from '@/lib/filterJobs';
+import { getJobFacets } from '@/lib/facets';
+import { parseAdvancedFilters } from '@/lib/filterJobs';
 const JOBS_PER_PAGE = 12;
 export const metadata: Metadata = {
     title: 'Job & Internship Listings — India, Remote & Japan — Refreshed Daily',
@@ -132,37 +132,59 @@ export default async function JobsPage({ searchParams, }: {
         ...(locationFilter === 'japan' ? { country: 'Japan' } : {}),
         ...(groupFilter !== 'all' ? { job_group: groupFilter } : {}),
         ...(workModeFilter !== 'all' ? { work_mode: workModeFilter } : {}),
+        // Phase 2 pagination follow-up (PHASE_PLAN.md item 2's leftover
+        // note): India filtering/ordering now happens server-side
+        // (routes/jobs.py's india_only/india_first) so the list can be
+        // paginated with real LIMIT/OFFSET, instead of fetching up to 500
+        // jobs and running lib/jobPriority.ts's isIndiaJob()/
+        // sortIndiaFirst() over the whole fetched array client-side.
+        ...(locationFilter === 'india' ? { indiaOnly: true } : {}),
+        ...(locationFilter === 'all' ? { indiaFirst: true } : {}),
     };
     const showFeatured = !search && requestedPage === 1;
-    const [fetchedJobs, fetchedFeatured] = await Promise.all([
-        getJobs(jobsFilterOptions),
+    const fetchJobsPage = (page: number) => getJobsPage({
+        ...jobsFilterOptions,
+        skills: advancedFilters.skills,
+        courses: advancedFilters.courses,
+        sources: advancedFilters.sources,
+        batches: advancedFilters.batches,
+        companies: advancedFilters.companies,
+        limit: JOBS_PER_PAGE,
+        offset: (page - 1) * JOBS_PER_PAGE,
+    });
+    const [firstPage, fetchedFeatured, facets] = await Promise.all([
+        fetchJobsPage(requestedPage),
         showFeatured
             ? getFeaturedJobs(jobsFilterOptions)
             : Promise.resolve([]),
+        // Phase 2 (PHASE_PLAN.md item 1): counts come from the backend
+        // facets endpoint (full-table aggregation), scoped by
+        // location+role+mode+search but deliberately NOT by the advanced
+        // filters themselves — so a selected "Skills: React" chip doesn't
+        // shrink its own dropdown's option list down to just React.
+        getJobFacets(jobsFilterOptions),
     ]);
-    const allJobs = locationFilter === 'india'
-        ? fetchedJobs.filter(isIndiaJob)
-        : locationFilter === 'all'
-            ? sortIndiaFirst(fetchedJobs)
-            : fetchedJobs;
+    let jobs = firstPage.jobs;
+    let totalJobs = firstPage.total;
+    let totalPages = Math.max(1, Math.ceil(totalJobs / JOBS_PER_PAGE));
+    let currentPage = Math.min(requestedPage, totalPages);
+    // requestedPage pointed past the last page (a stale bookmark or a
+    // hand-edited ?page=), so the offset above landed beyond `total` and
+    // came back empty — refetch at the clamped page. Only the
+    // out-of-range case pays for a second request; the common case above
+    // is a single fetch.
+    if (currentPage !== requestedPage) {
+        const clamped = await fetchJobsPage(currentPage);
+        jobs = clamped.jobs;
+        totalJobs = clamped.total;
+        totalPages = Math.max(1, Math.ceil(totalJobs / JOBS_PER_PAGE));
+    }
     const featured = locationFilter === 'india'
         ? fetchedFeatured.filter(isIndiaJob)
         : locationFilter === 'all'
             ? sortIndiaFirst(fetchedFeatured)
             : fetchedFeatured;
-    // Facet counts (Skills/Course/Source/Batch/Company) are computed from the
-    // location+role+mode-scoped set BEFORE the advanced filters themselves are
-    // applied, so a selected "Skills: React" chip doesn't shrink its own count
-    // list down to just React — the dropdown should show what else is still
-    // reachable, same behaviour as FresherFlow's filter panel.
-    const facets = buildFacetCounts(allJobs);
-    const advancedFilteredJobs = applyAdvancedFilters(allJobs, advancedFilters);
-    const totalJobs = advancedFilteredJobs.length;
-    const totalPages = Math.max(1, Math.ceil(totalJobs / JOBS_PER_PAGE));
-    const currentPage = Math.min(requestedPage, totalPages);
     const startIndex = (currentPage - 1) * JOBS_PER_PAGE;
-    const endIndex = Math.min(startIndex + JOBS_PER_PAGE, totalJobs);
-    const jobs = advancedFilteredJobs.slice(startIndex, endIndex);
     const itemListSchema = {
         '@context': 'https://schema.org',
         '@type': 'ItemList',
@@ -254,8 +276,6 @@ export default async function JobsPage({ searchParams, }: {
               {search}&quot;
             </p>)}
         </form>
-
-        <JobFilters basePath="/jobs" search={search} location={locationFilter} group={groupFilter} mode={workModeFilter}/>
 
         <AdvancedJobFilters basePath="/jobs" search={search} location={locationFilter} group={groupFilter} mode={workModeFilter} skills={advancedFilters.skills} courses={advancedFilters.courses} sources={advancedFilters.sources} batches={advancedFilters.batches} companies={advancedFilters.companies} facets={facets} resultCount={totalJobs}/>
 

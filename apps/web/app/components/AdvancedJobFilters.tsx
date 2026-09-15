@@ -5,9 +5,18 @@
 // PHASE 1 — the FresherFlow-parity filter bar: a row of dropdown-popover
 // filters (Location, Role, Skills, Course, Source, Batch, Company), each
 // with a search box where useful and live "(N)" counts, matching
-// FresherFlow's /internships filter UX. Renders below the existing quick
-// chip filters (JobFilters.tsx) rather than replacing them, so the
-// single-tap common cases (All / India / Remote) stay one click away.
+// FresherFlow's /internships filter UX.
+//
+// PHASE 2 — this is now the only filter bar on /jobs and /internships.
+// It originally rendered alongside the older quick chip bar
+// (JobFilters.tsx's default export), but that duplicated Location/Role
+// with a second, less capable control; the chip bar's render was removed
+// from both pages since this component already covers everything it did
+// plus Skills/Course/Source/Batch/Company. JobFilters.tsx itself is kept
+// (its parseLocationFilter/parseGroupFilter/parseWorkModeFilter helpers
+// and its RoleFilter export are still used by jobs/page.tsx,
+// internships/page.tsx, and remote-jobs/page.tsx) — only the old
+// <JobFilters> chip UI was removed.
 //
 // Location / Role / Work Mode changes navigate (they determine the
 // server-side fetch in jobs/page.tsx). Skills / Course / Source / Batch /

@@ -3,6 +3,8 @@
 #
 #
 
+import asyncio
+import re
 from fastapi import APIRouter, HTTPException, Query
 from configs.db import get_db_pool
 router = APIRouter(prefix='/api/jobs', tags=['jobs'])
@@ -14,8 +16,162 @@ RANKING_EXPRESSION = "\n    (\n        CASE WHEN lower(company) = ANY(:top_compa
 def _lower_top_companies() -> list[str]:
     return [c.lower() for c in TOP_COMPANY_TIER]
 
+# Phase 2 pagination follow-up (PHASE_PLAN.md item 2's leftover note):
+# mirrors apps/web/lib/jobPriority.ts's bucket()/isIndiaJob()/sortIndiaFirst()
+# exactly, so the same "India first, then remote, then Japan, then other"
+# grouping (and the "India" filter itself) can be pushed into SQL instead of
+# being computed by slicing a fetched, limit-bounded array client-side.
+# country is treated as India whenever it's NULL/blank, matching the JS
+# version's `!country || country === 'india'` check.
+_INDIA_BUCKET_SQL = """(
+    CASE
+        WHEN country IS NULL OR trim(country) = '' OR lower(trim(country)) = 'india' THEN 0
+        WHEN is_remote THEN 1
+        WHEN lower(trim(country)) = 'japan' THEN 2
+        ELSE 3
+    END
+)"""
+_INDIA_ONLY_CONDITION = "(country IS NULL OR trim(country) = '' OR lower(trim(country)) = 'india')"
+
+# --- Phase 2: backend facets endpoint + server-side multi-select filters ---
+# See PHASE_PLAN.md items 1-2. Mirrors apps/web/lib/facets.ts's
+# slugifyFacet() exactly (lower -> collapse non-alnum runs to '-' -> trim
+# leading/trailing '-') so a slug computed here always matches a slug
+# computed there — the frontend sends these slugs back as ?skills=...
+# query values, and expects them to line up 1:1 with FacetOption.value.
+def _slug_sql(expr: str) -> str:
+    return f"regexp_replace(regexp_replace(lower(trim({expr})), '[^a-z0-9]+', '-', 'g'), '(^-|-$)', '')"
+
+# Mirrors lib/facets.ts's SOURCE_LABELS. Kept in sync manually since one
+# lives in the Next.js layer and one here; both are small, human-curated
+# display-name tables.
+SOURCE_LABELS = {
+    'greenhouse': 'Greenhouse', 'lever': 'Lever', 'ashby': 'Ashby',
+    'smartrecruiters': 'SmartRecruiters', 'workable': 'Workable',
+    'recruitee': 'Recruitee', 'teamtailor': 'Teamtailor', 'bamboohr': 'BambooHR',
+    'breezyhr': 'Breezy HR', 'personio': 'Personio', 'freshteam': 'Freshteam',
+    'naukri': 'Naukri', 'internshala': 'Internshala', 'linkedin': 'LinkedIn',
+    'hiringcafe': 'Hiring Cafe', 'unstop': 'Unstop', 'cutshort': 'Cutshort',
+    'company_portals': 'Company Careers', 'remoteok': 'RemoteOK',
+    'weworkremotely': 'We Work Remotely', 'remotive': 'Remotive',
+    'employment_news': 'Employment News', 'freejobalert': 'FreeJobAlert',
+    'dorker': 'Web Discovery', 'generic_boards': 'Job Boards',
+}
+
+def _source_label(raw: str) -> str:
+    key = raw.lower().strip()
+    if key in SOURCE_LABELS:
+        return SOURCE_LABELS[key]
+    return re.sub(r'\b\w', lambda m: m.group(0).upper(), re.sub(r'[_-]+', ' ', raw))
+
+def _parse_multi(value: str | None) -> list[str]:
+    if not value:
+        return []
+    seen: dict[str, None] = {}
+    for part in value.split(','):
+        part = part.strip()
+        if part:
+            seen[part] = None
+    return list(seen.keys())
+
+FACET_MAX_OPTIONS = 60
+
+def _build_facet_scope_conditions(params: list, *, search: str | None, type: str | None, category: str | None, job_group: str | None, country: str | None, work_mode: str | None) -> list[str]:
+    """Same scoping semantics as get_jobs's search/type/category/job_group/
+    country/work_mode conditions, deliberately NOT including
+    skill/course/source/batch/company — those are exactly the filters the
+    facets endpoint computes options FOR, so applying them here would
+    make each dropdown shrink its own option list down to just the
+    already-selected value (see jobs/page.tsx's comment on this)."""
+    conditions = ['is_active = true']
+    if type:
+        params.append(type)
+        conditions.append(f'type = ${len(params)}')
+    if category == 'remote':
+        conditions.append('is_remote = true')
+    elif category == 'government':
+        conditions.append('is_government = true')
+    if job_group:
+        params.append(job_group)
+        conditions.append(f'job_group = ${len(params)}')
+    if country:
+        params.append(country)
+        conditions.append(f'lower(country) = lower(${len(params)})')
+    if work_mode:
+        params.append(work_mode)
+        conditions.append(f'work_mode = ${len(params)}')
+    if search:
+        params.append(f'%{search}%')
+        n = len(params)
+        conditions.append(f'(title ILIKE ${n} OR company ILIKE ${n} OR description ILIKE ${n})')
+    return conditions
+
+async def _array_facet_counts(pool, where: str, params: list, array_expr: str) -> list[dict]:
+    """Aggregates an array column (e.g. allowed_courses) into
+    {value, label, count}, one row per distinct (job, slug) pair so a job
+    listing two variants of the same skill only counts once — matching
+    lib/facets.ts's `seenOnThisJob` dedupe."""
+    slug = _slug_sql('val')
+    sql = f"""
+        WITH expanded AS (
+            SELECT id, posted_at, val
+            FROM jobs, unnest(coalesce({array_expr}, '{{}}')) AS val
+            WHERE {where} AND val IS NOT NULL AND trim(val) <> ''
+        ),
+        keyed AS (
+            SELECT DISTINCT ON (id, {slug}) id, posted_at, {slug} AS key, val
+            FROM expanded
+            ORDER BY id, {slug}, val
+        )
+        SELECT key AS value, (array_agg(val ORDER BY posted_at DESC NULLS LAST))[1] AS label, COUNT(*) AS count
+        FROM keyed
+        WHERE key <> ''
+        GROUP BY key
+        ORDER BY count DESC, label ASC
+        LIMIT {FACET_MAX_OPTIONS}
+    """
+    rows = await pool.fetch(sql, *params)
+    return [dict(row) for row in rows]
+
+async def _scalar_facet_counts(pool, where: str, params: list, column: str) -> list[dict]:
+    slug = _slug_sql('val')
+    sql = f"""
+        WITH base AS (
+            SELECT id, posted_at, {column} AS val
+            FROM jobs
+            WHERE {where} AND {column} IS NOT NULL AND trim({column}) <> ''
+        )
+        SELECT {slug} AS value, (array_agg(val ORDER BY posted_at DESC NULLS LAST))[1] AS label, COUNT(*) AS count
+        FROM base
+        GROUP BY {slug}
+        HAVING {slug} <> ''
+        ORDER BY count DESC, label ASC
+        LIMIT {FACET_MAX_OPTIONS}
+    """
+    rows = await pool.fetch(sql, *params)
+    return [dict(row) for row in rows]
+
+async def _batch_facet_counts(pool, where: str, params: list) -> list[dict]:
+    sql = f"""
+        WITH expanded AS (
+            SELECT id, y::text AS val
+            FROM jobs, unnest(coalesce(allowed_passout_years, '{{}}')) AS y
+            WHERE {where}
+        ),
+        deduped AS (
+            SELECT DISTINCT id, val FROM expanded
+        )
+        SELECT val AS value, val AS label, COUNT(*) AS count
+        FROM deduped
+        GROUP BY val
+        ORDER BY val DESC
+        LIMIT {FACET_MAX_OPTIONS}
+    """
+    rows = await pool.fetch(sql, *params)
+    return [dict(row) for row in rows]
+
 @router.get('/')
-async def get_jobs(limit: int=Query(default=200, ge=1, le=500), offset: int=Query(default=0, ge=0), source: str | None=Query(default=None), search: str | None=Query(default=None), type: str | None=Query(default=None, description="Filter by job type, e.g. 'internship'"), category: str | None=Query(default=None, pattern='^(remote|government)$', description="'remote' for is_remote=true, 'government' for is_government=true"), job_group: str | None=Query(default=None, pattern='^(software|sales|finance|other)$', description='Coarse role filter: software | sales | finance | other'), country: str | None=Query(default=None, description="Filter by country, e.g. 'Japan'. Case-insensitive exact match."), company: str | None=Query(default=None, description='Filter by company name. Case-insensitive exact match, used by /companies/[slug] hub pages.'), skill: str | None=Query(default=None, description='Filter by skill/technology. Matches the structured required_skills array first (exact, case-insensitive), then enriched_keywords, then falls back to title/description — used by /skills/[slug] hub pages.'), work_mode: str | None=Query(default=None, pattern='^(ONSITE|REMOTE|HYBRID)$', description='Filter by extracted work mode: ONSITE | REMOTE | HYBRID.'), course: str | None=Query(default=None, description='Filter by allowed course/degree, e.g. "B.Tech" or "Diploma". Matches allowed_courses array, case-insensitive.'), sort: str=Query(default='recent', pattern='^(recent|ranked)$', description="'recent' (default, unchanged) or 'ranked' for the boosted first-page ordering")):
+async def get_jobs(limit: int=Query(default=200, ge=1, le=500), offset: int=Query(default=0, ge=0), source: str | None=Query(default=None), search: str | None=Query(default=None), type: str | None=Query(default=None, description="Filter by job type, e.g. 'internship'"), category: str | None=Query(default=None, pattern='^(remote|government)$', description="'remote' for is_remote=true, 'government' for is_government=true"), job_group: str | None=Query(default=None, pattern='^(software|sales|finance|other)$', description='Coarse role filter: software | sales | finance | other'), country: str | None=Query(default=None, description="Filter by country, e.g. 'Japan'. Case-insensitive exact match."), company: str | None=Query(default=None, description='Filter by company name. Case-insensitive exact match, used by /companies/[slug] hub pages.'), skill: str | None=Query(default=None, description='Filter by skill/technology. Matches the structured required_skills array first (exact, case-insensitive), then enriched_keywords, then falls back to title/description — used by /skills/[slug] hub pages.'), work_mode: str | None=Query(default=None, pattern='^(ONSITE|REMOTE|HYBRID)$', description='Filter by extracted work mode: ONSITE | REMOTE | HYBRID.'), course: str | None=Query(default=None, description='Filter by allowed course/degree, e.g. "B.Tech" or "Diploma". Matches allowed_courses array, case-insensitive.'), sort: str=Query(default='recent', pattern='^(recent|ranked)$', description="'recent' (default, unchanged) or 'ranked' for the boosted first-page ordering"), skills: str | None=Query(default=None, description='Phase 2 multi-select (PHASE_PLAN.md item 2): comma-separated skill slugs from GET /api/jobs/facets, e.g. "react-js,python". ANDed with the other filters; a job matches if it has ANY of the listed skills.'), courses: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated course slugs from the facets endpoint.'), sources: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated source slugs from the facets endpoint.'), batches: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated passout-year strings, e.g. "2026,2027".'), companies: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated company slugs from the facets endpoint.'), india_only: bool=Query(default=False, description='Phase 2 pagination follow-up: server-side equivalent of the frontend\'s isIndiaJob() filter (country is null/blank/India). Lets /jobs and /internships paginate the "India" location filter with real LIMIT/OFFSET instead of over-fetching and filtering client-side.'), india_first: bool=Query(default=False, description='Phase 2 pagination follow-up: server-side equivalent of the frontend\'s sortIndiaFirst() — orders India/blank-country rows first, then remote, then Japan, then everything else, before the existing sort/ranked ordering as a tiebreaker within each group.')):
     pool = await get_db_pool()
     if pool is None:
         raise HTTPException(503, 'Database unavailable')
@@ -64,6 +220,48 @@ async def get_jobs(limit: int=Query(default=200, ge=1, le=500), offset: int=Quer
         params.append(f'%{search}%')
         n = len(params)
         conditions.append(f'(title ILIKE ${n} OR company ILIKE ${n} OR description ILIKE ${n})')
+    # Phase 2 (PHASE_PLAN.md item 2): the AdvancedJobFilters.tsx multi-select
+    # bar. Values are pre-slugified by the frontend (facets endpoint hands
+    # out {value: <slug>, ...} options, and the filter bar echoes `value`
+    # straight back as the query param) — apply the identical slug
+    # expression here so a row matches iff its facets.ts-computed slug
+    # would have matched. Each behaves as an OR-of-selections, ANDed with
+    # every other filter, mirroring applyAdvancedFilters()'s matchesAny().
+    skills_list = _parse_multi(skills)
+    if skills_list:
+        params.append(skills_list)
+        n = len(params)
+        skills_slug = _slug_sql('k')
+        conditions.append(f"""EXISTS (
+            SELECT 1 FROM unnest(coalesce(
+                CASE WHEN required_skills IS NOT NULL THEN required_skills ELSE enriched_keywords END,
+                '{{}}'
+            )) k
+            WHERE {skills_slug} = ANY(${n})
+        )""")
+    courses_list = _parse_multi(courses)
+    if courses_list:
+        params.append(courses_list)
+        n = len(params)
+        courses_slug = _slug_sql('c')
+        conditions.append(f"EXISTS (SELECT 1 FROM unnest(coalesce(allowed_courses, '{{}}')) c WHERE {courses_slug} = ANY(${n}))")
+    sources_list = _parse_multi(sources)
+    if sources_list:
+        params.append(sources_list)
+        n = len(params)
+        conditions.append(f'{_slug_sql("source")} = ANY(${n})')
+    companies_list = _parse_multi(companies)
+    if companies_list:
+        params.append(companies_list)
+        n = len(params)
+        conditions.append(f'{_slug_sql("company")} = ANY(${n})')
+    batches_list = _parse_multi(batches)
+    if batches_list:
+        params.append(batches_list)
+        n = len(params)
+        conditions.append(f"EXISTS (SELECT 1 FROM unnest(coalesce(allowed_passout_years, '{{}}')) y WHERE y::text = ANY(${n}))")
+    if india_only:
+        conditions.append(_INDIA_ONLY_CONDITION)
     where = 'WHERE ' + ' AND '.join(conditions)
     total: int = await pool.fetchval(f'SELECT COUNT(*) FROM jobs {where}', *params)
     top_companies_pos = len(params) + 1
@@ -75,6 +273,8 @@ async def get_jobs(limit: int=Query(default=200, ge=1, le=500), offset: int=Quer
     if sort == 'ranked':
         ranking_sql = RANKING_EXPRESSION.replace(':top_companies', placeholder)
         order_by = f'{ranking_sql} DESC, posted_at DESC'
+    if india_first:
+        order_by = f'{_INDIA_BUCKET_SQL} ASC, {order_by}'
     badges_sql = BADGE_EXPRESSIONS.replace(':top_companies', placeholder)
     rows = await pool.fetch(f'\n        SELECT\n            {JOB_COLUMNS},\n            {badges_sql}\n        FROM jobs\n        {where}\n        ORDER BY {order_by}\n        LIMIT ${limit_pos} OFFSET ${offset_pos}\n        ', *params_with_companies, limit, offset)
     return {'jobs': [dict(row) for row in rows], 'total': total, 'limit': limit, 'offset': offset}
@@ -106,6 +306,39 @@ async def get_featured_jobs(limit: int=Query(default=6, ge=1, le=12), type: str 
     limit_pos = len(params) + 1
     rows = await pool.fetch(f'\n        SELECT\n            {JOB_COLUMNS},\n            {badges_sql}\n        FROM jobs\n        {where}\n        ORDER BY {ranking_sql} DESC, posted_at DESC\n        LIMIT ${limit_pos}\n        ', *params, limit)
     return {'jobs': [dict(row) for row in rows]}
+@router.get('/facets')
+async def get_jobs_facets(search: str | None=Query(default=None), type: str | None=Query(default=None), category: str | None=Query(default=None, pattern='^(remote|government)$'), job_group: str | None=Query(default=None, pattern='^(software|sales|finance|other)$'), country: str | None=Query(default=None), work_mode: str | None=Query(default=None, pattern='^(ONSITE|REMOTE|HYBRID)$')):
+    """Phase 2 (PHASE_PLAN.md item 1): computes Skills/Course/Source/Batch/
+    Company option counts against the FULL active-jobs table, scoped by
+    the same location+role+mode+search params the list endpoint takes —
+    not bounded by any page `limit`. Response shape matches
+    apps/web/lib/facets.ts's FacetSnapshot exactly so the call site swap
+    in jobs/page.tsx / internships/page.tsx didn't need to touch
+    AdvancedJobFilters.tsx at all."""
+    pool = await get_db_pool()
+    if pool is None:
+        raise HTTPException(503, 'Database unavailable')
+    params: list = []
+    conditions = _build_facet_scope_conditions(params, search=search, type=type, category=category, job_group=job_group, country=country, work_mode=work_mode)
+    where = ' AND '.join(conditions)
+    skills_arr_expr = "CASE WHEN required_skills IS NOT NULL THEN required_skills ELSE enriched_keywords END"
+    skills, courses, sources, batches, companies = await asyncio.gather(
+        _array_facet_counts(pool, where, list(params), skills_arr_expr),
+        _array_facet_counts(pool, where, list(params), 'allowed_courses'),
+        _scalar_facet_counts(pool, where, list(params), 'source'),
+        _batch_facet_counts(pool, where, list(params)),
+        _scalar_facet_counts(pool, where, list(params), 'company'),
+    )
+    for row in sources:
+        row['label'] = _source_label(row['label'])
+    return {
+        'skills': skills,
+        'courses': courses,
+        'sources': sources,
+        'batches': batches,
+        'companies': companies,
+    }
+
 SIMILAR_JOBS_EXPRESSION = "\n    similarity(title, :self_title) * 50\n    + CASE WHEN job_group = :self_job_group THEN 20 ELSE 0 END\n    + CASE WHEN type = :self_type THEN 15 ELSE 0 END\n    + CASE WHEN is_remote = :self_is_remote THEN 8 ELSE 0 END\n    + CASE\n        WHEN :self_location != '' AND lower(location) = lower(:self_location)\n        THEN 10 ELSE 0\n      END\n    + CASE\n        WHEN posted_at > now() - interval '7 days' THEN 5\n        WHEN posted_at > now() - interval '30 days' THEN 2\n        ELSE 0\n      END\n"
 
 @router.get('/{job_id}/similar')

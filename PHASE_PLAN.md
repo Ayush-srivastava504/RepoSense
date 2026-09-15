@@ -106,21 +106,52 @@ and `index.py`'s `_load_scrapers()` registry.
 
 ---
 
-## Phase 2 — Scale & correctness (not yet built)
+## Phase 2 — Scale & correctness
 
-1. **Backend facets endpoint.** `lib/facets.ts` currently computes
-   counts from the already-fetched job page (bounded by `getJobs()`'s
-   `limit`), which is correct today but won't scale once the catalog
-   grows past that limit. Add `GET /api/jobs/facets` that runs the
-   equivalent `GROUP BY`/`unnest()` aggregation server-side against the
-   full table, and swap the call site — `FacetSnapshot`'s shape can stay
-   identical so `AdvancedJobFilters.tsx` doesn't need to change.
-2. **Push multi-select filters server-side.** Skills/Course/Source/
-   Batch/Company are currently applied in the Next.js layer
-   (`filterJobs.ts`) over the fetched page. Once the facets endpoint
-   exists, extend `routes/jobs.py` to accept comma-separated
-   `skills=`, `source=`, `batch=`, `company=` and do the filtering (and
-   pagination) in SQL instead.
+1. **Backend facets endpoint — DONE.** Added `GET /api/jobs/facets`
+   (`services/api/src/routes/jobs.py`) — runs `GROUP BY`/`unnest()`
+   aggregation server-side against the full `jobs` table (scoped by
+   search/type/category/job_group/country/work_mode, deliberately not
+   by the advanced filters themselves, so each dropdown's own count
+   list doesn't shrink to just its selected value). Response shape
+   matches `FacetSnapshot` exactly. `apps/web/lib/facets.ts` now
+   exposes `getJobFacets()` as the call site both `/jobs` and
+   `/internships` list pages use; `buildFacetCounts()` (the old
+   fetched-page-bounded computation) is kept only as a fallback/testing
+   utility, no longer called from either page. Covered by
+   `services/api/tests/test_jobs_facets.py` (9 tests, mocked DB pool —
+   asserts SQL/params shape and response shape, not live query
+   results).
+2. **Push multi-select filters server-side — DONE.** `routes/jobs.py`'s
+   `GET /api/jobs/` now accepts comma-separated `skills=`, `courses=`,
+   `sources=`, `batches=`, `companies=` (slugs from the facets
+   endpoint) and applies them as SQL `WHERE`/`unnest()` conditions,
+   ANDed together, each an OR-of-selections — matches the old
+   `filterJobs.ts` `applyAdvancedFilters()` semantics but runs in
+   Postgres against the full table instead of a fetched, `limit`-bounded
+   page. `apps/web/lib/jobs.ts`'s `getJobs()` passes
+   `advancedFilters.{skills,courses,sources,batches,companies}` straight
+   through as these params from both list pages.
+   **Pagination follow-up — DONE.** `/jobs` and `/internships` now send a
+   page-sized `limit`/`offset` per request and read the response's `total`
+   field, via a new `getJobsPage()` (`apps/web/lib/jobs.ts`) that returns
+   `{ jobs, total }` instead of just an array — `getJobs()` itself is
+   unchanged (still used by every hub/sitemap page that only wants the
+   array). The one real correctness gap this uncovered: the "India"
+   location filter and the "India first" ordering on `loc=all` were
+   computed client-side (`lib/jobPriority.ts`'s `isIndiaJob()`/
+   `sortIndiaFirst()`) over the *entire* fetched array — impossible to
+   replicate correctly against a single already-paged, already-ordered
+   12-row response. Ported both into SQL in `routes/jobs.py` as new
+   `india_only`/`india_first` query params (`_INDIA_ONLY_CONDITION`/
+   `_INDIA_BUCKET_SQL`, mirroring `bucket()`'s exact null/blank/"india"
+   → remote → "japan" → other precedence) so the DB does the filtering
+   and ordering before `LIMIT`/`OFFSET` is applied, rather than after.
+   `isIndiaJob`/`sortIndiaFirst` are kept and still used for the small,
+   unpaginated featured-jobs list on both pages.
+   Handles the requestedPage-past-the-end case (a stale `?page=` link)
+   by clamping to the real last page and refetching only when that
+   happens — the common case is still a single request.
 3. **More ATS providers**, matching FresherFlow's full list: Workday
    (CXS API), iCIMS, SuccessFactors, Zoho Recruit, Keka, Darwinbox,
    Eightfold, Comeet, Hibob, Zwayam — several of these need more
@@ -140,12 +171,19 @@ and `index.py`'s `_load_scrapers()` registry.
    through the same quality gate (`processors/quality.py`) with a
    slightly higher bar than hand-curated `ATS_COMPANIES` entries, since
    discovery has no human review step.
-7. **`X-Robots-Tag` audit for the rest of `(auth)`.** Phase 1 scoped the
-   noindex header to `/dashboard` only, since `/resume`, `/ats-checker`,
-   `/cover-letter`, `/github`, `/linkedin`, `/leetcode` might be intended
-   as public, indexable tool landing pages gated behind login only for
-   *use* — that's a product call, not something to default silently.
-   Decide per-route and extend `NOINDEX_PREFIXES` in `middleware.ts`.
+7. **`X-Robots-Tag` audit for the rest of `(auth)` — DONE.** Decided
+   per-route in `middleware.ts`'s `NOINDEX_PREFIXES`:
+   - `/login`, `/register` — now noindexed (added to `NOINDEX_PREFIXES`
+     and to `robots.txt`'s `Disallow` block). Pure auth-flow pages, no
+     unique content. Also removed from `sitemap-static.xml` — a sitemap
+     entry for a noindexed URL is a conflicting signal.
+   - `/resume(/builder)`, `/ats-checker`, `/cover-letter`, `/github`,
+     `/linkedin` — left indexable. `AuthGuard` admits guests via
+     `ensureGuestSession()` with no real login required, and all five
+     were deliberately added to `sitemap-static.xml` in the Aug SEO pass
+     as tool landing pages.
+   - `/leetcode(/[slug])` — left indexable. Server components with their
+     own `generateMetadata`/canonical/JSON-LD, built to be crawled.
 
 ## Phase 3 — Programmatic SEO expansion
 
