@@ -6,6 +6,11 @@ FresherFlow on filtering UX, SEO/thin-content, and scraper coverage.
 scoped below so the next session can pick either up without
 re-discovering the codebase from scratch.
 
+See also **INDEXING_RECOVERY_PLAN.md** — a separate, GSC-driven plan
+(Sep 2026) for why most of the site's pages aren't being crawled/indexed.
+Independent of Phase 3 below, though Phase 3 item 4 (breadcrumbs on hub
+pages) is also that plan's Phase D.
+
 ---
 
 ## Phase 1 — COMPLETE (this build)
