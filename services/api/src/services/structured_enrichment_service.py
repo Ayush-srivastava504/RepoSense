@@ -20,7 +20,7 @@ import httpx
 from configs.config import settings
 
 GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
-GROQ_MODEL = 'llama-3.3-70b-versatile'
+GROQ_MODEL = 'openai/gpt-oss-120b'
 FALLBACK_MODEL = 'rule-based-fallback'
 REQUEST_TIMEOUT_S = 30
 
