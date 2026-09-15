@@ -2,6 +2,7 @@
 # writes it back to the `jobs` table (see migration 017). Meant to run on a
 # schedule via .github/workflows/content-enrichment.yml, same pattern as
 # scripts/generate-daily-posts.mjs for the blog.
+#says it's not currently scheduled (no cron, no confirmed workflow), that enrich_all_content.py is what's actually being used via crontab, and that this script is being kept around intentionally in case its daily-trickle pattern (thin + never-enriched only, small --limit 100 default) is wanted again later.
 
 import argparse
 import asyncio
