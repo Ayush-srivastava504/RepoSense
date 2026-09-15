@@ -4,6 +4,17 @@
 // Defines type(s): JobGroup, Job, JobsResponse
 
 export const BASE_URL = 'https://www.intern-flow.in';
+// Same fallback chain as lib/companies.ts — some environments (build-time
+// static generation in particular, e.g. /companies/[company]'s
+// generateStaticParams) only ever have NEXT_PUBLIC_API_BASE_URL populated,
+// not the server-only API_BASE_URL. Requiring API_BASE_URL specifically
+// here was silently emptying out every statically-generated page's job
+// list (while metadata built from lib/companies.ts, which already had this
+// fallback, stayed correct) — the "37 active listings, 0 shown" bug on
+// /companies/[company] hub pages.
+const API_BASE_URL = process.env.API_BASE_URL ||
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    'https://api.intern-flow.in';
 export type JobGroup = 'software' | 'sales' | 'finance' | 'other';
 export interface Job {
     id: string;
@@ -151,13 +162,9 @@ function buildJobsParams(options: GetJobsOptions): URLSearchParams {
     return params;
 }
 export async function getJobs(options: GetJobsOptions = {}): Promise<Job[]> {
-    if (!process.env.API_BASE_URL) {
-        console.error('API_BASE_URL is not set');
-        return [];
-    }
     try {
         const params = buildJobsParams(options);
-        const res = await fetch(`${process.env.API_BASE_URL}/api/jobs/?${params.toString()}`, { next: { revalidate: 3600 } });
+        const res = await fetch(`${API_BASE_URL}/api/jobs/?${params.toString()}`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             console.error('Jobs API returned', res.status);
             return [];
@@ -177,13 +184,9 @@ export async function getJobs(options: GetJobsOptions = {}): Promise<Job[]> {
 // rather than changing getJobs()'s return type, since getJobs() is called
 // from many hub/sitemap pages that only ever want the array.
 export async function getJobsPage(options: GetJobsOptions = {}): Promise<{ jobs: Job[]; total: number }> {
-    if (!process.env.API_BASE_URL) {
-        console.error('API_BASE_URL is not set');
-        return { jobs: [], total: 0 };
-    }
     try {
         const params = buildJobsParams(options);
-        const res = await fetch(`${process.env.API_BASE_URL}/api/jobs/?${params.toString()}`, { next: { revalidate: 3600 } });
+        const res = await fetch(`${API_BASE_URL}/api/jobs/?${params.toString()}`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             console.error('Jobs API returned', res.status);
             return { jobs: [], total: 0 };
@@ -208,10 +211,6 @@ export async function getFeaturedJobs(options: {
     country?: string;
     limit?: number;
 } = {}): Promise<Job[]> {
-    if (!process.env.API_BASE_URL) {
-        console.error('API_BASE_URL is not set');
-        return [];
-    }
     try {
         const params = new URLSearchParams({
             limit: String(options.limit ?? 6),
@@ -224,7 +223,7 @@ export async function getFeaturedJobs(options: {
             params.set('job_group', options.job_group);
         if (options.country)
             params.set('country', options.country);
-        const res = await fetch(`${process.env.API_BASE_URL}/api/jobs/featured?${params.toString()}`, { next: { revalidate: 3600 } });
+        const res = await fetch(`${API_BASE_URL}/api/jobs/featured?${params.toString()}`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             console.error('Featured jobs API returned', res.status);
             return [];
@@ -237,12 +236,8 @@ export async function getFeaturedJobs(options: {
     }
 }
 export async function getSimilarJobs(jobId: string, limit = 6): Promise<Job[]> {
-    if (!process.env.API_BASE_URL) {
-        console.error('API_BASE_URL is not set');
-        return [];
-    }
     try {
-        const res = await fetch(`${process.env.API_BASE_URL}/api/jobs/${jobId}/similar?limit=${limit}`, { next: { revalidate: 3600 } });
+        const res = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/similar?limit=${limit}`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             console.error('Similar jobs API returned', res.status);
             return [];
@@ -255,12 +250,8 @@ export async function getSimilarJobs(jobId: string, limit = 6): Promise<Job[]> {
     }
 }
 export async function getJobById(id: string): Promise<Job | null> {
-    if (!process.env.API_BASE_URL) {
-        console.error('API_BASE_URL is not set');
-        return null;
-    }
     try {
-        const res = await fetch(`${process.env.API_BASE_URL}/api/jobs/${id}`, {
+        const res = await fetch(`${API_BASE_URL}/api/jobs/${id}`, {
             next: { revalidate: 3600 },
         });
         if (!res.ok) {

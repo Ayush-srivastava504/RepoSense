@@ -323,13 +323,25 @@ def _write_structured(job_id: str, fields: Dict) -> None:
     cursor.close()
 
 
-def run_structured_enrichment_for_jobs(jobs: List[Dict]) -> Dict:
+def run_structured_enrichment_for_jobs(jobs: List[Dict], bulk: bool = False) -> Dict:
     """Same thinnest-first priority as content_enrichment.py, same
     ai/fallback honesty split. Intentionally a separate pass rather than
     folded into the overview/keywords Groq call — keeps that already
     battle-tested path untouched, at the cost of one extra Groq call per
-    job when a key is configured."""
-    candidates = [j for j in jobs if j.get('id')]
+    job when a key is configured.
+
+    bulk=False (default, unchanged): only jobs missing structured_description.
+    bulk=True: every job in the passed-in list is a candidate, same shape as
+    content_enrichment.py's bulk flag. The actual backlog-wide backfill (Phase B,
+    INDEXING_RECOVERY_PLAN.md) runs independently via
+    scripts/enrich_all_content.py --target structured --bulk, which queries the
+    DB directly rather than depending on index.py to hand it a jobs list — this
+    flag exists so the crawler pipeline itself can opt into the same behavior
+    if a future run ever wants to pass its own backlog query in.
+    """
+    candidates = [j for j in jobs if j.get('id')] if bulk else [
+        j for j in jobs if j.get('id') and not j.get('structured_description')
+    ]
     candidates.sort(key=lambda j: (len(str(j.get('description') or '')), j.get('quality_score', 100)))
     batch = candidates[:BATCH_LIMIT]
     if not batch:
