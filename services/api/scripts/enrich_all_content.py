@@ -36,7 +36,7 @@ from services.content_enrichment_service import ContentEnrichmentService
 from services.structured_enrichment_service import StructuredEnrichmentService
 
 BATCH_LIMIT_DEFAULT = 200
-REQUEST_DELAY_S = 1.0
+REQUEST_DELAY_S = 12.0
 
 
 async def enrich_jobs(pool, args) -> dict:
