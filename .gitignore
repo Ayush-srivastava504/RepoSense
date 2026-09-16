@@ -59,4 +59,6 @@ logs/
 *.log
 debug.log
 error.log
-
+# Generated files
+generated_resumes/
+readmework*.md

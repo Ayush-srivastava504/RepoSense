@@ -28,6 +28,36 @@ export interface ToolDefinition {
 }
 export const TOOLS: ToolDefinition[] = [
     {
+        slug: 'auto-apply-engine',
+        name: 'Automated Job Application Engine',
+        shortName: 'Auto-Apply Engine',
+        tagline: '5-Layer automated job discovery, matching & Playwright form filling',
+        metaTitle: 'Free Automated Job Application Pipeline & Auto-Fill Tool',
+        metaDescription: 'Ingest your resume, score multi-board job listings, preview Playwright stealth form filling, and track your application pipeline automatically.',
+        heroDescription: 'Upload your resume PDF, discover active Greenhouse, Lever, and Ashby jobs, compute skill match compatibility, and run stealth auto-fill automation.',
+        ctaHref: '/auto-apply',
+        ctaLabel: 'Launch Auto-Apply Engine',
+        category: 'Career Tools',
+        benefits: [
+            'Parses PDF resumes and LinkedIn exports into structured candidate fields',
+            'Queries Greenhouse, Lever, Ashby, and multi-board job feeds programmatically',
+            'Evaluates skill match compatibility and ranks jobs by weighted match score',
+            'Executes Playwright stealth form filling with humanized delays and dry-run preview',
+        ],
+        howItWorks: [
+            { name: 'Upload your resume', text: 'Drag and drop your PDF resume to extract skills and contact details.' },
+            { name: 'Score matching jobs', text: 'Programmatically search active ATS job listings and view compatibility scores.' },
+            { name: 'Run auto-fill automation', text: 'Preview automated form filling and capture verification screenshots.' },
+        ],
+        faqs: [
+            {
+                question: 'Is the Auto-Apply Engine safe to use?',
+                answer: 'Yes. Dry-Run mode allows you to preview form inputs and screenshots before live submission.',
+            },
+        ],
+        relatedSlugs: ['ats-resume-checker', 'cover-letter-generator'],
+    },
+    {
         slug: 'github-readme-generator',
         name: 'GitHub README Generator',
         shortName: 'README Generator',
