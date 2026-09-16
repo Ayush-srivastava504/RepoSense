@@ -5,6 +5,7 @@
 
 import type { Metadata } from 'next';
 import { BASE_URL } from '@/lib/jobs';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import SolveClient from './SolveClient';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -19,7 +20,7 @@ interface ProblemSummary {
 }
 async function getProblem(slug: string): Promise<ProblemSummary | null> {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/leetcode/problems/${encodeURIComponent(slug)}`, { next: { revalidate: 3600 } });
+        const res = await fetchWithTimeout(`${API_BASE_URL}/api/leetcode/problems/${encodeURIComponent(slug)}`, { next: { revalidate: 3600 } });
         if (!res.ok)
             return null;
         return (await res.json()) as ProblemSummary;

@@ -3,6 +3,8 @@
 // API_BASE_URL specifically here silently emptied out the whole /companies page in those
 // environments even though every other data source kept working.
 
+import { fetchWithTimeout } from './fetchWithTimeout';
+
 const API_BASE_URL = process.env.API_BASE_URL ||
     process.env.NEXT_PUBLIC_API_BASE_URL ||
     'https://api.intern-flow.in';
@@ -50,7 +52,7 @@ export async function getCompanyBySlug(slug: string): Promise<Company | null> {
 }
 export async function getCompanies(limitPerSection = 60): Promise<CompaniesResponse> {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/companies/?limit_per_section=${limitPerSection}`, { next: { revalidate: 3600 } });
+        const res = await fetchWithTimeout(`${API_BASE_URL}/api/companies/?limit_per_section=${limitPerSection}`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             console.error('Companies API returned', res.status);
             return EMPTY_RESPONSE;

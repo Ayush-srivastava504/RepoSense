@@ -24,6 +24,7 @@
 // API, but the list pages themselves now call `getJobFacets()`.
 
 import type { Job, JobGroup } from './jobs';
+import { fetchWithTimeout } from './fetchWithTimeout';
 
 export interface FacetOption {
     value: string;
@@ -201,7 +202,7 @@ export async function getJobFacets(options: {
         if (options.work_mode)
             params.set('work_mode', options.work_mode);
         const qs = params.toString();
-        const res = await fetch(`${process.env.API_BASE_URL}/api/jobs/facets${qs ? `?${qs}` : ''}`, { next: { revalidate: 3600 } });
+        const res = await fetchWithTimeout(`${process.env.API_BASE_URL}/api/jobs/facets${qs ? `?${qs}` : ''}`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             console.error('Facets API returned', res.status);
             return EMPTY_FACETS;

@@ -3,6 +3,8 @@
 // Defines function(s): coerceJobs, getJobs, getFeaturedJobs, getSimilarJobs, getJobById
 // Defines type(s): JobGroup, Job, JobsResponse
 
+import { fetchWithTimeout } from './fetchWithTimeout';
+
 export const BASE_URL = 'https://www.intern-flow.in';
 // Same fallback chain as lib/companies.ts — some environments (build-time
 // static generation in particular, e.g. /companies/[company]'s
@@ -164,7 +166,7 @@ function buildJobsParams(options: GetJobsOptions): URLSearchParams {
 export async function getJobs(options: GetJobsOptions = {}): Promise<Job[]> {
     try {
         const params = buildJobsParams(options);
-        const res = await fetch(`${API_BASE_URL}/api/jobs/?${params.toString()}`, { next: { revalidate: 3600 } });
+        const res = await fetchWithTimeout(`${API_BASE_URL}/api/jobs/?${params.toString()}`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             console.error('Jobs API returned', res.status);
             return [];
@@ -186,7 +188,7 @@ export async function getJobs(options: GetJobsOptions = {}): Promise<Job[]> {
 export async function getJobsPage(options: GetJobsOptions = {}): Promise<{ jobs: Job[]; total: number }> {
     try {
         const params = buildJobsParams(options);
-        const res = await fetch(`${API_BASE_URL}/api/jobs/?${params.toString()}`, { next: { revalidate: 3600 } });
+        const res = await fetchWithTimeout(`${API_BASE_URL}/api/jobs/?${params.toString()}`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             console.error('Jobs API returned', res.status);
             return { jobs: [], total: 0 };
@@ -223,7 +225,7 @@ export async function getFeaturedJobs(options: {
             params.set('job_group', options.job_group);
         if (options.country)
             params.set('country', options.country);
-        const res = await fetch(`${API_BASE_URL}/api/jobs/featured?${params.toString()}`, { next: { revalidate: 3600 } });
+        const res = await fetchWithTimeout(`${API_BASE_URL}/api/jobs/featured?${params.toString()}`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             console.error('Featured jobs API returned', res.status);
             return [];
@@ -237,7 +239,7 @@ export async function getFeaturedJobs(options: {
 }
 export async function getSimilarJobs(jobId: string, limit = 6): Promise<Job[]> {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/similar?limit=${limit}`, { next: { revalidate: 3600 } });
+        const res = await fetchWithTimeout(`${API_BASE_URL}/api/jobs/${jobId}/similar?limit=${limit}`, { next: { revalidate: 3600 } });
         if (!res.ok) {
             console.error('Similar jobs API returned', res.status);
             return [];
@@ -251,7 +253,7 @@ export async function getSimilarJobs(jobId: string, limit = 6): Promise<Job[]> {
 }
 export async function getJobById(id: string): Promise<Job | null> {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/jobs/${id}`, {
+        const res = await fetchWithTimeout(`${API_BASE_URL}/api/jobs/${id}`, {
             next: { revalidate: 3600 },
         });
         if (!res.ok) {

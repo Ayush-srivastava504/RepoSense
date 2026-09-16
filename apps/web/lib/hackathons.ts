@@ -3,6 +3,8 @@
 // Defines function(s): parseStringArray, normalizeHackathon, getHackathons, getFeaturedHackathons, getHackathonsEndingSoon, getHackathonBySlug
 // Defines type(s): Hackathon, HackathonsResponse
 
+import { fetchWithTimeout } from './fetchWithTimeout';
+
 export const BASE_URL = 'https://www.intern-flow.in';
 const API_BASE_URL = process.env.API_BASE_URL ||
     process.env.NEXT_PUBLIC_API_BASE_URL ||
@@ -99,7 +101,7 @@ export async function getHackathons(options: {
             params.set('is_global', String(options.isGlobal));
         }
         const url = `${API_BASE_URL}/api/hackathons/?${params.toString()}`;
-        const res = await fetch(url, {
+        const res = await fetchWithTimeout(url, {
             next: { revalidate: 3600 },
         });
         if (!res.ok) {
@@ -116,7 +118,7 @@ export async function getHackathons(options: {
 }
 export async function getFeaturedHackathons(limit = 6): Promise<Hackathon[]> {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/hackathons/featured?limit=${limit}`, {
+        const res = await fetchWithTimeout(`${API_BASE_URL}/api/hackathons/featured?limit=${limit}`, {
             next: { revalidate: 3600 },
         });
         if (!res.ok) {
@@ -132,7 +134,7 @@ export async function getFeaturedHackathons(limit = 6): Promise<Hackathon[]> {
 }
 export async function getHackathonsEndingSoon(limit = 20): Promise<Hackathon[]> {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/hackathons/ending-soon?limit=${limit}`, {
+        const res = await fetchWithTimeout(`${API_BASE_URL}/api/hackathons/ending-soon?limit=${limit}`, {
             next: { revalidate: 3600 },
         });
         if (!res.ok) {
@@ -148,7 +150,7 @@ export async function getHackathonsEndingSoon(limit = 20): Promise<Hackathon[]> 
 }
 export async function getHackathonBySlug(slug: string): Promise<Hackathon | null> {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/hackathons/${encodeURIComponent(slug)}`, {
+        const res = await fetchWithTimeout(`${API_BASE_URL}/api/hackathons/${encodeURIComponent(slug)}`, {
             next: { revalidate: 3600 },
         });
         if (!res.ok) {

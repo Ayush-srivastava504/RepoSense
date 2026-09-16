@@ -53,7 +53,7 @@ interface ApplicationSubmissionResult {
 interface ApplicationRecord {
   id?: string;
   user_id: string;
-  job_id: str;
+  job_id: string;
   company: string;
   title: string;
   status: string;

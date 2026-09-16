@@ -4,6 +4,11 @@
 //
 
 const nextConfig = {
+    // Several routes (companies, jobs-in, hackathons, government-jobs, etc.) fetch
+    // from api.intern-flow.in during static generation. Next's default 60s budget per
+    // page was too tight for these under load, causing the build worker to SIGTERM and
+    // restart page-data collection repeatedly. Give SSG more headroom.
+    staticPageGenerationTimeout: 180,
     env: {
         NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
         NEXT_PUBLIC_LOGO_DEV_TOKEN: process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN,
