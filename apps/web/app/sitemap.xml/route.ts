@@ -6,7 +6,6 @@
 import { BASE_URL } from '@/lib/jobs';
 export const dynamic = 'force-dynamic';
 export async function GET() {
-    const now = new Date().toISOString();
     const sitemaps = [
         `${BASE_URL}/sitemap-static.xml`,
         `${BASE_URL}/sitemap-jobs.xml`,
@@ -25,7 +24,6 @@ export async function GET() {
 ${sitemaps
         .map((loc) => `  <sitemap>
     <loc>${loc}</loc>
-    <lastmod>${now}</lastmod>
   </sitemap>`)
         .join('\n')}
 </sitemapindex>`;

@@ -15,7 +15,6 @@ import { BATCH_MIN_JOBS, belowHubThreshold } from '@/lib/seo/hubThresholds';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-    const now = new Date().toISOString();
     const facets = await getJobFacets();
     const countByYear = new Map(facets.batches.map((b) => [b.value, b.count]));
     // PHASE_PLAN.md Phase 3 item 2: skip any batch year below
@@ -24,12 +23,11 @@ export async function GET() {
     // entry for a noindexed page is a conflicting signal. A year absent
     // from the facets response entirely (zero live jobs) counts as 0.
     const xml = buildUrlsetXml([
-        { loc: `${BASE_URL}/batch`, lastmod: now, changefreq: 'weekly', priority: 0.8 },
+        { loc: `${BASE_URL}/batch`, changefreq: 'weekly', priority: 0.8 },
         ...BATCHES
             .filter((b) => !belowHubThreshold(countByYear.get(b.year) ?? 0, BATCH_MIN_JOBS))
             .map((b) => ({
                 loc: `${BASE_URL}/batch/${b.year}`,
-                lastmod: now,
                 changefreq: 'daily' as const,
                 priority: 0.7,
             })),

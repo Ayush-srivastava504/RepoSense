@@ -24,6 +24,7 @@
 import argparse
 import asyncio
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -36,7 +37,7 @@ from services.content_enrichment_service import ContentEnrichmentService
 from services.structured_enrichment_service import StructuredEnrichmentService
 
 BATCH_LIMIT_DEFAULT = 200
-REQUEST_DELAY_S = 12.0
+REQUEST_DELAY_S = float(os.getenv('ENRICH_REQUEST_DELAY_S', '20'))
 
 
 async def enrich_jobs(pool, args) -> dict:
@@ -55,7 +56,7 @@ async def enrich_jobs(pool, args) -> dict:
             allow_fallback=True,
         )
         if result is None:
-            time.sleep(REQUEST_DELAY_S)
+            await asyncio.sleep(REQUEST_DELAY_S)
             continue
         if not args.dry_run:
             await pool.execute(
@@ -63,7 +64,7 @@ async def enrich_jobs(pool, args) -> dict:
                 row['id'], result.overview, result.keywords, result.model,
             )
         enriched += 1
-        time.sleep(REQUEST_DELAY_S)
+        await asyncio.sleep(REQUEST_DELAY_S)
     print(f'[enrich_all_content] jobs: enriched {enriched}/{len(rows)}')
     return {'attempted': len(rows), 'enriched': enriched}
 
@@ -90,7 +91,7 @@ async def enrich_structured(pool, args) -> dict:
             allow_fallback=True,
         )
         if result is None:
-            time.sleep(REQUEST_DELAY_S)
+            await asyncio.sleep(REQUEST_DELAY_S)
             continue
         if not args.dry_run:
             await pool.execute(
@@ -116,7 +117,7 @@ async def enrich_structured(pool, args) -> dict:
                 result.structured_description,
             )
         enriched += 1
-        time.sleep(REQUEST_DELAY_S)
+        await asyncio.sleep(REQUEST_DELAY_S)
     print(f'[enrich_all_content] structured: enriched {enriched}/{len(rows)}')
     return {'attempted': len(rows), 'enriched': enriched}
 

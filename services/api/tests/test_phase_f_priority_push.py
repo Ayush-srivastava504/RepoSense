@@ -21,7 +21,7 @@ if 'configs.config' not in sys.modules:
     class _Settings:
         DATABASE_URL = 'postgresql://fake'
         INDEXNOW_KEY = 'fake-key'
-        INDEXNOW_HOST = 'www.example.test'
+        INDEXNOW_HOST = 'example.test'
         GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON = ''
         GOOGLE_INDEXING_DAILY_QUOTA = 180
 
@@ -47,7 +47,7 @@ def test_internship_url_matches_ts_slug_shape():
         'type': 'internship', 'is_remote': False, 'is_government': False,
     }
     assert phase_f.canonical_url(job) == (
-        'https://www.intern-flow.in/internships/'
+        'https://intern-flow.in/internships/'
         'software-engineer-intern-google-bangalore-50000-abc123'
     )
 
@@ -59,7 +59,7 @@ def test_remote_job_uses_remote_jobs_category():
         'type': 'full-time', 'is_remote': True, 'is_government': False,
     }
     url = phase_f.canonical_url(job)
-    assert url.startswith('https://www.intern-flow.in/remote-jobs/')
+    assert url.startswith('https://intern-flow.in/remote-jobs/')
     assert url.endswith('-xyz789')
 
 
@@ -71,7 +71,7 @@ def test_government_job_takes_priority_over_type_and_remote():
         'id': 'gov1', 'title': 'Junior Engineer', 'company': 'Indian Railways',
         'location': 'Delhi', 'type': 'full-time', 'is_remote': True, 'is_government': True,
     }
-    assert phase_f.canonical_url(job).startswith('https://www.intern-flow.in/government-jobs/')
+    assert phase_f.canonical_url(job).startswith('https://intern-flow.in/government-jobs/')
 
 
 def test_slug_truncates_long_base_and_keeps_id_suffix():

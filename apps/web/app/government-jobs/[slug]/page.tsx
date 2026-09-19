@@ -8,7 +8,7 @@ import { notFound } from 'next/navigation';
 import { jobIdFromSlug, canonicalPathForJob } from '@/lib/slug';
 import { getJobById, BASE_URL } from '@/lib/jobs';
 import {  jobPostingSchema, breadcrumbSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
-import { truncateTitleForSerp, truncateDescription, isStaleForIndexing, isThinAndUnenriched } from '@/lib/seo/seoMetrics';
+import { truncateTitleForSerp, truncateDescription, isIndexableJob } from '@/lib/seo/seoMetrics';
 import { jobOgImageUrl } from '@/lib/seo/ogImage';
 import JobDetail from '@/app/components/JobDetail';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -43,7 +43,7 @@ export async function generateMetadata({ params, }: {
             description: truncateDescription(rawDescription),
             images: [jobOgImageUrl(job)],
         },
-        ...(isStaleForIndexing(job) || isThinAndUnenriched(job) ? { robots: { index: false, follow: true } } : {}),
+        ...(!isIndexableJob(job) ? { robots: { index: false, follow: true } } : {}),
     };
 }
 export default async function GovernmentJobDetailPage({ params, }: {

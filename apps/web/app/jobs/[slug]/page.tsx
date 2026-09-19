@@ -8,7 +8,7 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { jobIdFromSlug, canonicalCategoryForJob, canonicalPathForJob } from '@/lib/slug';
 import { getJobById, BASE_URL } from '@/lib/jobs';
 import {  jobPostingSchema, breadcrumbSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
-import { buildJobTitle, truncateDescription, isStaleForIndexing, isThinAndUnenriched } from '@/lib/seo/seoMetrics';
+import { buildJobTitle, truncateDescription, isIndexableJob } from '@/lib/seo/seoMetrics';
 import { jobOgImageUrl } from '@/lib/seo/ogImage';
 import JobDetail from '@/app/components/JobDetail';
 import TrackView from '@/app/components/TrackView';
@@ -58,7 +58,7 @@ export async function generateMetadata({ params, }: {
         // Search Console can take days to re-crawl and honor a stale
         // validThrough, so this header/meta noindex acts immediately on
         // the next crawl instead of waiting for schema-driven cleanup.
-        ...(isStaleForIndexing(job) || isThinAndUnenriched(job)
+        ...(!isIndexableJob(job)
             ? { robots: { index: false, follow: true } }
             : {}),
     };

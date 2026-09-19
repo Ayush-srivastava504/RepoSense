@@ -8,12 +8,10 @@ import { CAREERS } from '@/app/careers/data';
 import { buildUrlsetXml } from '@/lib/sitemapXml';
 export const dynamic = 'force-dynamic';
 export async function GET() {
-    const now = new Date().toISOString();
     const xml = buildUrlsetXml([
-        { loc: `${BASE_URL}/careers`, lastmod: now, changefreq: 'weekly', priority: 0.8 },
+        { loc: `${BASE_URL}/careers`, changefreq: 'weekly', priority: 0.8 },
         ...CAREERS.map((career) => ({
             loc: `${BASE_URL}/careers/${career.slug}`,
-            lastmod: now,
             changefreq: 'daily' as const,
             priority: 0.7,
         })),

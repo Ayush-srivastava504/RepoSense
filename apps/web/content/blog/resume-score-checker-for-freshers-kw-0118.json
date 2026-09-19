@@ -13,7 +13,7 @@
   "readingTime": "8 min read",
   "tags": ["Resume Score", "ATS Scoring", "Fresher Jobs", "Job Search"],
   "image": {
-    "url": "https://www.intern-flow.in/og-image.png",
+    "url": "https://intern-flow.in/og-image.png",
     "alt": "ATS Resume Scoring Matrix and Weight Breakdown"
   },
   "body": "When you submit your resume to an online job board, modern Applicant Tracking Systems compute a composite match score (0-100) before any human reviews it. Understanding how this score is calculated allows you to optimize your resume strategically for maximum interview conversion.\n\n## 1. Anatomy of an ATS Score Calculation\n\n- Keyword Frequency & Semantic Proximity (40% Weight): Presence of required skills, frameworks, and tools in context.\n- Structural & Layout Readability (25% Weight): Clean section detection without parsing errors or merged text columns.\n- Quantified Impact & Bullet Quality (20% Weight): Presence of numerical metrics, percentages, and strong action verbs.\n- Experience & Education Fit (15% Weight): Verification of required degree level and graduation timeline.\n\n## 2. Quick Wins to Boost Your Match Score by 20+ Points\n\n- Add a dedicated 'Technical Skills' block with categorized keywords.\n- Ensure exact terminology from the target job posting is reflected in your project descriptions.\n- Remove unparseable graphical elements, tables, and multi-column layouts.\n\n## 3. Check Your Resume Score Free\n\nUpload your resume to InternFlow's ATS Checker to simulate real parsing algorithms and receive an instant line-by-line improvement report.",

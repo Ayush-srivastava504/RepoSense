@@ -294,10 +294,16 @@ async def get_jobs(limit: int=Query(default=200, ge=1, le=500), offset: int=Quer
     limit_pos = len(params_with_companies) + 1
     offset_pos = len(params_with_companies) + 2
     placeholder = f'${top_companies_pos}'
-    order_by = 'posted_at DESC'
+    # Deterministic ordering is REQUIRED for LIMIT/OFFSET pagination: many rows
+    # share the same posted_at (and ~10k have it NULL). Without a unique
+    # tie-breaker Postgres may return the same row on two pages and skip
+    # others, which produced ~250 duplicate URLs in sitemap-jobs.xml. `id`
+    # is unique. NULLS LAST also stops undated jobs floating to the top
+    # (Postgres sorts NULLs FIRST for DESC by default).
+    order_by = 'posted_at DESC NULLS LAST, id DESC'
     if sort == 'ranked':
         ranking_sql = RANKING_EXPRESSION.replace(':top_companies', placeholder)
-        order_by = f'{ranking_sql} DESC, posted_at DESC'
+        order_by = f'{ranking_sql} DESC, posted_at DESC NULLS LAST, id DESC'
     if india_first:
         order_by = f'{_INDIA_BUCKET_SQL} ASC, {order_by}'
     badges_sql = BADGE_EXPRESSIONS.replace(':top_companies', placeholder)
@@ -380,6 +386,24 @@ async def get_similar_jobs(job_id: str, limit: int=Query(default=6, ge=1, le=12)
     freshness_sql = ' AND '.join(_freshness_conditions())
     rows = await pool.fetch(f'\n        SELECT\n            {JOB_COLUMNS},\n            {badges_sql},\n            ({ranking_sql}) AS match_score\n        FROM jobs\n        WHERE is_active = true\n          AND {freshness_sql}\n          AND id != $1\n          AND (\n              job_group = $3\n              OR type = $4\n              OR similarity(title, $2) > 0.15\n          )\n        ORDER BY match_score DESC, posted_at DESC\n        LIMIT $8\n        ', job_id, self_job['title'] or '', self_job['job_group'] or 'other', self_job['type'] or '', self_job['is_remote'] or False, _lower_top_companies(), self_job['location'] or '', limit)
     return {'jobs': [dict(row) for row in rows]}
+
+@router.get('/{job_id}/status')
+async def get_job_status(job_id: str):
+    """Tell "expired" apart from "never existed" for the web tier.
+
+    GET /api/jobs/{id} returns 404 for both, because it filters on
+    is_active = true. The web middleware calls this to answer 410 Gone for a
+    row the crawler deactivated (Google drops 410s faster than 404s) while
+    leaving genuinely unknown IDs as a normal 404.
+    Returns {"state": "active" | "gone"}; 404 when the ID was never stored.
+    """
+    pool = await get_db_pool()
+    if pool is None:
+        raise HTTPException(503, 'Database unavailable')
+    row = await pool.fetchrow('SELECT is_active FROM jobs WHERE id = $1', job_id)
+    if row is None:
+        raise HTTPException(404, 'Job not found')
+    return {'state': 'active' if row['is_active'] else 'gone'}
 
 @router.get('/{job_id}')
 async def get_job(job_id: str):

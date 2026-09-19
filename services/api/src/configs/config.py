@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     # scripts/indexnow-submit.mjs already uses, kept as the same default
     # here so the two don't silently drift apart if neither env var is set.
     INDEXNOW_KEY: str = '97f076150822494092783dfc5c2c8a09'
-    INDEXNOW_HOST: str = 'www.intern-flow.in'
+    INDEXNOW_HOST: str = 'intern-flow.in'
     # Raw service-account JSON (the whole key file's contents, as one
     # env var) for Google's Indexing API. Only ever used to push URLs for
     # pages that carry JobPosting structured data — see the script header

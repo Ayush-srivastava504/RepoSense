@@ -20,7 +20,6 @@ function matchesCity(job: Job, city: CityDefinition): boolean {
 }
 
 export async function GET() {
-    const now = new Date().toISOString();
     // One fetch of both job types, then filter per-city in memory, rather
     // than one API round-trip per city — same shape as the per-city page
     // fetch, just batched for every city up front.
@@ -33,7 +32,7 @@ export async function GET() {
     // generateMetadata now applies — a sitemap entry for a noindexed page
     // is a conflicting signal.
     const xml = buildUrlsetXml([
-        { loc: `${BASE_URL}/jobs-in`, lastmod: now, changefreq: 'weekly', priority: 0.8 },
+        { loc: `${BASE_URL}/jobs-in`, changefreq: 'weekly', priority: 0.8 },
         ...CITIES
             .filter((city) => {
                 const count = jobs.filter((j) => matchesCity(j, city)).length +
@@ -42,7 +41,6 @@ export async function GET() {
             })
             .map((city) => ({
                 loc: `${BASE_URL}/jobs-in/${city.slug}`,
-                lastmod: now,
                 changefreq: 'daily' as const,
                 priority: 0.7,
             })),

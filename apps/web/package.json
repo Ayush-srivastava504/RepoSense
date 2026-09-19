@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "indexnow:submit": "node ../../scripts/indexnow-submit.mjs"
+    "indexnow:submit": "node ../../scripts/indexnow-submit.mjs",
+    "test:sitemap": "npx --yes tsx --test tests/*.test.ts"
   },
   "browserslist": [
     "> 0.3%",

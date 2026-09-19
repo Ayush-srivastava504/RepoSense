@@ -13,7 +13,7 @@
   "readingTime": "7 min read",
   "tags": ["Resume Format", "ATS Parsing", "College Students", "Job Hunting"],
   "image": {
-    "url": "https://www.intern-flow.in/og-image.png",
+    "url": "https://intern-flow.in/og-image.png",
     "alt": "Resume Formatting Layout Rules for ATS Compliance"
   },
   "body": "The most common reason qualified students get rejected from entry-level tech jobs isn't lack of coding skills — it's document layout corruption. When an applicant tracking system parses a two-column or graphic-heavy resume, the text gets scrambled, causing automated filters to discard the application.\n\n## 1. The 5 Deadliest Layout Mistakes\n\n- Mistake 1: Multi-Column Canva / Word Templates. Parsers read left-to-right across columns, merging disparate text into unintelligible strings.\n- Mistake 2: Text in Graphics and Icons. Rating skill levels with star icons (e.g., 'Python ★★★★☆') results in zero extracted skills in the ATS database.\n- Mistake 3: Putting Contact Info in Headers/Footers. Many ATS engines strip header and footer zones entirely, omitting your email and phone number.\n- Mistake 4: Non-Standard Fonts. Custom decorative fonts may not embed properly in PDFs, leading to corrupted characters.\n- Mistake 5: Exceeding 1 Page. For college students, a second page is almost never reviewed by technical screeners.\n\n## 2. Check Your Format Free with InternFlow\n\nUse InternFlow's free ATS Resume Checker to inspect your document's parse tree and identify formatting errors before submitting job applications.",

@@ -38,7 +38,7 @@ async def get_hackathons(limit: int=Query(default=20, ge=1, le=50), offset: int=
     total: int = await pool.fetchval(f'SELECT COUNT(*) FROM hackathons {where}', *params)
     limit_pos = len(params) + 1
     offset_pos = len(params) + 2
-    rows = await pool.fetch(f'\n        SELECT {HACKATHON_COLUMNS}\n        FROM hackathons\n        {where}\n        ORDER BY {RANKING_EXPRESSION} DESC, registration_deadline ASC NULLS LAST\n        LIMIT ${limit_pos} OFFSET ${offset_pos}\n        ', *params, limit, offset)
+    rows = await pool.fetch(f'\n        SELECT {HACKATHON_COLUMNS}\n        FROM hackathons\n        {where}\n        ORDER BY {RANKING_EXPRESSION} DESC, registration_deadline ASC NULLS LAST, id ASC\n        LIMIT ${limit_pos} OFFSET ${offset_pos}\n        ', *params, limit, offset)
     return {'items': [dict(row) for row in rows], 'total': total, 'limit': limit, 'offset': offset}
 
 @router.get('/featured')

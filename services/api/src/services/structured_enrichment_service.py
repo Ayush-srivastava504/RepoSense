@@ -11,7 +11,9 @@
 # runtime (crawler runs as its own container/entrypoint) — content_enrichment
 # already made the same call, this just matches it.
 
+import asyncio
 import json
+import random
 import re
 from dataclasses import dataclass
 from typing import List, Optional
@@ -23,6 +25,12 @@ GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 GROQ_MODEL = 'openai/gpt-oss-120b'
 FALLBACK_MODEL = 'rule-based-fallback'
 REQUEST_TIMEOUT_S = 30
+# 429 / 5xx handling: Groq rate-limits by requests *and* tokens per minute, so
+# a fixed inter-request delay isn't enough on its own. We honor the server's
+# retry-after header and fall back to exponential backoff with jitter.
+MAX_RETRIES = 6
+BACKOFF_BASE_S = 4.0
+BACKOFF_MAX_S = 90.0
 
 ALLOWED_DEGREES = {'TENTH', 'INTER', 'DIPLOMA', 'DEGREE', 'PG'}
 ALLOWED_WORK_MODES = {'ONSITE', 'REMOTE', 'HYBRID'}
@@ -87,6 +95,19 @@ class StructuredResult:
     job_function: Optional[str]
     structured_description: Optional[str]
     model: str
+
+
+def _retry_delay(resp: 'httpx.Response', attempt: int) -> float:
+    header = resp.headers.get('retry-after')
+    delay = None
+    if header:
+        try:
+            delay = float(header)
+        except ValueError:
+            delay = None
+    if delay is None:
+        delay = min(BACKOFF_BASE_S * (2 ** attempt), BACKOFF_MAX_S)
+    return min(delay, BACKOFF_MAX_S) + random.uniform(0.5, 2.0)
 
 
 def _extract_json(raw: str) -> Optional[dict]:
@@ -238,12 +259,22 @@ class StructuredEnrichmentService:
             'response_format': {'type': 'json_object'},
         }
         headers = {'Authorization': f'Bearer {self.api_key}', 'Content-Type': 'application/json'}
+        content = None
         try:
             async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_S) as client:
-                resp = await client.post(GROQ_API_URL, headers=headers, json=payload)
-                resp.raise_for_status()
-                body = resp.json()
-                content = body['choices'][0]['message']['content']
+                for attempt in range(MAX_RETRIES + 1):
+                    resp = await client.post(GROQ_API_URL, headers=headers, json=payload)
+                    if resp.status_code == 429 or resp.status_code >= 500:
+                        if attempt == MAX_RETRIES:
+                            resp.raise_for_status()
+                        delay = _retry_delay(resp, attempt)
+                        print(f'[structured_enrichment] Groq {resp.status_code}, retry {attempt + 1}/{MAX_RETRIES} in {delay:.1f}s')
+                        await asyncio.sleep(delay)
+                        continue
+                    resp.raise_for_status()
+                    body = resp.json()
+                    content = body['choices'][0]['message']['content']
+                    break
         except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
             print(f'[structured_enrichment] Groq request failed: {exc}')
             return self._fallback(title=title, company=company, location=location, description=description, job_type=job_type) if allow_fallback else None

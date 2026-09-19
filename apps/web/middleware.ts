@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { i18n, type Locale } from './i18n/config';
+import { goneHtml, isJobGone, jobIdFromDetailPath } from './lib/goneJobs';
 
 // Paths that must never be indexed even if something external links to
 // them (private/account surfaces). robots.txt's Disallow only stops
@@ -27,7 +28,7 @@ import { i18n, type Locale } from './i18n/config';
 //     specifically to be crawled — clearest signal of the group.
 const NOINDEX_PREFIXES = ['/dashboard', '/login', '/register'];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip API routes, static files, Next.js internals, and sitemaps
@@ -47,6 +48,25 @@ export function middleware(request: NextRequest) {
   const pathSegments = pathname.split('/');
   const maybeLocale = pathSegments[1] as Locale;
   const isLocalePrefix = i18n.locales.includes(maybeLocale) && maybeLocale !== i18n.defaultLocale;
+
+  // Expired jobs answer 410 Gone instead of 404 (Next.js 14 pages can't set a
+  // 410 themselves). Runs on the locale-stripped path so /es/jobs/... is
+  // covered too. Fails open: API errors just fall through to normal rendering.
+  if (request.method === 'GET' || request.method === 'HEAD') {
+    const logicalPath = isLocalePrefix ? '/' + pathSegments.slice(2).join('/') : pathname;
+    const jobId = jobIdFromDetailPath(logicalPath);
+    if (jobId && (await isJobGone(jobId))) {
+      return new NextResponse(goneHtml(), {
+        status: 410,
+        headers: {
+          'content-type': 'text/html; charset=utf-8',
+          'x-robots-tag': 'noindex, follow',
+          // Short: the crawler re-activates a job if it reappears upstream.
+          'cache-control': 'public, max-age=300',
+        },
+      });
+    }
+  }
 
   if (isLocalePrefix) {
     // Strip locale prefix for internal Next.js App Router rewrite

@@ -8,6 +8,7 @@ import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
 import { Inter, Fraunces, IBM_Plex_Mono } from 'next/font/google';
 import AppShell from './components/AppShell';
+import { BASE_URL } from '@/lib/site';
 const inter = Inter({
     subsets: ['latin'],
     variable: '--font-body',
@@ -28,7 +29,6 @@ const plexMono = IBM_Plex_Mono({
     preload: false,
     display: 'swap',
 });
-const BASE_URL = 'https://www.intern-flow.in';
 export const metadata: Metadata = {
     metadataBase: new URL(BASE_URL),
     title: {

@@ -9,7 +9,6 @@ import { i18n } from '@/i18n/config';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const now = new Date().toISOString();
   const posts = getAllPosts();
 
   const blogIndexAlternates: { lang: string; href: string }[] = i18n.locales.map((loc: string) => ({
@@ -21,7 +20,6 @@ export async function GET() {
   const entries = [
     {
       loc: `${BASE_URL}/blog`,
-      lastmod: now,
       changefreq: 'daily' as const,
       priority: 0.9,
       alternates: blogIndexAlternates,

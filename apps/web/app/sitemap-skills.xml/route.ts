@@ -9,7 +9,6 @@ import { buildUrlsetXml } from '@/lib/sitemapXml';
 import { SKILL_MIN_JOBS, belowHubThreshold } from '@/lib/seo/hubThresholds';
 export const dynamic = 'force-dynamic';
 export async function GET() {
-    const now = new Date().toISOString();
     // PHASE_PLAN.md Phase 3 item 2: a sitemap entry for a page that then
     // renders noindex (below SKILL_MIN_JOBS) is a conflicting signal — skip
     // it here the same way the hub page itself skips indexing. Mirrors the
@@ -23,12 +22,11 @@ export async function GET() {
         return jobs.length + internships.length;
     }));
     const xml = buildUrlsetXml([
-        { loc: `${BASE_URL}/skills`, lastmod: now, changefreq: 'weekly', priority: 0.8 },
+        { loc: `${BASE_URL}/skills`, changefreq: 'weekly', priority: 0.8 },
         ...SKILLS
             .filter((_, i) => !belowHubThreshold(counts[i], SKILL_MIN_JOBS))
             .map((skill) => ({
                 loc: `${BASE_URL}/skills/${skill.slug}`,
-                lastmod: now,
                 changefreq: 'daily' as const,
                 priority: 0.7,
             })),

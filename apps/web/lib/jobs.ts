@@ -4,8 +4,11 @@
 // Defines type(s): JobGroup, Job, JobsResponse
 
 import { fetchWithTimeout } from './fetchWithTimeout';
+import { BASE_URL } from './site';
 
-export const BASE_URL = 'https://www.intern-flow.in';
+// Canonical origin lives in lib/site.ts (non-www). Re-exported here so existing
+// `import { BASE_URL } from '@/lib/jobs'` call sites keep working.
+export { BASE_URL };
 // Same fallback chain as lib/companies.ts — some environments (build-time
 // static generation in particular, e.g. /companies/[company]'s
 // generateStaticParams) only ever have NEXT_PUBLIC_API_BASE_URL populated,

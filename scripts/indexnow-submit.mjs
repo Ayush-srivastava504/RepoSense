@@ -4,7 +4,7 @@
 // (api.indexnow.org), which fans out to Bing, Yandex, Seznam, Naver, etc.
 //
 // Prerequisite: the key file must already be LIVE at
-//   https://www.intern-flow.in/<INDEXNOW_KEY>.txt
+//   https://intern-flow.in/<INDEXNOW_KEY>.txt
 // (i.e. apps/web/public/<key>.txt has been deployed) — IndexNow verifies
 // ownership by fetching that URL before it accepts submissions, so run this
 // AFTER deploying, not before.
@@ -12,10 +12,10 @@
 // Usage:
 //   node scripts/indexnow-submit.mjs
 //   node scripts/indexnow-submit.mjs --dry-run     (collect + print URL count only)
-//   node scripts/indexnow-submit.mjs --base-url=https://www.intern-flow.in
+//   node scripts/indexnow-submit.mjs --base-url=https://intern-flow.in
 
 const KEY = '97f076150822494092783dfc5c2c8a09';
-const HOST = 'www.intern-flow.in';
+const HOST = 'intern-flow.in';
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');

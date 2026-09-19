@@ -74,4 +74,4 @@ User-agent: PerplexityBot
 Disallow: /
 
 # Master Sitemap Index
-Sitemap: https://www.intern-flow.in/sitemap.xml
+Sitemap: https://intern-flow.in/sitemap.xml

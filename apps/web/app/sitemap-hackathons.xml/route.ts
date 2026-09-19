@@ -4,7 +4,7 @@
 //
 
 import { getHackathons, BASE_URL } from '@/lib/hackathons';
-import { buildUrlsetXml } from '@/lib/sitemapXml';
+import { buildUrlsetXml, toLastmod } from '@/lib/sitemapXml';
 export const dynamic = 'force-dynamic';
 // Give this route more headroom on platforms that respect it (e.g. Vercel Pro).
 // Harmless no-op elsewhere.
@@ -53,9 +53,7 @@ export async function GET() {
         .filter((hackathon) => hackathon?.slug)
         .map((hackathon) => ({
         loc: `${BASE_URL}/hackathons/${hackathon.slug}`,
-        lastmod: hackathon.first_seen_at
-            ? new Date(hackathon.first_seen_at).toISOString()
-            : new Date().toISOString(),
+        lastmod: toLastmod(hackathon.first_seen_at),
         changefreq: 'daily' as const,
         priority: 0.7,
     })));

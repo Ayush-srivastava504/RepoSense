@@ -112,3 +112,17 @@ export function isStaleForIndexing(job: { deadline?: string; posted_at?: string 
 export function isThinAndUnenriched(job: { is_thin?: boolean; enriched_overview?: string }): boolean {
     return job.is_thin === true && !job.enriched_overview;
 }
+
+// SINGLE predicate for "should this job URL be indexed?". Used by BOTH the
+// job-detail pages (robots noindex in generateMetadata) and the jobs
+// sitemap, so a URL can never be submitted in the sitemap while its own
+// page tells Google `noindex` (a conflicting signal that counts against
+// sitemap quality). Change the rule here and both sides follow.
+export function isIndexableJob(job: {
+    deadline?: string;
+    posted_at?: string;
+    is_thin?: boolean;
+    enriched_overview?: string;
+}): boolean {
+    return !isStaleForIndexing(job) && !isThinAndUnenriched(job);
+}

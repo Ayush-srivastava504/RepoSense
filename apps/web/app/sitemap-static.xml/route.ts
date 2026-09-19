@@ -8,7 +8,6 @@ import { i18n } from '@/i18n/config';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const now = new Date().toISOString();
 
   // Primary static hubs with multilingual support
   const coreHubs = [
@@ -44,7 +43,6 @@ export async function GET() {
 
     return {
       loc: `${BASE_URL}${hub.path}`,
-      lastmod: now,
       changefreq: hub.changefreq,
       priority: hub.priority,
       alternates,

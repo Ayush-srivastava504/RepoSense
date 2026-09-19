@@ -13,6 +13,16 @@ export interface SitemapUrlEntry {
   }[];
 }
 
+/** ISO lastmod from a real timestamp, or undefined. Never fabricates "now". */
+export function toLastmod(value: string | undefined | null, now: number = Date.now()): string | undefined {
+    if (!value)
+        return undefined;
+    const t = new Date(value).getTime();
+    if (Number.isNaN(t) || t > now)
+        return undefined;
+    return new Date(t).toISOString();
+}
+
 export function buildUrlsetXml(entries: SitemapUrlEntry[]): string {
   const hasAlternates = entries.some((e) => e.alternates && e.alternates.length > 0);
   const xmlns = hasAlternates

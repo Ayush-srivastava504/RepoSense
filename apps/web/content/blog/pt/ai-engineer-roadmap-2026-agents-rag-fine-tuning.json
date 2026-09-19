@@ -13,7 +13,7 @@
   "readingTime": "9 min de leitura",
   "tags": ["Engenharia de IA", "LLM", "RAG", "Bancos Vetoriais", "Agentes", "Python"],
   "image": {
-    "url": "https://www.intern-flow.in/og-image.png",
+    "url": "https://intern-flow.in/og-image.png",
     "alt": "Roadmap Engenheiro de IA 2026"
   },
   "body": "O papel do Engenheiro de IA amadureceu rapidamente. Em 2026, criar aplicações de IA em produção vai muito além de conectar prompts básicos de API. As empresas buscam engenheiros que dominem orquestração determinística, extração estruturada de dados e arquiteturas confiáveis de agentes autônomos.\n\n## 1. Fundamentos: De Prompt Engineering a Saídas Estruturadas\n\n- Validação estrita de esquemas com Pydantic e modo JSON.\n- Chamada de funções (Function Calling) com tratamento robusto de erros.\n- Gestão de janela de contexto e compressão de prompts.\n\n## 2. RAG Avançado (Geração Aumentada por Recuperação)\n\n- Busca Híbrida: Combinação de busca vetorial semântica densa (pgvector, Qdrant) com busca léxica (BM25).\n- Reordenamento (Re-ranking): Uso de cross-encoders para selecionar os melhores trechos.\n- GraphRAG: Grafos de conhecimento integrados para raciocínio relacional complexo.",

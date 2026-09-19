@@ -4,8 +4,11 @@
 // Defines type(s): Hackathon, HackathonsResponse
 
 import { fetchWithTimeout } from './fetchWithTimeout';
+import { BASE_URL } from './site';
 
-export const BASE_URL = 'https://www.intern-flow.in';
+// Canonical origin lives in lib/site.ts (non-www). Re-exported here so existing
+// `import { BASE_URL } from '@/lib/jobs'` call sites keep working.
+export { BASE_URL };
 const API_BASE_URL = process.env.API_BASE_URL ||
     process.env.NEXT_PUBLIC_API_BASE_URL ||
     'https://api.intern-flow.in';

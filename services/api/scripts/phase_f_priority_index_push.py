@@ -79,7 +79,7 @@ from configs.config import settings
 from routes.jobs import TOP_COMPANY_TIER  # single source of truth for "big company"
 
 ROW_PREFIX = 'PRIORITY_PUSH_ROW'  # grepped by the GH Actions job-summary step
-BASE_URL = 'https://www.intern-flow.in'  # mirrors apps/web/lib/jobs.ts's BASE_URL
+BASE_URL = os.environ.get('SITE_URL', 'https://intern-flow.in').rstrip('/')  # canonical = non-www; mirrors apps/web/lib/site.ts
 GOOGLE_INDEXING_SCOPE = 'https://www.googleapis.com/auth/indexing'
 GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 GOOGLE_PUBLISH_URL = 'https://indexing.googleapis.com/v3/urlNotifications:publish'
