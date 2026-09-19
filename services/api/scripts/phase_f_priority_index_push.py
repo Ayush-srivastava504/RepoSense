@@ -56,7 +56,9 @@
 #
 # ENV (see .env.example / configs/config.py):
 #   INDEXNOW_KEY, INDEXNOW_HOST                    (both have working defaults)
-#   GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON            (empty = skip Google leg)
+#   GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON            (inline JSON, or a path to a
+#                                                    service-account JSON file;
+#                                                    empty = skip Google leg)
 #   GOOGLE_INDEXING_DAILY_QUOTA                     (default 180)
 
 import argparse
@@ -291,10 +293,21 @@ async def main() -> None:
 
     google_sa: Optional[Dict] = None
     if not args.skip_google and settings.GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON:
+        google_sa_value = settings.GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON.strip()
+
         try:
-            google_sa = json.loads(settings.GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON)
-        except json.JSONDecodeError:
-            print('[phase_f] GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON is not valid JSON — skipping Google leg.')
+            if google_sa_value.startswith('{'):
+                google_sa = json.loads(google_sa_value)
+            else:
+                google_sa_path = Path(google_sa_value)
+                google_sa = json.loads(
+                    google_sa_path.read_text(encoding='utf-8')
+                )
+        except (json.JSONDecodeError, OSError) as exc:
+            print(
+                f'[phase_f] Could not load Google service account: '
+                f'{exc} — skipping Google leg.'
+            )
     elif not args.skip_google:
         print('[phase_f] GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON not set — skipping Google leg (IndexNow only).')
 
