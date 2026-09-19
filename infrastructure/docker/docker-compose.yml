@@ -111,6 +111,7 @@ services:
     volumes:
       - ../../../templates:/templates
       - ../../../generated_resumes:/app/generated_resumes
+      - ./google-service-account.json:/app/infrastructure/docker/google-service-account.json:ro
     depends_on:
       postgres:
         condition: service_healthy
