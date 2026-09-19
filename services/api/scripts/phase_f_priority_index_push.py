@@ -59,7 +59,7 @@
 #   GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON            (inline JSON, or a path to a
 #                                                    service-account JSON file;
 #                                                    empty = skip Google leg)
-#   GOOGLE_INDEXING_DAILY_QUOTA                     (default 180)
+#   GOOGLE_INDEXING_DAILY_QUOT                   (default 180)
 
 import argparse
 import asyncio
@@ -143,7 +143,6 @@ async def _select(pool, *, only_internships: bool, top_companies: List[str], lim
                (lower(company) = ANY($1)) AS is_top_company
         FROM jobs
         WHERE is_active = TRUE
-          AND created_at::date = CURRENT_DATE
           AND indexnow_submitted_at IS NULL
           AND {type_condition}
           AND NOT (is_thin AND enriched_overview IS NULL)
