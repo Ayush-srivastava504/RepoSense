@@ -4,18 +4,15 @@
 import { BASE_URL } from '@/lib/jobs';
 import { getAllPosts } from '@/lib/blog';
 import { buildUrlsetXml } from '@/lib/sitemapXml';
-import { i18n } from '@/i18n/config';
+import { hreflangLinks } from '@/lib/hreflang';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const posts = getAllPosts();
 
-  const blogIndexAlternates: { lang: string; href: string }[] = i18n.locales.map((loc: string) => ({
-    lang: loc,
-    href: loc === 'en' ? `${BASE_URL}/blog` : `${BASE_URL}/${loc}/blog`,
-  }));
-  blogIndexAlternates.push({ lang: 'x-default', href: `${BASE_URL}/blog` });
+  // Empty while hreflang is disabled (lib/hreflang.ts).
+  const blogIndexAlternates = hreflangLinks('/blog');
 
   const entries = [
     {
@@ -25,11 +22,7 @@ export async function GET() {
       alternates: blogIndexAlternates,
     },
     ...posts.map((post) => {
-      const postAlternates: { lang: string; href: string }[] = i18n.locales.map((loc: string) => ({
-        lang: loc,
-        href: loc === 'en' ? `${BASE_URL}/blog/${post.slug}` : `${BASE_URL}/${loc}/blog/${post.slug}`,
-      }));
-      postAlternates.push({ lang: 'x-default', href: `${BASE_URL}/blog/${post.slug}` });
+      const postAlternates = hreflangLinks(`/blog/${post.slug}`);
 
       return {
         loc: `${BASE_URL}/blog/${post.slug}`,

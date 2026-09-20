@@ -3,6 +3,8 @@
 // JSON.stringify. Keeping these in one place means every page emits schema in the same
 // shape, which is what Google's Rich Results tooling actually rewards.
 
+import { normalizeCountryCode } from './country';
+import { hreflangLinks } from './hreflang';
 import { BASE_URL, type Job } from './jobs';
 export const ORG_NAME = 'InternFlow';
 export const ORG_LOGO = `${BASE_URL}/og-image.png`;
@@ -35,6 +37,14 @@ export function breadcrumbSchema(items: {
         })),
     };
 }
+// Blank column -> 'IN' (the crawler's own default for on-site jobs). A
+// non-blank value that isn't a resolvable country ('Europe', 'Worldwide', a
+// city) -> null, so callers omit the field instead of emitting invalid data.
+function jobCountryCode(raw: string | null | undefined): string | null {
+    if (!raw || !raw.trim())
+        return 'IN';
+    return normalizeCountryCode(raw);
+}
 // Builds the full hreflang map (including x-default) for a given relative
 // path, e.g. languageAlternates('/jobs') ->
 // { 'x-default': BASE_URL+'/jobs', en: BASE_URL+'/jobs', es: BASE_URL+'/es/jobs', ... }.
@@ -43,19 +53,9 @@ export function breadcrumbSchema(items: {
 // variants here — not just the homepage — or Google has no way to know the
 // other-language URLs exist.
 export function languageAlternates(path: string): Record<string, string> {
-    const clean = path === '/' ? '' : path;
-    return {
-        'x-default': `${BASE_URL}${clean}`,
-        en: `${BASE_URL}${clean}`,
-        es: `${BASE_URL}/es${clean}`,
-        ja: `${BASE_URL}/ja${clean}`,
-        fr: `${BASE_URL}/fr${clean}`,
-        de: `${BASE_URL}/de${clean}`,
-        pt: `${BASE_URL}/pt${clean}`,
-        ko: `${BASE_URL}/ko${clean}`,
-        it: `${BASE_URL}/it${clean}`,
-        hi: `${BASE_URL}/hi${clean}`,
-    };
+    // {} while HREFLANG_ENABLED is false (see lib/hreflang.ts): Next renders no
+    // <link rel="alternate" hreflang> tags for an empty map.
+    return Object.fromEntries(hreflangLinks(path).map((l) => [l.lang, l.href]));
 }
 export function faqSchema(faqs: {
     question: string;
@@ -174,7 +174,8 @@ export function eventSchema(params: {
             address: {
                 '@type': 'PostalAddress',
                 addressLocality: params.location,
-                addressCountry: params.country,
+                // ISO code or omitted -- never a free-text guess.
+                ...(normalizeCountryCode(params.country) ? { addressCountry: normalizeCountryCode(params.country) } : {}),
             },
         };
     }
@@ -324,10 +325,12 @@ export function jobPostingSchema(job: Job, canonicalUrl: string) {
     };
     if (job.is_remote) {
         schema.jobLocationType = 'TELECOMMUTE';
-        schema.applicantLocationRequirements = {
-            '@type': 'Country',
-            name: job.country || 'IN',
-        };
+        // 'Europe' / 'Worldwide' / a city string are not countries: omit the
+        // requirement rather than assert one Google can't resolve. A blank
+        // column keeps the site's long-standing India default.
+        const remoteCountry = jobCountryCode(job.country);
+        if (remoteCountry)
+            schema.applicantLocationRequirements = { '@type': 'Country', name: remoteCountry };
     }
     else if (job.location) {
         schema.jobLocation = {
@@ -335,7 +338,7 @@ export function jobPostingSchema(job: Job, canonicalUrl: string) {
             address: {
                 '@type': 'PostalAddress',
                 addressLocality: job.location,
-                addressCountry: job.country || 'IN',
+                ...(jobCountryCode(job.country) ? { addressCountry: jobCountryCode(job.country) } : {}),
             },
         };
     }
@@ -348,7 +351,7 @@ export function jobPostingSchema(job: Job, canonicalUrl: string) {
             '@type': 'Place',
             address: {
                 '@type': 'PostalAddress',
-                addressCountry: job.country || 'IN',
+                ...(jobCountryCode(job.country) ? { addressCountry: jobCountryCode(job.country) } : {}),
             },
         };
     }
