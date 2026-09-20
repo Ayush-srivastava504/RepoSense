@@ -5,7 +5,7 @@
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { jobSlug } from '@/lib/slug';
+import { canonicalPathForJob } from '@/lib/slug';
 import { getJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
 import SponsoredCard from '@/app/components/SponsoredCard';
@@ -153,7 +153,7 @@ export default async function JapanJobsPage({ searchParams, }: {
         itemListElement: jobs.map((job, index) => ({
             '@type': 'ListItem',
             position: startIndex + index + 1,
-            url: `${BASE_URL}${basePath}/${jobSlug(job)}`,
+            url: `${BASE_URL}${canonicalPathForJob(job)}`,
         })),
     };
     const heading = type === 'internship'

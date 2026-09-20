@@ -1,5 +1,5 @@
 # Module: src/middleware/rate_limit.py
-# Defines function(s): _load_test_bypass, get_client_ip, rate_limit_middleware
+# Defines function(s): _load_test_bypass, _internal_bypass, get_client_ip, rate_limit_middleware
 #
 #
 
@@ -14,6 +14,21 @@ def _load_test_bypass(request: Request) -> bool:
     if not configured_key:
         return False
     provided_key = request.headers.get('X-Load-Test-Key', '')
+    if not provided_key:
+        return False
+    return hmac.compare_digest(provided_key, configured_key)
+
+def _internal_bypass(request: Request) -> bool:
+    """Trusted server-to-server calls from the web tier (X-Internal-Key).
+
+    The Next.js app renders pages on shared egress IPs, so its SSR traffic would
+    otherwise be limited as one anonymous client (50/min) and answer 429 to real
+    page renders. Disabled unless INTERNAL_API_KEY is configured.
+    """
+    configured_key = settings.INTERNAL_API_KEY
+    if not configured_key:
+        return False
+    provided_key = request.headers.get('X-Internal-Key', '')
     if not provided_key:
         return False
     return hmac.compare_digest(provided_key, configured_key)
@@ -38,7 +53,7 @@ async def rate_limit_middleware(request: Request, call_next):
     redis = await get_redis()
     if redis is None:
         return await call_next(request)
-    if _load_test_bypass(request):
+    if _load_test_bypass(request) or _internal_bypass(request):
         return await call_next(request)
     user = getattr(request.state, 'user', None)
     if user and user.get('id'):

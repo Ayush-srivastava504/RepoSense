@@ -18,6 +18,8 @@
 // under 60s, so a slow/dead backend fails fast and the caller's existing
 // try/catch falls back to an empty result instead of the whole build
 // stalling.
+import { internalApiHeaders } from './internalApi';
+
 const DEFAULT_TIMEOUT_MS = 8000;
 
 export async function fetchWithTimeout(
@@ -38,7 +40,10 @@ export async function fetchWithTimeout(
     }
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-        return await fetch(url, { ...options, signal: controller.signal });
+        const extra = typeof window === 'undefined' ? internalApiHeaders(url) : {};
+        const headers = new Headers(options.headers);
+        for (const [k, v] of Object.entries(extra)) headers.set(k, v);
+        return await fetch(url, { ...options, headers, signal: controller.signal });
     }
     catch (err) {
         if (controller.signal.aborted) {

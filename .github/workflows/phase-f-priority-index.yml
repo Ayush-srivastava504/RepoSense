@@ -3,7 +3,7 @@ name: Phase F Priority Index Push
 # Same-day priority indexing push — see INDEXING_RECOVERY_PLAN.md's Phase F
 # and scripts/phase_f_priority_index_push.py's header for the full design.
 # Postgres is only reachable from the EC2 box itself, so — same pattern as
-# content-enrichment.yml — this SSHes in and runs the script there against
+# job-content-enrichment.yml — this SSHes in and runs the script there against
 # the docker-compose .env, rather than connecting out from the runner.
 #
 # Runs several times a day (not just once) so newly-scraped high-value

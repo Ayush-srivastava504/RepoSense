@@ -29,6 +29,11 @@ export interface Job {
     url: string;
     source: string;
     posted_at: string;
+    // Added so datePosted / lastmod can fall back to a real creation
+    // timestamp instead of last_seen_at (which moves on every crawl).
+    // Present once services/api/src/routes/jobs.py's JOB_COLUMNS includes
+    // it and migrations/016_fix_jobs_created_at.sql has run in production.
+    created_at?: string;
     location?: string;
     type?: string;
     salary?: string;
@@ -254,19 +259,36 @@ export async function getSimilarJobs(jobId: string, limit = 6): Promise<Job[]> {
         return [];
     }
 }
+export class JobApiUnavailableError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'JobApiUnavailableError';
+    }
+}
+/**
+ * Only a genuine 404 means "no such job" (-> null -> the page's notFound()).
+ * Rate limits (429), 5xx and network/timeout errors THROW instead: returning null
+ * there made a healthy job page answer 404 to Googlebot whenever the API was busy,
+ * and Google drops URLs it sees 404. A thrown error renders as a 5xx, which
+ * crawlers treat as temporary and retry, and ISR keeps serving the last good page.
+ */
 export async function getJobById(id: string): Promise<Job | null> {
+    let res: Response;
     try {
-        const res = await fetchWithTimeout(`${API_BASE_URL}/api/jobs/${id}`, {
+        res = await fetchWithTimeout(`${API_BASE_URL}/api/jobs/${id}`, {
             next: { revalidate: 3600 },
         });
-        if (!res.ok) {
-            console.error('Job detail API returned', res.status, 'for id', id);
-            return null;
-        }
-        return res.json();
     }
     catch (err) {
         console.error('Failed to fetch job:', err);
+        throw new JobApiUnavailableError(`Job API unreachable for id ${id}`);
+    }
+    if (res.status === 404) {
         return null;
     }
+    if (!res.ok) {
+        console.error('Job detail API returned', res.status, 'for id', id);
+        throw new JobApiUnavailableError(`Job API returned ${res.status} for id ${id}`);
+    }
+    return res.json();
 }

@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ''
     REQUIRE_AUTH: bool = False
     LOAD_TEST_BYPASS_KEY: str = ''
+    # Shared secret the Next.js tier sends as X-Internal-Key on server-to-server calls so
+    # SSR/ISR/sitemap traffic (shared Vercel egress IPs) is not throttled by the per-IP limit.
+    INTERNAL_API_KEY: str = ''
     GROQ_API_KEY: str = ''
 
     # Phase F — same-day priority indexing push (see

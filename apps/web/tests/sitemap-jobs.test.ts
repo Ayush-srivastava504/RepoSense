@@ -177,12 +177,29 @@ const enriched = { enriched_overview: 'Real overview' };
 test('isJobForSitemap needs enrichment and recency; falls back to last_seen_at', () => {
     assert.equal(isJobForSitemap(job('a', enriched), NOW), true);
     assert.equal(isJobForSitemap(job('b'), NOW), false); // not enriched
-    assert.equal(isJobForSitemap(job('c', { ...enriched, posted_at: iso(-30) }), NOW), false); // too old
+    assert.equal(isJobForSitemap(job('c', { ...enriched, posted_at: iso(-30) }), NOW), true); // within the 30d "always" tier
     // posted_at NULL (very common) -> judged on last_seen_at
     assert.equal(isJobForSitemap(job('d', { ...enriched, posted_at: undefined, last_seen_at: iso(-2) }), NOW), true);
-    assert.equal(isJobForSitemap(job('e', { ...enriched, posted_at: undefined, last_seen_at: iso(-40) }), NOW), false);
+    assert.equal(isJobForSitemap(job('e', { ...enriched, posted_at: undefined, last_seen_at: iso(-40), quality_score: 10 }), NOW), false); // mid-tier, low quality
     // no date at all -> can't prove recent
     assert.equal(isJobForSitemap(job('f', { ...enriched, posted_at: undefined }), NOW), false);
+    // future-dated posted_at (clock skew / bad scrape data) -> don't trust it
+    assert.equal(isJobForSitemap(job('g', { ...enriched, posted_at: iso(5) }), NOW), false);
+});
+
+test('isJobForSitemap: mid tier (31-90d) needs quality_score >= 50, old tier (90d+) needs >= 75', () => {
+    // deadline is explicit + future here so isStaleForIndexing() (which checks
+    // against the real clock, not the test's fixed NOW) doesn't mark an old
+    // posted_at as expired -- isolates the quality_score tier logic being tested.
+    const futureDeadline = iso(365);
+    const midAge = { ...enriched, posted_at: iso(-60), deadline: futureDeadline };
+    assert.equal(isJobForSitemap(job('m1', { ...midAge, quality_score: 49 }), NOW), false);
+    assert.equal(isJobForSitemap(job('m2', { ...midAge, quality_score: 50 }), NOW), true);
+    assert.equal(isJobForSitemap(job('m3', midAge), NOW), false); // no quality_score -> treated as 0
+
+    const oldAge = { ...enriched, posted_at: iso(-120), deadline: futureDeadline };
+    assert.equal(isJobForSitemap(job('o1', { ...oldAge, quality_score: 74 }), NOW), false);
+    assert.equal(isJobForSitemap(job('o2', { ...oldAge, quality_score: 75 }), NOW), true);
 });
 
 test('leaving a job out of the sitemap does NOT make its page noindex', () => {
@@ -239,4 +256,22 @@ test('chunking, file names and index URLs line up', () => {
         'https://intern-flow.in/sitemaps/jobs-3.xml',
         'https://intern-flow.in/sitemaps/internships-1.xml',
     ]);
+});
+
+test('category entries never use last_seen_at for lastmod', () => {
+    const b = buildCategorySitemapEntries([
+        job('nodate', { ...enriched, posted_at: undefined, last_seen_at: iso(-1) }), // eligible via last_seen_at
+        job('dated', { ...enriched, posted_at: '2026-09-15T00:00:00Z', last_seen_at: iso(-1) }),
+    ], NOW);
+    const byId = Object.fromEntries(b.jobs.map((e) => [e.loc.split('-').pop(), e]));
+    assert.equal(byId['nodate'].lastmod, undefined);
+    assert.equal(byId['dated'].lastmod, '2026-09-15T00:00:00.000Z');
+});
+
+test('lastmod falls back to created_at (never last_seen_at) when posted_at is missing', () => {
+    const b = buildCategorySitemapEntries([
+        job('cdate', { ...enriched, posted_at: undefined, created_at: '2026-09-10T00:00:00Z', last_seen_at: iso(-1) }),
+    ], NOW);
+    const entry = b.jobs.find((e) => e.loc.endsWith('cdate'));
+    assert.equal(entry?.lastmod, '2026-09-10T00:00:00.000Z');
 });

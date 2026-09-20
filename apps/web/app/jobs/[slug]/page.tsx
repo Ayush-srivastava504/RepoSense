@@ -7,7 +7,7 @@ import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { jobIdFromSlug, canonicalCategoryForJob, canonicalPathForJob } from '@/lib/slug';
 import { getJobById, BASE_URL } from '@/lib/jobs';
-import {  jobPostingSchema, breadcrumbSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
+import {  jobPostingSchema, breadcrumbSchema, safeJsonLd } from '@/lib/structuredData';
 import { buildJobTitle, truncateDescription, isIndexableJob } from '@/lib/seo/seoMetrics';
 import { jobOgImageUrl } from '@/lib/seo/ogImage';
 import JobDetail from '@/app/components/JobDetail';
@@ -39,7 +39,6 @@ export async function generateMetadata({ params, }: {
         description,
         alternates: {
             canonical: `${BASE_URL}${canonicalPathForJob(job)}`,
-            languages: languageAlternates(canonicalPathForJob(job)),
         },
         openGraph: {
             type: 'website',

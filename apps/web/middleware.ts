@@ -76,7 +76,14 @@ export async function middleware(request: NextRequest) {
     const rewriteUrl = request.nextUrl.clone();
     rewriteUrl.pathname = internalPath === '' ? '/' : internalPath;
 
-    const response = NextResponse.rewrite(rewriteUrl);
+    // Set x-locale on the REQUEST headers (not just the response) so
+    // Server Components -- app/layout.tsx, app/blog/page.tsx,
+    // app/blog/[slug]/page.tsx -- can read the real locale via headers()
+    // on every request, not only once the NEXT_LOCALE cookie set below has
+    // round-tripped back on a later visit.
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-locale', maybeLocale);
+    const response = NextResponse.rewrite(rewriteUrl, { request: { headers: requestHeaders } });
     response.headers.set('x-locale', maybeLocale);
     response.cookies.set('NEXT_LOCALE', maybeLocale, {
       path: '/',
@@ -90,7 +97,9 @@ export async function middleware(request: NextRequest) {
   }
 
   // Default English route
-  const response = NextResponse.next();
+  const defaultRequestHeaders = new Headers(request.headers);
+  defaultRequestHeaders.set('x-locale', i18n.defaultLocale);
+  const response = NextResponse.next({ request: { headers: defaultRequestHeaders } });
   response.headers.set('x-locale', i18n.defaultLocale);
   if (shouldNoIndex) {
     response.headers.set('X-Robots-Tag', 'noindex, nofollow');

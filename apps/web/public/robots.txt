@@ -31,11 +31,13 @@ Disallow: /dashboard/
 Disallow: /login
 Disallow: /register
 Disallow: /api/
-Disallow: /_next/
 Disallow: /static/
 
-# Prevent crawl budget exhaustion on duplicate query permutations
-Disallow: /*?*page=
+# Prevent crawl budget exhaustion on duplicate query permutations.
+# NOTE: ?page= is deliberately NOT blocked. Paginated list pages (12 jobs each) are the
+# main crawlable internal-link path to job detail pages, and each ?page=N is
+# self-canonical (lib/seo/pagination.ts). /_next/ is also deliberately not blocked:
+# Googlebot needs the JS/CSS under /_next/static/ to render pages.
 Disallow: /*?*search=
 Disallow: /*?*loc=
 Disallow: /*?*sort=

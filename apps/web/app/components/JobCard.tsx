@@ -5,19 +5,25 @@
 
 import Link from 'next/link';
 import type { Job } from '@/lib/jobs';
-import { jobSlug } from '@/lib/slug';
+import { canonicalPathForJob } from '@/lib/slug';
 import { timeAgo } from '@/lib/timeAgo';
 import JobBadges from './JobBadges';
 import JobTags from './JobTags';
 import CompanyLogo from './CompanyLogo';
 import SaveJobButton from './SaveJobButton';
 import MatchScoreBadge from './MatchScoreBadge';
-export default function JobCard({ job, basePath = '/jobs' }: {
+// Always links to the job's CANONICAL detail URL (its true category: government >
+// internship > remote > jobs). Call sites used to hardcode a category prefix, so
+// e.g. an internship listed on /jobs linked to /jobs/{slug}, which 308-redirects
+// to /internships/{slug} - thousands of internal links pointing at redirects.
+// `basePath` is kept only so existing call sites still type-check; it is ignored.
+export default function JobCard({ job }: {
     job: Job;
+    /** @deprecated ignored; the link is always the canonical path. */
     basePath?: string;
 }) {
     const pay = job.salary || job.stipend;
-    return (<Link href={`${basePath}/${jobSlug(job)}`} className="panel group flex h-full flex-col p-5 transition-all hover:-translate-y-1 hover:shadow-lg">
+    return (<Link href={canonicalPathForJob(job)} className="panel group flex h-full flex-col p-5 transition-all hover:-translate-y-1 hover:shadow-lg">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <h2 className="display text-lg font-medium leading-snug" style={{ color: 'var(--ink)' }}>

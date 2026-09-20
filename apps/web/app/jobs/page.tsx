@@ -2,10 +2,11 @@
 // Defines component(s)/export(s): JOBS_PER_PAGE, Pagination, JobsPage
 
 import type { Metadata } from 'next';
+import { listPageState, paginatedCanonical, paginatedTitle } from '@/lib/seo/pagination';
 import Link from 'next/link';
 
 import Script from 'next/script';
-import { jobSlug } from '@/lib/slug';
+import { canonicalPathForJob } from '@/lib/slug';
 import { getJobsPage, getFeaturedJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
 import FeaturedJobs from '@/app/components/FeaturedJobs';
@@ -20,14 +21,20 @@ import Breadcrumbs from '@/app/components/Breadcrumbs';
 import { getJobFacets } from '@/lib/facets';
 import { parseAdvancedFilters } from '@/lib/filterJobs';
 const JOBS_PER_PAGE = 12;
-export const metadata: Metadata = {
-    title: 'Job & Internship Listings — India, Remote & Japan — Refreshed Daily',
-    description: 'Browse the latest software engineering, sales, and finance jobs and internships from India, remote companies, and Japan. Updated daily, no login required.',
-    alternates: {
-        canonical: `${BASE_URL}/jobs`,
-        languages: languageAlternates('/jobs'),
-    },
-};
+export async function generateMetadata({ searchParams, }: {
+    searchParams: Record<string, string | undefined>;
+}): Promise<Metadata> {
+    const { page, filtered } = listPageState(searchParams);
+    return {
+        title: paginatedTitle('Job & Internship Listings — India, Remote & Japan — Refreshed Daily', page),
+        description: 'Browse the latest software engineering, sales, and finance jobs and internships from India, remote companies, and Japan. Updated daily, no login required.',
+        alternates: {
+            canonical: paginatedCanonical(BASE_URL, '/jobs', searchParams),
+            // hreflang only for the plain first page; deeper/filtered views are not translated variants.
+            ...(page === 1 && !filtered ? { languages: languageAlternates('/jobs') } : {}),
+        },
+    };
+}
 function Pagination({ currentPage, totalPages, search, loc, role, extraParams, }: {
     currentPage: number;
     totalPages: number;
@@ -191,7 +198,7 @@ export default async function JobsPage({ searchParams, }: {
         itemListElement: jobs.map((job, index) => ({
             '@type': 'ListItem',
             position: startIndex + index + 1,
-            url: `${BASE_URL}/jobs/${jobSlug(job)}`,
+            url: `${BASE_URL}${canonicalPathForJob(job)}`,
         })),
     };
     const crumbs = breadcrumbSchema([

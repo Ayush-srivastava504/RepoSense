@@ -26,9 +26,11 @@ type SitemapJob = {
     is_government?: boolean;
     deadline?: string;
     posted_at?: string;
+    created_at?: string;
     last_seen_at?: string;
     is_thin?: boolean;
     enriched_overview?: string;
+    quality_score?: number;
 };
 
 export type JobsPageFetcher<T extends SitemapJob = SitemapJob> = (
@@ -103,9 +105,11 @@ export function buildJobSitemapEntries<T extends SitemapJob>(jobs: T[], now: num
             continue;
         entries.push({
             loc: `${BASE_URL}${canonicalPathForJob(job)}`,
-            // Only a real date. Jobs without posted_at get NO <lastmod>; a
-            // fabricated "now" on every entry teaches Google to ignore lastmod.
-            lastmod: toLastmod(job.posted_at, now),
+            // Real date only, preferring the source's own posted_at, then our
+            // created_at (a real creation timestamp), never last_seen_at
+            // (moves on every crawl -- fabricating freshness on every entry
+            // teaches Google to ignore lastmod).
+            lastmod: toLastmod(job.posted_at || job.created_at, now),
         });
     }
     return entries;
@@ -121,15 +125,27 @@ export function buildJobSitemapEntries<T extends SitemapJob>(jobs: T[], now: num
 
 // Google's protocol limit is 50,000 URLs/file; small files add nothing.
 export const SITEMAP_URLS_PER_FILE = 1000;
-// A job only earns a sitemap slot while it is this fresh. Age is measured from
-// posted_at, falling back to last_seen_at because ~10k jobs have posted_at NULL.
-export const SITEMAP_RECENT_DAYS = 14;
+// Tiered freshness windows, replacing the old single SITEMAP_RECENT_DAYS
+// cutoff. Age is measured from posted_at, falling back to last_seen_at
+// because ~10k jobs have posted_at NULL. Older jobs stay in the sitemap only
+// if quality_score says they're still worth crawling -- otherwise they stay
+// indexable on their own page (isIndexableJob is unaffected) but drop out of
+// the sitemap, same as before.
+export const SITEMAP_TIER_FRESH_DAYS = 30; // always included once enriched
+export const SITEMAP_TIER_MID_DAYS = 90; // included if quality_score >= SITEMAP_TIER_MID_MIN_QUALITY
+export const SITEMAP_TIER_MID_MIN_QUALITY = 50;
+export const SITEMAP_TIER_OLD_MIN_QUALITY = 75; // beyond SITEMAP_TIER_MID_DAYS
 
 export const SITEMAP_CATEGORIES = ['jobs', 'internships', 'remote-jobs', 'government-jobs'] as const;
 export type SitemapCategory = (typeof SITEMAP_CATEGORIES)[number];
 export type CategorySitemaps = Record<SitemapCategory, SitemapUrlEntry[]>;
 
-/** Sitemap-only priority rule: indexable AND enriched AND recently posted/seen. */
+/**
+ * Sitemap-only priority rule: indexable AND enriched AND (recent, OR older
+ * but still demonstrably good). Three tiers instead of one hard cutoff, so a
+ * strong 60-day-old listing isn't dropped just because it isn't brand new,
+ * while a weak one still ages out.
+ */
 export function isJobForSitemap(job: SitemapJob, now: number = Date.now()): boolean {
     if (!isIndexableJob(job))
         return false;
@@ -138,8 +154,16 @@ export function isJobForSitemap(job: SitemapJob, now: number = Date.now()): bool
     const ref = job.posted_at || job.last_seen_at;
     const t = ref ? new Date(ref).getTime() : NaN;
     if (Number.isNaN(t))
-        return false; // can't prove it's recent
-    return now - t <= SITEMAP_RECENT_DAYS * 86400000;
+        return false; // can't prove it's recent, or old-but-valuable
+    const ageDays = (now - t) / 86400000;
+    if (ageDays < 0)
+        return false; // clock skew / bad data -- don't trust it
+    if (ageDays <= SITEMAP_TIER_FRESH_DAYS)
+        return true;
+    const quality = job.quality_score ?? 0;
+    if (ageDays <= SITEMAP_TIER_MID_DAYS)
+        return quality >= SITEMAP_TIER_MID_MIN_QUALITY;
+    return quality >= SITEMAP_TIER_OLD_MIN_QUALITY;
 }
 
 /** Split priority jobs into the four canonical categories (each job in exactly one). */
@@ -154,7 +178,11 @@ export function buildCategorySitemapEntries<T extends SitemapJob>(jobs: T[], now
             continue;
         out[canonicalCategoryForJob(job)].push({
             loc: `${BASE_URL}${canonicalPathForJob(job)}`,
-            lastmod: toLastmod(job.posted_at || job.last_seen_at, now),
+            // posted_at, then created_at. Never last_seen_at -- it moves on
+            // every crawl (not a content change), so using it would stamp
+            // nearly every URL as "just updated" and teach Google to ignore
+            // lastmod. No real date at all -> no <lastmod>.
+            lastmod: toLastmod(job.posted_at || job.created_at, now),
         });
     }
     return out;

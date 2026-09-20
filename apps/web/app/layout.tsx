@@ -6,9 +6,11 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
+import { cookies, headers } from 'next/headers';
 import { Inter, Fraunces, IBM_Plex_Mono } from 'next/font/google';
 import AppShell from './components/AppShell';
 import { BASE_URL } from '@/lib/site';
+import { i18n, type Locale } from '@/i18n/config';
 const inter = Inter({
     subsets: ['latin'],
     variable: '--font-body',
@@ -187,7 +189,17 @@ const websiteSchema = {
 export default function RootLayout({ children, }: Readonly<{
     children: React.ReactNode;
 }>) {
-    return (<html lang="en">
+    // Same locale-detection pattern already used by app/blog/page.tsx and
+    // app/blog/[slug]/page.tsx: x-locale (set by middleware.ts) first, then
+    // the NEXT_LOCALE cookie it also sets (covers the header-propagation
+    // edge cases), then 'en'.
+    const headerLocale = headers().get('x-locale');
+    const cookieLocale = cookies().get('NEXT_LOCALE')?.value;
+    const candidate = headerLocale || cookieLocale || i18n.defaultLocale;
+    const lang: Locale = (i18n.locales as readonly string[]).includes(candidate)
+        ? (candidate as Locale)
+        : i18n.defaultLocale;
+    return (<html lang={lang}>
       
       <body className={`${inter.variable} ${fraunces.variable} ${plexMono.variable} font-sans antialiased`}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{

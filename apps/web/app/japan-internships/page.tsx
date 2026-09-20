@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-import { jobSlug } from '@/lib/slug';
+import { canonicalPathForJob } from '@/lib/slug';
 import {
   getJobs,
   BASE_URL,
@@ -164,7 +164,7 @@ export default async function JapanInternshipsPage({
     itemListElement: jobs.map((job, index) => ({
       '@type': 'ListItem',
       position: startIndex + index + 1,
-      url: `${BASE_URL}/internships/${jobSlug(job)}`,
+      url: `${BASE_URL}${canonicalPathForJob(job)}`,
     })),
   };
 

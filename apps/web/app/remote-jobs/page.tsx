@@ -4,9 +4,10 @@
 //
 
 import type { Metadata } from 'next';
+import { listPageState, paginatedCanonical, paginatedTitle } from '@/lib/seo/pagination';
 import Link from 'next/link';
 import Script from 'next/script';
-import { jobSlug } from '@/lib/slug';
+import { canonicalPathForJob } from '@/lib/slug';
 import { getJobs, getFeaturedJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
 import FeaturedJobs from '@/app/components/FeaturedJobs';
@@ -15,14 +16,20 @@ import { RoleFilter, parseGroupFilter } from '@/app/components/JobFilters';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 const JOBS_PER_PAGE = 12;
-export const metadata: Metadata = {
-    title: 'Remote Jobs — US, UK & Worldwide',
-    description: 'Remote software, product, and data roles from Himalayas, Remote OK, We Work Remotely, and Remotive. Refreshed daily, open to India, US, UK, and worldwide.',
-    alternates: {
-        canonical: `${BASE_URL}/remote-jobs`,
-        languages: languageAlternates('/remote-jobs'),
-    },
-};
+export async function generateMetadata({ searchParams, }: {
+    searchParams: Record<string, string | undefined>;
+}): Promise<Metadata> {
+    const { page, filtered } = listPageState(searchParams);
+    return {
+        title: paginatedTitle('Remote Jobs — US, UK & Worldwide', page),
+        description: 'Remote software, product, and data roles from Himalayas, Remote OK, We Work Remotely, and Remotive. Refreshed daily, open to India, US, UK, and worldwide.',
+        alternates: {
+            canonical: paginatedCanonical(BASE_URL, '/remote-jobs', searchParams),
+            // hreflang only for the plain first page; deeper/filtered views are not translated variants.
+            ...(page === 1 && !filtered ? { languages: languageAlternates('/remote-jobs') } : {}),
+        },
+    };
+}
 function Pagination({ currentPage, totalPages, search, role, }: {
     currentPage: number;
     totalPages: number;
@@ -133,7 +140,7 @@ export default async function RemoteJobsPage({ searchParams, }: {
         itemListElement: jobs.map((job, index) => ({
             '@type': 'ListItem',
             position: startIndex + index + 1,
-            url: `${BASE_URL}/remote-jobs/${jobSlug(job)}`,
+            url: `${BASE_URL}${canonicalPathForJob(job)}`,
         })),
     };
     const crumbs = breadcrumbSchema([

@@ -180,9 +180,86 @@ export function eventSchema(params: {
     }
     return schema;
 }
-function parseFirstNumber(text: string): number | null {
-    const match = text.replace(/,/g, '').match(/[\d.]+/);
-    return match ? Number(match[0]) : null;
+// Currency detection for scraped pay strings ("USD 50000-80000", "₹8 LPA", "€45k", ...).
+// Returns null when nothing identifies the currency.
+const CURRENCY_PATTERNS: [RegExp, string][] = [
+    [/₹|\bINR\b|\bRs\.?(?=\s*\d)|\blpa\b|\blakhs?\b|\blacs?\b/i, 'INR'],
+    [/\bUSD\b|\bUS\$|\$/i, 'USD'],
+    [/€|\bEUR\b/i, 'EUR'],
+    [/£|\bGBP\b/i, 'GBP'],
+    [/¥|\bJPY\b|\bYEN\b/i, 'JPY'],
+    [/\bCAD\b/i, 'CAD'],
+    [/\bAUD\b/i, 'AUD'],
+    [/\bSGD\b/i, 'SGD'],
+];
+function detectCurrency(text: string): string | null {
+    for (const [re, code] of CURRENCY_PATTERNS) {
+        if (re.test(text)) return code;
+    }
+    return null;
+}
+function detectSalaryUnit(text: string): 'YEAR' | 'MONTH' | 'WEEK' | 'HOUR' | null {
+    if (/\b(per\s+)?(year|annum|yr|annual(ly)?|p\.?a\.?)\b|\/\s*(yr|year)\b|\blpa\b/i.test(text)) return 'YEAR';
+    if (/\b(per\s+)?month(ly)?\b|\/\s*(mo|month)\b|\bp\.?m\.?\b/i.test(text)) return 'MONTH';
+    if (/\b(per\s+)?week(ly)?\b|\/\s*wk\b/i.test(text)) return 'WEEK';
+    if (/\b(per\s+)?(hour|hr)(ly)?\b|\/\s*(hr|hour)\b/i.test(text)) return 'HOUR';
+    return null;
+}
+// Pulls up to two amounts ("10-20", "50,000 - 80,000", "8 LPA", "45k") and applies
+// k / lakh multipliers. Returns null when no usable number is present.
+function parseSalaryAmounts(text: string): number[] | null {
+    const isLakh = /\blpa\b|\blakhs?\b|\blacs?\b/i.test(text);
+    const amounts: number[] = [];
+    const re = /(\d[\d,]*(?:\.\d+)?)\s*(k\b)?/gi;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null && amounts.length < 2) {
+        let n = Number(m[1].replace(/,/g, ''));
+        if (!Number.isFinite(n) || n <= 0) continue;
+        if (m[2]) n *= 1000;
+        else if (isLakh && n < 1000) n *= 100000;
+        amounts.push(n);
+    }
+    return amounts.length ? amounts : null;
+}
+/**
+ * JobPosting.baseSalary from a scraped pay string, or null when it can't be stated
+ * correctly. Previously EVERY job was emitted as INR and only the first number was
+ * read, so "USD 50000-80000" became 50000 INR, "€45k" became 45 INR, and "8 LPA"
+ * became 8 INR/year - wrong figures in structured data. Now: the currency must be
+ * identifiable (bare numbers are only assumed INR for Indian/unspecified-country
+ * jobs), lakh/k multipliers are applied, ranges become min/max, and the pay period
+ * must be stated (internship stipends default to monthly).
+ */
+export function salaryToBaseSalary(
+    text: string | undefined | null,
+    opts: { country?: string | null; isInternship?: boolean } = {},
+): Record<string, any> | null {
+    if (!text) return null;
+    const amounts = parseSalaryAmounts(text);
+    if (!amounts) return null;
+    let currency = detectCurrency(text);
+    if (!currency) {
+        const country = (opts.country || '').trim().toLowerCase();
+        const isIndian = country === '' || country === 'in' || country === 'india';
+        if (!isIndian) return null;
+        currency = 'INR';
+    }
+    let unit = detectSalaryUnit(text) ?? (opts.isInternship ? 'MONTH' : null);
+    // Remote-feed strings like "USD 50000-80000" state no period; in these currencies a
+    // figure that large is an annual salary, not a monthly one.
+    if (!unit && ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'SGD'].includes(currency) && Math.max(...amounts) >= 20000) {
+        unit = 'YEAR';
+    }
+    if (!unit) return null;
+    const [first, second] = amounts;
+    const value: Record<string, any> = { '@type': 'QuantitativeValue', unitText: unit };
+    if (second !== undefined && second > first) {
+        value.minValue = first;
+        value.maxValue = second;
+    } else {
+        value.value = first;
+    }
+    return { '@type': 'MonetaryAmount', currency, value };
 }
 // Escapes characters that would let external content (e.g. a scraped job
 // description containing a literal "</script>") break out of the <script>
@@ -206,10 +283,12 @@ export function jobPostingSchema(job: Job, canonicalUrl: string) {
     const description = job.enriched_overview
         ? `${job.enriched_overview}\n\n${job.description || ''}`.trim()
         : job.description || `${job.title} at ${job.company}`;
-    // Google requires datePosted. Some sources give us no posted_at at all — falling
-    // back to last_seen_at ("when we first saw this listing") is honest and still
-    // gives Google a real date to anchor on, versus emitting an invalid/missing field.
-    const datePosted = job.posted_at || job.last_seen_at;
+    // Google requires datePosted. created_at is the true creation timestamp
+    // (added to JOB_COLUMNS -- see jobs.py); posted_at is the source's own
+    // stated date when we have it; last_seen_at ("when we first saw this
+    // listing") is the last resort since it moves on every crawl and can
+    // mislead Google about how fresh a listing actually is.
+    const datePosted = job.posted_at || job.created_at || job.last_seen_at;
     // Google requires validThrough (or treats the posting as stale); fall back to
     // datePosted + 45 days, or 30 days out, when neither posted_at nor last_seen_at
     // is available.
@@ -299,18 +378,12 @@ export function jobPostingSchema(job: Job, canonicalUrl: string) {
             monthsOfExperience: Math.round(job.experience_min * 12),
         };
     }
-    const compensationText = job.salary || job.stipend;
-    const compensationValue = compensationText ? parseFirstNumber(compensationText) : null;
-    if (compensationValue) {
-        schema.baseSalary = {
-            '@type': 'MonetaryAmount',
-            currency: 'INR',
-            value: {
-                '@type': 'QuantitativeValue',
-                value: compensationValue,
-                unitText: /year|annum|lpa/i.test(compensationText || '') ? 'YEAR' : 'MONTH',
-            },
-        };
+    const baseSalary = salaryToBaseSalary(job.salary || job.stipend, {
+        country: job.country,
+        isInternship: employmentType === 'INTERN',
+    });
+    if (baseSalary) {
+        schema.baseSalary = baseSalary;
     }
     return schema;
 }

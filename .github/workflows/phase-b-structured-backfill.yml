@@ -3,32 +3,44 @@
 # migrations/021_structured_job_details.sql) via
 # services/api/scripts/enrich_all_content.py --target structured --bulk.
 #
-# NOTE ON THIS FILE: .github/workflows/ is excluded from the uploaded zip
-# (create_zip.py skips every dotfile/dotdir), so the existing
-# content-enrichment.yml and phase-f-priority-index.yml this is modeled
-# on were not available to copy from directly. This was authored from
-# the SSH/EC2 deploy pattern documented in docs/DEPLOYMENT_GUIDE.md
-# (secrets.EC2_HOST / secrets.EC2_SSH_KEY, user ec2-user, repo at
-# /home/ec2-user/RepoSense, services run via `docker compose exec api`
-# against the `api` service in infrastructure/docker/docker-compose.yml).
-# Diff this against the real content-enrichment.yml once you can see it
-# — the SSH action version/step shape may differ from what's below.
+# Same SSH/EC2 pattern as job-content-enrichment.yml and company-enrichment.yml:
+# SSH into the box (secrets.EC2_HOST / secrets.EC2_SSH_KEY, user ec2-user, repo at
+# /home/ec2-user/RepoSense) and `docker compose exec` into the running `api` service.
+#
+# Timing. The script sleeps ENRICH_REQUEST_DELAY_S (script default 20s) after every
+# row and Groq 429s add backoff, so `limit` alone can't bound the runtime: 300 rows at
+# 20s is ~100 minutes, far past any sensible command_timeout. Instead the script gets
+# --max-runtime-minutes and stops starting new rows when it is spent; `limit` is just
+# an upper bound. Real throughput is roughly budget / (delay + ~3s) rows per night;
+# the run logs how many rows it did. command_timeout = budget + headroom for the row in
+# flight (Groq 429 backoff can add several minutes).
+#
+# Fallback. --no-fallback stores Groq-written structured content only: no rule-based
+# fields are written when Groq fails or the key is missing. A missing GROQ_API_KEY
+# fails the run (exit 2) and a run where every attempted row failed fails too (exit 3).
+#
+# Slot. 03:30 UTC. company-enrichment.yml (02:00) doesn't use Groq. With the 25-minute
+# budget this normally finishes by ~04:00, when job-content-enrichment.yml starts.
 
 name: Phase B — structured field backfill
 
 on:
   schedule:
-    # Daily at 03:30 UTC — offset from content-enrichment.yml's run
-    # (comments say that one runs daily too) so the two don't SSH into
-    # the box and call Groq at the same time. Adjust the offset once you
-    # know content-enrichment.yml's actual cron.
     - cron: '30 3 * * *'
   workflow_dispatch:
     inputs:
       limit:
-        description: 'Max rows to process this run'
+        description: 'Max rows to process this run (upper bound; the time budget usually ends the run first)'
         required: false
         default: '300'
+      max_minutes:
+        description: 'Stop starting new rows after this many minutes'
+        required: false
+        default: '25'
+      delay:
+        description: 'Seconds between Groq calls (blank = whatever the api container is configured with)'
+        required: false
+        default: ''
 
 jobs:
   structured-backfill:
@@ -40,10 +52,22 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          timeout: 60s
+          # 25 min budget + up to ~10 min for a row in flight + startup.
+          command_timeout: 40m
+          script_stop: true
           script: |
             set -e
             cd /home/ec2-user/RepoSense
+            DELAY="${{ github.event.inputs.delay }}"
+            ENV_ARGS=""
+            if [ -n "$DELAY" ]; then
+              case "$DELAY" in (*[!0-9.]*) echo "delay must be a number" >&2; exit 1;; esac
+              ENV_ARGS="-e ENRICH_REQUEST_DELAY_S=$DELAY"
+            fi
             docker compose -f infrastructure/docker/docker-compose.yml \
-              exec -T api python scripts/enrich_all_content.py \
-              --target structured --bulk \
+              exec -T $ENV_ARGS api python scripts/enrich_all_content.py \
+              --target structured --bulk --no-fallback \
+              --max-runtime-minutes "${{ github.event.inputs.max_minutes || '25' }}" \
               --limit "${{ github.event.inputs.limit || '300' }}"

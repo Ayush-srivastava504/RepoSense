@@ -81,7 +81,9 @@ export async function GET(_request: Request, { params }: { params: { filename: s
     if (!jobId) {
         return fallbackImage();
     }
-    const job = await getJobById(jobId);
+    // getJobById throws on API errors/rate limits; an image route should degrade
+    // to the generic card instead of failing.
+    const job = await getJobById(jobId).catch(() => null);
     if (!job) {
         return fallbackImage();
     }

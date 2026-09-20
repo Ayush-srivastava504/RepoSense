@@ -4,9 +4,10 @@
 //
 
 import type { Metadata } from 'next';
+import { listPageState, paginatedCanonical, paginatedTitle } from '@/lib/seo/pagination';
 import Link from 'next/link';
 import Script from 'next/script';
-import { jobSlug } from '@/lib/slug';
+import { canonicalPathForJob } from '@/lib/slug';
 import { getJobs, getFeaturedJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
 import FeaturedJobs from '@/app/components/FeaturedJobs';
@@ -14,14 +15,20 @@ import SponsoredCard from '@/app/components/SponsoredCard';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 const JOBS_PER_PAGE = 12;
-export const metadata: Metadata = {
-    title: 'Government Jobs — Sarkari Naukri Notifications',
-    description: 'Latest government job notifications from Employment News and FreeJobAlert — department, post, vacancies, and direct-apply links. Refreshed daily.',
-    alternates: {
-        canonical: `${BASE_URL}/government-jobs`,
-        languages: languageAlternates('/government-jobs'),
-    },
-};
+export async function generateMetadata({ searchParams, }: {
+    searchParams: Record<string, string | undefined>;
+}): Promise<Metadata> {
+    const { page, filtered } = listPageState(searchParams);
+    return {
+        title: paginatedTitle('Government Jobs — Sarkari Naukri Notifications', page),
+        description: 'Latest government job notifications from Employment News and FreeJobAlert — department, post, vacancies, and direct-apply links. Refreshed daily.',
+        alternates: {
+            canonical: paginatedCanonical(BASE_URL, '/government-jobs', searchParams),
+            // hreflang only for the plain first page; deeper/filtered views are not translated variants.
+            ...(page === 1 && !filtered ? { languages: languageAlternates('/government-jobs') } : {}),
+        },
+    };
+}
 function Pagination({ currentPage, totalPages, search, }: {
     currentPage: number;
     totalPages: number;
@@ -126,7 +133,7 @@ export default async function GovernmentJobsPage({ searchParams, }: {
         itemListElement: jobs.map((job, index) => ({
             '@type': 'ListItem',
             position: startIndex + index + 1,
-            url: `${BASE_URL}/government-jobs/${jobSlug(job)}`,
+            url: `${BASE_URL}${canonicalPathForJob(job)}`,
         })),
     };
     const crumbs = breadcrumbSchema([

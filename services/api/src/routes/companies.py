@@ -3,6 +3,8 @@
 #
 #
 
+import json
+
 from fastapi import APIRouter, HTTPException, Query
 from configs.db import get_db_pool
 from routes.jobs import TOP_COMPANY_TIER, _freshness_conditions
@@ -46,9 +48,13 @@ async def get_company_profile(company: str):
     if pool is None:
         raise HTTPException(503, 'Database unavailable')
     row = await pool.fetchrow(
-        'SELECT company, overview, culture_summary, review_snippets, keywords, model, enriched_at FROM company_profiles WHERE lower(company) = lower($1)',
+        'SELECT company, overview, keywords, facts, model, enriched_at FROM company_profiles WHERE lower(company) = lower($1)',
         company,
     )
-    if row is None:
-        raise HTTPException(404, 'No enriched profile for this company yet')
-    return dict(row)
+    # A row with no overview means the company has too few facts for a profile.
+    if row is None or not row['overview']:
+        raise HTTPException(404, 'No profile for this company yet')
+    out = dict(row)
+    if isinstance(out.get('facts'), str):  # asyncpg returns jsonb as text
+        out['facts'] = json.loads(out['facts'])
+    return out

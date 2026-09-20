@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Query
 from configs.db import get_db_pool
 router = APIRouter(prefix='/api/jobs', tags=['jobs'])
 TOP_COMPANY_TIER = ['tcs', 'tata consultancy services', 'infosys', 'wipro', 'hcl', 'hcltech', 'cognizant', 'accenture', 'capgemini', 'tech mahindra', 'coforge', 'lti', 'ltimindtree', 'l&t infotech', 'mindtree', 'persistent systems', 'persistent', 'mphasis', 'zensar', 'zensar technologies', 'hexaware', 'hexaware technologies', 'cyient', 'niit technologies', 'niit', 'birlasoft', 'sonata software', 'happiest minds', 'tata elxsi', 'kpit', 'kpit technologies', 'virtusa', 'globant', 'publicis sapient', 'epam', 'epam systems', 'thoughtworks', 'newgen', 'newgen software', 'intellect design', 'firstsource', 'wns', 'wns global services', 'genpact', 'exl', 'exl service', 'concentrix', 'ttec', 'teleperformance', 'conduent', 'infosys bpm', 'tcs ion', 'quess corp', 'randstad', 'adecco', 'ibm', 'microsoft', 'google', 'alphabet', 'amazon', 'meta', 'facebook', 'apple', 'netflix', 'adobe', 'salesforce', 'oracle', 'sap', 'vmware', 'cisco', 'intel', 'nvidia', 'qualcomm', 'samsung', 'dell', 'hp', 'hewlett packard', 'lenovo', 'sony', 'lg', 'xiaomi', 'oneplus', 'ericsson', 'nokia', 'juniper networks', 'arista', 'f5', 'f5 networks', 'palo alto networks', 'crowdstrike', 'servicenow', 'workday', 'atlassian', 'slack', 'dropbox', 'snowflake', 'databricks', 'mongodb', 'confluent', 'elastic', 'twilio', 'stripe', 'paypal', 'square', 'block', 'uber', 'ola', 'ola cabs', 'swiggy', 'zomato', 'flipkart', 'myntra', 'paytm', 'phonepe', 'razorpay', 'cred', 'zepto', 'meesho', 'nykaa', 'policybazaar', 'freshworks', 'zoho', 'inmobi', 'browserstack', 'postman', 'chargebee', 'druva', 'mindtickle', 'cars24', 'urban company', 'dream11', 'groww', 'upstox', "byju's", 'byjus', 'unacademy', 'vedantu', 'upgrad', 'whitehat jr', 'physicswallah', 'lenskart', 'bigbasket', 'grofers', 'blinkit', 'dunzo', 'delhivery', 'shiprocket', 'sharechat', 'moj', 'dailyhunt', 'hike', 'gojek', 'deloitte', 'pwc', 'kpmg', 'ey', 'ernst & young', 'electronic arts', 'ea', 'mckinsey', 'mckinsey & company', 'bcg', 'boston consulting group', 'bain', 'bain & company', 'goldman sachs', 'jpmorgan', 'jp morgan', 'jpmorgan chase', 'morgan stanley', 'barclays', 'citi', 'citibank', 'citigroup', 'hsbc', 'deutsche bank', 'american express', 'amex', 'visa', 'mastercard', 'bank of america', 'ubs', 'nomura', 'wells fargo', 'standard chartered', 'credit suisse', 'state street', 'blackrock', 'fidelity', 'fidelity investments', 'd.e. shaw', 'de shaw', 'two sigma', 'optiver', 'citadel', 'jane street', 'reliance industries', 'reliance', 'jio', 'tata group', 'tata sons', 'mahindra', 'mahindra & mahindra', 'aditya birla group', 'aditya birla', 'bajaj', 'bajaj finserv', 'larsen & toubro', 'l&t', 'adani', 'adani group', 'itc', 'hindustan unilever', 'hul', 'asian paints', 'godrej', 'godrej group', 'maruti suzuki', 'tata motors', 'bosch', 'siemens', 'honeywell', 'ge', 'general electric', 'schneider electric', 'abb', 'airtel', 'bharti airtel', 'vodafone idea', 'vi', 'bsnl', 'juspay', 'cashfree', 'innovaccer', 'postman inc', 'yellow.ai', 'darwinbox', 'clevertap', 'hasura', 'rocketlane', 'zeta', 'amagi', 'gupshup', 'wingify', 'vwo', 'cure.fit', 'cult.fit', 'curefit', 'licious', 'rebel foods', 'eternal']
-JOB_COLUMNS = '\n    id,\n    title,\n    company,\n    description,\n    url,\n    source,\n    posted_at,\n    location,\n    salary,\n    stipend,\n    type,\n    deadline,\n    confidence_score,\n    confidence_label,\n    apply_domain,\n    logo_domain,\n    is_official_domain,\n    is_remote,\n    is_government,\n    country,\n    department,\n    vacancies,\n    notification_number,\n    job_group,\n    last_seen_at,\n    enriched_overview,\n    enriched_keywords,\n    allowed_degrees,\n    allowed_courses,\n    allowed_specializations,\n    allowed_passout_years,\n    required_skills,\n    notes_highlights,\n    work_mode,\n    experience_min,\n    experience_max,\n    job_function,\n    structured_description,\n    is_thin,\n    quality_score\n'
+JOB_COLUMNS = '\n    id,\n    title,\n    company,\n    description,\n    url,\n    source,\n    posted_at,\n    created_at,\n    location,\n    salary,\n    stipend,\n    type,\n    deadline,\n    confidence_score,\n    confidence_label,\n    apply_domain,\n    logo_domain,\n    is_official_domain,\n    is_remote,\n    is_government,\n    country,\n    department,\n    vacancies,\n    notification_number,\n    job_group,\n    last_seen_at,\n    enriched_overview,\n    enriched_keywords,\n    allowed_degrees,\n    allowed_courses,\n    allowed_specializations,\n    allowed_passout_years,\n    required_skills,\n    notes_highlights,\n    work_mode,\n    experience_min,\n    experience_max,\n    job_function,\n    structured_description,\n    is_thin,\n    quality_score\n'
 BADGE_EXPRESSIONS = "\n    (posted_at IS NOT NULL AND posted_at > now() - interval '24 hours') AS is_new,\n    (lower(company) = ANY(:top_companies)) AS is_top_company,\n    (confidence_score >= 90 AND is_official_domain) AS is_verified_source,\n    (\n        deadline IS NOT NULL\n        AND deadline > now()\n        AND deadline < now() + interval '2 days'\n    ) AS is_hot,\n    (\n        posted_at IS NOT NULL\n        AND posted_at < now() - interval '30 days'\n    ) AS is_stale\n"
 RANKING_EXPRESSION = "\n    (\n        CASE WHEN lower(company) = ANY(:top_companies) THEN 40 ELSE 0 END\n        + CASE\n            WHEN posted_at > now() - interval '24 hours' THEN 35\n            WHEN posted_at > now() - interval '72 hours' THEN 20\n            WHEN posted_at > now() - interval '7 days' THEN 8\n            WHEN posted_at > now() - interval '30 days' THEN 0\n            ELSE -25\n          END\n        + (COALESCE(confidence_score, 0)::float / 100.0) * 25\n    )\n"
 
@@ -404,6 +404,36 @@ async def get_job_status(job_id: str):
     if row is None:
         raise HTTPException(404, 'Job not found')
     return {'state': 'active' if row['is_active'] else 'gone'}
+
+GONE_IDS_MAX_DAYS = 30
+GONE_IDS_MAX_ROWS = 20000
+
+@router.get('/gone-ids')
+async def get_gone_ids(since_days: int=Query(default=GONE_IDS_MAX_DAYS, ge=1, le=GONE_IDS_MAX_DAYS)):
+    """Bulk companion to GET /{job_id}/status for the web middleware's 410 check.
+
+    Per-ID lookups don't amortize well across Vercel's ephemeral serverless/edge
+    instances -- each cold instance calls /status again for every job it happens
+    to serve. This returns every job deactivated in the last `since_days` days
+    (bounded by GONE_IDS_MAX_ROWS so a bad backlog can't return an unbounded
+    payload) so one instance can refresh a single shared set on a timer instead
+    of one request per unique job ID. Fails the same way /status does: no
+    special auth beyond the existing rate-limit bypass (X-Internal-Key).
+    """
+    pool = await get_db_pool()
+    if pool is None:
+        raise HTTPException(503, 'Database unavailable')
+    rows = await pool.fetch(
+        '''
+        SELECT id FROM jobs
+        WHERE is_active = false
+          AND last_seen_at > now() - ($1 || ' days')::interval
+        ORDER BY last_seen_at DESC
+        LIMIT $2
+        ''',
+        since_days, GONE_IDS_MAX_ROWS,
+    )
+    return {'ids': [row['id'] for row in rows]}
 
 @router.get('/{job_id}')
 async def get_job(job_id: str):

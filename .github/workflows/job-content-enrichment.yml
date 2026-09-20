@@ -1,0 +1,77 @@
+# Scheduled job / internship overview enrichment. Replaces content-enrichment.yml,
+# which ran scripts/enrich_job_content.py and was storing template-fallback text.
+# This runs scripts/enrich_all_content.py --target jobs instead:
+#
+#   --no-fallback    Groq-written overviews only. The run refuses to start if
+#                    GROQ_API_KEY is not visible in the container (exit 2, so this
+#                    workflow goes red) instead of quietly writing template content.
+#                    A row Groq cannot handle is left untouched and retried next run.
+#   --redo-fallback  also re-does rows an earlier run filled with the template
+#                    fallback (enriched_model = 'template-fallback'), newest first.
+#
+# Runs inside the already-running api container (`exec`), same as
+# phase-b-structured-backfill.yml, so it sees the same environment as the API.
+#
+# Timing: the script sleeps ENRICH_REQUEST_DELAY_S (script default 20s, sized for
+# Groq's rate limits) after every row, so `limit` alone can't bound the runtime.
+# --max-runtime-minutes makes the run stop starting new rows when the budget is spent
+# (30 min here); `limit` is just an upper bound. command_timeout = budget + headroom
+# for the row in flight. The delay input is optional: blank keeps whatever the api
+# container is configured with (ENRICH_REQUEST_DELAY_S in its .env, else 20s).
+#
+# Also fails the run (exit 3) if rows were attempted but none could be enriched, e.g. a
+# Groq outage, instead of looking like a healthy no-op.
+#
+# Slot: 04:00 UTC, the one content-enrichment.yml used. company-enrichment.yml (02:00)
+# does not use Groq, and phase-b-structured-backfill.yml (03:30) normally finishes by ~04:00.
+
+name: Job content enrichment
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Max listings to enrich this run (upper bound; the time budget usually ends the run first)'
+        required: false
+        default: '100'
+      max_minutes:
+        description: 'Stop starting new rows after this many minutes'
+        required: false
+        default: '30'
+      delay:
+        description: 'Seconds between Groq calls (blank = whatever the api container is configured with)'
+        required: false
+        default: ''
+
+jobs:
+  enrich-jobs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH in and run job enrichment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          timeout: 60s
+          # 30 min budget + headroom for the row in flight + startup.
+          command_timeout: 45m
+          script_stop: true
+          script: |
+            set -e
+            cd /home/ec2-user/RepoSense
+            DELAY="${{ github.event.inputs.delay }}"
+            ENV_ARGS=""
+            if [ -n "$DELAY" ]; then
+              case "$DELAY" in (*[!0-9.]*) echo "delay must be a number" >&2; exit 1;; esac
+              ENV_ARGS="-e ENRICH_REQUEST_DELAY_S=$DELAY"
+            fi
+            docker compose -f infrastructure/docker/docker-compose.yml \
+              exec -T $ENV_ARGS api \
+              python scripts/enrich_all_content.py \
+              --target jobs --redo-fallback --no-fallback \
+              --max-runtime-minutes "${{ github.event.inputs.max_minutes || '30' }}" \
+              --limit "${{ github.event.inputs.limit || '100' }}"

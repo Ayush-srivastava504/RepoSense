@@ -5,8 +5,18 @@
 // set a 410 status themselves (notFound() is always 404), so this runs in
 // middleware, before rendering.
 //
+// Backed by a single shared "recently gone" set (GET /api/jobs/gone-ids),
+// refreshed on a timer, rather than one cached lookup per job ID. Vercel's
+// serverless/edge instances are ephemeral and there are many of them, so a
+// per-ID cache doesn't amortize across the fleet -- every cold instance
+// re-fetches the same job's status. One shared set means one API call per
+// instance per refresh window, covering every job, instead of one call per
+// unique job ID per instance.
+//
 // Fails open: any API error, timeout or unexpected response means "not gone",
 // so the page renders/404s exactly as it did before this existed.
+
+import { internalApiHeaders } from './internalApi';
 
 const JOB_DETAIL_PATH = /^\/(jobs|internships|remote-jobs|government-jobs)\/([^/]+)\/?$/;
 // Crawler ids are sha256(...)[:16] (crawler/src/utils.py make_job_id).
@@ -18,10 +28,15 @@ const API_BASE_URL =
     'https://api.intern-flow.in';
 
 const TIMEOUT_MS = 1500;
-const CACHE_TTL_MS = 5 * 60 * 1000;
-const CACHE_MAX_ENTRIES = 5000;
+// How far back GET /api/jobs/gone-ids looks; must not exceed the API's own
+// GONE_IDS_MAX_DAYS cap (services/api/src/routes/jobs.py).
+const SINCE_DAYS = 30;
+const REFRESH_TTL_MS = 10 * 60 * 1000;
 
-const cache = new Map<string, { gone: boolean; expires: number }>();
+let goneSet: { ids: Set<string>; expires: number } | null = null;
+// Dedupes concurrent refreshes -- several requests hitting a cold instance
+// at once should trigger exactly one fetch, not one each.
+let inflight: Promise<Set<string>> | null = null;
 
 /** '/jobs/some-title-acme-0123456789abcdef' -> '0123456789abcdef', else null. */
 export function jobIdFromDetailPath(pathname: string): string | null {
@@ -32,7 +47,26 @@ export function jobIdFromDetailPath(pathname: string): string | null {
 }
 
 export function clearGoneJobCache(): void {
-    cache.clear();
+    goneSet = null;
+    inflight = null;
+}
+
+async function fetchGoneIds(fetchImpl: typeof fetch): Promise<Set<string>> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    try {
+        const url = `${API_BASE_URL}/api/jobs/gone-ids?since_days=${SINCE_DAYS}`;
+        const res = await fetchImpl(url, {
+            cache: 'no-store',
+            headers: internalApiHeaders(url),
+            signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`gone-ids ${res.status}`);
+        const body = (await res.json()) as { ids?: string[] };
+        return new Set((body?.ids ?? []).map((id) => id.toLowerCase()));
+    } finally {
+        clearTimeout(timer);
+    }
 }
 
 export async function isJobGone(
@@ -40,27 +74,31 @@ export async function isJobGone(
     fetchImpl: typeof fetch = fetch,
     now: number = Date.now(),
 ): Promise<boolean> {
-    const hit = cache.get(id);
-    if (hit && hit.expires > now) return hit.gone;
+    if (goneSet && goneSet.expires > now)
+        return goneSet.ids.has(id.toLowerCase());
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    if (!inflight) {
+        inflight = fetchGoneIds(fetchImpl)
+            .then((ids) => {
+                goneSet = { ids, expires: now + REFRESH_TTL_MS };
+                return ids;
+            })
+            .catch(() => {
+                // Fail open. Deliberately NOT cached as an empty set -- a
+                // transient API hiccup should retry on the next request, not
+                // be remembered as "nothing is gone" for a full TTL window.
+                return new Set<string>();
+            })
+            .finally(() => {
+                inflight = null;
+            });
+    }
+
     try {
-        const res = await fetchImpl(`${API_BASE_URL}/api/jobs/${id}/status`, {
-            cache: 'no-store',
-            signal: controller.signal,
-        });
-        // 404 = never existed (leave to the normal 404 page); 5xx = unknown.
-        if (!res.ok) return false;
-        const body = (await res.json()) as { state?: string };
-        const gone = body?.state === 'gone';
-        if (cache.size >= CACHE_MAX_ENTRIES) cache.clear();
-        cache.set(id, { gone, expires: now + CACHE_TTL_MS });
-        return gone;
+        const ids = await inflight;
+        return ids.has(id.toLowerCase());
     } catch {
         return false;
-    } finally {
-        clearTimeout(timer);
     }
 }
 
