@@ -343,3 +343,4 @@ than silently absorbed as fact:
    next scale it to 5 search engine
    social app making for internflow
    adsense
+   see and understand whole seo also and working and archutecture
