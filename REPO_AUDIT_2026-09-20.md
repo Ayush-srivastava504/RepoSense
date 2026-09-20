@@ -190,3 +190,36 @@ rows reach no page until it renders them.
   country ORDER BY 2 DESC` from production.
 - Genuine per-locale job content (`job_translations`, locale-aware hreflang) - largest remaining
   item; needs the locale list decided first.
+
+## Session 4 - leftovers closed
+
+- **`addressCountry` / `applicantLocationRequirements`** now go through `lib/country.ts`
+  (`normalizeCountryCode`): names and codes become ISO-2, a country at the end of a location
+  string is picked up, and `Europe` / `Worldwide` / bare city strings resolve to nothing, so the
+  field is omitted instead of emitting an invalid country. A blank column keeps the old `IN`
+  default. Applies to JobPosting and Event schema. Tests: `apps/web/tests/country.test.ts`.
+  Scraper-side cleanup (stop writing a location into `country`) is still worth doing, but the
+  page output is no longer wrong while it waits.
+- **Locale-prefixed job detail pages** (`/es/jobs/<slug>` ... 8 locales x 4 categories) are now
+  `Disallow`ed in `public/robots.txt` rather than noindexed: they duplicate the English page,
+  canonicalise to it and are in no sitemap, so the goal is to stop spending crawl budget on them.
+  The trailing slash keeps the translated list pages (`/es/jobs`, hreflang targets) crawlable.
+- **hreflang on job pages stays removed** - correct while job content is English-only. Locale-aware
+  job hreflang only makes sense with real per-locale content (`job_translations`), still open.
+- Already done in the drop this session started from: dynamic `<html lang>`, `lib/goneJobs.ts`
+  on the shared `/gone-ids` set.
+- Removed `scripts/enrich_job_content.py` (unscheduled since `content-enrichment.yml` was
+  deleted; nothing imported it) and the stale comments pointing at it.
+
+## Session 5 - hreflang switched off site-wide
+
+`sitemap-static.xml` (and `sitemap-blog.xml`, and the page-level `<link rel="alternate">` tags on
+~25 pages) advertised `/es/...`, `/fr/...` etc. as hreflang alternates, but every page declares its
+canonical as the English URL and only 162 UI strings are translated (1 of 40 blog posts has a
+translation per locale). Canonical said "duplicate of English", hreflang said "the Spanish
+version" - contradictory, so Google ignores it, and it advertised ~9 URLs per page.
+
+All emitters now go through `lib/hreflang.ts` (`HREFLANG_ENABLED = false`). With it off the
+sitemaps are plain `<urlset>` files (no `xmlns:xhtml`), which also makes Chrome show the normal
+XML tree instead of a wall of text. To bring hreflang back: ship real translated content AND make
+each locale page self-canonical, then flip the flag. Tests: `apps/web/tests/hreflang.test.ts`.

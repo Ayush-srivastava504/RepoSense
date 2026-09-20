@@ -3,7 +3,7 @@
 
 import { BASE_URL } from '@/lib/jobs';
 import { buildUrlsetXml } from '@/lib/sitemapXml';
-import { i18n } from '@/i18n/config';
+import { hreflangLinks } from '@/lib/hreflang';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,11 +35,8 @@ export async function GET() {
   ];
 
   const entries = coreHubs.map((hub) => {
-    const alternates: { lang: string; href: string }[] = i18n.locales.map((loc: string) => ({
-      lang: loc,
-      href: loc === 'en' ? `${BASE_URL}${hub.path}` : `${BASE_URL}/${loc}${hub.path}`,
-    }));
-    alternates.push({ lang: 'x-default', href: `${BASE_URL}${hub.path}` });
+    // Empty while hreflang is disabled (lib/hreflang.ts) -> plain <urlset>, no xhtml namespace.
+    const alternates = hreflangLinks(hub.path);
 
     return {
       loc: `${BASE_URL}${hub.path}`,

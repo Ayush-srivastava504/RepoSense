@@ -3,7 +3,7 @@ losing its ORDER BY again. That path is what phase-b-structured-backfill.yml
 actually runs daily; without an explicit order Postgres returns rows in
 arbitrary physical order, silently undoing "new jobs enriched first" for the
 structured-field backfill even though the overview/keyword enrichment path
-(enrich_job_content.py, enrich_jobs() here) has always ordered correctly.
+(enrich_jobs() here) has always ordered correctly.
 """
 import pathlib
 import re

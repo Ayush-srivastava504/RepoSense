@@ -4,7 +4,7 @@
 # (Phases A-E) and PHASE_PLAN.md for the rest of the indexing-recovery work
 # this sits on top of. Meant to run several times a day via
 # .github/workflows/phase-f-priority-index.yml, same SSH-into-EC2 /
-# docker-compose-run pattern as scripts/enrich_job_content.py.
+# docker-compose pattern as job-content-enrichment.yml.
 #
 # WHAT THIS DOES
 # Each crawl run mixes a handful of genuinely high-value listings (a big/

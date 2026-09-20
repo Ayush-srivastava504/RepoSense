@@ -10,8 +10,8 @@ import { notFound } from 'next/navigation';
 import { headers, cookies } from 'next/headers';
 import { BASE_URL } from '@/lib/jobs';
 import { getAllPosts, getPostBySlug } from '@/lib/blog';
-import {  breadcrumbSchema, ORG_NAME, ORG_LOGO } from '@/lib/structuredData';
-import { i18n, type Locale } from '@/i18n/config';
+import { breadcrumbSchema, languageAlternates, ORG_NAME, ORG_LOGO } from '@/lib/structuredData';
+import type { Locale } from '@/i18n/config';
 import { getDictionary } from '@/i18n/get-dictionary';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 
@@ -29,17 +29,6 @@ export function generateMetadata({ params }: Props): Metadata {
   const post = getPostBySlug(params.slug);
   if (!post) return {};
 
-  const languageAlternates: Record<string, string> = {
-    'x-default': `${BASE_URL}/blog/${post.slug}`,
-    'en': `${BASE_URL}/blog/${post.slug}`,
-  };
-
-  i18n.locales.forEach((loc) => {
-    if (loc !== 'en') {
-      languageAlternates[loc] = `${BASE_URL}/${loc}/blog/${post.slug}`;
-    }
-  });
-
   const imageUrl = post.image?.url || `${BASE_URL}/og-image.png`;
   const imageAlt = post.image?.alt || post.title;
 
@@ -49,7 +38,7 @@ export function generateMetadata({ params }: Props): Metadata {
     keywords: post.tags || [post.keyword],
     alternates: {
       canonical: `${BASE_URL}/blog/${post.slug}`,
-      languages: languageAlternates,
+      languages: languageAlternates(`/blog/${post.slug}`),
     },
     openGraph: {
       title: post.title,

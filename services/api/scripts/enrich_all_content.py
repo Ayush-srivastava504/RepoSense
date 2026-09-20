@@ -5,7 +5,7 @@
 # (allowed_degrees/required_skills/etc. — Phase B of
 # INDEXING_RECOVERY_PLAN.md, same bulk backfill shape as the overview
 # pass). The scheduled job-overview enrichment (job-content-enrichment.yml)
-# runs this script; the older enrich_job_content.py is no longer scheduled.
+# runs this script.
 # Groq-backed, with a
 # deterministic template/rule-based fallback (see
 # content_enrichment_service.py / structured_enrichment_service.py) so a
