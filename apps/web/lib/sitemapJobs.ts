@@ -2,7 +2,7 @@
 // Pure helpers for app/sitemap-jobs.xml/route.ts (kept free of Next.js
 // imports so they can be unit-tested with `npm run test:sitemap`).
 
-import { canonicalPathForJob } from './slug';
+import { canonicalCategoryForJob, canonicalPathForJob } from './slug';
 import { isIndexableJob } from './seo/seoMetrics';
 import { BASE_URL } from './site';
 import { toLastmod, type SitemapUrlEntry } from './sitemapXml';
@@ -26,6 +26,7 @@ type SitemapJob = {
     is_government?: boolean;
     deadline?: string;
     posted_at?: string;
+    last_seen_at?: string;
     is_thin?: boolean;
     enriched_overview?: string;
 };
@@ -108,4 +109,81 @@ export function buildJobSitemapEntries<T extends SitemapJob>(jobs: T[], now: num
         });
     }
     return entries;
+}
+
+// ---------------------------------------------------------------------------
+// Stage 3: category-split, prioritised job sitemaps.
+//
+// IMPORTANT: everything below is SITEMAP-ONLY. isIndexableJob() (used by the
+// job pages for their robots meta) is deliberately untouched, so a job that
+// is left out of the sitemap stays indexable on its own page.
+// ---------------------------------------------------------------------------
+
+// Google's protocol limit is 50,000 URLs/file; small files add nothing.
+export const SITEMAP_URLS_PER_FILE = 1000;
+// A job only earns a sitemap slot while it is this fresh. Age is measured from
+// posted_at, falling back to last_seen_at because ~10k jobs have posted_at NULL.
+export const SITEMAP_RECENT_DAYS = 14;
+
+export const SITEMAP_CATEGORIES = ['jobs', 'internships', 'remote-jobs', 'government-jobs'] as const;
+export type SitemapCategory = (typeof SITEMAP_CATEGORIES)[number];
+export type CategorySitemaps = Record<SitemapCategory, SitemapUrlEntry[]>;
+
+/** Sitemap-only priority rule: indexable AND enriched AND recently posted/seen. */
+export function isJobForSitemap(job: SitemapJob, now: number = Date.now()): boolean {
+    if (!isIndexableJob(job))
+        return false;
+    if (!job.enriched_overview)
+        return false;
+    const ref = job.posted_at || job.last_seen_at;
+    const t = ref ? new Date(ref).getTime() : NaN;
+    if (Number.isNaN(t))
+        return false; // can't prove it's recent
+    return now - t <= SITEMAP_RECENT_DAYS * 86400000;
+}
+
+/** Split priority jobs into the four canonical categories (each job in exactly one). */
+export function buildCategorySitemapEntries<T extends SitemapJob>(jobs: T[], now: number = Date.now()): CategorySitemaps {
+    const out: CategorySitemaps = { jobs: [], internships: [], 'remote-jobs': [], 'government-jobs': [] };
+    const seen = new Set<string>();
+    for (const job of jobs) {
+        if (!job?.id || seen.has(job.id))
+            continue;
+        seen.add(job.id);
+        if (!isJobForSitemap(job, now))
+            continue;
+        out[canonicalCategoryForJob(job)].push({
+            loc: `${BASE_URL}${canonicalPathForJob(job)}`,
+            lastmod: toLastmod(job.posted_at || job.last_seen_at, now),
+        });
+    }
+    return out;
+}
+
+export function chunkEntries<T>(items: T[], size: number = SITEMAP_URLS_PER_FILE): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < items.length; i += size)
+        chunks.push(items.slice(i, i + size));
+    return chunks;
+}
+
+export function sitemapFileName(category: SitemapCategory, page: number): string {
+    return `${category}-${page}.xml`;
+}
+
+/** "internships-2.xml" -> { category: 'internships', page: 2 }; anything else -> null. */
+export function parseSitemapFileName(file: string): { category: SitemapCategory; page: number } | null {
+    const m = /^(jobs|internships|remote-jobs|government-jobs)-([1-9]\d{0,3})\.xml$/.exec(file);
+    return m ? { category: m[1] as SitemapCategory, page: Number(m[2]) } : null;
+}
+
+/** Absolute URLs of every non-empty category sitemap file, for the sitemap index. */
+export function categorySitemapUrls(buckets: CategorySitemaps): string[] {
+    const urls: string[] = [];
+    for (const category of SITEMAP_CATEGORIES) {
+        const pages = chunkEntries(buckets[category]).length;
+        for (let page = 1; page <= pages; page++)
+            urls.push(`${BASE_URL}/sitemaps/${sitemapFileName(category, page)}`);
+    }
+    return urls;
 }

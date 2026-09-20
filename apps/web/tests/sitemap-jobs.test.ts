@@ -12,6 +12,12 @@ import {
     collectAllJobs,
     IncompleteSitemapError,
     toLastmod,
+    isJobForSitemap,
+    buildCategorySitemapEntries,
+    chunkEntries,
+    parseSitemapFileName,
+    categorySitemapUrls,
+    SITEMAP_URLS_PER_FILE,
 } from '../lib/sitemapJobs';
 
 const DAY = 86400000;
@@ -163,4 +169,74 @@ test('empty first page (API down) throws', async () => {
 test('maxPages caps the crawl', async () => {
     const jobs = await collectAllJobs(fakeApi(1000), { pageSize: 100, maxPages: 3 });
     assert.equal(jobs.length, 300);
+});
+
+// ---------- stage 3: category sitemaps (sitemap-only priority rule) ----------
+const enriched = { enriched_overview: 'Real overview' };
+
+test('isJobForSitemap needs enrichment and recency; falls back to last_seen_at', () => {
+    assert.equal(isJobForSitemap(job('a', enriched), NOW), true);
+    assert.equal(isJobForSitemap(job('b'), NOW), false); // not enriched
+    assert.equal(isJobForSitemap(job('c', { ...enriched, posted_at: iso(-30) }), NOW), false); // too old
+    // posted_at NULL (very common) -> judged on last_seen_at
+    assert.equal(isJobForSitemap(job('d', { ...enriched, posted_at: undefined, last_seen_at: iso(-2) }), NOW), true);
+    assert.equal(isJobForSitemap(job('e', { ...enriched, posted_at: undefined, last_seen_at: iso(-40) }), NOW), false);
+    // no date at all -> can't prove recent
+    assert.equal(isJobForSitemap(job('f', { ...enriched, posted_at: undefined }), NOW), false);
+});
+
+test('leaving a job out of the sitemap does NOT make its page noindex', () => {
+    const realNow = Date.now;
+    Date.now = () => NOW;
+    try {
+        const notPrioritised = job('old', { posted_at: iso(-30) }); // unenriched + 30d old
+        assert.equal(isJobForSitemap(notPrioritised, NOW), false);
+        assert.equal(isIndexableJob(notPrioritised), true); // page-level rule unchanged
+    } finally {
+        Date.now = realNow;
+    }
+});
+
+test('each priority job lands in exactly one category (government > internship > remote > jobs)', () => {
+    const realNow = Date.now;
+    Date.now = () => NOW;
+    try {
+        const b = buildCategorySitemapEntries([
+            job('g1', { ...enriched, is_government: true, is_remote: true, type: 'internship' }),
+            job('i1', { ...enriched, type: 'internship', is_remote: true }),
+            job('r1', { ...enriched, is_remote: true }),
+            job('j1', enriched),
+            job('j1', enriched), // duplicate id
+            job('skip'), // not enriched
+        ], NOW);
+        assert.equal(b['government-jobs'].length, 1);
+        assert.equal(b.internships.length, 1);
+        assert.equal(b['remote-jobs'].length, 1);
+        assert.equal(b.jobs.length, 1);
+        assert.match(b['government-jobs'][0].loc, /^https:\/\/intern-flow\.in\/government-jobs\//);
+        assert.match(b.internships[0].loc, /^https:\/\/intern-flow\.in\/internships\//);
+        assert.match(b['remote-jobs'][0].loc, /^https:\/\/intern-flow\.in\/remote-jobs\//);
+        assert.match(b.jobs[0].loc, /^https:\/\/intern-flow\.in\/jobs\//);
+    } finally {
+        Date.now = realNow;
+    }
+});
+
+test('chunking, file names and index URLs line up', () => {
+    const items = Array.from({ length: 2500 }, (_, i) => i);
+    const chunks = chunkEntries(items);
+    assert.deepEqual(chunks.map((c) => c.length), [SITEMAP_URLS_PER_FILE, SITEMAP_URLS_PER_FILE, 500]);
+    assert.deepEqual(chunkEntries([]), []);
+    assert.deepEqual(parseSitemapFileName('internships-2.xml'), { category: 'internships', page: 2 });
+    assert.deepEqual(parseSitemapFileName('remote-jobs-10.xml'), { category: 'remote-jobs', page: 10 });
+    for (const bad of ['jobs-0.xml', 'jobs.xml', 'jobs-1', '../jobs-1.xml', 'blog-1.xml', 'jobs-1.xml.gz'])
+        assert.equal(parseSitemapFileName(bad), null, bad);
+    const mk = (n: number) => Array.from({ length: n }, (_, i) => ({ loc: `https://intern-flow.in/x/${i}` }));
+    const urls = categorySitemapUrls({ jobs: mk(2500), internships: mk(1), 'remote-jobs': [], 'government-jobs': [] });
+    assert.deepEqual(urls, [
+        'https://intern-flow.in/sitemaps/jobs-1.xml',
+        'https://intern-flow.in/sitemaps/jobs-2.xml',
+        'https://intern-flow.in/sitemaps/jobs-3.xml',
+        'https://intern-flow.in/sitemaps/internships-1.xml',
+    ]);
 });
