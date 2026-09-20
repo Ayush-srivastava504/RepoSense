@@ -1,4 +1,4 @@
-# Changes this session
+# Changes this sessionn
 
 Implements INDEXING_RECOVERY_PLAN.md Phase C (JobPosting schema
 completeness) and Phase D (breadcrumbs on hub pages).

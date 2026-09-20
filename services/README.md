@@ -4,7 +4,7 @@ The backend layer of RepoSense consists of high-performance Python services buil
 
 ---
 
-## 🏛️ Service Ecosystem & Ports
+##  Service Ecosystem & Ports
 
 ```
 services/
