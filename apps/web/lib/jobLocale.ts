@@ -10,14 +10,21 @@
 // this pipeline existed, since GET /api/jobs/{id}?locale=xx only swaps
 // content when a job_translations row actually exists for that locale.
 
-import { headers, cookies } from 'next/headers';
 import { jobHreflangLinks, TRANSLATABLE_LOCALES } from './hreflang';
 import { getJobById, type Job } from './jobs';
 
 /** Same 'x-locale' header (set by middleware.ts) / 'NEXT_LOCALE' cookie
  * fallback chain the blog pages already use, so job pages resolve the
- * request's locale the same way the rest of the site does. */
-export function resolveJobLocale(): string {
+ * request's locale the same way the rest of the site does.
+ *
+ * 'next/headers' is imported dynamically, only inside this function, so
+ * merely importing this module (as tests/job-locale.test.ts does, for the
+ * pure helpers below) never triggers Node to resolve the 'next' package.
+ * The web unit-test CI step runs `tsx --test` without an `npm install`
+ * step, so a static top-level import here would fail module resolution
+ * even for tests that never call this function. */
+export async function resolveJobLocale(): Promise<string> {
+    const { headers, cookies } = await import('next/headers');
     return headers().get('x-locale') || cookies().get('NEXT_LOCALE')?.value || 'en';
 }
 
@@ -44,7 +51,7 @@ export interface JobLocaleContent {
 
 /** Fetches a job, translated into the current request's locale when a translation exists for it. */
 export async function getLocalizedJob(id: string): Promise<JobLocaleContent> {
-    const locale = resolveJobLocale();
+    const locale = await resolveJobLocale();
     const wantsTranslation = locale !== 'en' && TRANSLATABLE_LOCALES.includes(locale);
     const job = await getJobById(id, wantsTranslation ? locale : undefined);
     const isTranslated = wantsTranslation && Boolean(job?.translated_locales?.includes(locale));
