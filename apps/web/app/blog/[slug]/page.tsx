@@ -11,6 +11,7 @@ import { headers, cookies } from 'next/headers';
 import { BASE_URL } from '@/lib/jobs';
 import { getAllPosts, getPostBySlug, isStructuredBody, articleWordCount, type BodySection } from '@/lib/blog';
 import { breadcrumbSchema, faqSchema, languageAlternates, ORG_NAME, ORG_LOGO } from '@/lib/structuredData';
+import { parseRobotsDirective } from '@/lib/seo/robots';
 import type { Locale } from '@/i18n/config';
 import { getDictionary } from '@/i18n/get-dictionary';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -25,16 +26,6 @@ export function generateStaticParams() {
   return getAllPosts().map((post) => ({ slug: post.slug }));
 }
 
-/** "index, follow" / "noindex, nofollow" -> Next.js Metadata robots object. */
-function parseRobotsDirective(robots?: string): Metadata['robots'] | undefined {
-  if (!robots) return undefined;
-  const tokens = robots.toLowerCase().split(',').map((t) => t.trim());
-  return {
-    index: !tokens.includes('noindex'),
-    follow: !tokens.includes('nofollow'),
-  };
-}
-
 export function generateMetadata({ params }: Props): Metadata {
   const post = getPostBySlug(params.slug);
   if (!post) return {};
@@ -43,7 +34,10 @@ export function generateMetadata({ params }: Props): Metadata {
   const metaTitle = seo?.metaTitle || `${post.title} | InternFlow Blog`;
   const metaDescription = seo?.metaDescription || post.description;
   const canonicalUrl = seo?.canonicalUrl || `${BASE_URL}/blog/${post.slug}`;
-  const imageUrl = post.image?.url || `${BASE_URL}/og-image.png`;
+  // Prefer an explicitly authored image; otherwise generate one per-article
+  // (title + category, real dimensions) rather than falling back to the
+  // single generic /og-image.png every other page type uses.
+  const imageUrl = post.image?.url || `${BASE_URL}/og/blog/${post.slug}.png`;
   const imageAlt = post.image?.alt || post.title;
 
   return {
@@ -205,10 +199,34 @@ function renderSectionExtra(section: BodySection) {
   return null;
 }
 
+/**
+ * Table of contents generated from the structured body's own section ids —
+ * no separate data source to keep in sync, and it doubles as a set of
+ * crawlable in-page anchors (Phase 4 item 15 in the SEO plan).
+ */
+function TableOfContents({ sections }: { sections: BodySection[] }) {
+  if (sections.length < 2) return null;
+  return (
+    <nav aria-label="Table of contents" className="mt-8 rounded-xl border p-5" style={{ borderColor: 'var(--line)' }}>
+      <p className="text-sm font-semibold">Contents</p>
+      <ol className="mt-2 space-y-1.5 text-sm">
+        {sections.map((section) => (
+          <li key={section.id}>
+            <a href={`#${section.id}`} className="hover:underline" style={{ color: 'var(--accent)' }}>
+              {section.title}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
 function renderStructuredBody(body: { introduction: string; sections: BodySection[] }) {
   return (
     <>
       <p className="leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{body.introduction}</p>
+      <TableOfContents sections={body.sections} />
       {body.sections.map((section) => (
         <section key={section.id} id={section.id} className="mt-8">
           <h2 className="text-xl font-semibold tracking-tight">{section.title}</h2>
@@ -237,10 +255,13 @@ export default async function BlogPostPage({ params }: Props) {
 
   const articleSchema = {
     '@context': 'https://schema.org',
-    '@type': 'Article',
+    // BlogPosting (a subtype of Article) describes these pages more
+    // precisely than the generic Article type, since every post here lives
+    // under /blog and reads as a blog article rather than e.g. news content.
+    '@type': 'BlogPosting',
     headline: post.title,
     description: post.seoMetadata?.metaDescription || post.description,
-    image: post.image?.url || `${BASE_URL}/og-image.png`,
+    image: post.image?.url || `${BASE_URL}/og/blog/${post.slug}.png`,
     datePublished: post.publishedAt,
     dateModified: post.updatedAt || post.publishedAt,
     author: {
