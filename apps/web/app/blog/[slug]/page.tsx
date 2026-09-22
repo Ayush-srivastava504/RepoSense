@@ -9,8 +9,8 @@ import Script from 'next/script';
 import { notFound } from 'next/navigation';
 import { headers, cookies } from 'next/headers';
 import { BASE_URL } from '@/lib/jobs';
-import { getAllPosts, getPostBySlug } from '@/lib/blog';
-import { breadcrumbSchema, languageAlternates, ORG_NAME, ORG_LOGO } from '@/lib/structuredData';
+import { getAllPosts, getPostBySlug, isStructuredBody, articleWordCount, type BodySection } from '@/lib/blog';
+import { breadcrumbSchema, faqSchema, languageAlternates, ORG_NAME, ORG_LOGO } from '@/lib/structuredData';
 import type { Locale } from '@/i18n/config';
 import { getDictionary } from '@/i18n/get-dictionary';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -25,33 +25,48 @@ export function generateStaticParams() {
   return getAllPosts().map((post) => ({ slug: post.slug }));
 }
 
+/** "index, follow" / "noindex, nofollow" -> Next.js Metadata robots object. */
+function parseRobotsDirective(robots?: string): Metadata['robots'] | undefined {
+  if (!robots) return undefined;
+  const tokens = robots.toLowerCase().split(',').map((t) => t.trim());
+  return {
+    index: !tokens.includes('noindex'),
+    follow: !tokens.includes('nofollow'),
+  };
+}
+
 export function generateMetadata({ params }: Props): Metadata {
   const post = getPostBySlug(params.slug);
   if (!post) return {};
 
+  const seo = post.seoMetadata;
+  const metaTitle = seo?.metaTitle || `${post.title} | InternFlow Blog`;
+  const metaDescription = seo?.metaDescription || post.description;
+  const canonicalUrl = seo?.canonicalUrl || `${BASE_URL}/blog/${post.slug}`;
   const imageUrl = post.image?.url || `${BASE_URL}/og-image.png`;
   const imageAlt = post.image?.alt || post.title;
 
   return {
-    title: `${post.title} | InternFlow Blog`,
-    description: post.description,
+    title: metaTitle,
+    description: metaDescription,
     keywords: post.tags || [post.keyword],
     alternates: {
-      canonical: `${BASE_URL}/blog/${post.slug}`,
+      canonical: canonicalUrl,
       languages: languageAlternates(`/blog/${post.slug}`),
     },
+    robots: parseRobotsDirective(seo?.robots),
     openGraph: {
-      title: post.title,
-      description: post.description,
+      title: seo?.metaTitle || post.title,
+      description: metaDescription,
       type: 'article',
       publishedTime: post.publishedAt,
       modifiedTime: post.updatedAt || post.publishedAt,
-      url: `${BASE_URL}/blog/${post.slug}`,
+      url: canonicalUrl,
       images: [
         {
           url: imageUrl,
-          width: 1200,
-          height: 630,
+          width: post.image?.width || 1200,
+          height: post.image?.height || 630,
           alt: imageAlt,
         },
       ],
@@ -59,8 +74,8 @@ export function generateMetadata({ params }: Props): Metadata {
     },
     twitter: {
       card: 'summary_large_image',
-      title: post.title,
-      description: post.description,
+      title: metaTitle,
+      description: metaDescription,
       images: [imageUrl],
     },
   };
@@ -101,6 +116,110 @@ function renderBody(body: string) {
   });
 }
 
+/**
+ * Renders whichever "extra" shape a section carries, if any. Sections in the
+ * structured format share id/title/content but differ after that (a skill
+ * graph, a comparison table, a list of career paths, ...). Unknown/future
+ * shapes are simply skipped here rather than guessed at.
+ */
+function renderSectionExtra(section: BodySection) {
+  if (section.graph) {
+    return (
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {section.graph.nodes.map((node) => (
+          <div key={node.name} className="rounded-lg border p-3" style={{ borderColor: 'var(--line)' }}>
+            <p className="text-sm font-medium">{node.name}</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {node.skills.map((skill) => (
+                <span key={skill} className="rounded px-2 py-0.5 text-xs font-mono" style={{ background: 'var(--hover)', color: 'var(--ink-soft)' }}>
+                  {skill}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (section.examples) {
+    return (
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {section.examples.map((ex) => (
+          <div key={ex.cluster} className="rounded-lg border p-3" style={{ borderColor: 'var(--line)' }}>
+            <p className="text-sm font-medium">{ex.cluster}</p>
+            <p className="mt-1 text-sm" style={{ color: 'var(--ink-soft)' }}>{ex.skills.join(', ')}</p>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (section.comparison) {
+    return (
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left" style={{ borderColor: 'var(--line)' }}>
+              <th className="py-2 pr-4 font-medium">Level</th>
+              <th className="py-2 font-medium">Typical focus</th>
+            </tr>
+          </thead>
+          <tbody>
+            {section.comparison.map((row) => (
+              <tr key={row.level} className="border-b" style={{ borderColor: 'var(--line)' }}>
+                <td className="py-2 pr-4 font-medium">{row.level}</td>
+                <td className="py-2" style={{ color: 'var(--ink-soft)' }}>{row.typicalFocus.join(', ')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  if (section.paths) {
+    return (
+      <div className="mt-4 space-y-3">
+        {section.paths.map((p) => (
+          <div key={p.startingRole} className="rounded-lg border p-3" style={{ borderColor: 'var(--line)' }}>
+            <p className="text-sm font-medium">From: {p.startingRole}</p>
+            <p className="mt-1 text-sm" style={{ color: 'var(--ink-soft)' }}>Bridge skills: {p.bridgeSkills.join(', ')}</p>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (section.salaryDimensions || section.signals) {
+    const items = section.salaryDimensions || section.signals || [];
+    return (
+      <ul className="mt-4 list-disc space-y-1.5 pl-5 leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    );
+  }
+
+  return null;
+}
+
+function renderStructuredBody(body: { introduction: string; sections: BodySection[] }) {
+  return (
+    <>
+      <p className="leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{body.introduction}</p>
+      {body.sections.map((section) => (
+        <section key={section.id} id={section.id} className="mt-8">
+          <h2 className="text-xl font-semibold tracking-tight">{section.title}</h2>
+          <p className="mt-3 leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{section.content}</p>
+          {renderSectionExtra(section)}
+        </section>
+      ))}
+    </>
+  );
+}
+
 export default async function BlogPostPage({ params }: Props) {
   const headerList = headers();
   const cookieStore = cookies();
@@ -120,7 +239,7 @@ export default async function BlogPostPage({ params }: Props) {
     '@context': 'https://schema.org',
     '@type': 'Article',
     headline: post.title,
-    description: post.description,
+    description: post.seoMetadata?.metaDescription || post.description,
     image: post.image?.url || `${BASE_URL}/og-image.png`,
     datePublished: post.publishedAt,
     dateModified: post.updatedAt || post.publishedAt,
@@ -135,18 +254,14 @@ export default async function BlogPostPage({ params }: Props) {
       logo: { '@type': 'ImageObject', url: ORG_LOGO },
     },
     mainEntityOfPage: `${BASE_URL}/blog/${post.slug}`,
+    keywords: (post.tags && post.tags.length > 0 ? post.tags : [post.keyword]).join(', '),
+    articleSection: post.category.replace(/-/g, ' '),
+    wordCount: articleWordCount(post.body),
+    inLanguage: locale,
   };
 
-  const faqSchema = post.faq
-    ? {
-        '@context': 'https://schema.org',
-        '@type': 'FAQPage',
-        mainEntity: post.faq.map((f) => ({
-          '@type': 'Question',
-          name: f.q,
-          acceptedAnswer: { '@type': 'Answer', text: f.a },
-        })),
-      }
+  const faq = post.faq
+    ? faqSchema(post.faq.map((f) => ({ question: f.q, answer: f.a })))
     : null;
 
   return (
@@ -162,11 +277,11 @@ export default async function BlogPostPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
       />
-      {faqSchema && (
+      {faq && (
         <Script
           id={`blog-post-faq-${post.slug}`}
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faq) }}
         />
       )}
 
@@ -190,9 +305,21 @@ export default async function BlogPostPage({ params }: Props) {
           )}
         </div>
 
+        {post.hero?.eyebrow && (
+          <p className="mt-3 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--accent)' }}>
+            {post.hero.eyebrow}
+          </p>
+        )}
+
         <h1 className="display mt-3 text-3xl font-medium sm:text-4xl leading-tight">
           {post.title}
         </h1>
+
+        {post.hero?.summary && (
+          <p className="mt-3 leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+            {post.hero.summary}
+          </p>
+        )}
 
         <div
           className="mt-4 flex items-center justify-between border-b pb-4 text-xs"
@@ -226,7 +353,84 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
         )}
 
-        <div className="mt-8 prose-tech">{renderBody(post.body)}</div>
+        {post.keyTakeaways && post.keyTakeaways.length > 0 && (
+          <div className="mt-8 rounded-xl border p-5" style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>
+            <h2 className="text-base font-semibold">Key takeaways</h2>
+            <ul className="mt-2 list-disc space-y-1.5 pl-5 leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+              {post.keyTakeaways.map((point) => (
+                <li key={point}>{point}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="mt-8 prose-tech">
+          {isStructuredBody(post.body) ? renderStructuredBody(post.body) : renderBody(post.body)}
+        </div>
+
+        {post.charts && post.charts.length > 0 && (
+          <div className="mt-8 space-y-6">
+            {post.charts
+              .filter((chart) => chart.series.some((s) => s.data.length > 0))
+              .map((chart) => (
+                <div key={chart.title} className="rounded-xl border p-5" style={{ borderColor: 'var(--line)' }}>
+                  <h3 className="text-base font-medium">{chart.title}</h3>
+                  {chart.description && (
+                    <p className="mt-1 text-sm" style={{ color: 'var(--ink-soft)' }}>{chart.description}</p>
+                  )}
+                  {/* Chart rendering wired up once the data pipeline populates chart.series[].data;
+                      charts with empty series are filtered out above rather than shown blank. */}
+                </div>
+              ))}
+          </div>
+        )}
+
+        {post.methodology && (
+          <div className="mt-8 rounded-xl border p-5" style={{ borderColor: 'var(--line)' }}>
+            <h2 className="text-base font-semibold">{post.methodology.title}</h2>
+            <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{post.methodology.details}</p>
+            {post.methodology.importantNote && (
+              <p className="mt-2 text-sm leading-relaxed italic" style={{ color: 'var(--muted)' }}>{post.methodology.importantNote}</p>
+            )}
+          </div>
+        )}
+
+        {post.realWorldExample && (
+          <div className="mt-8">
+            <h2 className="text-xl font-semibold tracking-tight">{post.realWorldExample.title}</h2>
+            <p className="mt-3 leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{post.realWorldExample.context}</p>
+            <ol className="mt-3 list-decimal space-y-1.5 pl-5 leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+              {post.realWorldExample.workflow.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+          </div>
+        )}
+
+        {post.internalLinks && post.internalLinks.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-base font-semibold">Related</h2>
+            <div className="mt-2 flex flex-wrap gap-3">
+              {post.internalLinks.map((link) => (
+                <Link key={link.url} href={link.url} className="text-sm font-medium hover:underline" style={{ color: 'var(--accent)' }}>
+                  {link.anchorText}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {post.cta && (
+          <div className="mt-8 rounded-xl p-6 text-center border" style={{ background: 'var(--hover)', borderColor: 'var(--line)' }}>
+            <h3 className="text-lg font-medium">{post.cta.title}</h3>
+            <p className="mt-2 text-sm max-w-md mx-auto" style={{ color: 'var(--ink-soft)' }}>{post.cta.description}</p>
+            <div className="mt-4 flex justify-center">
+              <Link href={post.cta.url} className="btn btn-primary text-sm">
+                {post.cta.buttonText}
+              </Link>
+            </div>
+          </div>
+        )}
 
         {post.faq && post.faq.length > 0 && (
           <div
