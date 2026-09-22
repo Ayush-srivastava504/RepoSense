@@ -26,6 +26,7 @@ export async function generateMetadata({ params, }: {
     if (!tool)
         return {};
     const url = `${BASE_URL}/tools/${tool.slug}`;
+    const imageUrl = `${BASE_URL}/og/tools/${tool.slug}.png`;
     return {
         title: tool.metaTitle,
         description: tool.metaDescription,
@@ -35,13 +36,13 @@ export async function generateMetadata({ params, }: {
             url,
             title: tool.metaTitle,
             description: tool.metaDescription,
-            images: [{ url: `${BASE_URL}/og-image.png`, width: 1200, height: 630, alt: tool.name }],
+            images: [{ url: imageUrl, width: 1200, height: 630, alt: tool.name }],
         },
         twitter: {
             card: 'summary_large_image',
             title: tool.metaTitle,
             description: tool.metaDescription,
-            images: [`${BASE_URL}/og-image.png`],
+            images: [imageUrl],
         },
     };
 }

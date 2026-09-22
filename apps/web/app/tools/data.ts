@@ -54,6 +54,18 @@ export const TOOLS: ToolDefinition[] = [
                 question: 'Is the Auto-Apply Engine safe to use?',
                 answer: 'Yes. Dry-Run mode allows you to preview form inputs and screenshots before live submission.',
             },
+            {
+                question: 'What job boards does it search?',
+                answer: 'It queries active listings from Greenhouse, Lever, Ashby, and other multi-board job feeds programmatically, rather than relying on a single source.',
+            },
+            {
+                question: 'How does it decide which jobs are a good match?',
+                answer: 'It parses your resume into structured skills, then computes a weighted compatibility score against each listing so higher-scoring matches surface first.',
+            },
+            {
+                question: 'What actually happens during the auto-fill step?',
+                answer: 'Playwright drives the application form with humanized delays to avoid looking automated, and captures verification screenshots — in Dry-Run mode you review those before anything is submitted live.',
+            },
         ],
         relatedSlugs: ['ats-resume-checker', 'cover-letter-generator'],
     },
@@ -202,6 +214,14 @@ export const TOOLS: ToolDefinition[] = [
                 question: 'Will it match the content on my resume?',
                 answer: 'Yes, it is designed to stay consistent with the projects and experience already on your InternFlow resume.',
             },
+            {
+                question: 'Which parts of my profile does it actually rewrite?',
+                answer: 'Your headline, About section, and experience bullets — the three sections recruiters read first when sourcing candidates.',
+            },
+            {
+                question: 'How does it decide which projects to highlight?',
+                answer: 'It prioritizes the projects and experience most relevant to your target role, so your headline and About section lead with what matters for the jobs you are applying to.',
+            },
         ],
         relatedSlugs: ['resume-builder', 'ats-resume-checker'],
     },
@@ -235,6 +255,14 @@ export const TOOLS: ToolDefinition[] = [
             {
                 question: 'Will the letter sound generic?',
                 answer: 'No, it is built to reference specifics from the job description and your resume rather than generic phrases, which is the main thing that makes cover letters sound templated.',
+            },
+            {
+                question: 'Can I edit the letter before sending it?',
+                answer: 'Yes, the generated draft is fully editable, so you can adjust tone or wording before you send it.',
+            },
+            {
+                question: 'Do I need to write the cover letter myself first?',
+                answer: 'No. You paste the job description and link your resume, and InternFlow drafts the letter — you review and edit from there rather than starting from a blank page.',
             },
         ],
         relatedSlugs: ['resume-builder', 'ats-resume-checker'],
