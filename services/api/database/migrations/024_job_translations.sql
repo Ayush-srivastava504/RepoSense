@@ -1,4 +1,4 @@
--- Locale-aware job content, per IMPLEMENTATION_PLAN.md §7. One row per
+-- Locale-aware job content, per IMPLEMENTATION_PLAN.md §7. One row pe
 -- (job, locale) that has actually been through translation — a job with no
 -- row for a given locale simply has no translated content for it, and its
 -- detail page keeps canonicalizing to English (today's behavior), rather
