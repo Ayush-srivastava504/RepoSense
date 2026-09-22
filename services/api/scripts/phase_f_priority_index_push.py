@@ -144,6 +144,7 @@ async def _select(pool, *, only_internships: bool, top_companies: List[str], lim
         FROM jobs
         WHERE is_active = TRUE
           AND indexnow_submitted_at IS NULL
+          AND created_at::date = CURRENT_DATE
           AND {type_condition}
           AND NOT (is_thin AND enriched_overview IS NULL)
           AND (deadline IS NULL OR deadline > now())

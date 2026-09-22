@@ -99,7 +99,6 @@
 "body": {
 "introduction": "Machine Learning Engineer is often treated as a single job title, but current job listings reveal a much broader ecosystem. Some roles focus on model development, others on production ML systems, data pipelines, MLOps, computer vision, NLP or generative AI. Instead of presenting one generic roadmap, InternFlow maps the role through the technologies, responsibilities and experience requirements appearing in its job data.",
 
-```
 "sections": [
   {
     "id": "role-ecosystem",
@@ -308,7 +307,6 @@
     ]
   }
 ]
-```
 
 },
 
