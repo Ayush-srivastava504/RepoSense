@@ -436,7 +436,7 @@ async def get_gone_ids(since_days: int=Query(default=GONE_IDS_MAX_DAYS, ge=1, le
     return {'ids': [row['id'] for row in rows]}
 
 @router.get('/{job_id}')
-async def get_job(job_id: str):
+async def get_job(job_id: str, locale: str | None = Query(default=None)):
     pool = await get_db_pool()
     if pool is None:
         raise HTTPException(503, 'Database unavailable')
@@ -445,4 +445,25 @@ async def get_job(job_id: str):
     row = await pool.fetchrow(f'\n        SELECT\n            {JOB_COLUMNS},\n            {badges_sql}\n        FROM jobs\n        WHERE id = $1 AND is_active = true\n        ', job_id, _lower_top_companies())
     if row is None:
         raise HTTPException(404, 'Job not found')
-    return dict(row)
+    job = dict(row)
+    # Every locale this job actually has translated content for — sent
+    # regardless of the `locale` param so the frontend can build job-aware
+    # hreflang (lib/hreflang.ts's jobHreflangLinks()) without a second call,
+    # and so a locale with no row falls back to English rather than
+    # advertising a URL that's really just English content again.
+    translation_rows = await pool.fetch('SELECT locale FROM job_translations WHERE job_id = $1', job_id)
+    translated_locales = [r['locale'] for r in translation_rows]
+    job['translated_locales'] = translated_locales
+    if locale and locale in translated_locales:
+        t = await pool.fetchrow(
+            'SELECT title, overview, structured_description FROM job_translations WHERE job_id = $1 AND locale = $2',
+            job_id, locale,
+        )
+        if t is not None:
+            job['title'] = t['title']
+            if t['overview']:
+                job['enriched_overview'] = t['overview']
+            if t['structured_description']:
+                job['structured_description'] = t['structured_description']
+            job['content_locale'] = locale
+    return job

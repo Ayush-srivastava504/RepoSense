@@ -6,7 +6,8 @@
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { jobIdFromSlug, canonicalCategoryForJob, canonicalPathForJob } from '@/lib/slug';
-import { getJobById, BASE_URL } from '@/lib/jobs';
+import { BASE_URL } from '@/lib/jobs';
+import { getLocalizedJob, localizedCanonicalPath, jobLanguageAlternates } from '@/lib/jobLocale';
 import {  jobPostingSchema, breadcrumbSchema, safeJsonLd } from '@/lib/structuredData';
 import { buildJobTitle, truncateDescription, isIndexableJob } from '@/lib/seo/seoMetrics';
 import { jobOgImageUrl } from '@/lib/seo/ogImage';
@@ -19,7 +20,8 @@ export async function generateMetadata({ params, }: {
         slug: string;
     };
 }): Promise<Metadata> {
-    const job = await getJobById(jobIdFromSlug(params.slug));
+    const content = await getLocalizedJob(jobIdFromSlug(params.slug));
+    const { job } = content;
     if (!job) {
         return {};
     }
@@ -34,15 +36,17 @@ export async function generateMetadata({ params, }: {
         `Apply for ${job.title} at ${job.company}${job.location ? ` in ${job.location}` : ''}. View eligibility, skills, salary, and application details.`;
     const description = truncateDescription(rawDescription);
     const ogImage = jobOgImageUrl(job);
+    const canonicalPath = localizedCanonicalPath(canonicalPathForJob(job), content);
     return {
         title,
         description,
         alternates: {
-            canonical: `${BASE_URL}${canonicalPathForJob(job)}`,
+            canonical: `${BASE_URL}${canonicalPath}`,
+            languages: jobLanguageAlternates(canonicalPathForJob(job), job.translated_locales),
         },
         openGraph: {
             type: 'website',
-            url: `${BASE_URL}${canonicalPathForJob(job)}`,
+            url: `${BASE_URL}${canonicalPath}`,
             title,
             description,
             images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
@@ -67,7 +71,8 @@ export default async function JobDetailPage({ params, }: {
         slug: string;
     };
 }) {
-    const job = await getJobById(jobIdFromSlug(params.slug));
+    const content = await getLocalizedJob(jobIdFromSlug(params.slug));
+    const { job } = content;
     if (!job) {
         notFound();
     }
@@ -79,7 +84,7 @@ export default async function JobDetailPage({ params, }: {
     if (canonicalCategoryForJob(job) !== 'jobs') {
         permanentRedirect(canonicalPathForJob(job));
     }
-    const canonicalPath = canonicalPathForJob(job);
+    const canonicalPath = localizedCanonicalPath(canonicalPathForJob(job), content);
     const canonicalUrl = `${BASE_URL}${canonicalPath}`;
     const jobSchema = jobPostingSchema(job, canonicalUrl);
     const crumbs = breadcrumbSchema([

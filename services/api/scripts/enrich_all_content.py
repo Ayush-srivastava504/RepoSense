@@ -19,6 +19,15 @@
 # no per-row delay, so a whole run covers every company in seconds. It is NOT
 # part of `--target all`; it has its own workflow (company-enrichment.yml).
 #
+# Job-content translation (`--target translations`, job_translations table) is
+# locale-scoped per IMPLEMENTATION_PLAN.md §7: only already-enriched jobs that
+# pass the same freshness/quality tier as the sitemap are translated, into a
+# small starting locale list (TRANSLATION_LOCALES in
+# services/translation_enrichment_service.py — es + pt as of Session 6). No
+# rule-based fallback exists for translation, so this target always requires
+# GROQ_API_KEY, with or without --no-fallback. Has its own workflow
+# (job-translation-backfill.yml), like companies.
+#
 # Scheduled enrichment runs Groq-only (--no-fallback) with a runtime budget
 # (--max-runtime-minutes) so it ends before the workflow's command_timeout:
 #   job-content-enrichment.yml:      --target jobs --redo-fallback --no-fallback
@@ -53,6 +62,9 @@ from services.content_enrichment_service import ContentEnrichmentService, FALLBA
 from services.structured_enrichment_service import (
     FALLBACK_MODEL as STRUCTURED_FALLBACK_MODEL,
     StructuredEnrichmentService,
+)
+from services.translation_enrichment_service import (
+    TRANSLATION_LOCALES, TranslationEnrichmentService,
 )
 
 BATCH_LIMIT_DEFAULT = 200
@@ -312,9 +324,79 @@ async def enrich_companies(pool, args, today=None) -> dict:
     return {'attempted': len(candidates), 'enriched': written, 'with_overview': with_overview}
 
 
+TRANSLATIONS_CANDIDATES_SQL = """
+    WITH eligible AS (
+        SELECT id, title, enriched_overview, structured_description, enriched_at, quality_score,
+               COALESCE(posted_at, last_seen_at) AS ref_date
+        FROM jobs
+        WHERE is_active = true AND enriched_overview IS NOT NULL
+    )
+    SELECT e.id, e.title, e.enriched_overview, e.structured_description, l.locale
+    FROM eligible e
+    CROSS JOIN unnest($2::text[]) AS l(locale)
+    LEFT JOIN job_translations jt ON jt.job_id = e.id AND jt.locale = l.locale
+    WHERE e.ref_date IS NOT NULL
+      AND (
+            e.ref_date > now() - interval '30 days'
+         OR (e.ref_date > now() - interval '90 days' AND COALESCE(e.quality_score, 0) >= 50)
+         OR COALESCE(e.quality_score, 0) >= 75
+      )
+      AND (jt.job_id IS NULL OR (e.enriched_at IS NOT NULL AND e.enriched_at > jt.translated_at))
+    ORDER BY e.ref_date DESC NULLS LAST
+    LIMIT $1
+"""
+TRANSLATION_UPSERT_SQL = """
+    INSERT INTO job_translations (job_id, locale, title, overview, structured_description, model, translated_at)
+    VALUES ($1, $2, $3, $4, $5, $6, now())
+    ON CONFLICT (job_id, locale) DO UPDATE SET
+        title = EXCLUDED.title,
+        overview = EXCLUDED.overview,
+        structured_description = EXCLUDED.structured_description,
+        model = EXCLUDED.model,
+        translated_at = EXCLUDED.translated_at
+"""
+
+
+async def enrich_translations(pool, args) -> dict:
+    """job_translations backfill (IMPLEMENTATION_PLAN.md §7). Candidates are
+    (job, locale) pairs where the job is already content-enriched, passes the
+    same freshness/quality tier lib/sitemapJobs.ts's isJobForSitemap uses
+    (0-30d always; 31-90d needs quality_score>=50; 90d+ needs >=75 — same
+    placeholder thresholds, not yet validated against production data), and
+    either has no translation yet for that locale or the English content was
+    re-enriched more recently than the existing translation.
+    """
+    service = TranslationEnrichmentService()
+    rows = await pool.fetch(TRANSLATIONS_CANDIDATES_SQL, args.limit, TRANSLATION_LOCALES)
+    print(f'[enrich_all_content] translations: {len(rows)} candidate(s) across locales={TRANSLATION_LOCALES} (ai_enabled={service.enabled})')
+    translated = 0
+    stopped_early = False
+    for row in rows:
+        if _out_of_time(args):
+            stopped_early = True
+            print(f'[enrich_all_content] translations: --max-runtime-minutes budget spent after {translated} row(s); stopping (remaining rows are picked up next run)')
+            break
+        result = await service.translate(
+            title=row['title'], overview=row['enriched_overview'],
+            structured_description=row['structured_description'], locale=row['locale'],
+        )
+        if result is None:
+            await asyncio.sleep(REQUEST_DELAY_S)
+            continue
+        if not args.dry_run:
+            await pool.execute(
+                TRANSLATION_UPSERT_SQL, row['id'], row['locale'],
+                result.title, result.overview, result.structured_description, result.model,
+            )
+        translated += 1
+        await asyncio.sleep(REQUEST_DELAY_S)
+    print(f'[enrich_all_content] translations: wrote {translated}/{len(rows)}')
+    return {'attempted': len(rows), 'enriched': translated, 'stopped_early': stopped_early}
+
+
 async def main():
     parser = argparse.ArgumentParser(description='Bulk/fallback content enrichment for jobs and internships')
-    parser.add_argument('--target', choices=['jobs', 'structured', 'companies', 'all'], default='all')
+    parser.add_argument('--target', choices=['jobs', 'structured', 'companies', 'translations', 'all'], default='all')
     parser.add_argument('--limit', type=int, default=BATCH_LIMIT_DEFAULT)
     parser.add_argument('--bulk', action='store_true', help='Process all rows, not just never-enriched ones — for backfilling every page at once')
     parser.add_argument('--no-fallback', action='store_true', help='jobs/structured: never store template or rule-based fallback content. Rows Groq cannot handle are left for the next run; exits 2 if GROQ_API_KEY is not set, and 3 if a target attempted rows but enriched none.')
@@ -326,6 +408,13 @@ async def main():
     if not settings.DATABASE_URL:
         print('[enrich_all_content] DATABASE_URL not set — cannot run.')
         sys.exit(1)
+    if args.target == 'translations' and not TranslationEnrichmentService().enabled:
+        # Unlike jobs/structured, translation has no rule-based fallback — there is no
+        # honest non-LLM substitute, so a missing key means "there is nothing this run
+        # can do," not "fall back to something worse." Always refuse, not just under
+        # --no-fallback.
+        print('[enrich_all_content] --target translations requires GROQ_API_KEY, which is not set in this environment — refusing to run.')
+        sys.exit(2)
     if args.no_fallback:
         # Without this, a container that cannot see GROQ_API_KEY would quietly write
         # fallback content for every row and the workflow would stay green.
@@ -349,6 +438,8 @@ async def main():
             summary['structured'] = await enrich_structured(pool, args)
         if args.target == 'companies':
             summary['companies'] = await enrich_companies(pool, args)
+        if args.target == 'translations':
+            summary['translations'] = await enrich_translations(pool, args)
         print(f'[enrich_all_content] done in {(time.monotonic() - started) / 60:.1f} min:', json.dumps(summary))
         if args.no_fallback:
             stalled = [n for n in ('jobs', 'structured') if summary.get(n, {}).get('attempted') and not summary[n]['enriched'] and not summary[n].get('stopped_early')]
@@ -357,6 +448,9 @@ async def main():
                 # head of the queue). Fail the run so it shows up instead of looking healthy.
                 print(f'[enrich_all_content] {", ".join(stalled)}: rows were attempted but none could be enriched — failing the run.')
                 sys.exit(3)
+        if args.target == 'translations' and summary['translations']['attempted'] and not summary['translations']['enriched'] and not summary['translations']['stopped_early']:
+            print('[enrich_all_content] translations: rows were attempted but none could be translated — failing the run.')
+            sys.exit(3)
     finally:
         await pool.close()
 

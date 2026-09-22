@@ -39,10 +39,17 @@ Disallow: /static/
 # is the scarce resource while thousands of real listings sit at "Discovered -
 # currently not indexed". The trailing slash blocks only detail pages: the
 # translated list pages (/es/jobs, ...) that hreflang points at stay crawlable.
-Disallow: /es/jobs/
-Disallow: /es/internships/
-Disallow: /es/remote-jobs/
-Disallow: /es/government-jobs/
+#
+# es/ and pt/ are NOT in this block (Session 6, migrations/024_job_translations.sql,
+# IMPLEMENTATION_PLAN.md §7): those two locales have a real translation pipeline now,
+# so a given /es/jobs/<slug> or /pt/jobs/<slug> is either genuinely unique translated
+# content that self-canonicalises to its own URL (job.translated_locales includes the
+# locale) or still duplicates and canonicalises to English (no translation yet for
+# that job) -- lib/jobLocale.ts decides which per request. Leaving those crawlable
+# either way is what keeps this Disallow list and the job-aware hreflang
+# (jobHreflangLinks() in lib/hreflang.ts) from contradicting each other the same way
+# the site-wide HREFLANG_ENABLED=false comment above describes. The other six locales
+# (ja/fr/de/ko/it/hi) have no translation pipeline at all yet and stay blocked.
 Disallow: /ja/jobs/
 Disallow: /ja/internships/
 Disallow: /ja/remote-jobs/
@@ -55,10 +62,6 @@ Disallow: /de/jobs/
 Disallow: /de/internships/
 Disallow: /de/remote-jobs/
 Disallow: /de/government-jobs/
-Disallow: /pt/jobs/
-Disallow: /pt/internships/
-Disallow: /pt/remote-jobs/
-Disallow: /pt/government-jobs/
 Disallow: /ko/jobs/
 Disallow: /ko/internships/
 Disallow: /ko/remote-jobs/

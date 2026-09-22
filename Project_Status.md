@@ -283,14 +283,19 @@ later session, or simply wrong), that's called out explicitly under
   four list pages.* Flagged as a plausible page-experience/quality drag
   worth A/B testing off; explicitly left as the site owner's revenue
   trade-off to make, not a code task.
-
+- **Phase 0 (confirm what's actually live in production)** — inherently
+  a manual check against the deployed site (canonical tag on a live job
+  page, robots.txt contents, filter-bar duplication, deploy pipeline).
+  Can't be resolved from a code drop.
 - **Phase E (re-verify GSC reports after re-crawl)** — blocked on Phase
   A/B being live in production plus a 2–3 week re-crawl window. Not a
   code task; nothing to check in this zip.
 - **`GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON`** not set (operational
   prerequisite for Phase F's Google Indexing API leg — code path exists
   and degrades gracefully to IndexNow-only without it).
-
+- **`INTERNAL_API_KEY`** not confirmed set on both API host and Vercel
+  (operational prerequisite for the SSR rate-limit exemption to activate —
+  code is inert, not broken, without it).
 - **9-locale scope decision** — `i18n/config.ts` has 9 locales
   configured; multiple docs recommend picking 2–3 (es/pt as the largest
   non-English job-market languages) before building real per-locale
@@ -338,9 +343,3 @@ than silently absorbed as fact:
    claims otherwise, so this isn't a contradiction — just flagging that
    "implemented" here means "the tiering logic works as designed," not
    "the specific numbers are validated against real data."
-
-   one more thing to fix is that logo of comapnies
-   next scale it to 5 search engine
-   social app making for internflow
-   adsense
-   see and understand whole seo also and working and archutecture

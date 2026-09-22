@@ -4,7 +4,7 @@ The primary backend service for RepoSense, powered by **FastAPI**. It provides r
 
 ---
 
-## Architecture & Folder Structure
+## 🏛️ Architecture & Folder Structure
 
 ```
 services/api/

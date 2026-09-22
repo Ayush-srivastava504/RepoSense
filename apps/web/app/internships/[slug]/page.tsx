@@ -6,7 +6,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { jobIdFromSlug, canonicalPathForJob } from '@/lib/slug';
-import { getJobById, BASE_URL } from '@/lib/jobs';
+import { BASE_URL } from '@/lib/jobs';
+import { getLocalizedJob, localizedCanonicalPath, jobLanguageAlternates } from '@/lib/jobLocale';
 import {  jobPostingSchema, breadcrumbSchema, safeJsonLd } from '@/lib/structuredData';
 import { buildJobTitle, truncateDescription, isIndexableJob } from '@/lib/seo/seoMetrics';
 import { jobOgImageUrl } from '@/lib/seo/ogImage';
@@ -17,7 +18,8 @@ export async function generateMetadata({ params, }: {
         slug: string;
     };
 }): Promise<Metadata> {
-    const job = await getJobById(jobIdFromSlug(params.slug));
+    const content = await getLocalizedJob(jobIdFromSlug(params.slug));
+    const { job } = content;
     if (!job || job.type !== 'internship') {
         return {};
     }
@@ -30,15 +32,17 @@ export async function generateMetadata({ params, }: {
     });
     const rawDescription = job.enriched_overview ||
         `Apply for the ${job.title} internship at ${job.company}${job.location ? ` in ${job.location}` : ''}. View eligibility, skills, stipend, and application details.`;
+    const canonicalPath = localizedCanonicalPath(canonicalPathForJob(job), content);
     return {
         title,
         description: truncateDescription(rawDescription),
         alternates: {
-            canonical: `${BASE_URL}${canonicalPathForJob(job)}`,
+            canonical: `${BASE_URL}${canonicalPath}`,
+            languages: jobLanguageAlternates(canonicalPathForJob(job), job.translated_locales),
         },
         openGraph: {
             type: 'website',
-            url: `${BASE_URL}${canonicalPathForJob(job)}`,
+            url: `${BASE_URL}${canonicalPath}`,
             title,
             description: truncateDescription(rawDescription),
             images: [{ url: jobOgImageUrl(job), width: 1200, height: 630, alt: title }],
@@ -57,11 +61,12 @@ export default async function InternshipDetailPage({ params, }: {
         slug: string;
     };
 }) {
-    const job = await getJobById(jobIdFromSlug(params.slug));
+    const content = await getLocalizedJob(jobIdFromSlug(params.slug));
+    const { job } = content;
     if (!job || job.type !== 'internship') {
         notFound();
     }
-    const canonicalPath = canonicalPathForJob(job);
+    const canonicalPath = localizedCanonicalPath(canonicalPathForJob(job), content);
     const canonicalUrl = `${BASE_URL}${canonicalPath}`;
     const crumbs = breadcrumbSchema([
         { name: 'Home', url: BASE_URL },

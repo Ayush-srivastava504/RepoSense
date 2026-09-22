@@ -127,7 +127,7 @@ def test_dry_run_does_not_write(mod):
 
 def test_companies_target_makes_no_llm_calls_and_is_not_part_of_all(mod):
     src = (SCRIPTS / 'enrich_all_content.py').read_text()
-    assert "choices=['jobs', 'structured', 'companies', 'all']" in src
+    assert "choices=['jobs', 'structured', 'companies', 'translations', 'all']" in src
     assert "args.target == 'companies'" in src
     assert 'CompanyEnrichmentService' not in src and 'company_enrichment_service' not in src
     assert not (SRC / 'services' / 'company_enrichment_service.py').exists()

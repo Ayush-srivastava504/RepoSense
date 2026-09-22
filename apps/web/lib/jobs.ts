@@ -82,6 +82,20 @@ export interface Job {
     // automatically once enrichment fills it in.
     is_thin?: boolean;
     quality_score?: number;
+    // Locale-aware content — migrations/024_job_translations.sql,
+    // IMPLEMENTATION_PLAN.md §7. Always present (possibly []); lists every
+    // locale this job actually has translated content for, regardless of
+    // which locale (if any) was requested. Used to build job-aware
+    // hreflang (lib/hreflang.ts's jobHreflangLinks()) without a second
+    // API call, and so a locale with no row correctly falls back to
+    // English instead of advertising a URL that's really just English
+    // content again.
+    translated_locales?: string[];
+    // Set only when `?locale=` was passed AND that locale has a row —
+    // title/enriched_overview/structured_description above are already
+    // the translated versions in that case. Absent (not "en") means the
+    // response is the original English content.
+    content_locale?: string;
 }
 interface JobsResponse {
     jobs?: Job[];
@@ -272,10 +286,13 @@ export class JobApiUnavailableError extends Error {
  * and Google drops URLs it sees 404. A thrown error renders as a 5xx, which
  * crawlers treat as temporary and retry, and ISR keeps serving the last good page.
  */
-export async function getJobById(id: string): Promise<Job | null> {
+export async function getJobById(id: string, locale?: string): Promise<Job | null> {
     let res: Response;
+    const url = locale
+        ? `${API_BASE_URL}/api/jobs/${id}?locale=${encodeURIComponent(locale)}`
+        : `${API_BASE_URL}/api/jobs/${id}`;
     try {
-        res = await fetchWithTimeout(`${API_BASE_URL}/api/jobs/${id}`, {
+        res = await fetchWithTimeout(url, {
             next: { revalidate: 3600 },
         });
     }

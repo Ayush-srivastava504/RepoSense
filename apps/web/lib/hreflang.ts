@@ -37,3 +37,34 @@ export function hreflangLinks(path: string, enabled: boolean = HREFLANG_ENABLED)
     links.push({ lang: 'x-default', href: `${BASE_URL}${clean}` });
     return links;
 }
+
+// Locales the job-translation pipeline can actually produce content for
+// (migrations/024_job_translations.sql, IMPLEMENTATION_PLAN.md §7). Kept
+// in sync by hand with TRANSLATION_LOCALES in
+// services/api/src/services/translation_enrichment_service.py — both are
+// small, deliberate starting lists (es + pt as of Session 6), not the
+// full 9-locale i18n/config.ts set.
+export const TRANSLATABLE_LOCALES = ['es', 'pt'];
+
+/**
+ * Job-detail hreflang, independent of the site-wide HREFLANG_ENABLED flag
+ * above (which is off because /es/jobs etc. render untranslated English
+ * content under a translated chrome — a real problem for hub/list pages).
+ * A job page is different: it only advertises a locale when that specific
+ * job has a real job_translations row for it (job.translated_locales,
+ * from GET /api/jobs/{id}), so unlike the site-wide case, canonical and
+ * hreflang never contradict each other here — a locale either has real
+ * translated content and is genuinely self-canonical at its own URL, or
+ * it's simply not advertised and the page keeps canonicalizing to
+ * English, same as today.
+ */
+export function jobHreflangLinks(path: string, translatedLocales: string[]): HreflangLink[] {
+    const available = translatedLocales.filter((l) => TRANSLATABLE_LOCALES.includes(l));
+    if (available.length === 0)
+        return [];
+    const links: HreflangLink[] = [{ lang: i18n.defaultLocale, href: `${BASE_URL}${path}` }];
+    for (const loc of available)
+        links.push({ lang: loc, href: `${BASE_URL}/${loc}${path}` });
+    links.push({ lang: 'x-default', href: `${BASE_URL}${path}` });
+    return links;
+}

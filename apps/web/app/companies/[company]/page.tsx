@@ -8,12 +8,13 @@ import Link from 'next/link';
 import Script from 'next/script';
 import { notFound } from 'next/navigation';
 import { BASE_URL, getJobs } from '@/lib/jobs';
-import { getCompanies, getCompanyBySlug, companySlug } from '@/lib/companies';
+import { getCompanies, getCompanyBySlug, getCompanyProfile, companySlug } from '@/lib/companies';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import JobCard from '@/app/components/JobCard';
 import CompanyLogo from '@/app/components/CompanyLogo';
 import TrackView from '@/app/components/TrackView';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import CompanyProfilePanel from '@/app/components/CompanyProfilePanel';
 
 export const dynamicParams = true;
 
@@ -54,7 +55,10 @@ export default async function CompanyHubPage({ params, }: {
         notFound();
 
     const url = `${BASE_URL}/companies/${params.company}`;
-    const jobs = await getJobs({ company: company.company, limit: 30, sort: 'ranked' });
+    const [jobs, profile] = await Promise.all([
+        getJobs({ company: company.company, limit: 30, sort: 'ranked' }),
+        getCompanyProfile(company.company),
+    ]);
     const internships = jobs.filter((j) => j.type === 'internship');
     const fullTimeJobs = jobs.filter((j) => j.type !== 'internship');
     const keywords = Array.from(new Set(jobs.flatMap((j) => j.enriched_keywords ?? []))).slice(0, 12);
@@ -95,6 +99,8 @@ export default async function CompanyHubPage({ params, }: {
                 {kw}
               </Link>))}
           </div>)}
+
+        <CompanyProfilePanel profile={profile}/>
 
         {fullTimeJobs.length > 0 && (<section className="mt-10">
             <h2 className="display text-xl font-medium">Open roles at {company.company}</h2>

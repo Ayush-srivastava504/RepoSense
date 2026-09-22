@@ -54,9 +54,16 @@ test('jobPosting: on-site addressCountry is an ISO code, omitted when the column
 
 test('robots.txt: locale-prefixed job DETAIL pages are not crawled, locale list pages still are', () => {
     const robots = read('public/robots.txt');
-    for (const loc of ['es', 'ja', 'fr', 'de', 'pt', 'ko', 'it', 'hi'])
+    // es/pt have a real translation pipeline (Session 6, migrations/024_job_translations.sql)
+    // and stay crawlable at the detail level -- see lib/jobLocale.ts + robots.txt's own
+    // comment. The other six locales have no translation pipeline and stay blocked.
+    for (const loc of ['ja', 'fr', 'de', 'ko', 'it', 'hi'])
         for (const cat of ['jobs', 'internships', 'remote-jobs', 'government-jobs'])
             assert.ok(robots.includes(`Disallow: /${loc}/${cat}/\n`), `${loc}/${cat}`);
+    for (const cat of ['jobs', 'internships', 'remote-jobs', 'government-jobs'])
+        assert.ok(!robots.includes(`Disallow: /es/${cat}/\n`), `es/${cat} should not be blocked`);
+    for (const cat of ['jobs', 'internships', 'remote-jobs', 'government-jobs'])
+        assert.ok(!robots.includes(`Disallow: /pt/${cat}/\n`), `pt/${cat} should not be blocked`);
     // The trailing slash is what keeps /es/jobs (the hreflang-linked list page) crawlable.
     assert.ok(!/Disallow: \/(es|ja|fr|de|pt|ko|it|hi)\/(jobs|internships|remote-jobs|government-jobs)\s*$/m.test(robots));
 });

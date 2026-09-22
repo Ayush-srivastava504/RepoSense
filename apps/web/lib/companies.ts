@@ -64,3 +64,48 @@ export async function getCompanies(limitPerSection = 60): Promise<CompaniesRespo
         return EMPTY_RESPONSE;
     }
 }
+
+// Matches company_facts_service.py's build_facts() shape exactly — every field
+// is an aggregate over the company's own currently-listed jobs, or absent.
+export interface CompanyProfileFacts {
+    as_of: string;
+    active_listings: number;
+    internships: number;
+    jobs: number;
+    locations: { name: string; count: number }[];
+    work_modes: Record<string, number>;
+    remote_listings: number;
+    job_functions: { name: string; count: number }[];
+    skills: { name: string; count: number }[];
+    courses: { name: string; count: number }[];
+    experience: { min: number | null; max: number | null; fresher_listings: number } | null;
+    pay: { stipend_listings: number; salary_listings: number };
+    official_domain: string | null;
+    first_listed: string | null;
+    latest_posted: string | null;
+}
+export interface CompanyProfile {
+    company: string;
+    overview: string;
+    keywords: string[] | null;
+    facts: CompanyProfileFacts;
+    model: string;
+    enriched_at: string;
+}
+// GET /api/companies/{company}/profile 404s when the company has too few
+// facts for a profile (company_facts_service.py's MIN_SUBSTANTIVE_SECTIONS) —
+// that's an expected, common case, not an error, so it resolves to null
+// rather than throwing. Any other failure (network, 5xx) also degrades to
+// null: the company page renders fine without a profile panel either way.
+export async function getCompanyProfile(company: string): Promise<CompanyProfile | null> {
+    try {
+        const res = await fetchWithTimeout(`${API_BASE_URL}/api/companies/${encodeURIComponent(company)}/profile`, { next: { revalidate: 3600 } });
+        if (!res.ok)
+            return null;
+        return (await res.json()) as CompanyProfile;
+    }
+    catch (err) {
+        console.error('Failed to fetch company profile:', err);
+        return null;
+    }
+}
