@@ -37,7 +37,7 @@ export const metadata: Metadata = {
         default: 'InternFlow — High Paying Jobs, Remote Jobs & Internships + AI Resume Builder',
         template: '%s | InternFlow',
     },
-    description: 'Find high paying jobs, remote jobs, government jobs, and internships — AI engineer, DevOps, data engineer, and more — plus an ATS-friendly resume builder, cover letter generator, and AI GitHub code review. Built for students and early-career engineers.',
+    description: 'Find high paying jobs, remote jobs, government jobs, and internships, plus an ATS-friendly resume builder, cover letter generator, and AI GitHub code review.',
     keywords: [
         'high paying jobs',
         'remote jobs',

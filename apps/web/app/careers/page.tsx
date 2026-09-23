@@ -12,7 +12,7 @@ import Breadcrumbs from '@/app/components/Breadcrumbs';
 
 export const metadata: Metadata = {
     title: 'Career Paths for Engineering Students',
-    description: 'What each engineering career path actually involves, the skills employers screen for, live jobs and internships, and the resume tools to apply — Software Engineer, AI/ML Engineer, DevOps Engineer, Data Engineer, and Data Analyst.',
+    description: 'What each engineering career path involves, the skills employers screen for, live openings, and resume tools for Software, AI/ML, DevOps, and Data roles.',
     alternates: { canonical: `${BASE_URL}/careers`, languages: languageAlternates('/careers') },
 };
 

@@ -12,7 +12,7 @@ import Breadcrumbs from '@/app/components/Breadcrumbs';
 
 export const metadata: Metadata = {
     title: 'Resume Guides by Role — Keywords, Bullets & ATS Tips',
-    description: 'Role-specific resume guides with the ATS keywords, common mistakes, and bullet-point templates for Software Engineer, AI/ML Engineer, DevOps Engineer, Data Engineer, and Data Analyst roles.',
+    description: 'Role-specific resume guides with ATS keywords, common mistakes, and bullet templates for Software, AI/ML, DevOps, Data Engineer, and Data Analyst roles.',
     alternates: { canonical: `${BASE_URL}/resume-for`, languages: languageAlternates('/resume-for') },
 };
 

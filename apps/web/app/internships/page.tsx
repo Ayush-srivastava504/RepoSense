@@ -27,7 +27,7 @@ export async function generateMetadata({ searchParams, }: {
     const { page, filtered } = listPageState(searchParams);
     return {
         title: paginatedTitle('Internship Listings — India, Remote & Japan — Refreshed Daily', page),
-        description: 'Browse the latest software engineering, sales, and finance internships from India, remote-first companies, and Japan. Filter by role and location. Updated daily.',
+        description: 'Browse the latest software engineering, sales, and finance internships in India, remote-first companies, and Japan. Filter by role and location. Updated daily.',
         alternates: {
             canonical: paginatedCanonical(BASE_URL, '/internships', searchParams),
             // hreflang only for the plain first page; deeper/filtered views are not translated variants.

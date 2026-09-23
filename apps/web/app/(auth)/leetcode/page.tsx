@@ -10,7 +10,7 @@ import LeetCodeClient from './LeetCodeClient';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 export const metadata: Metadata = {
     title: 'Free LeetCode Practice — Blind 75, Top 150 & Top 250 by Company',
-    description: 'Practice curated LeetCode problem sets — Blind 75, Top 150, and Top 250 — filterable by company, category, and difficulty. Solve select problems right in the browser against real test cases, or jump straight to LeetCode.',
+    description: 'Practice curated LeetCode sets — Blind 75, Top 150, and Top 250 — filterable by company, category, and difficulty. Solve select problems in the browser.',
     keywords: [
         'leetcode practice',
         'blind 75',

@@ -10,7 +10,7 @@ import { languageAlternates } from '@/lib/structuredData';
 // SEO Metadata with international hreflang tags
 export const metadata: Metadata = {
   title: 'InternFlow — High Paying Jobs, Remote Jobs & Internships + AI Career Tools',
-  description: 'Find high paying jobs, remote DevOps jobs, AI engineer roles, and internships. Free AI resume generator, cover letter templates, and ATS-friendly resume builder.',
+  description: 'Find high paying jobs, remote DevOps jobs, AI engineer roles, and internships. Free AI resume generator, cover letter templates, and ATS resume builder.',
   keywords: [
     'high paying jobs',
     'remote jobs',
