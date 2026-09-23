@@ -1,7 +1,9 @@
 // Module: app/tools/data.ts
 // Defines component(s)/export(s): TOOLS
-// Defines function(s): getToolBySlug, getRelatedTools
+// Defines function(s): getToolBySlug, getRelatedTools, getToolsForArticle, getRelatedArticles
 // Defines type(s): ToolFaq, ToolDefinition
+
+import { getPostBySlug, type BlogPost } from '@/lib/blog';
 
 export interface ToolFaq {
     question: string;
@@ -25,6 +27,15 @@ export interface ToolDefinition {
     }[];
     faqs: ToolFaq[];
     relatedSlugs: string[];
+    /**
+     * Blog post slugs (content/blog/{slug}.json) that this tool is the
+     * natural next step from. This is the single source of truth for the
+     * tool<->article topic-cluster links: the tool page reads this forward
+     * to show "From the blog", and getToolsForArticle() reads it in reverse
+     * so a blog post automatically surfaces the tools that mention it,
+     * without duplicating the mapping on the article side.
+     */
+    relatedArticleSlugs?: string[];
 }
 export const TOOLS: ToolDefinition[] = [
     {
@@ -106,6 +117,11 @@ export const TOOLS: ToolDefinition[] = [
             },
         ],
         relatedSlugs: ['ats-resume-checker', 'resume-builder', 'application-tracker'],
+        relatedArticleSlugs: [
+            'github-portfolio-builder-india-kw-0172',
+            'github-portfolio-guide-junior-developers-hireable',
+            'github-readme-generator-india-kw-0142',
+        ],
     },
     {
         slug: 'ats-resume-checker',
@@ -144,6 +160,12 @@ export const TOOLS: ToolDefinition[] = [
             },
         ],
         relatedSlugs: ['resume-builder', 'cover-letter-generator', 'job-match-score'],
+        relatedArticleSlugs: [
+            'how-ats-resume-algorithms-parse-software-engineer-resumes',
+            'resume-format-checker-for-students-kw-0096',
+            'resume-score-checker-for-freshers-kw-0118',
+            'resume-for-data-science-internship-kw-0137',
+        ],
     },
     {
         slug: 'resume-builder',
@@ -182,6 +204,10 @@ export const TOOLS: ToolDefinition[] = [
             },
         ],
         relatedSlugs: ['ats-resume-checker', 'github-readme-generator', 'cover-letter-generator', 'job-match-score', 'application-tracker'],
+        relatedArticleSlugs: [
+            'resume-headline-for-freshers-kw-0041',
+            'resume-for-data-science-internship-kw-0137',
+        ],
     },
     {
         slug: 'linkedin-optimizer',
@@ -224,6 +250,7 @@ export const TOOLS: ToolDefinition[] = [
             },
         ],
         relatedSlugs: ['resume-builder', 'ats-resume-checker'],
+        relatedArticleSlugs: ['linkedin-headline-examples-for-freshers-kw-0046'],
     },
     {
         slug: 'cover-letter-generator',
@@ -266,6 +293,7 @@ export const TOOLS: ToolDefinition[] = [
             },
         ],
         relatedSlugs: ['resume-builder', 'ats-resume-checker'],
+        relatedArticleSlugs: ['cover-letter-template-free-download-kw-0022'],
     },
     {
         slug: 'application-tracker',
@@ -304,6 +332,7 @@ export const TOOLS: ToolDefinition[] = [
             },
         ],
         relatedSlugs: ['job-match-score', 'resume-builder', 'ats-resume-checker'],
+        relatedArticleSlugs: ['remote-developer-job-hunting-global-tech-market'],
     },
     {
         slug: 'job-match-score',
@@ -351,4 +380,23 @@ export function getRelatedTools(tool: ToolDefinition): ToolDefinition[] {
     return tool.relatedSlugs
         .map((slug) => getToolBySlug(slug))
         .filter((t): t is ToolDefinition => Boolean(t));
+}
+/**
+ * Blog posts this tool names as a natural next step, resolved from
+ * relatedArticleSlugs. A slug with no matching post file (e.g. a typo, or a
+ * post later removed) is silently dropped rather than breaking the page.
+ */
+export function getRelatedArticles(tool: ToolDefinition): BlogPost[] {
+    return (tool.relatedArticleSlugs ?? [])
+        .map((slug) => getPostBySlug(slug))
+        .filter((post): post is BlogPost => Boolean(post));
+}
+/**
+ * Reverse of relatedArticleSlugs: every tool that names this blog post as
+ * relevant. This is what makes the linking two-way from a single edit —
+ * the blog page never needs its own list of tool slugs, it just asks which
+ * tools point at it.
+ */
+export function getToolsForArticle(slug: string): ToolDefinition[] {
+    return TOOLS.filter((tool) => tool.relatedArticleSlugs?.includes(slug));
 }

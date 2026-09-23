@@ -38,6 +38,20 @@ class Settings(BaseSettings):
     # SSR/ISR/sitemap traffic (shared Vercel egress IPs) is not throttled by the per-IP limit.
     INTERNAL_API_KEY: str = ''
     GROQ_API_KEY: str = ''
+    # Groq periodically deprecates model IDs on a fixed shutdown date (see
+    # https://console.groq.com/docs/deprecations); when a previously working
+    # model starts returning 404 on every request, that's almost always why.
+    # Env-overridable so a migration is a config change, not a redeploy.
+    GROQ_MODEL: str = 'openai/gpt-oss-120b'
+    # Second and third content-enrichment providers, tried in order after
+    # Groq before falling back to deterministic template content. Each has
+    # its own independent rate limit, so spreading a run's calls across all
+    # three — not just retrying the same one — is what actually raises how
+    # many listings a run can enrich, on top of the resilience.
+    GEMINI_API_KEY: str = ''
+    GEMINI_MODEL: str = 'gemini-2.5-flash'
+    NVIDIA_API_KEY: str = ''
+    NVIDIA_MODEL: str = 'moonshotai/kimi-k2.5'
 
     # Phase F — same-day priority indexing push (see
     # INDEXING_RECOVERY_PLAN.md and scripts/phase_f_priority_index_push.py).

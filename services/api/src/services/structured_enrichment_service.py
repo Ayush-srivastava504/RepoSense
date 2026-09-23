@@ -22,7 +22,12 @@ import httpx
 from configs.config import settings
 
 GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
-GROQ_MODEL = 'openai/gpt-oss-120b'
+# getattr (not settings.GROQ_MODEL directly): some tests substitute a
+# stripped-down fake settings object that only sets GROQ_API_KEY /
+# DATABASE_URL, and this is evaluated at import time — a plain attribute
+# access would crash that import. See content_enrichment_service.py's
+# header comment for why this is env-overridable at all.
+GROQ_MODEL = getattr(settings, 'GROQ_MODEL', 'openai/gpt-oss-120b')
 FALLBACK_MODEL = 'rule-based-fallback'
 REQUEST_TIMEOUT_S = 30
 # 429 / 5xx handling: Groq rate-limits by requests *and* tokens per minute, so

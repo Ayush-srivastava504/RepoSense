@@ -12,8 +12,32 @@ import requests
 from utils import get_logger, get_pg_conn
 log = get_logger('content_enrichment')
 GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
-GROQ_MODEL = os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')
+GROQ_MODEL = os.getenv('GROQ_MODEL', 'openai/gpt-oss-120b')
 GROQ_API_KEY = os.getenv('GROQ_API_KEY', '')
+# Second and third providers, tried in order if Groq errors or is unset —
+# see services/api/src/services/llm_providers.py for the API-compatible
+# sibling used by the async enrichment path; this crawler hook is
+# synchronous (runs inline at the end of a crawl via `requests`), so it
+# duplicates the same three-endpoint shape rather than importing across
+# the crawler/services boundary.
+GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
+NVIDIA_API_URL = 'https://integrate.api.nvidia.com/v1/chat/completions'
+NVIDIA_MODEL = os.getenv('NVIDIA_MODEL', 'moonshotai/kimi-k2.5')
+NVIDIA_API_KEY = os.getenv('NVIDIA_API_KEY', '')
+# (name, url, model, key) for every provider that has a key configured, in
+# try-order. Empty when none are set, in which case callers fall back to
+# the deterministic template.
+PROVIDERS = [
+    (name, url, model, key)
+    for name, url, model, key in [
+        ('groq', GROQ_API_URL, GROQ_MODEL, GROQ_API_KEY),
+        ('gemini', GEMINI_API_URL, GEMINI_MODEL, GEMINI_API_KEY),
+        ('nvidia', NVIDIA_API_URL, NVIDIA_MODEL, NVIDIA_API_KEY),
+    ]
+    if key
+]
 THIN_DESCRIPTION_CHARS = int(os.getenv('THIN_DESCRIPTION_CHARS', '400'))
 # Was hardcoded at 60/run against a backlog in the thousands — mathematically
 # could never catch up. Decoupled from a single constant: env-overridable,
@@ -61,28 +85,25 @@ def _template_result(title: str, company: str, location: str, description: str, 
     )
     return {'overview': overview, 'keywords': dedup[:10], 'model': 'template-fallback'}
 
-def _call_groq(title: str, company: str, location: str, description: str, job_type: str) -> Optional[Dict]:
-    if not GROQ_API_KEY:
-        return {**_template_result(title, company, location, description, job_type)}
-    user_prompt = '\n'.join([f'Title: {title}', f'Company: {company}', f'Location: {location or "not specified"}', f'Listing type: {job_type or "not specified"}', "Original description (may be short or messy — it's raw scraped text):", (description or '(no description provided)').strip()[:4000]])
-    payload = {'model': GROQ_MODEL, 'messages': [{'role': 'system', 'content': SYSTEM_PROMPT}, {'role': 'user', 'content': user_prompt}], 'temperature': 0.4, 'response_format': {'type': 'json_object'}}
-    headers = {'Authorization': f'Bearer {GROQ_API_KEY}', 'Content-Type': 'application/json'}
+def _call_provider(name: str, url: str, model: str, key: str, user_prompt: str) -> Optional[Dict]:
+    payload = {'model': model, 'messages': [{'role': 'system', 'content': SYSTEM_PROMPT}, {'role': 'user', 'content': user_prompt}], 'temperature': 0.4, 'response_format': {'type': 'json_object'}}
+    headers = {'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'}
     try:
-        resp = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=REQUEST_TIMEOUT_S)
+        resp = requests.post(url, headers=headers, json=payload, timeout=REQUEST_TIMEOUT_S)
         resp.raise_for_status()
         body = resp.json()
     except (requests.RequestException, ValueError) as exc:
-        log.warning('Groq request failed: %s — using template fallback', exc)
-        return _template_result(title, company, location, description, job_type)
+        log.warning('%s request failed: %s', name, exc)
+        return None
     try:
         content = body['choices'][0]['message']['content']
     except (KeyError, IndexError, TypeError):
-        log.warning('Unexpected Groq response shape: %s — using template fallback', body)
-        return _template_result(title, company, location, description, job_type)
+        log.warning('Unexpected %s response shape: %s', name, body)
+        return None
     parsed = _extract_json(content)
     if not parsed:
-        log.warning('Could not parse Groq JSON output — using template fallback')
-        return _template_result(title, company, location, description, job_type)
+        log.warning('Could not parse %s JSON output', name)
+        return None
     overview = str(parsed.get('overview', '')).strip()
     keywords = parsed.get('keywords', [])
     if not isinstance(keywords, list):
@@ -90,11 +111,22 @@ def _call_groq(title: str, company: str, location: str, description: str, job_ty
     keywords = [str(k).strip().lower() for k in keywords if str(k).strip()]
     word_count = len(overview.split())
     if word_count < MIN_OVERVIEW_WORDS:
-        log.info('Overview too short (%d words) — using template fallback', word_count)
-        return _template_result(title, company, location, description, job_type)
+        log.info('%s overview too short (%d words), discarding', name, word_count)
+        return None
     if word_count > MAX_OVERVIEW_WORDS:
         overview = ' '.join(overview.split()[:MAX_OVERVIEW_WORDS]) + '…'
-    return {'overview': overview, 'keywords': keywords[:10], 'model': GROQ_MODEL}
+    return {'overview': overview, 'keywords': keywords[:10], 'model': model}
+
+def _call_ai(title: str, company: str, location: str, description: str, job_type: str) -> Optional[Dict]:
+    if not PROVIDERS:
+        return {**_template_result(title, company, location, description, job_type)}
+    user_prompt = '\n'.join([f'Title: {title}', f'Company: {company}', f'Location: {location or "not specified"}', f'Listing type: {job_type or "not specified"}', "Original description (may be short or messy — it's raw scraped text):", (description or '(no description provided)').strip()[:4000]])
+    for name, url, model, key in PROVIDERS:
+        result = _call_provider(name, url, model, key, user_prompt)
+        if result:
+            return result
+    log.warning('All configured providers failed for this listing — using template fallback')
+    return _template_result(title, company, location, description, job_type)
 
 def _write_enrichment(job_id: str, overview: str, keywords: List[str], model: str) -> None:
     conn = get_pg_conn()
@@ -115,17 +147,17 @@ def run_content_enrichment_for_new_jobs(jobs: List[Dict], bulk: bool=False) -> D
     candidate_jobs.sort(key=lambda j: (len(str(j.get('description') or '')), j.get('quality_score', 100)))
     thin_jobs = candidate_jobs[:BATCH_LIMIT]
     if not thin_jobs:
-        return {'enabled': bool(GROQ_API_KEY), 'attempted': 0, 'ai_enriched': 0, 'template_fallback': 0, 'enriched': 0}
-    if not GROQ_API_KEY:
-        log.info('GROQ_API_KEY not set — using template fallback content for this run (%d listing(s)).', len(thin_jobs))
-    log.info('Automatic content enrichment: %d listing(s) from this run (capped at %d, bulk=%s, priority=thinnest-first)', len(thin_jobs), BATCH_LIMIT, bulk)
+        return {'enabled': bool(PROVIDERS), 'attempted': 0, 'ai_enriched': 0, 'template_fallback': 0, 'enriched': 0}
+    if not PROVIDERS:
+        log.info('No content-enrichment provider configured (GROQ_API_KEY / GEMINI_API_KEY / NVIDIA_API_KEY all unset) — using template fallback content for this run (%d listing(s)).', len(thin_jobs))
+    log.info('Automatic content enrichment: %d listing(s) from this run (capped at %d, bulk=%s, priority=thinnest-first, providers=%s)', len(thin_jobs), BATCH_LIMIT, bulk, [p[0] for p in PROVIDERS])
     ai_enriched_count = 0
     template_fallback_count = 0
     for job in thin_jobs:
         try:
-            result = _call_groq(title=job.get('title', ''), company=job.get('company', ''), location=job.get('location', ''), description=job.get('description', ''), job_type=job.get('type', ''))
+            result = _call_ai(title=job.get('title', ''), company=job.get('company', ''), location=job.get('location', ''), description=job.get('description', ''), job_type=job.get('type', ''))
             if result:
-                model = result.get('model', GROQ_MODEL)
+                model = result.get('model', 'template-fallback')
                 _write_enrichment(job['id'], result['overview'], result['keywords'], model)
                 # Previously both paths were counted identically as
                 # "enriched" — you could not tell from the summary whether
@@ -141,5 +173,5 @@ def run_content_enrichment_for_new_jobs(jobs: List[Dict], bulk: bool=False) -> D
     total = ai_enriched_count + template_fallback_count
     log.info('Automatic content enrichment done: %d/%d enriched (%d real AI, %d template fallback)', total, len(thin_jobs), ai_enriched_count, template_fallback_count)
     if thin_jobs and template_fallback_count == total and total > 0:
-        log.warning('This entire enrichment run (%d listings) fell back to template content — GROQ_API_KEY is likely missing or the Groq API is failing on every call. Check the box .env.', total)
+        log.warning('This entire enrichment run (%d listings) fell back to template content — no provider key (GROQ/GEMINI/NVIDIA) is set, or all configured providers are failing on every call. Check the box .env.', total)
     return {'enabled': True, 'attempted': len(thin_jobs), 'ai_enriched': ai_enriched_count, 'template_fallback': template_fallback_count, 'enriched': total}

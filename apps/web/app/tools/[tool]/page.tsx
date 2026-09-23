@@ -8,7 +8,8 @@ import Link from 'next/link';
 import Script from 'next/script';
 import { notFound } from 'next/navigation';
 import { BASE_URL } from '@/lib/jobs';
-import { TOOLS, getToolBySlug, getRelatedTools } from '@/app/tools/data';
+import { TOOLS, getToolBySlug, getRelatedTools, getRelatedArticles } from '@/app/tools/data';
+import { getComparisonsForTool } from '@/app/tools/comparisons';
 import {  breadcrumbSchema, faqSchema, howToSchema, softwareApplicationSchema, languageAlternates, } from '@/lib/structuredData';
 import TrackView from '@/app/components/TrackView';
 import { StepGrid, BulletGrid } from '@/app/components/FactGrid';
@@ -56,6 +57,8 @@ export default function ToolLandingPage({ params }: {
         notFound();
     const url = `${BASE_URL}/tools/${tool.slug}`;
     const related = getRelatedTools(tool);
+    const relatedArticles = getRelatedArticles(tool);
+    const comparisons = getComparisonsForTool(tool.slug);
     const appSchema = softwareApplicationSchema({
         name: tool.name,
         description: tool.metaDescription,
@@ -114,6 +117,30 @@ export default function ToolLandingPage({ params }: {
               </div>))}
           </div>
         </section>
+
+        {relatedArticles.length > 0 && (<section className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
+            <h2 className="display text-xl font-medium">From the blog</h2>
+            <ul className="mt-4 space-y-3">
+              {relatedArticles.map((post) => (<li key={post.slug}>
+                  <Link href={`/blog/${post.slug}`} className="panel card-lift block px-4 py-3">
+                    <p className="text-sm font-medium">{post.title}</p>
+                    <p className="mt-1 text-xs leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{post.description}</p>
+                  </Link>
+                </li>))}
+            </ul>
+          </section>)}
+
+        {comparisons.length > 0 && (<section className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
+            <h2 className="display text-xl font-medium">Compare {tool.shortName}</h2>
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+              {comparisons.map((comparison) => (<li key={comparison.competitorSlug}>
+                  <Link href={`/tools/${tool.slug}/vs/${comparison.competitorSlug}`} className="panel card-lift flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium">
+                    vs {comparison.competitorName}
+                    <span aria-hidden="true" style={{ color: 'var(--ink-soft)' }}>→</span>
+                  </Link>
+                </li>))}
+            </ul>
+          </section>)}
 
         {related.length > 0 && (<section className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
             <h2 className="display text-xl font-medium">Related tools</h2>

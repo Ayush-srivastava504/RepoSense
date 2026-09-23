@@ -10,6 +10,7 @@ import { notFound } from 'next/navigation';
 import { headers, cookies } from 'next/headers';
 import { BASE_URL } from '@/lib/jobs';
 import { getAllPosts, getPostBySlug, isStructuredBody, articleWordCount, type BodySection } from '@/lib/blog';
+import { getToolsForArticle } from '@/app/tools/data';
 import { breadcrumbSchema, faqSchema, languageAlternates, ORG_NAME, ORG_LOGO } from '@/lib/structuredData';
 import { parseRobotsDirective } from '@/lib/seo/robots';
 import type { Locale } from '@/i18n/config';
@@ -247,6 +248,8 @@ export default async function BlogPostPage({ params }: Props) {
   const post = getPostBySlug(params.slug, locale);
   if (!post) notFound();
 
+  const linkedTools = getToolsForArticle(post.slug);
+
   const crumbs = breadcrumbSchema([
     { name: 'Home', url: BASE_URL },
     { name: 'Blog', url: `${BASE_URL}/blog` },
@@ -428,6 +431,19 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
         )}
 
+        {linkedTools.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-base font-semibold">Tools mentioned in this article</h2>
+            <div className="mt-2 flex flex-wrap gap-3">
+              {linkedTools.map((tool) => (
+                <Link key={tool.slug} href={`/tools/${tool.slug}`} className="text-sm font-medium hover:underline" style={{ color: 'var(--accent)' }}>
+                  {tool.shortName} →
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         {post.internalLinks && post.internalLinks.length > 0 && (
           <div className="mt-8">
             <h2 className="text-base font-semibold">Related</h2>
@@ -483,13 +499,15 @@ export default async function BlogPostPage({ params }: Props) {
           className="mt-12 rounded-xl p-6 text-center border"
           style={{ background: 'var(--hover)', borderColor: 'var(--line)' }}
         >
-          <h3 className="text-lg font-medium">Accelerate Your Tech Job Search</h3>
+          <h3 className="text-lg font-medium">
+            {linkedTools.length > 0 ? `Try ${linkedTools[0].shortName}` : 'Accelerate Your Tech Job Search'}
+          </h3>
           <p className="mt-2 text-sm max-w-md mx-auto" style={{ color: 'var(--ink-soft)' }}>
-            Score your resume against any job description and generate tailored cover letters for free.
+            {linkedTools.length > 0 ? linkedTools[0].tagline : 'Score your resume against any job description and generate tailored cover letters for free.'}
           </p>
           <div className="mt-4 flex justify-center gap-3">
-            <Link href="/tools/ats-resume-checker" className="btn btn-primary text-sm">
-              Try ATS Resume Checker
+            <Link href={linkedTools.length > 0 ? linkedTools[0].ctaHref : '/tools/ats-resume-checker'} className="btn btn-primary text-sm">
+              {linkedTools.length > 0 ? linkedTools[0].ctaLabel : 'Try ATS Resume Checker'}
             </Link>
             <Link href="/jobs" className="btn btn-secondary text-sm">
               Browse Open Jobs

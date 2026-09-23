@@ -28,7 +28,7 @@ import httpx
 from configs.config import settings
 
 GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
-GROQ_MODEL = 'openai/gpt-oss-120b'
+GROQ_MODEL = getattr(settings, 'GROQ_MODEL', 'openai/gpt-oss-120b')
 REQUEST_TIMEOUT_S = 30
 MAX_RETRIES = 6
 BACKOFF_BASE_S = 4.0
