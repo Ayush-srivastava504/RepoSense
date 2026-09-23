@@ -1,9 +1,8 @@
 // Module: app/tools/data.ts
 // Defines component(s)/export(s): TOOLS
-// Defines function(s): getToolBySlug, getRelatedTools, getToolsForArticle, getRelatedArticles
+// Defines function(s): getToolBySlug, getRelatedTools, getToolsForArticle
+// NOTE: must stay fs-free (imported by the edge-runtime OG route). getRelatedArticles lives in ./relatedArticles.ts.
 // Defines type(s): ToolFaq, ToolDefinition
-
-import { getPostBySlug, type BlogPost } from '@/lib/blog';
 
 export interface ToolFaq {
     question: string;
@@ -380,16 +379,6 @@ export function getRelatedTools(tool: ToolDefinition): ToolDefinition[] {
     return tool.relatedSlugs
         .map((slug) => getToolBySlug(slug))
         .filter((t): t is ToolDefinition => Boolean(t));
-}
-/**
- * Blog posts this tool names as a natural next step, resolved from
- * relatedArticleSlugs. A slug with no matching post file (e.g. a typo, or a
- * post later removed) is silently dropped rather than breaking the page.
- */
-export function getRelatedArticles(tool: ToolDefinition): BlogPost[] {
-    return (tool.relatedArticleSlugs ?? [])
-        .map((slug) => getPostBySlug(slug))
-        .filter((post): post is BlogPost => Boolean(post));
 }
 /**
  * Reverse of relatedArticleSlugs: every tool that names this blog post as
