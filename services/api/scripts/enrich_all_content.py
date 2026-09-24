@@ -103,13 +103,29 @@ async def enrich_jobs(pool, args) -> dict:
             stopped_early = True
             print(f'[enrich_all_content] jobs: --max-runtime-minutes budget spent after {enriched} row(s); stopping (remaining rows are picked up next run)')
             break
+        if service.enabled and getattr(service, 'all_providers_dead', False) and not allow_fallback:
+            print('[enrich_all_content] jobs: every AI provider is unusable (bad key / retired models); stopping instead of burning the run.')
+            break
+        # All live providers are rate-limited: wait for the soonest one (bounded by the
+        # runtime budget) rather than failing row after row.
+        wait = service.seconds_until_any_provider() if (service.enabled and hasattr(service, 'seconds_until_any_provider')) else 0.0
+        if wait > 0:
+            if args.deadline is not None:
+                wait = min(wait, max(0.0, args.deadline - time.monotonic()))
+            print(f'[enrich_all_content] jobs: all providers cooling down; waiting {wait:.0f}s')
+            await asyncio.sleep(wait)
+            continue_row = not _out_of_time(args)
+            if not continue_row:
+                stopped_early = True
+                break
         result = await service.enrich(
             title=row['title'], company=row['company'], location=row['location'],
             description=row['description'], job_type=row['type'],
             allow_fallback=allow_fallback,
         )
         if result is None:
-            await asyncio.sleep(REQUEST_DELAY_S)
+            # No point sleeping the per-row delay after a failure: nothing was sent
+            # to a healthy provider, and the cooldown logic already paces retries.
             continue
         if not args.dry_run:
             await pool.execute(

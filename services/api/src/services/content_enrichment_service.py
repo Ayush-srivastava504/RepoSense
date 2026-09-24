@@ -29,8 +29,8 @@ from typing import Optional
 import httpx
 from configs.config import settings
 from services.llm_providers import (
-    ProviderConfig, call_chat_completion, enabled_providers,
-    gemini_provider, groq_provider, nvidia_provider,
+    ProviderConfig, ProviderHealth, ProviderHTTPError, call_chat_completion,
+    enabled_providers, gemini_provider, groq_provider, nvidia_provider,
 )
 
 FALLBACK_MODEL = 'template-fallback'
@@ -109,8 +109,8 @@ class ContentEnrichmentService:
         # old single-provider behavior) all the way up to all three.
         self._providers: list[ProviderConfig] = enabled_providers(
             groq_provider(groq_key, getattr(settings, 'GROQ_MODEL', 'openai/gpt-oss-120b')),
-            gemini_provider(gemini_key, getattr(settings, 'GEMINI_MODEL', 'gemini-2.5-flash')),
-            nvidia_provider(nvidia_key, getattr(settings, 'NVIDIA_MODEL', 'moonshotai/kimi-k2.5')),
+            gemini_provider(gemini_key, getattr(settings, 'GEMINI_MODEL', 'gemini-3.1-flash-lite')),
+            nvidia_provider(nvidia_key, getattr(settings, 'NVIDIA_MODEL', 'nvidia/nemotron-3-super-120b-a12b')),
         )
         # Round-robin starting point so consecutive enrich() calls don't
         # all hit the same primary provider first — this is what actually
@@ -118,6 +118,10 @@ class ContentEnrichmentService:
         # separate rate limits instead of only using the others as a
         # backup for Groq's failures.
         self._next_start = 0
+        # Per-run health: rate-limit cooldowns, retired models, dead providers.
+        # Without this every row re-hit every failing provider (100s of wasted
+        # 404/429 calls per run) and the run spent its whole time budget on it.
+        self._health: dict[str, ProviderHealth] = {p.name: ProviderHealth() for p in self._providers}
 
     @property
     def enabled(self) -> bool:
@@ -142,7 +146,22 @@ class ContentEnrichmentService:
             return []
         start = self._next_start % len(self._providers)
         self._next_start = (self._next_start + 1) % len(self._providers)
-        return self._providers[start:] + self._providers[:start]
+        ordered = self._providers[start:] + self._providers[:start]
+        return [p for p in ordered if self._health[p.name].available()]
+
+    @property
+    def all_providers_dead(self) -> bool:
+        """True when every configured provider is permanently unusable this run
+        (bad key / every model retired). Lets the runner stop instead of
+        burning its budget on rows that cannot succeed."""
+        return bool(self._providers) and all(h.dead for h in self._health.values())
+
+    def seconds_until_any_provider(self) -> float:
+        """0 if some provider can be called now, else how long until one can."""
+        live = [h for h in self._health.values() if not h.dead]
+        if not live:
+            return 0.0
+        return min(h.seconds_until_available() for h in live)
 
     async def enrich(self, *, title: str, company: str, location: Optional[str]=None, description: Optional[str]=None, job_type: Optional[str]=None, allow_fallback: bool=True) -> Optional[EnrichmentResult]:
         if not self.enabled:
@@ -156,13 +175,46 @@ class ContentEnrichmentService:
         return self._fallback(title=title, company=company, location=location, description=description, job_type=job_type) if allow_fallback else None
 
     async def _try_provider(self, provider: ProviderConfig, *, user_prompt: str) -> Optional[EnrichmentResult]:
-        try:
-            content = await call_chat_completion(
-                provider, system_prompt=SYSTEM_PROMPT, user_prompt=user_prompt,
-                temperature=0.4, timeout_s=REQUEST_TIMEOUT_S, json_object=True,
-            )
-        except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
-            print(f'[content_enrichment] {provider.name} request failed: {exc}')
+        health = self._health[provider.name]
+        models = provider.models
+        content = None
+        used_model = models[0]
+        # Walk the model list: a 404 means *that model* is retired/unknown, so
+        # try the next one instead of writing the whole provider off.
+        for idx in range(health.model_idx, len(models)):
+            model = models[idx]
+            if model in health.retired_models:
+                continue
+            try:
+                content = await call_chat_completion(
+                    provider, system_prompt=SYSTEM_PROMPT, user_prompt=user_prompt,
+                    temperature=0.4, timeout_s=REQUEST_TIMEOUT_S, json_object=True, model=model,
+                )
+                used_model = model
+                health.model_idx = idx
+                health.succeeded()
+                break
+            except ProviderHTTPError as exc:
+                if exc.status_code == 429:
+                    wait = health.rate_limited(exc.retry_after)
+                    print(f'[content_enrichment] {provider.name} rate-limited (429); cooling down {wait:.0f}s')
+                    return None
+                if exc.status_code in (401, 403):
+                    health.dead = True
+                    print(f'[content_enrichment] {provider.name} rejected the API key ({exc.status_code}); disabling for this run: {exc.body[:200]}')
+                    return None
+                if exc.status_code in (404, 400, 410):
+                    health.retired_models.add(model)
+                    print(f'[content_enrichment] {provider.name} model {model!r} unavailable ({exc.status_code}): {exc.body[:200]}')
+                    continue
+                print(f'[content_enrichment] {provider.name} request failed: {exc}')
+                return None
+            except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
+                print(f'[content_enrichment] {provider.name} request failed: {exc}')
+                return None
+        if content is None:
+            health.dead = True
+            print(f'[content_enrichment] {provider.name}: no usable model in {list(models)}; disabling for this run. Set {provider.name.upper()}_MODEL to a current model ID.')
             return None
         parsed = _extract_json(content)
         if not parsed:
@@ -179,4 +231,4 @@ class ContentEnrichmentService:
             return None
         if word_count > MAX_OVERVIEW_WORDS:
             overview = ' '.join(overview.split()[:MAX_OVERVIEW_WORDS]) + '…'
-        return EnrichmentResult(overview=overview, keywords=keywords[:10], model=provider.model)
+        return EnrichmentResult(overview=overview, keywords=keywords[:10], model=used_model)

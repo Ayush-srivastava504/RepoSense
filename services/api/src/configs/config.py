@@ -49,9 +49,9 @@ class Settings(BaseSettings):
     # three — not just retrying the same one — is what actually raises how
     # many listings a run can enrich, on top of the resilience.
     GEMINI_API_KEY: str = ''
-    GEMINI_MODEL: str = 'gemini-2.5-flash'
+    GEMINI_MODEL: str = 'gemini-3.1-flash-lite'
     NVIDIA_API_KEY: str = ''
-    NVIDIA_MODEL: str = 'moonshotai/kimi-k2.5'
+    NVIDIA_MODEL: str = 'nvidia/nemotron-3-super-120b-a12b'
 
     # Phase F — same-day priority indexing push (see
     # INDEXING_RECOVERY_PLAN.md and scripts/phase_f_priority_index_push.py).
