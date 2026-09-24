@@ -198,7 +198,7 @@ export default async function InternshipsPage({ searchParams, }: {
     const itemListSchema = {
         '@context': 'https://schema.org',
         '@type': 'ItemList',
-        itemListElement: jobs.map((job) => ({
+        itemListElement: jobs.map((job, index) => ({
             '@type': 'ListItem',
             position: startIndex + index + 1,
             url: `${BASE_URL}${canonicalPathForJob(job)}`,
