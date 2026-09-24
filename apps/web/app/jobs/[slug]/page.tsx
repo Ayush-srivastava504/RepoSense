@@ -1,5 +1,5 @@
 // Module: app/jobs/[slug]/page.tsx
-// Defines component(s)/export(s): NATIVE_AD_CONTAINER, JobDetailPage
+// Defines component(s)/export(s): JobDetailPage
 // Defines function(s): generateMetadata
 //
 

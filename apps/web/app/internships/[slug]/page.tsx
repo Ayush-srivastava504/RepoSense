@@ -1,5 +1,5 @@
 // Module: app/internships/[slug]/page.tsx
-// Defines component(s)/export(s): NATIVE_AD_CONTAINER, InternshipDetailPage
+// Defines component(s)/export(s): InternshipDetailPage
 // Defines function(s): generateMetadata
 //
 

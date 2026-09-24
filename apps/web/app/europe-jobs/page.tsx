@@ -8,7 +8,6 @@ import Link from 'next/link';
 import { canonicalPathForJob } from '@/lib/slug';
 import { getJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
-import SponsoredCard from '@/app/components/SponsoredCard';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 const JOBS_PER_PAGE = 12;
@@ -99,7 +98,7 @@ export default async function EuropeJobsPage({ searchParams, }: {
     const itemListSchema = {
         '@context': 'https://schema.org',
         '@type': 'ItemList',
-        itemListElement: jobs.map((job, index) => ({
+        itemListElement: jobs.map((job) => ({
             '@type': 'ListItem',
             position: startIndex + index + 1,
             url: `${BASE_URL}${canonicalPathForJob(job)}`,
@@ -155,9 +154,8 @@ export default async function EuropeJobsPage({ searchParams, }: {
 
         {jobs.length > 0 ? (<>
             <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
-              {jobs.map((job, index) => (<div key={job.id} className="contents">
+              {jobs.map((job) => (<div key={job.id} className="contents">
                   <JobCard job={job} basePath="/remote-jobs"/>
-                  {(index + 1) % 6 === 0 && <SponsoredCard />}
                 </div>))}
             </div>
 

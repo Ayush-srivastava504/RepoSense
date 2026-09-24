@@ -11,18 +11,6 @@ import { languageAlternates } from '@/lib/structuredData';
 export const metadata: Metadata = {
   title: 'InternFlow — High Paying Jobs, Remote Jobs & Internships + AI Career Tools',
   description: 'Find high paying jobs, remote DevOps jobs, AI engineer roles, and internships. Free AI resume generator, cover letter templates, and ATS resume builder.',
-  keywords: [
-    'high paying jobs',
-    'remote jobs',
-    'ai engineer jobs',
-    'devops jobs',
-    'data engineer jobs',
-    'resume builder free',
-    'ATS friendly resume',
-    'internships',
-    'computer science internships',
-    'cover letter generator',
-  ],
   alternates: {
     canonical: BASE_URL,
     languages: languageAlternates('/'),

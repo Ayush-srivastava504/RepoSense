@@ -1,5 +1,5 @@
 // Module: app/government-jobs/[slug]/page.tsx
-// Defines component(s)/export(s): NATIVE_AD_CONTAINER, GovernmentJobDetailPage
+// Defines component(s)/export(s): GovernmentJobDetailPage
 // Defines function(s): generateMetadata
 //
 

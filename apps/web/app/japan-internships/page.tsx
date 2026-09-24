@@ -8,7 +8,6 @@ import {
 } from '@/lib/jobs';
 
 import JobCard from '@/app/components/JobCard';
-import SponsoredCard from '@/app/components/SponsoredCard';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 
@@ -161,7 +160,7 @@ export default async function JapanInternshipsPage({
   const itemListSchema = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    itemListElement: jobs.map((job, index) => ({
+    itemListElement: jobs.map((job) => ({
       '@type': 'ListItem',
       position: startIndex + index + 1,
       url: `${BASE_URL}${canonicalPathForJob(job)}`,
@@ -247,10 +246,9 @@ export default async function JapanInternshipsPage({
         {jobs.length > 0 ? (
           <>
             <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
-              {jobs.map((job, index) => (
+              {jobs.map((job) => (
                 <div key={job.id} className="contents">
                   <JobCard job={job} basePath="/internships" />
-                  {(index + 1) % 6 === 0 && <SponsoredCard />}
                 </div>
               ))}
             </div>

@@ -1,5 +1,5 @@
 // Module: app/remote-jobs/[slug]/page.tsx
-// Defines component(s)/export(s): NATIVE_AD_CONTAINER, RemoteJobDetailPage
+// Defines component(s)/export(s): RemoteJobDetailPage
 // Defines function(s): generateMetadata
 //
 
