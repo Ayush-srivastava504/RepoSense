@@ -5,8 +5,8 @@
 // set a 410 status themselves (notFound() is always 404), so this runs in
 // middleware, before rendering.
 //
-// Backed by a single shared "recently gone" set (GET /api/jobs/gone-ids),
-// refreshed on a timer, rather than one cached lookup per job ID. Vercel's
+// Backed by a single shared "gone" set (GET /api/jobs/gone-ids), refreshed
+// on a timer, rather than one cached lookup per job ID. Vercel's
 // serverless/edge instances are ephemeral and there are many of them, so a
 // per-ID cache doesn't amortize across the fleet -- every cold instance
 // re-fetches the same job's status. One shared set means one API call per
@@ -28,9 +28,6 @@ const API_BASE_URL =
     'https://api.intern-flow.in';
 
 const TIMEOUT_MS = 1500;
-// How far back GET /api/jobs/gone-ids looks; must not exceed the API's own
-// GONE_IDS_MAX_DAYS cap (services/api/src/routes/jobs.py).
-const SINCE_DAYS = 30;
 const REFRESH_TTL_MS = 10 * 60 * 1000;
 
 let goneSet: { ids: Set<string>; expires: number } | null = null;
@@ -55,7 +52,13 @@ async function fetchGoneIds(fetchImpl: typeof fetch): Promise<Set<string>> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-        const url = `${API_BASE_URL}/api/jobs/gone-ids?since_days=${SINCE_DAYS}`;
+        // No since_days: the API returns every deactivated job (newest
+        // first, capped by its own GONE_IDS_MAX_ROWS), not just the last 30
+        // days. A job that expired further back than that used to fall out
+        // of this set, so the middleware stopped answering 410 for it and
+        // the page fell through to a plain 404 -- a weaker "gone" signal to
+        // Google that undid the point of 410ing it in the first place.
+        const url = `${API_BASE_URL}/api/jobs/gone-ids`;
         const res = await fetchImpl(url, {
             cache: 'no-store',
             headers: internalApiHeaders(url),

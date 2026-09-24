@@ -405,34 +405,54 @@ async def get_job_status(job_id: str):
         raise HTTPException(404, 'Job not found')
     return {'state': 'active' if row['is_active'] else 'gone'}
 
-GONE_IDS_MAX_DAYS = 30
+GONE_IDS_MAX_DAYS = 30  # kept only as the upper bound a caller may still ask for
 GONE_IDS_MAX_ROWS = 20000
 
 @router.get('/gone-ids')
-async def get_gone_ids(since_days: int=Query(default=GONE_IDS_MAX_DAYS, ge=1, le=GONE_IDS_MAX_DAYS)):
+async def get_gone_ids(since_days: int | None = Query(default=None, ge=1, le=GONE_IDS_MAX_DAYS)):
     """Bulk companion to GET /{job_id}/status for the web middleware's 410 check.
 
     Per-ID lookups don't amortize well across Vercel's ephemeral serverless/edge
     instances -- each cold instance calls /status again for every job it happens
-    to serve. This returns every job deactivated in the last `since_days` days
-    (bounded by GONE_IDS_MAX_ROWS so a bad backlog can't return an unbounded
-    payload) so one instance can refresh a single shared set on a timer instead
-    of one request per unique job ID. Fails the same way /status does: no
-    special auth beyond the existing rate-limit bypass (X-Internal-Key).
+    to serve. This returns deactivated job ids so one instance can refresh a
+    single shared set on a timer instead of one request per unique job ID.
+    Fails the same way /status does: no special auth beyond the existing
+    rate-limit bypass (X-Internal-Key).
+
+    since_days omitted (the default, and what the web middleware uses) ->
+    unbounded by time, newest-deactivated first, capped by GONE_IDS_MAX_ROWS.
+    Previously this was hard-capped at 30 days: a job deactivated 31+ days
+    ago dropped out of the set, the middleware stopped answering 410 for it,
+    and the page fell through to a plain notFound() 404 instead -- Google
+    treats a 410 as a much stronger "this is permanently gone" signal than a
+    404 and drops it from the index faster, so that regression was actively
+    working against deindexing old listings. GONE_IDS_MAX_ROWS still bounds
+    the payload; a caller can still pass since_days for a narrower window.
     """
     pool = await get_db_pool()
     if pool is None:
         raise HTTPException(503, 'Database unavailable')
-    rows = await pool.fetch(
-        '''
-        SELECT id FROM jobs
-        WHERE is_active = false
-          AND last_seen_at > now() - ($1 || ' days')::interval
-        ORDER BY last_seen_at DESC
-        LIMIT $2
-        ''',
-        since_days, GONE_IDS_MAX_ROWS,
-    )
+    if since_days is None:
+        rows = await pool.fetch(
+            '''
+            SELECT id FROM jobs
+            WHERE is_active = false
+            ORDER BY last_seen_at DESC
+            LIMIT $1
+            ''',
+            GONE_IDS_MAX_ROWS,
+        )
+    else:
+        rows = await pool.fetch(
+            '''
+            SELECT id FROM jobs
+            WHERE is_active = false
+              AND last_seen_at > now() - ($1 || ' days')::interval
+            ORDER BY last_seen_at DESC
+            LIMIT $2
+            ''',
+            since_days, GONE_IDS_MAX_ROWS,
+        )
     return {'ids': [row['id'] for row in rows]}
 
 @router.get('/{job_id}')

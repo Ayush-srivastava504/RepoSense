@@ -61,7 +61,23 @@ def test_returns_ids_list():
     assert resp.json() == {'ids': ['a' * 16, 'b' * 16]}
 
 
-def test_query_scopes_to_inactive_and_recent(client):
+def test_default_is_unbounded_by_time(client):
+    # No since_days -> every inactive job (bounded only by GONE_IDS_MAX_ROWS),
+    # not just a recent window. A job deactivated 31+ days ago must still
+    # come back, or the web middleware stops answering 410 for it and it
+    # falls through to a plain 404 -- a weaker "gone" signal to Google.
+    fake_pool = FakePool()
+    with _patched(fake_pool):
+        resp = client.get('/api/jobs/gone-ids')
+    assert resp.status_code == 200
+    fetch_call = next(c for c in fake_pool.calls if c[0] == 'fetch')
+    sql, params = fetch_call[1], fetch_call[2]
+    assert 'is_active = false' in sql
+    assert 'last_seen_at > now()' not in sql  # no time filter -- ORDER BY last_seen_at is fine
+    assert params[0] == jobs_module.GONE_IDS_MAX_ROWS
+
+
+def test_since_days_still_available_and_scopes_to_recent(client):
     fake_pool = FakePool()
     with _patched(fake_pool):
         resp = client.get('/api/jobs/gone-ids', params={'since_days': 7})
@@ -74,7 +90,7 @@ def test_query_scopes_to_inactive_and_recent(client):
     assert params[1] == jobs_module.GONE_IDS_MAX_ROWS
 
 
-def test_since_days_is_bounded(client):
+def test_since_days_is_bounded_when_given(client):
     fake_pool = FakePool()
     with _patched(fake_pool):
         too_high = client.get('/api/jobs/gone-ids', params={'since_days': 999})
