@@ -6,11 +6,9 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
-import { cookies, headers } from 'next/headers';
 import { Inter, Fraunces, IBM_Plex_Mono } from 'next/font/google';
 import AppShell from './components/AppShell';
 import { BASE_URL } from '@/lib/site';
-import { i18n, type Locale } from '@/i18n/config';
 const inter = Inter({
     subsets: ['latin'],
     variable: '--font-body',
@@ -143,17 +141,18 @@ const websiteSchema = {
 export default function RootLayout({ children, }: Readonly<{
     children: React.ReactNode;
 }>) {
-    // Same locale-detection pattern already used by app/blog/page.tsx and
-    // app/blog/[slug]/page.tsx: x-locale (set by middleware.ts) first, then
-    // the NEXT_LOCALE cookie it also sets (covers the header-propagation
-    // edge cases), then 'en'.
-    const headerLocale = headers().get('x-locale');
-    const cookieLocale = cookies().get('NEXT_LOCALE')?.value;
-    const candidate = headerLocale || cookieLocale || i18n.defaultLocale;
-    const lang: Locale = (i18n.locales as readonly string[]).includes(candidate)
-        ? (candidate as Locale)
-        : i18n.defaultLocale;
-    return (<html lang={lang}>
+    // Fixed to 'en': reading headers()/cookies() here to flip <html lang>
+    // forced every page under this layout into dynamic rendering. For
+    // routes using generateStaticParams + dynamicParams: true (companies,
+    // skills, blog, careers, tools, jobs-in, batch, resume-for), any param
+    // NOT in the pre-rendered set then hit DYNAMIC_SERVER_USAGE mid-render
+    // on an on-demand static pass -> 500 in production, instead of just
+    // rendering. Locale coverage is thin anyway (162 translated strings,
+    // 1/40 blog posts per the earlier audit), so this cosmetic attribute
+    // wasn't worth mass 500s. If per-locale <html lang> is wanted later,
+    // read it inside blog/[slug] specifically -- no static-param conflict
+    // there -- rather than globally in the root layout.
+    return (<html lang="en">
       
       <body className={`${inter.variable} ${fraunces.variable} ${plexMono.variable} font-sans antialiased`}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{

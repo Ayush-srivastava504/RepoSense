@@ -406,7 +406,13 @@ async def get_job_status(job_id: str):
     return {'state': 'active' if row['is_active'] else 'gone'}
 
 GONE_IDS_MAX_DAYS = 30  # kept only as the upper bound a caller may still ask for
-GONE_IDS_MAX_ROWS = 20000
+# Must stay comfortably above SELECT count(*) FROM jobs WHERE is_active = false,
+# or the oldest-last_seen_at rows silently fall out of LIMIT (ORDER BY ... DESC)
+# and stop resolving to 410, regressing to a weaker 404. 20000 was already
+# below the real inactive count (61k+ as of Sep 2026) -- raised with headroom
+# for growth. Payload is trivial: ~100k 16-char hex ids is ~1-2MB, cached
+# 10 min, one fetch per cold instance (see goneJobs.ts).
+GONE_IDS_MAX_ROWS = 100000
 
 @router.get('/gone-ids')
 async def get_gone_ids(since_days: int | None = Query(default=None, ge=1, le=GONE_IDS_MAX_DAYS)):
@@ -428,6 +434,12 @@ async def get_gone_ids(since_days: int | None = Query(default=None, ge=1, le=GON
     404 and drops it from the index faster, so that regression was actively
     working against deindexing old listings. GONE_IDS_MAX_ROWS still bounds
     the payload; a caller can still pass since_days for a narrower window.
+
+    Ordered/filtered by deactivated_at (migration 025), not last_seen_at --
+    last_seen_at is when the crawler last saw the job ACTIVE, so ordering
+    by it put the wrong rows first once the cap mattered again (it doesn't
+    right now with GONE_IDS_MAX_ROWS raised above the current inactive
+    count, but will again as the catalog's gone-set grows past that).
     """
     pool = await get_db_pool()
     if pool is None:
@@ -437,7 +449,7 @@ async def get_gone_ids(since_days: int | None = Query(default=None, ge=1, le=GON
             '''
             SELECT id FROM jobs
             WHERE is_active = false
-            ORDER BY last_seen_at DESC
+            ORDER BY deactivated_at DESC
             LIMIT $1
             ''',
             GONE_IDS_MAX_ROWS,
@@ -447,13 +459,54 @@ async def get_gone_ids(since_days: int | None = Query(default=None, ge=1, le=GON
             '''
             SELECT id FROM jobs
             WHERE is_active = false
-              AND last_seen_at > now() - ($1 || ' days')::interval
-            ORDER BY last_seen_at DESC
+              AND deactivated_at > now() - ($1 || ' days')::interval
+            ORDER BY deactivated_at DESC
             LIMIT $2
             ''',
             since_days, GONE_IDS_MAX_ROWS,
         )
     return {'ids': [row['id'] for row in rows]}
+
+GONE_URLS_DEFAULT_SINCE_DAYS = 1
+
+@router.get('/gone-urls')
+async def get_gone_urls(since_days: int = Query(default=GONE_URLS_DEFAULT_SINCE_DAYS, ge=1, le=GONE_IDS_MAX_DAYS)):
+    """Companion to /gone-ids for IndexNow submission. /gone-ids returns
+    bare ids (enough for the web middleware's 410 check, which already
+    has the id from the URL path); IndexNow needs the actual URL, which
+    requires the same fields lib/slug.ts's canonicalPathForJob() uses to
+    build a slug (title, company, location, salary/stipend, type,
+    is_remote, is_government) -- not just the id. Returning those fields
+    here means the submission script builds URLs over HTTP, without its
+    own DB connection.
+
+    Filters/orders by deactivated_at (migration 025), not last_seen_at --
+    last_seen_at is when the crawler last saw the job ACTIVE, not when it
+    went inactive, so it doesn't actually tell you "gone in the last N
+    days." Requires migration 025 to be applied; rows deactivated before
+    that migration have an approximate (last_seen_at-backfilled) value.
+
+    Defaults to since_days=1 (today's newly-deactivated batch): this is
+    meant to be run right after a deactivation pass, not polled
+    continuously like /gone-ids. A one-off backlog submission can pass a
+    wider since_days explicitly, capped at GONE_IDS_MAX_DAYS same as
+    /gone-ids.
+    """
+    pool = await get_db_pool()
+    if pool is None:
+        raise HTTPException(503, 'Database unavailable')
+    rows = await pool.fetch(
+        '''
+        SELECT id, title, company, location, salary, stipend, type, is_remote, is_government
+        FROM jobs
+        WHERE is_active = false
+          AND deactivated_at > now() - ($1 || ' days')::interval
+        ORDER BY deactivated_at DESC
+        LIMIT $2
+        ''',
+        since_days, GONE_IDS_MAX_ROWS,
+    )
+    return {'jobs': [dict(row) for row in rows]}
 
 @router.get('/{job_id}')
 async def get_job(job_id: str, locale: str | None = Query(default=None)):

@@ -73,7 +73,7 @@ def test_default_is_unbounded_by_time(client):
     fetch_call = next(c for c in fake_pool.calls if c[0] == 'fetch')
     sql, params = fetch_call[1], fetch_call[2]
     assert 'is_active = false' in sql
-    assert 'last_seen_at > now()' not in sql  # no time filter -- ORDER BY last_seen_at is fine
+    assert 'deactivated_at > now()' not in sql  # no time filter -- ORDER BY deactivated_at is fine
     assert params[0] == jobs_module.GONE_IDS_MAX_ROWS
 
 
@@ -85,7 +85,7 @@ def test_since_days_still_available_and_scopes_to_recent(client):
     fetch_call = next(c for c in fake_pool.calls if c[0] == 'fetch')
     sql, params = fetch_call[1], fetch_call[2]
     assert 'is_active = false' in sql
-    assert 'last_seen_at > now()' in sql
+    assert 'deactivated_at > now()' in sql
     assert params[0] == 7
     assert params[1] == jobs_module.GONE_IDS_MAX_ROWS
 
