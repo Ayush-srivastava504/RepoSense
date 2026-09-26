@@ -223,3 +223,28 @@ All emitters now go through `lib/hreflang.ts` (`HREFLANG_ENABLED = false`). With
 sitemaps are plain `<urlset>` files (no `xmlns:xhtml`), which also makes Chrome show the normal
 XML tree instead of a wall of text. To bring hreflang back: ship real translated content AND make
 each locale page self-canonical, then flip the flag. Tests: `apps/web/tests/hreflang.test.ts`.
+
+## Session 6 - queue ingestion: generic Postgres task queue
+
+**Decision, with the alternatives ruled out:**
+
+| Option | Why not |
+|---|---|
+| Redis | Already deployed, but explicitly best-effort everywhere it's used today (`rate_limit.py`: `if redis is None: return await call_next(request)` — fails open), and the `redis` service in `docker-compose.yml` has no volume, so a restart wipes it. Fine for a rate counter; wrong for tasks that must survive a redeploy. Also not wired to the crawler container at all (no `REDIS_URL` there). |
+| SQS | New AWS resource, new IAM, new failure mode, for a single-EC2-host stack that already runs everything via `docker compose exec` + cron. No throughput need justifies it — this catalog is tens of thousands of rows, not millions of events/sec. |
+| **Postgres table** (chosen) | Already the one thing every producer (crawler, `psycopg2`) and consumer (API scripts, `asyncpg`) here talks to directly. `SELECT ... FOR UPDATE SKIP LOCKED` is the standard durable, transactional queue pattern — zero new infra, fits the existing numbered-migration system. |
+
+**Built:**
+- `migrations/027_generation_tasks.sql` — generic `generation_tasks(task_type, entity_id, payload, status, attempts, max_attempts, ...)` queue table. One partial unique index caps it at one active (pending/running) row per `(task_type, entity_id)`, so re-enqueuing an already-queued job is a no-op; a claim index backs the `FOR UPDATE SKIP LOCKED` query.
+- `src/services/task_queue.py` — asyncpg-side `enqueue` / `claim_batch` / `complete` / `fail` (exponential backoff, capped at 6h, gives up after `max_attempts`) / `requeue_stuck` (recovers rows orphaned by a worker that died mid-batch).
+- `crawler/src/utils.py: enqueue_generation_tasks_sync()` — psycopg2-side producer, called from `upsert_jobs()` after every batch. Only enqueues jobs still missing `enriched_overview` (`enriched_at IS NULL`), so a re-crawl of an already-enriched listing doesn't generate a fresh task.
+- `scripts/run_generation_queue.py` — worker that drains `task_type=job_content_enrichment` in small batches on a time budget, reusing `ContentEnrichmentService` (same enrichment call `enrich_all_content.py` makes).
+- `.github/workflows/queue-ingestion.yml` — runs the worker every 20 minutes, 5-minute budget per run.
+
+**What this changes:** today a freshly-crawled thin listing sits with no AI overview until `job-content-enrichment.yml`'s once-a-day 04:00 UTC bulk pass reaches it (up to ~24h). With the queue, it's picked up within the next 20-minute window instead — the difference between a new listing showing generated overview content same-hour vs. next-day, which matters for how fast a fresh posting looks complete to a visitor (and to crawlers indexing it).
+
+**What this does NOT replace:** `enrich_all_content.py --target jobs` (the nightly bulk pass) stays as the backstop — it catches anything that was never enqueued, and its own re-enrichment/`--redo-fallback` sweeps aren't queue-shaped work. The two pipelines write the same columns and don't race (last write wins, same shape of result either way).
+
+**Deliberately out of scope this session — needs product input, not architecture:**
+- **Government jobs relevance/acceptance rules.** The scrapers (`employment_news.py`, `freejobalert.py`) and schema (`is_government`, `department`, `vacancies`, `notification_number` — migration 014) already exist; what's undefined is which notifications actually clear the bar to publish (e.g. a single SSC/UPSC notice can cover dozens of unrelated post categories — which subset counts as "one job" worth showing, what vacancy-count or department signals make something too niche/stale to surface). This is a content-quality judgment call for the site owner, not something to guess at from the repo.
+- Wiring company enrichment / translations onto `generation_tasks` too — the table and worker pattern are generic on purpose so this is additive later, but scope was kept to the one pipeline (job content) that had a live gap to close.

@@ -155,7 +155,46 @@ def upsert_jobs(jobs: List[Dict]) -> int:
     conn.commit()
     written = len(rows)
     log.info('Inserted %d jobs into PostgreSQL at %s:%s/%s', written, PG_HOST, PG_PORT, PG_DB)
+    enqueue_generation_tasks_sync('job_content_enrichment', [r[0] for r in rows])
     return written
+
+def enqueue_generation_tasks_sync(task_type: str, entity_ids: List[str]) -> int:
+    """Sync (psycopg2) producer side of the generic `generation_tasks` queue
+    (see services/api/src/services/task_queue.py for the asyncpg consumer
+    side that a worker script drains). The crawler is a separate process
+    that never imports the API's `src` package, so this is a small,
+    deliberately duplicated sibling rather than a shared import.
+
+    Only entity_ids that still need enrichment (enriched_at IS NULL) get a
+    task -- upsert_jobs() calls this after every batch, including
+    re-crawls of already-enriched jobs, so this filter is what keeps a
+    healthy listing from generating a fresh task on every crawl. Duplicate
+    enqueues for the same job are harmless no-ops either way (ON CONFLICT
+    DO NOTHING against the active-task partial unique index in the
+    migration), but there's no reason to even attempt them for rows that
+    don't need work.
+    """
+    if not entity_ids:
+        return 0
+    conn = get_pg_conn()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id FROM jobs WHERE id = ANY(%s) AND enriched_at IS NULL', (entity_ids,))
+    needing_enrichment = [row[0] for row in cursor.fetchall()]
+    if not needing_enrichment:
+        return 0
+    execute_batch(
+        cursor,
+        """
+        INSERT INTO generation_tasks (task_type, entity_id)
+        VALUES (%s, %s)
+        ON CONFLICT (task_type, entity_id) WHERE status IN ('pending', 'running')
+        DO NOTHING
+        """,
+        [(task_type, job_id) for job_id in needing_enrichment],
+    )
+    conn.commit()
+    log.info('Queued %d job(s) for %s', len(needing_enrichment), task_type)
+    return len(needing_enrichment)
 
 def deactivate_stale_jobs(days: int=30) -> int:
     conn = get_pg_conn()
