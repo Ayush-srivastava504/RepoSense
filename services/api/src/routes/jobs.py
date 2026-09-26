@@ -459,7 +459,7 @@ async def get_gone_ids(since_days: int | None = Query(default=None, ge=1, le=GON
             '''
             SELECT id FROM jobs
             WHERE is_active = false
-              AND deactivated_at > now() - ($1 || ' days')::interval
+              AND deactivated_at > now() - ($1 * INTERVAL '1 day')
             ORDER BY deactivated_at DESC
             LIMIT $2
             ''',
@@ -500,7 +500,7 @@ async def get_gone_urls(since_days: int = Query(default=GONE_URLS_DEFAULT_SINCE_
         SELECT id, title, company, location, salary, stipend, type, is_remote, is_government
         FROM jobs
         WHERE is_active = false
-          AND deactivated_at > now() - ($1 || ' days')::interval
+          AND deactivated_at > now() - ($1 * INTERVAL '1 day')
         ORDER BY deactivated_at DESC
         LIMIT $2
         ''',

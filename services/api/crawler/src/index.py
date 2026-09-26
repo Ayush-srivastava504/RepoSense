@@ -13,6 +13,7 @@ from processors.enricher import enrich_batch
 from processors.normalizer import normalize_batch
 from processors.trust import score_batch
 from processors.quality import filter_and_score
+from processors.content_layer import attach_content_plan
 from content_enrichment import run_content_enrichment_for_new_jobs
 from structured_enrichment import run_structured_enrichment_for_jobs
 from utils import get_logger, save_to_s3, upsert_jobs, deactivate_stale_jobs, check_liveness_for_aging_jobs, utcnow
@@ -159,6 +160,14 @@ def run_pipeline(keywords: List[str]=None, locations: List[str]=None, max_pages:
     # signals in later; for now it works off apply_url + description +
     # compensation, matching FresherFlow's legitimacy-detector inputs.
     enriched, rejected_jobs = filter_and_score(enriched)
+    # Content-depth gate (content_layer.py): decides how much page content
+    # each surviving job earns (full LLM overview+FAQ+chart / templated
+    # standard / table_only-no-FAQ) from the legitimacy_state/is_thin flags
+    # filter_and_score() just computed, so LLM spend tracks confidence
+    # rather than raw crawl volume, and low-confidence jobs never get a
+    # confident-sounding FAQ. Must run after filter_and_score (needs its
+    # flags) and before upsert_jobs (writes content_tier/table/faq/segment_key).
+    enriched = [attach_content_plan(job) for job in enriched]
     written = 0
     s3_key = ''
     deactivated = 0

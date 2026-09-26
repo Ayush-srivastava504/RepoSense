@@ -34,8 +34,8 @@ ROW_PREFIX = 'ENRICH_ROW'
 
 async def fetch_candidates(pool, limit: int, force_stale: bool, re_enrich_days: int):
     if force_stale:
-        query = "\n            SELECT id, title, company, location, description, type, url\n            FROM jobs\n            WHERE is_active = true\n              AND length(coalesce(description, '')) < $1\n              AND (enriched_at IS NULL OR enriched_at < now() - ($3 || ' days')::interval)\n            ORDER BY enriched_at NULLS FIRST, posted_at DESC NULLS LAST\n            LIMIT $2\n        "
-        return await pool.fetch(query, THIN_DESCRIPTION_CHARS, limit, str(re_enrich_days))
+        query = "\n            SELECT id, title, company, location, description, type, url\n            FROM jobs\n            WHERE is_active = true\n              AND length(coalesce(description, '')) < $1\n              AND (enriched_at IS NULL OR enriched_at < now() - ($3 * INTERVAL '1 day'))\n            ORDER BY enriched_at NULLS FIRST, posted_at DESC NULLS LAST\n            LIMIT $2\n        "
+        return await pool.fetch(query, THIN_DESCRIPTION_CHARS, limit, re_enrich_days)
     query = "\n        SELECT id, title, company, location, description, type, url\n        FROM jobs\n        WHERE is_active = true\n          AND length(coalesce(description, '')) < $1\n          AND enriched_at IS NULL\n        ORDER BY posted_at DESC NULLS LAST\n        LIMIT $2\n    "
     return await pool.fetch(query, THIN_DESCRIPTION_CHARS, limit)
 
