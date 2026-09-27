@@ -91,10 +91,17 @@ def is_listing_url(parsed) -> bool:
     return False
 
 
-def is_rejected_apply_url(url_str: str) -> Tuple[bool, Optional[str]]:
+def is_rejected_apply_url(url_str: str, is_government: bool = False) -> Tuple[bool, Optional[str]]:
     """Returns (rejected, reason). True when the URL must never become a
     published job: malformed, govt portal, generic listing page,
-    blog/document content, or a known aggregator/blocked domain."""
+    blog/document content, or a known aggregator/blocked domain.
+
+    is_government scopes two checks that are otherwise correct signals for
+    a *company* job (apply_url mysteriously pointing at a govt portal, or
+    redirecting to freejobalert.com instead of the employer) but wrong for
+    a posting the crawler deliberately sourced from a government portal or
+    from FreeJobAlert as its authoritative source. Every other check still
+    applies to government jobs exactly as before."""
     if not url_str:
         return True, 'missing apply_url'
     try:
@@ -102,11 +109,11 @@ def is_rejected_apply_url(url_str: str) -> Tuple[bool, Optional[str]]:
         host = _host_of(url_str)
         if not host or '.' not in host:
             return True, 'malformed host'
-        if _is_govt_domain(host):
+        if _is_govt_domain(host) and not is_government:
             return True, 'govt portal domain'
         if is_listing_url(parsed):
             return True, 'apply_url points at a listing/search/home page, not a specific posting'
-        if _is_aggregator_domain(host):
+        if _is_aggregator_domain(host) and not (is_government and host == 'freejobalert.com'):
             return True, 'apply_url points back at an aggregator rather than the actual posting'
         if host == 'drive.google.com':
             return True, 'apply_url is a document link, not an application'
@@ -193,7 +200,7 @@ def filter_and_score(jobs: List[Dict]) -> Tuple[List[Dict], List[Dict]]:
 
     for job in jobs:
         apply_url = job.get('apply_url') or job.get('url') or ''
-        bad, reason = is_rejected_apply_url(apply_url)
+        bad, reason = is_rejected_apply_url(apply_url, is_government=bool(job.get('is_government')))
         if bad:
             job['_rejection_reason'] = reason
             rejected.append(job)
