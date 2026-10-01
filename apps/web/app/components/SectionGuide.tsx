@@ -9,10 +9,16 @@
 import Link from 'next/link';
 import FAQAccordion from '@/app/components/FAQAccordion';
 import { faqSchema } from '@/lib/structuredData';
-import { SECTION_GUIDES, type SectionKey } from '@/lib/content/sectionGuides';
+import { SECTION_GUIDES, type SectionKey, type SectionGuideContent } from '@/lib/content/sectionGuides';
+import { HUB_GUIDES, type HubKey } from '@/lib/content/hubGuides';
 
-export default function SectionGuide({ section }: { section: SectionKey }) {
-    const guide = SECTION_GUIDES[section];
+const ALL_GUIDES: Record<SectionKey | HubKey, SectionGuideContent> = {
+    ...SECTION_GUIDES,
+    ...HUB_GUIDES,
+};
+
+export default function SectionGuide({ section }: { section: SectionKey | HubKey }) {
+    const guide = ALL_GUIDES[section];
     const schema = faqSchema(guide.faqs);
 
     return (

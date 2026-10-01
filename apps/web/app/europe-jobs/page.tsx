@@ -10,6 +10,8 @@ import { getJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import SectionGuide from '@/app/components/SectionGuide';
+import { HUB_GUIDES } from '@/lib/content/hubGuides';
 const JOBS_PER_PAGE = 12;
 export const metadata: Metadata = {
     title: 'Europe Jobs — UK, Germany, Netherlands & Remote-for-Europe',
@@ -119,6 +121,9 @@ export default async function EuropeJobsPage({ searchParams, }: {
         <h1 className="display mt-2 text-2xl sm:text-3xl font-medium">
           Europe Jobs — UK, Germany, Netherlands & Remote-for-Europe
         </h1>
+      <p className="mt-1 text-sm italic" style={{ color: 'var(--indigo)' }}>
+        {HUB_GUIDES['europe-jobs'].motto}
+      </p>
 
         <p className="mt-2 text-xs sm:text-sm" style={{ color: 'var(--ink-soft)' }}>
           Roles based in Europe or open to remote applicants based in Europe, aggregated from
@@ -167,6 +172,8 @@ export default async function EuropeJobsPage({ searchParams, }: {
                 : 'No Europe jobs are available right now. Please check again later.'}
             </p>
           </div>)}
+      
+        {!search && requestedPage === 1 && <SectionGuide section="europe-jobs"/>}
       </main>
     </div>);
 }

@@ -9,6 +9,8 @@ import { BASE_URL } from '@/lib/jobs';
 import { CAREERS } from '@/app/careers/data';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import SectionGuide from '@/app/components/SectionGuide';
+import { HUB_GUIDES } from '@/lib/content/hubGuides';
 
 export const metadata: Metadata = {
     title: 'Career Paths for Engineering Students',
@@ -28,6 +30,9 @@ export default function CareersIndexPage() {
 
       <p className="eyebrow eyebrow-accent">// career paths</p>
       <h1 className="display mt-2 text-3xl font-medium sm:text-4xl">Career Paths for Engineering Students</h1>
+      <p className="mt-1 text-sm italic" style={{ color: 'var(--indigo)' }}>
+        {HUB_GUIDES['careers'].motto}
+      </p>
       <p className="mt-4 max-w-2xl leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
         Pick a path to see what the role actually involves, the skills that show up in real job
         descriptions, live openings, and how to get your resume ready for it.
@@ -41,5 +46,7 @@ export default function CareersIndexPage() {
             </Link>
           </li>))}
       </ul>
+    
+      <SectionGuide section="careers"/>
     </main>);
 }

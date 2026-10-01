@@ -17,12 +17,13 @@ import { BASE_URL, getJobs } from '@/lib/jobs';
 import { canonicalPathForJob } from '@/lib/slug';
 import { companySlug } from '@/lib/companies';
 import { BATCHES, getBatchByYear, getRelatedBatches } from '@/app/batch/data';
-import {  breadcrumbSchema, faqSchema, languageAlternates } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import { BATCH_MIN_JOBS, belowHubThreshold } from '@/lib/seo/hubThresholds';
 import JobCard from '@/app/components/JobCard';
 import TrackView from '@/app/components/TrackView';
-import FAQAccordion from '@/app/components/FAQAccordion';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import EntityNotes from '@/app/components/EntityNotes';
+import { BATCH_NOTES } from '@/lib/content/entityNotes';
 
 export const dynamicParams = false;
 
@@ -89,34 +90,10 @@ export default async function BatchHubPage({ params, }: {
         { name: 'Batch', url: `${BASE_URL}/batch` },
         { name: `${batchDef.year} batch`, url },
     ]);
-    const pageFaqs = [
-        {
-            question: `How many jobs are open for the ${batchDef.year} batch right now?`,
-            answer: `InternFlow tracks active jobs and internships open to the ${batchDef.year} passout batch from company career pages and job boards, refreshed daily — see the live list above for the current count.`,
-        },
-        {
-            question: `Are there internships for the ${batchDef.year} batch?`,
-            answer: internships.length > 0
-                ? `Yes — InternFlow currently lists ${internships.length} internship${internships.length === 1 ? '' : 's'} open to the ${batchDef.year} batch, updated daily.`
-                : `Check back regularly — InternFlow refreshes internship listings for the ${batchDef.year} batch daily as new ones are posted.`,
-        },
-        {
-            question: `Which companies are hiring the ${batchDef.year} batch?`,
-            answer: companies.length > 0
-                ? `Companies currently hiring the ${batchDef.year} batch on InternFlow include ${companies.slice(0, 5).join(', ')}, among others.`
-                : `Check the Companies page on InternFlow for the full list of companies actively hiring, then filter for roles open to the ${batchDef.year} batch.`,
-        },
-        {
-            question: `What does "batch" mean on a job listing?`,
-            answer: `"Batch" (or "passout year") is the year a candidate is expected to graduate — most fresher and internship listings state which batch years they'll accept, since eligibility usually depends on being able to join within a specific window after graduation.`,
-        },
-    ];
-    const faqs = faqSchema(pageFaqs);
 
     return (<main className="w-full">
       <Script id="batch-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
       <Breadcrumbs schema={crumbs}/>
-      <Script id="batch-faq-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqs) }}/>
       <TrackView event="batch_hub_view" params={{ batch: batchDef.year }}/>
 
       <div className="mx-auto w-full max-w-5xl px-3 py-8 sm:px-4 sm:py-12">
@@ -187,10 +164,7 @@ export default async function BatchHubPage({ params, }: {
           </ul>
         </section>
 
-        <section className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
-          <h2 className="display text-xl font-medium mb-6">Frequently asked questions</h2>
-          <FAQAccordion items={pageFaqs} />
-        </section>
+        <EntityNotes note={BATCH_NOTES[batchDef.year]} idPrefix="batch"/>
 
         {related.length > 0 && (<section className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
             <h2 className="display text-xl font-medium">Other batches</h2>

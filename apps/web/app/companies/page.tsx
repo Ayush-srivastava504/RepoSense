@@ -9,6 +9,8 @@ import { BASE_URL } from '@/lib/jobs';
 import CompanyCard from '@/app/components/CompanyCard';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import SectionGuide from '@/app/components/SectionGuide';
+import { HUB_GUIDES } from '@/lib/content/hubGuides';
 export const metadata: Metadata = {
     title: 'Companies Hiring — Top, Mass-Hiring & Startups',
     description: 'Every company with an active listing on InternFlow, grouped into Top Companies, companies mass-hiring right now, and startups. Refreshed daily.',
@@ -75,6 +77,9 @@ export default async function CompaniesPage() {
             ? `${totalCompanies} companies currently hiring`
             : 'Companies currently hiring'}
         </h1>
+      <p className="mt-1 text-sm italic" style={{ color: 'var(--indigo)' }}>
+        {HUB_GUIDES['companies'].motto}
+      </p>
         <p className="mt-3 max-w-2xl text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
           Every company below has at least one active listing right now — pulled straight from
           the same feed as our Jobs and Internships pages. Grouped into three tiers so you can
@@ -103,5 +108,7 @@ export default async function CompaniesPage() {
       {totalCompanies === 0 && (<p className="mt-10 text-sm" style={{ color: 'var(--muted)' }}>
           No companies with active listings right now — check back after the next crawl.
         </p>)}
+    
+      <SectionGuide section="companies"/>
     </main>);
 }

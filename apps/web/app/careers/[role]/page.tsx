@@ -12,10 +12,12 @@ import { canonicalPathForJob } from '@/lib/slug';
 import { companySlug } from '@/lib/companies';
 import { CAREERS, getCareerBySlug, getRelatedCareers } from '@/app/careers/data';
 import { getResumeRoleBySlug } from '@/app/resume-for/data';
-import {  breadcrumbSchema, faqSchema, languageAlternates } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import JobCard from '@/app/components/JobCard';
 import TrackView from '@/app/components/TrackView';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import EntityNotes from '@/app/components/EntityNotes';
+import { CAREER_NOTES } from '@/lib/content/entityNotes';
 
 export const dynamicParams = false;
 
@@ -71,25 +73,10 @@ export default async function CareerHubPage({ params, }: {
         { name: 'Careers', url: `${BASE_URL}/careers` },
         { name: careerRole.name, url },
     ]);
-    const faqs = faqSchema([
-        {
-            question: `What does a ${careerRole.name} actually do?`,
-            answer: careerRole.whatTheyDo[0],
-        },
-        {
-            question: `What skills do employers look for in a ${careerRole.name}?`,
-            answer: `Skills like ${careerRole.relatedSkillSlugs.map((s) => s.replace(/-/g, ' ')).join(', ')} come up repeatedly in ${careerRole.name} job descriptions — see the live openings above for current specifics.`,
-        },
-        {
-            question: `How many ${careerRole.name} jobs are open right now?`,
-            answer: `InternFlow tracks active ${careerRole.name} jobs and internships from company career pages and job boards, refreshed daily — see the live list above for the current count.`,
-        },
-    ]);
 
     return (<main className="w-full">
       <Script id="career-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
       <Breadcrumbs schema={crumbs}/>
-      <Script id="career-faq-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqs) }}/>
       <TrackView event="career_hub_view" params={{ career: careerRole.slug }}/>
 
       <div className="mx-auto w-full max-w-5xl px-3 py-8 sm:px-4 sm:py-12">
@@ -182,16 +169,7 @@ export default async function CareerHubPage({ params, }: {
           </ul>
         </section>
 
-        <section className="mt-10 space-y-3">
-          <h2 className="display text-xl font-medium">Frequently asked questions</h2>
-          {[
-            { q: `What does a ${careerRole.name} actually do?`, a: careerRole.whatTheyDo[0] },
-            { q: `What skills do employers look for in a ${careerRole.name}?`, a: `Skills like ${careerRole.relatedSkillSlugs.map((s) => s.replace(/-/g, ' ')).join(', ')} come up repeatedly in job descriptions for this role.` },
-          ].map((faq) => (<div key={faq.q} className="panel p-4 sm:p-5">
-              <p className="font-medium">{faq.q}</p>
-              <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{faq.a}</p>
-            </div>))}
-        </section>
+        <EntityNotes note={CAREER_NOTES[careerRole.slug]} idPrefix="career"/>
 
         {related.length > 0 && (<section className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
             <h2 className="display text-xl font-medium">Related career paths</h2>

@@ -11,10 +11,12 @@ import { BASE_URL, getJobs } from '@/lib/jobs';
 import { canonicalPathForJob } from '@/lib/slug';
 import { RESUME_ROLES, getResumeRoleBySlug, getRelatedResumeRoles } from '@/app/resume-for/data';
 import { getCareerBySlug } from '@/app/careers/data';
-import {  breadcrumbSchema, faqSchema, languageAlternates } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import JobCard from '@/app/components/JobCard';
 import TrackView from '@/app/components/TrackView';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import EntityNotes from '@/app/components/EntityNotes';
+import { RESUME_NOTES } from '@/lib/content/entityNotes';
 
 export const dynamicParams = false;
 
@@ -66,25 +68,10 @@ export default async function ResumeForRolePage({ params, }: {
         { name: 'Resume guides', url: `${BASE_URL}/resume-for` },
         { name: role.name, url },
     ]);
-    const faqs = faqSchema([
-        {
-            question: `What keywords should a ${role.name} resume include?`,
-            answer: `Keywords like ${role.keywordsToInclude.slice(0, 5).join(', ')} are commonly scanned for by ATS systems on ${role.name} roles — the exact list depends on the job description, so match it to keywords actually mentioned in the posting.`,
-        },
-        {
-            question: `How do I check my ${role.name} resume against an ATS?`,
-            answer: `InternFlow's free ATS resume checker scores your resume against ${role.name}-specific parsing rules and keywords — paste your resume text and pick "${role.name}" as the target role.`,
-        },
-        {
-            question: `What's the most common mistake on ${role.name} resumes?`,
-            answer: role.commonMistakes[0],
-        },
-    ]);
 
     return (<main className="w-full">
       <Script id="resume-role-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
       <Breadcrumbs schema={crumbs}/>
-      <Script id="resume-role-faq-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqs) }}/>
       <TrackView event="resume_role_view" params={{ role: role.slug }}/>
 
       <div className="mx-auto w-full max-w-5xl px-3 py-8 sm:px-4 sm:py-12">
@@ -151,16 +138,7 @@ export default async function ResumeForRolePage({ params, }: {
             </div>
           </section>)}
 
-        <section className="mt-10 space-y-3">
-          <h2 className="display text-xl font-medium">Frequently asked questions</h2>
-          {[
-            { q: `What keywords should a ${role.name} resume include?`, a: `Keywords like ${role.keywordsToInclude.slice(0, 5).join(', ')} come up often — match your resume to what's actually in the job description you're applying to.` },
-            { q: `How do I check my resume against an ATS for this role?`, a: `Use the free ATS checker above and pick "${role.name}" as the target role for a scored breakdown.` },
-          ].map((faq) => (<div key={faq.q} className="panel p-4 sm:p-5">
-              <p className="font-medium">{faq.q}</p>
-              <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{faq.a}</p>
-            </div>))}
-        </section>
+        <EntityNotes note={RESUME_NOTES[role.slug]} idPrefix="resume"/>
 
         {related.length > 0 && (<section className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
             <h2 className="display text-xl font-medium">Resume guides for other roles</h2>

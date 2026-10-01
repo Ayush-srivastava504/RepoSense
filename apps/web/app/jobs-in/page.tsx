@@ -9,6 +9,8 @@ import { BASE_URL } from '@/lib/jobs';
 import { CITIES } from '@/app/jobs-in/data';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import SectionGuide from '@/app/components/SectionGuide';
+import { HUB_GUIDES } from '@/lib/content/hubGuides';
 
 export const metadata: Metadata = {
     title: 'Browse Jobs & Internships by City',
@@ -28,6 +30,9 @@ export default function CitiesIndexPage() {
 
       <p className="eyebrow eyebrow-accent">// browse by city</p>
       <h1 className="display mt-2 text-3xl font-medium sm:text-4xl">Jobs &amp; Internships by City</h1>
+      <p className="mt-1 text-sm italic" style={{ color: 'var(--indigo)' }}>
+        {HUB_GUIDES['jobs-in'].motto}
+      </p>
       <p className="mt-4 max-w-2xl leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
         Pick a city to see live jobs and internships based there, the companies hiring right now,
         and the resume and interview-prep tools to match.
@@ -41,5 +46,7 @@ export default function CitiesIndexPage() {
             </Link>
           </li>))}
       </ul>
+    
+      <SectionGuide section="jobs-in"/>
     </main>);
 }

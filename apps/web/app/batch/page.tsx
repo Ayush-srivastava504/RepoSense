@@ -9,6 +9,8 @@ import { BASE_URL } from '@/lib/jobs';
 import { BATCHES } from '@/app/batch/data';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import SectionGuide from '@/app/components/SectionGuide';
+import { HUB_GUIDES } from '@/lib/content/hubGuides';
 
 export const metadata: Metadata = {
     title: 'Browse Jobs & Internships by Passout Batch',
@@ -28,6 +30,9 @@ export default function BatchIndexPage() {
 
       <p className="eyebrow eyebrow-accent">// browse by batch</p>
       <h1 className="display mt-2 text-3xl font-medium sm:text-4xl">Jobs &amp; Internships by Batch</h1>
+      <p className="mt-1 text-sm italic" style={{ color: 'var(--indigo)' }}>
+        {HUB_GUIDES['batch'].motto}
+      </p>
       <p className="mt-4 max-w-2xl leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
         Pick your passout year to see live jobs and internships that accept it, the companies
         hiring right now, and the resume and interview-prep tools to match.
@@ -41,5 +46,7 @@ export default function BatchIndexPage() {
             </Link>
           </li>))}
       </ul>
+    
+      <SectionGuide section="batch"/>
     </main>);
 }

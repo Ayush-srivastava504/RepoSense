@@ -9,6 +9,8 @@ import { BASE_URL } from '@/lib/jobs';
 import { RESUME_ROLES } from '@/app/resume-for/data';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import SectionGuide from '@/app/components/SectionGuide';
+import { HUB_GUIDES } from '@/lib/content/hubGuides';
 
 export const metadata: Metadata = {
     title: 'Resume Guides by Role — Keywords, Bullets & ATS Tips',
@@ -28,6 +30,9 @@ export default function ResumeForIndexPage() {
 
       <p className="eyebrow eyebrow-accent">// resume guides</p>
       <h1 className="display mt-2 text-3xl font-medium sm:text-4xl">Resume Guides by Role</h1>
+      <p className="mt-1 text-sm italic" style={{ color: 'var(--indigo)' }}>
+        {HUB_GUIDES['resume-for'].motto}
+      </p>
       <p className="mt-4 max-w-2xl leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
         Pick your target role to see the ATS keywords it's scored on, the mistakes that most often
         sink a resume for it, and bullet-point templates to adapt with your own numbers.
@@ -41,5 +46,7 @@ export default function ResumeForIndexPage() {
             </Link>
           </li>))}
       </ul>
+    
+      <SectionGuide section="resume-for"/>
     </main>);
 }

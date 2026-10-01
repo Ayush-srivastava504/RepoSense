@@ -11,11 +11,13 @@ import { BASE_URL, getJobs, type Job } from '@/lib/jobs';
 import { canonicalPathForJob } from '@/lib/slug';
 import { companySlug } from '@/lib/companies';
 import { CITIES, getCityBySlug, getRelatedCities, type CityDefinition } from '@/app/jobs-in/data';
-import {  breadcrumbSchema, faqSchema, languageAlternates } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import { LOCATION_MIN_JOBS, belowHubThreshold } from '@/lib/seo/hubThresholds';
 import JobCard from '@/app/components/JobCard';
 import TrackView from '@/app/components/TrackView';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import EntityNotes from '@/app/components/EntityNotes';
+import { CITY_NOTES } from '@/lib/content/entityNotes';
 
 export const dynamicParams = false;
 
@@ -106,30 +108,11 @@ export default async function CityHubPage({ params, }: {
             url: `${BASE_URL}${canonicalPathForJob(job)}`,
         })),
     };
-    const faqs = faqSchema([
-        {
-            question: `How many jobs are open in ${city.name} right now?`,
-            answer: `InternFlow tracks active jobs and internships based in ${city.name} from company career pages and job boards, refreshed daily — see the live list above for the current count.`,
-        },
-        {
-            question: `Are there internships available in ${city.name}?`,
-            answer: internships.length > 0
-                ? `Yes — InternFlow currently lists ${internships.length} internship${internships.length === 1 ? '' : 's'} based in ${city.name}, updated daily.`
-                : `Check back regularly — InternFlow refreshes internship listings for ${city.name} daily as new ones are posted.`,
-        },
-        {
-            question: `Which companies are hiring in ${city.name}?`,
-            answer: companies.length > 0
-                ? `Companies currently hiring in ${city.name} on InternFlow include ${companies.slice(0, 5).join(', ')}, among others.`
-                : `Check the Companies page on InternFlow for the full list of companies actively hiring, then filter for roles based in ${city.name}.`,
-        },
-    ]);
 
     return (<main className="w-full">
       <Script id="city-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
       <Breadcrumbs schema={crumbs}/>
       <Script id="city-itemlist-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}/>
-      <Script id="city-faq-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqs) }}/>
       <TrackView event="city_hub_view" params={{ city: city.slug }}/>
 
       <div className="mx-auto w-full max-w-5xl px-3 py-8 sm:px-4 sm:py-12">
@@ -140,11 +123,6 @@ export default async function CityHubPage({ params, }: {
         
         <div className="mt-4 max-w-3xl leading-relaxed text-sm sm:text-base space-y-3" style={{ color: 'var(--ink-soft)' }}>
           <p>{city.heroDescription}</p>
-          <p>
-            Whether you are looking for an entry-level position, a software engineering internship, or a senior management role, 
-            explore our frequently updated list of opportunities based in {city.name}. 
-            We aggregate high-paying roles across tech, finance, and marketing so you don't have to search multiple job boards.
-          </p>
         </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
@@ -220,16 +198,7 @@ export default async function CityHubPage({ params, }: {
           </ul>
         </section>
 
-        <section className="mt-10 space-y-3">
-          <h2 className="display text-xl font-medium">Frequently asked questions</h2>
-          {[
-            { q: `How many jobs are open in ${city.name} right now?`, a: `InternFlow tracks active jobs and internships based in ${city.name}, refreshed daily.` },
-            { q: `Are there internships available in ${city.name}?`, a: internships.length > 0 ? `Yes — see the internships list above, updated daily.` : `Check back regularly as new internships are posted daily.` },
-          ].map((faq) => (<div key={faq.q} className="panel p-4 sm:p-5">
-              <p className="font-medium">{faq.q}</p>
-              <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{faq.a}</p>
-            </div>))}
-        </section>
+        <EntityNotes note={CITY_NOTES[city.slug]} idPrefix="city"/>
 
         {related.length > 0 && (<section className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
             <h2 className="display text-xl font-medium">Jobs in other cities</h2>

@@ -10,6 +10,8 @@ import { getJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import SectionGuide from '@/app/components/SectionGuide';
+import { HUB_GUIDES } from '@/lib/content/hubGuides';
 const JOBS_PER_PAGE = 12;
 type JapanType = 'job' | 'internship';
 function parseType(raw?: string): JapanType {
@@ -181,6 +183,9 @@ export default async function JapanJobsPage({ searchParams, }: {
         </p>
 
         <h1 className="display mt-2 text-2xl sm:text-3xl font-medium">{heading}</h1>
+      <p className="mt-1 text-sm italic" style={{ color: 'var(--indigo)' }}>
+        {HUB_GUIDES['japan-jobs'].motto}
+      </p>
 
         <p className="mt-2 text-xs sm:text-sm" style={{ color: 'var(--ink-soft)' }}>
           {intro}{' '}
@@ -229,6 +234,8 @@ export default async function JapanJobsPage({ searchParams, }: {
               {emptyMessage}
             </p>
           </div>)}
+      
+        {!search && requestedPage === 1 && type === 'job' && <SectionGuide section="japan-jobs"/>}
       </main>
     </div>);
 }
