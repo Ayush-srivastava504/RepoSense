@@ -7,7 +7,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Script from 'next/script';
 import { notFound } from 'next/navigation';
-import { BASE_URL, getJobs } from '@/lib/jobs';
+import { BASE_URL, getJobsPage } from '@/lib/jobs';
 import { getCompanies, getCompanyBySlug, getCompanyProfile, companySlug } from '@/lib/companies';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import JobCard from '@/app/components/JobCard';
@@ -24,19 +24,21 @@ export async function generateStaticParams() {
     return all.map((c) => ({ company: companySlug(c.company) }));
 }
 
-export async function generateMetadata({ params, }: {
+export async function generateMetadata({ params, searchParams, }: {
     params: { company: string };
+    searchParams: { page?: string };
 }): Promise<Metadata> {
     const company = await getCompanyBySlug(params.company);
     if (!company)
         return {};
-    const url = `${BASE_URL}/companies/${params.company}`;
+    const page = Math.max(1, Number.parseInt(searchParams?.page ?? '1', 10) || 1);
+    const url = `${BASE_URL}/companies/${params.company}${page > 1 ? `?page=${page}` : ''}`;
     const title = `${company.company} Jobs & Internships — Openings, Hiring Process`;
     const description = `${company.job_count} active listing${company.job_count === 1 ? '' : 's'} at ${company.company} right now, plus the skills they hire for. Updated daily on InternFlow.`;
     return {
         title,
         description,
-        alternates: { canonical: url, languages: languageAlternates(`/companies/${params.company}`) },
+        alternates: { canonical: url, languages: page > 1 ? undefined : languageAlternates(`/companies/${params.company}`) },
         openGraph: {
             type: 'website',
             url,
@@ -47,18 +49,30 @@ export async function generateMetadata({ params, }: {
     };
 }
 
-export default async function CompanyHubPage({ params, }: {
+const COMPANY_JOBS_PER_PAGE = 30;
+
+export default async function CompanyHubPage({ params, searchParams, }: {
     params: { company: string };
+    searchParams: { page?: string };
 }) {
     const company = await getCompanyBySlug(params.company);
     if (!company)
         notFound();
 
-    const url = `${BASE_URL}/companies/${params.company}`;
-    const [jobs, profile] = await Promise.all([
-        getJobs({ company: company.company, limit: 30, sort: 'ranked' }),
+    // Was a flat `limit: 30` with no way to reach anything past it: a mass-hire
+    // company (MASS_HIRE_THRESHOLD, routes/companies.py) with 100+ live postings
+    // had 70+ jobs with NO internal link anywhere on the site except the sitemap
+    // itself -- exactly the "thin internal linking" pattern that leaves real
+    // listings sitting at "Discovered - currently not indexed" in GSC. Paginated
+    // the same way /jobs already is, so every active job at every company gets
+    // a real crawlable link path, not just the first 30.
+    const page = Math.max(1, Number.parseInt(searchParams?.page ?? '1', 10) || 1);
+    const url = `${BASE_URL}/companies/${params.company}${page > 1 ? `?page=${page}` : ''}`;
+    const [{ jobs, total }, profile] = await Promise.all([
+        getJobsPage({ company: company.company, limit: COMPANY_JOBS_PER_PAGE, offset: (page - 1) * COMPANY_JOBS_PER_PAGE, sort: 'ranked' }),
         getCompanyProfile(company.company),
     ]);
+    const totalPages = Math.max(1, Math.ceil(total / COMPANY_JOBS_PER_PAGE));
     const internships = jobs.filter((j) => j.type === 'internship');
     const fullTimeJobs = jobs.filter((j) => j.type !== 'internship');
     const keywords = Array.from(new Set(jobs.flatMap((j) => j.enriched_keywords ?? []))).slice(0, 12);
@@ -120,6 +134,18 @@ export default async function CompanyHubPage({ params, }: {
             No live listings at {company.company} right now — check back after the next crawl, or{' '}
             <Link href="/companies" className="underline">browse other companies</Link>.
           </p>)}
+
+        {totalPages > 1 && (<nav className="mt-8 flex flex-wrap justify-center gap-1.5 sm:gap-2" aria-label="Pagination">
+            {page > 1 && (<Link href={`/companies/${params.company}${page - 1 > 1 ? `?page=${page - 1}` : ''}`} className="btn min-w-[44px] px-3 py-2 text-sm touch-manipulation" aria-label="Previous page">
+                ←
+              </Link>)}
+            <span className="flex items-center px-2 text-sm" style={{ color: 'var(--ink-soft)' }}>
+              Page {page} of {totalPages}
+            </span>
+            {page < totalPages && (<Link href={`/companies/${params.company}?page=${page + 1}`} className="btn min-w-[44px] px-3 py-2 text-sm touch-manipulation" aria-label="Next page">
+                →
+              </Link>)}
+          </nav>)}
 
         <section className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
           <h2 className="display text-xl font-medium">Get ready to apply</h2>

@@ -24,7 +24,15 @@ import httpx
 DEFAULT_MODELS = {
     'groq': ('openai/gpt-oss-120b', 'openai/gpt-oss-20b'),
     'gemini': ('gemini-3.1-flash-lite', 'gemini-3-flash-preview', 'gemini-flash-latest'),
-    'nvidia': ('nvidia/nemotron-3-super-120b-a12b', 'moonshotai/kimi-k2.5', 'z-ai/glm-5.1'),
+    # moonshotai/kimi-k2.5 and z-ai/glm-5.1 were here before and are now dead
+    # (verify_providers.py: 404 on kimi-k2.5 -- not a valid NIM catalog route;
+    # 410 Gone on glm-5.1, NVIDIA's own error says it "reached its end of life").
+    # Neither is a transient failure, so they'd fail every single time nemotron
+    # (the primary) is also down -- exactly when the fallback chain matters most.
+    # Swapped for two models currently live in NVIDIA's hosted catalog. Re-run
+    # verify_providers.py after deploying this to confirm against the real key,
+    # since NVIDIA's catalog can change again later.
+    'nvidia': ('nvidia/nemotron-3-super-120b-a12b', 'meta/llama-3.1-70b-instruct', 'deepseek-ai/deepseek-r1'),
 }
 
 # Requests-per-minute each provider is paced to (override with GROQ_RPM /
