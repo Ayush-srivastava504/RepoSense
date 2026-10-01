@@ -4,17 +4,84 @@
 #
 
 import asyncio
+import json
 import re
+import time
 from fastapi import APIRouter, HTTPException, Query
 from configs.db import get_db_pool
 router = APIRouter(prefix='/api/jobs', tags=['jobs'])
 TOP_COMPANY_TIER = ['tcs', 'tata consultancy services', 'infosys', 'wipro', 'hcl', 'hcltech', 'cognizant', 'accenture', 'capgemini', 'tech mahindra', 'coforge', 'lti', 'ltimindtree', 'l&t infotech', 'mindtree', 'persistent systems', 'persistent', 'mphasis', 'zensar', 'zensar technologies', 'hexaware', 'hexaware technologies', 'cyient', 'niit technologies', 'niit', 'birlasoft', 'sonata software', 'happiest minds', 'tata elxsi', 'kpit', 'kpit technologies', 'virtusa', 'globant', 'publicis sapient', 'epam', 'epam systems', 'thoughtworks', 'newgen', 'newgen software', 'intellect design', 'firstsource', 'wns', 'wns global services', 'genpact', 'exl', 'exl service', 'concentrix', 'ttec', 'teleperformance', 'conduent', 'infosys bpm', 'tcs ion', 'quess corp', 'randstad', 'adecco', 'ibm', 'microsoft', 'google', 'alphabet', 'amazon', 'meta', 'facebook', 'apple', 'netflix', 'adobe', 'salesforce', 'oracle', 'sap', 'vmware', 'cisco', 'intel', 'nvidia', 'qualcomm', 'samsung', 'dell', 'hp', 'hewlett packard', 'lenovo', 'sony', 'lg', 'xiaomi', 'oneplus', 'ericsson', 'nokia', 'juniper networks', 'arista', 'f5', 'f5 networks', 'palo alto networks', 'crowdstrike', 'servicenow', 'workday', 'atlassian', 'slack', 'dropbox', 'snowflake', 'databricks', 'mongodb', 'confluent', 'elastic', 'twilio', 'stripe', 'paypal', 'square', 'block', 'uber', 'ola', 'ola cabs', 'swiggy', 'zomato', 'flipkart', 'myntra', 'paytm', 'phonepe', 'razorpay', 'cred', 'zepto', 'meesho', 'nykaa', 'policybazaar', 'freshworks', 'zoho', 'inmobi', 'browserstack', 'postman', 'chargebee', 'druva', 'mindtickle', 'cars24', 'urban company', 'dream11', 'groww', 'upstox', "byju's", 'byjus', 'unacademy', 'vedantu', 'upgrad', 'whitehat jr', 'physicswallah', 'lenskart', 'bigbasket', 'grofers', 'blinkit', 'dunzo', 'delhivery', 'shiprocket', 'sharechat', 'moj', 'dailyhunt', 'hike', 'gojek', 'deloitte', 'pwc', 'kpmg', 'ey', 'ernst & young', 'electronic arts', 'ea', 'mckinsey', 'mckinsey & company', 'bcg', 'boston consulting group', 'bain', 'bain & company', 'goldman sachs', 'jpmorgan', 'jp morgan', 'jpmorgan chase', 'morgan stanley', 'barclays', 'citi', 'citibank', 'citigroup', 'hsbc', 'deutsche bank', 'american express', 'amex', 'visa', 'mastercard', 'bank of america', 'ubs', 'nomura', 'wells fargo', 'standard chartered', 'credit suisse', 'state street', 'blackrock', 'fidelity', 'fidelity investments', 'd.e. shaw', 'de shaw', 'two sigma', 'optiver', 'citadel', 'jane street', 'reliance industries', 'reliance', 'jio', 'tata group', 'tata sons', 'mahindra', 'mahindra & mahindra', 'aditya birla group', 'aditya birla', 'bajaj', 'bajaj finserv', 'larsen & toubro', 'l&t', 'adani', 'adani group', 'itc', 'hindustan unilever', 'hul', 'asian paints', 'godrej', 'godrej group', 'maruti suzuki', 'tata motors', 'bosch', 'siemens', 'honeywell', 'ge', 'general electric', 'schneider electric', 'abb', 'airtel', 'bharti airtel', 'vodafone idea', 'vi', 'bsnl', 'juspay', 'cashfree', 'innovaccer', 'postman inc', 'yellow.ai', 'darwinbox', 'clevertap', 'hasura', 'rocketlane', 'zeta', 'amagi', 'gupshup', 'wingify', 'vwo', 'cure.fit', 'cult.fit', 'curefit', 'licious', 'rebel foods', 'eternal']
-JOB_COLUMNS = '\n    id,\n    title,\n    company,\n    description,\n    url,\n    source,\n    posted_at,\n    created_at,\n    location,\n    salary,\n    stipend,\n    type,\n    deadline,\n    confidence_score,\n    confidence_label,\n    apply_domain,\n    logo_domain,\n    is_official_domain,\n    is_remote,\n    is_government,\n    country,\n    department,\n    vacancies,\n    notification_number,\n    job_group,\n    last_seen_at,\n    enriched_overview,\n    enriched_keywords,\n    allowed_degrees,\n    allowed_courses,\n    allowed_specializations,\n    allowed_passout_years,\n    required_skills,\n    notes_highlights,\n    work_mode,\n    experience_min,\n    experience_max,\n    job_function,\n    structured_description,\n    is_thin,\n    quality_score\n'
+JOB_COLUMNS = '\n    id,\n    title,\n    company,\n    description,\n    url,\n    source,\n    posted_at,\n    created_at,\n    location,\n    salary,\n    stipend,\n    type,\n    deadline,\n    confidence_score,\n    confidence_label,\n    apply_domain,\n    logo_domain,\n    is_official_domain,\n    is_remote,\n    is_government,\n    country,\n    department,\n    vacancies,\n    notification_number,\n    job_group,\n    last_seen_at,\n    enriched_overview,\n    enriched_keywords,\n    allowed_degrees,\n    allowed_courses,\n    allowed_specializations,\n    allowed_passout_years,\n    required_skills,\n    notes_highlights,\n    work_mode,\n    experience_min,\n    experience_max,\n    job_function,\n    structured_description,\n    is_thin,\n    quality_score,\n    content_tier,\n    content_table,\n    content_faq,\n    segment_key\n'
 BADGE_EXPRESSIONS = "\n    (posted_at IS NOT NULL AND posted_at > now() - interval '24 hours') AS is_new,\n    (lower(company) = ANY(:top_companies)) AS is_top_company,\n    (confidence_score >= 90 AND is_official_domain) AS is_verified_source,\n    (\n        deadline IS NOT NULL\n        AND deadline > now()\n        AND deadline < now() + interval '2 days'\n    ) AS is_hot,\n    (\n        posted_at IS NOT NULL\n        AND posted_at < now() - interval '30 days'\n    ) AS is_stale\n"
 RANKING_EXPRESSION = "\n    (\n        CASE WHEN lower(company) = ANY(:top_companies) THEN 40 ELSE 0 END\n        + CASE\n            WHEN posted_at > now() - interval '24 hours' THEN 35\n            WHEN posted_at > now() - interval '72 hours' THEN 20\n            WHEN posted_at > now() - interval '7 days' THEN 8\n            WHEN posted_at > now() - interval '30 days' THEN 0\n            ELSE -25\n          END\n        + (COALESCE(confidence_score, 0)::float / 100.0) * 25\n    )\n"
 
 def _lower_top_companies() -> list[str]:
+    """Seed/bootstrap only now -- see _top_companies() for the earned, DB-backed set
+    every route actually queries with. Kept (and still exported) because
+    routes/companies.py imports TOP_COMPANY_TIER directly for its own tiering."""
     return [c.lower() for c in TOP_COMPANY_TIER]
+
+# --- Earned top-company signal ---------------------------------------------
+# TOP_COMPANY_TIER above was a single ~250-name hardcoded allowlist: whoever
+# curated it decided, once, which companies count as "notable" -- a company
+# hiring heavily and legitimately today but missing from the list never gets
+# the ranking boost or is_top_company badge, and the list itself never
+# reflects the site's own data. This computes a second set FROM the data --
+# a company earns top-tier by posting enough LEGITIMATE (not just numerous)
+# active listings recently -- and unions it with the static list, which now
+# only acts as a cold-start seed (so day-one big brands with just 1-2
+# listings aren't penalized for lacking a track record yet).
+EARNED_TOP_MIN_JOBS = 5             # distinct active postings in the freshness window
+EARNED_TOP_MIN_AVG_CONFIDENCE = 70  # avg trust.py confidence_score across those postings
+_TOP_COMPANIES_CACHE: dict = {'at': 0.0, 'value': None}
+_TOP_COMPANIES_TTL_S = 1800  # 30 min: cheap enough to recompute often, no need for a table
+
+async def _earned_top_companies(pool) -> list[str]:
+    freshness_sql = ' AND '.join(_freshness_conditions())
+    rows = await pool.fetch(f'''
+        SELECT lower(company) AS company
+        FROM jobs
+        WHERE is_active = true AND {freshness_sql} AND company IS NOT NULL AND company != ''
+        GROUP BY lower(company)
+        HAVING count(*) >= $1 AND avg(COALESCE(confidence_score, 0)) >= $2
+        ''', EARNED_TOP_MIN_JOBS, EARNED_TOP_MIN_AVG_CONFIDENCE)
+    return [r['company'] for r in rows]
+
+async def _top_companies(pool) -> list[str]:
+    """Seed list UNION earned-from-data list, cached in-process for
+    _TOP_COMPANIES_TTL_S. Falls back to the seed list alone (never raises) if the
+    earned query fails, so a transient DB hiccup degrades gracefully instead of
+    taking ranking/badges down."""
+    now = time.monotonic()
+    cached = _TOP_COMPANIES_CACHE['value']
+    if cached is not None and now - _TOP_COMPANIES_CACHE['at'] < _TOP_COMPANIES_TTL_S:
+        return cached
+    seed = set(_lower_top_companies())
+    try:
+        earned = await _earned_top_companies(pool)
+    except Exception:
+        earned = []
+    merged = sorted(seed | set(earned))
+    _TOP_COMPANIES_CACHE['at'] = now
+    _TOP_COMPANIES_CACHE['value'] = merged
+    return merged
+
+# content_table/content_faq are JSONB columns (crawler/src/processors/
+# content_layer.py writes them via psycopg2's Json() wrapper). asyncpg has
+# no codec registered for jsonb here, so pool.fetch() hands them back as
+# raw JSON text, not a parsed list/dict — dict(row) would silently ship a
+# double-encoded string to the frontend instead of usable structured data.
+# Decode in one place and reuse at every JOB_COLUMNS call site rather than
+# duplicating this at each endpoint.
+def _decode_job_json_fields(job: dict) -> dict:
+    for field in ('content_table', 'content_faq'):
+        value = job.get(field)
+        if isinstance(value, str):
+            try:
+                job[field] = json.loads(value)
+            except (TypeError, ValueError):
+                job[field] = None
+    return job
 
 def _freshness_conditions() -> list[str]:
     """Belt-and-suspenders filter alongside is_active = true.
@@ -290,7 +357,7 @@ async def get_jobs(limit: int=Query(default=200, ge=1, le=500), offset: int=Quer
     where = 'WHERE ' + ' AND '.join(conditions)
     total: int = await pool.fetchval(f'SELECT COUNT(*) FROM jobs {where}', *params)
     top_companies_pos = len(params) + 1
-    params_with_companies = params + [_lower_top_companies()]
+    params_with_companies = params + [await _top_companies(pool)]
     limit_pos = len(params_with_companies) + 1
     offset_pos = len(params_with_companies) + 2
     placeholder = f'${top_companies_pos}'
@@ -308,15 +375,23 @@ async def get_jobs(limit: int=Query(default=200, ge=1, le=500), offset: int=Quer
         order_by = f'{_INDIA_BUCKET_SQL} ASC, {order_by}'
     badges_sql = BADGE_EXPRESSIONS.replace(':top_companies', placeholder)
     rows = await pool.fetch(f'\n        SELECT\n            {JOB_COLUMNS},\n            {badges_sql}\n        FROM jobs\n        {where}\n        ORDER BY {order_by}\n        LIMIT ${limit_pos} OFFSET ${offset_pos}\n        ', *params_with_companies, limit, offset)
-    return {'jobs': [dict(row) for row in rows], 'total': total, 'limit': limit, 'offset': offset}
+    return {'jobs': [_decode_job_json_fields(dict(row)) for row in rows], 'total': total, 'limit': limit, 'offset': offset}
 
 @router.get('/featured')
 async def get_featured_jobs(limit: int=Query(default=6, ge=1, le=12), type: str | None=Query(default=None), category: str | None=Query(default=None, pattern='^(remote|government)$', description="'remote' for is_remote=true, 'government' for is_government=true"), job_group: str | None=Query(default=None, pattern='^(software|sales|finance|other)$'), country: str | None=Query(default=None)):
     pool = await get_db_pool()
     if pool is None:
         raise HTTPException(503, 'Database unavailable')
-    conditions = ['is_active = true', "posted_at > now() - interval '14 days'", '(lower(company) = ANY($1) OR confidence_score >= 80)']
-    params: list = [_lower_top_companies()]
+    # Was: `posted_at > now() - interval '14 days'`. Two bugs: (1) posted_at IS NULL
+    # (jobs from a scraper that didn't parse a date) failed that comparison outright,
+    # so they could never be featured no matter how good the listing; (2) it never
+    # checked `deadline`, so a job whose application deadline had already passed --
+    # is_active can lag behind a missed cleanup pass, see _freshness_conditions'
+    # own docstring -- could still be surfaced as "featured". _freshness_conditions()
+    # is the same belt-and-suspenders window every other listing endpoint here uses
+    # (NULL posted_at allowed, deadline enforced, internship/other-type windows).
+    conditions = ['is_active = true', *_freshness_conditions(), '(lower(company) = ANY($1) OR confidence_score >= 80)']
+    params: list = [await _top_companies(pool)]
     if type:
         params.append(type)
         conditions.append(f'type = ${len(params)}')
@@ -336,7 +411,7 @@ async def get_featured_jobs(limit: int=Query(default=6, ge=1, le=12), type: str 
     badges_sql = BADGE_EXPRESSIONS.replace(':top_companies', placeholder)
     limit_pos = len(params) + 1
     rows = await pool.fetch(f'\n        SELECT\n            {JOB_COLUMNS},\n            {badges_sql}\n        FROM jobs\n        {where}\n        ORDER BY {ranking_sql} DESC, posted_at DESC\n        LIMIT ${limit_pos}\n        ', *params, limit)
-    return {'jobs': [dict(row) for row in rows]}
+    return {'jobs': [_decode_job_json_fields(dict(row)) for row in rows]}
 @router.get('/facets')
 async def get_jobs_facets(search: str | None=Query(default=None), type: str | None=Query(default=None), category: str | None=Query(default=None, pattern='^(remote|government)$'), job_group: str | None=Query(default=None, pattern='^(software|sales|finance|other)$'), country: str | None=Query(default=None), work_mode: str | None=Query(default=None, pattern='^(ONSITE|REMOTE|HYBRID)$')):
     """Phase 2 (PHASE_PLAN.md item 1): computes Skills/Course/Source/Batch/
@@ -384,8 +459,8 @@ async def get_similar_jobs(job_id: str, limit: int=Query(default=6, ge=1, le=12)
     badges_sql = BADGE_EXPRESSIONS.replace(':top_companies', placeholder)
     ranking_sql = SIMILAR_JOBS_EXPRESSION.replace(':self_title', '$2').replace(':self_job_group', '$3').replace(':self_type', '$4').replace(':self_is_remote', '$5').replace(':self_location', '$7')
     freshness_sql = ' AND '.join(_freshness_conditions())
-    rows = await pool.fetch(f'\n        SELECT\n            {JOB_COLUMNS},\n            {badges_sql},\n            ({ranking_sql}) AS match_score\n        FROM jobs\n        WHERE is_active = true\n          AND {freshness_sql}\n          AND id != $1\n          AND (\n              job_group = $3\n              OR type = $4\n              OR similarity(title, $2) > 0.15\n          )\n        ORDER BY match_score DESC, posted_at DESC\n        LIMIT $8\n        ', job_id, self_job['title'] or '', self_job['job_group'] or 'other', self_job['type'] or '', self_job['is_remote'] or False, _lower_top_companies(), self_job['location'] or '', limit)
-    return {'jobs': [dict(row) for row in rows]}
+    rows = await pool.fetch(f'\n        SELECT\n            {JOB_COLUMNS},\n            {badges_sql},\n            ({ranking_sql}) AS match_score\n        FROM jobs\n        WHERE is_active = true\n          AND {freshness_sql}\n          AND id != $1\n          AND (\n              job_group = $3\n              OR type = $4\n              OR similarity(title, $2) > 0.15\n          )\n        ORDER BY match_score DESC, posted_at DESC\n        LIMIT $8\n        ', job_id, self_job['title'] or '', self_job['job_group'] or 'other', self_job['type'] or '', self_job['is_remote'] or False, await _top_companies(pool), self_job['location'] or '', limit)
+    return {'jobs': [_decode_job_json_fields(dict(row)) for row in rows]}
 
 @router.get('/{job_id}/status')
 async def get_job_status(job_id: str):
@@ -515,10 +590,10 @@ async def get_job(job_id: str, locale: str | None = Query(default=None)):
         raise HTTPException(503, 'Database unavailable')
     placeholder = '$2'
     badges_sql = BADGE_EXPRESSIONS.replace(':top_companies', placeholder)
-    row = await pool.fetchrow(f'\n        SELECT\n            {JOB_COLUMNS},\n            {badges_sql}\n        FROM jobs\n        WHERE id = $1 AND is_active = true\n        ', job_id, _lower_top_companies())
+    row = await pool.fetchrow(f'\n        SELECT\n            {JOB_COLUMNS},\n            {badges_sql}\n        FROM jobs\n        WHERE id = $1 AND is_active = true\n        ', job_id, await _top_companies(pool))
     if row is None:
         raise HTTPException(404, 'Job not found')
-    job = dict(row)
+    job = _decode_job_json_fields(dict(row))
     # Every locale this job actually has translated content for — sent
     # regardless of the `locale` param so the frontend can build job-aware
     # hreflang (lib/hreflang.ts's jobHreflangLinks()) without a second call,

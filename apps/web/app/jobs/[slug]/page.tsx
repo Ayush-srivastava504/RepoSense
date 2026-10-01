@@ -8,7 +8,7 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { jobIdFromSlug, canonicalCategoryForJob, canonicalPathForJob } from '@/lib/slug';
 import { BASE_URL } from '@/lib/jobs';
 import { getLocalizedJob, localizedCanonicalPath, jobLanguageAlternates } from '@/lib/jobLocale';
-import {  jobPostingSchema, breadcrumbSchema, safeJsonLd } from '@/lib/structuredData';
+import {  jobPostingSchema, breadcrumbSchema, faqSchema, safeJsonLd } from '@/lib/structuredData';
 import { buildJobTitle, truncateDescription, isIndexableJob } from '@/lib/seo/seoMetrics';
 import { jobOgImageUrl } from '@/lib/seo/ogImage';
 import JobDetail from '@/app/components/JobDetail';
@@ -92,9 +92,18 @@ export default async function JobDetailPage({ params, }: {
         { name: 'Jobs', url: `${BASE_URL}/jobs` },
         { name: job.title, url: canonicalUrl },
     ]);
+    // content_faq is only non-empty for 'full'/'standard' content_tier
+    // jobs (crawler/src/processors/content_layer.py) — a table_only-tier
+    // job deliberately gets no FAQPage schema, matching the same
+    // low-confidence-FAQ-is-worse-than-no-FAQ rule the visible JobFAQ
+    // component follows.
+    const faq = job.content_faq && job.content_faq.length > 0
+        ? faqSchema(job.content_faq.map((f) => ({ question: f.q, answer: f.a })))
+        : null;
     return (<main className="w-full">
       <script id="job-posting-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jobSchema) }}/>
       <script id="job-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(crumbs) }}/>
+      {faq && (<script id="job-faq-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(faq) }}/>)}
       <Breadcrumbs schema={crumbs}/>
       <TrackView event="job_view" params={{ job_id: job.id, job_title: job.title, company: job.company }}/>
 

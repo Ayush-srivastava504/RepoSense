@@ -52,6 +52,10 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = 'gemini-3.1-flash-lite'
     NVIDIA_API_KEY: str = ''
     NVIDIA_MODEL: str = 'nvidia/nemotron-3-super-120b-a12b'
+    # Paced requests/minute per provider (0 = use llm_providers.DEFAULT_RPM).
+    GROQ_RPM: float = 0
+    GEMINI_RPM: float = 0
+    NVIDIA_RPM: float = 0
 
     # Phase F — same-day priority indexing push (see
     # INDEXING_RECOVERY_PLAN.md and scripts/phase_f_priority_index_push.py).

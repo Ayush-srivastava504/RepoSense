@@ -8,7 +8,7 @@ import { notFound } from 'next/navigation';
 import { jobIdFromSlug, canonicalPathForJob } from '@/lib/slug';
 import { BASE_URL } from '@/lib/jobs';
 import { getLocalizedJob, localizedCanonicalPath, jobLanguageAlternates } from '@/lib/jobLocale';
-import {  jobPostingSchema, breadcrumbSchema, safeJsonLd } from '@/lib/structuredData';
+import {  jobPostingSchema, breadcrumbSchema, faqSchema, safeJsonLd } from '@/lib/structuredData';
 import { truncateTitleForSerp, truncateDescription, isIndexableJob } from '@/lib/seo/seoMetrics';
 import { jobOgImageUrl } from '@/lib/seo/ogImage';
 import JobDetail from '@/app/components/JobDetail';
@@ -66,11 +66,15 @@ export default async function GovernmentJobDetailPage({ params, }: {
         { name: 'Government Jobs', url: `${BASE_URL}/government-jobs` },
         { name: job.title, url: canonicalUrl },
     ]);
+    const faq = job.content_faq && job.content_faq.length > 0
+        ? faqSchema(job.content_faq.map((f) => ({ question: f.q, answer: f.a })))
+        : null;
     return (<main className="w-full">
       <script id="government-job-posting-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jobPostingSchema(job, canonicalUrl)) }}/>
       <script id="government-job-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{
             __html: JSON.stringify(crumbs),
         }}/>
+      {faq && (<script id="government-job-faq-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(faq) }}/>)}
       <Breadcrumbs schema={crumbs}/>
       <div className="mx-auto w-full max-w-5xl px-3 py-6 sm:px-4 sm:py-8">
         <JobDetail job={job} canonicalPath={canonicalPath} backHref="/government-jobs" backLabel="Back to government jobs"/>

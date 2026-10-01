@@ -1,6 +1,6 @@
 // Module: app/components/JobDetail.tsx
 // Defines component(s)/export(s): JobDetail
-// Defines function(s): matchSkillSlug
+// Defines function(s): buildFallbackSummary
 //
 // JobPosting JSON-LD for this job is emitted once, at the page level (jobs/internships/
 // remote-jobs/government-jobs [slug] pages via lib/structuredData.ts jobPostingSchema) —
@@ -11,7 +11,7 @@ import Link from 'next/link';
 import type { Job } from '@/lib/jobs';
 import { getSimilarJobs } from '@/lib/jobs';
 import { companySlug } from '@/lib/companies';
-import { SKILLS } from '@/app/skills/data';
+import { matchSkillSlug } from '@/lib/skillMatch';
 import JobBadges from '@/app/components/JobBadges';
 import ApplyButton from '@/app/components/ApplyButton';
 import SimilarJobs from '@/app/components/SimilarJobs';
@@ -19,15 +19,16 @@ import SaveJobButton from '@/app/components/SaveJobButton';
 import MatchScoreBadge from '@/app/components/MatchScoreBadge';
 import StructuredDetails from '@/app/components/StructuredDetails';
 import ExploreRelated from '@/app/components/ExploreRelated';
+import JobFAQ from '@/app/components/JobFAQ';
+import JobFactsTable from '@/app/components/JobFactsTable';
+import SkillsBreakdown from '@/app/components/SkillsBreakdown';
+import ApplicationTimeline from '@/app/components/ApplicationTimeline';
+import ExperienceMeter from '@/app/components/ExperienceMeter';
+import ApplyChecklist from '@/app/components/ApplyChecklist';
 
-// Matches an enriched keyword to a known /skills/[slug] hub page, if one exists, so we can
-// link it instead of rendering a dead-end chip. Falls back to null for keywords without a
-// dedicated hub (e.g. soft skills) — those still render as plain chips.
-function matchSkillSlug(keyword: string): string | null {
-    const normalized = keyword.trim().toLowerCase();
-    const found = SKILLS.find((s) => s.name.toLowerCase() === normalized || s.searchTerm.toLowerCase() === normalized || s.slug === normalized.replace(/[^a-z0-9]+/g, '-'));
-    return found ? found.slug : null;
-}
+// matchSkillSlug moved to lib/skillMatch.ts so SkillsBreakdown.tsx can
+// reuse the same keyword -> /skills/[slug] matching instead of
+// duplicating it.
 // PHASE 1 thin-content fix: some scraped postings carry only a couple of
 // sentences of raw description and haven't been through the
 // overview/structured enrichment passes yet (crawler/src/content_enrichment.py
@@ -146,6 +147,7 @@ export default async function JobDetail({ job, canonicalPath, backHref, backLabe
         </div>)}
 
       <StructuredDetails job={job}/>
+      <ExperienceMeter job={job}/>
 
       {(() => {
             const fallback = buildFallbackSummary(job);
@@ -159,6 +161,12 @@ export default async function JobDetail({ job, canonicalPath, backHref, backLabe
         }}>
         {job.structured_description || job.description}
       </p>
+
+      <SkillsBreakdown job={job}/>
+      <JobFactsTable job={job}/>
+      <ApplicationTimeline job={job}/>
+      <ApplyChecklist job={job}/>
+      <JobFAQ job={job}/>
 
       <ExploreRelated job={job} basePath={backHref}/>
 

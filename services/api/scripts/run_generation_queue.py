@@ -35,7 +35,9 @@ from services.content_enrichment_service import ContentEnrichmentService, FALLBA
 
 TASK_TYPE = 'job_content_enrichment'
 BATCH_SIZE_DEFAULT = 20
-REQUEST_DELAY_S = float(os.getenv('ENRICH_REQUEST_DELAY_S', '20'))
+# Providers are RPM-paced inside ContentEnrichmentService now, so the blanket per-row
+# sleep defaults to 0. Set ENRICH_REQUEST_DELAY_S to re-add one (e.g. companies/other targets).
+REQUEST_DELAY_S = float(os.getenv('ENRICH_REQUEST_DELAY_S', '0'))
 STUCK_AFTER_MINUTES = 30
 WORKER_ID = f'{socket.gethostname()}:{os.getpid()}'
 

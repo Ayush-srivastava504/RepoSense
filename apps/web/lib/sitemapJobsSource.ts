@@ -1,41 +1,62 @@
 // Module: lib/sitemapJobsSource.ts
-// Server-side source for the category job sitemaps. Kept out of
-// lib/sitemapJobs.ts so that file stays free of app imports (unit-testable).
-//
-// The whole job list is collected ONCE and shared by the sitemap index and every
-// category file, via a short in-memory cache plus in-flight de-duplication.
-// Without this, each of the 4+ sitemap requests would fan out ~28 API calls of
-// its own and could trip the API's 50 requests/minute limit.
+// Server-side source for the category job sitemaps. The files are PREBUILT by the
+// API (services/api/scripts/build_sitemaps.py -> sitemap_cache table, hourly), so a
+// sitemap request is one or two cheap reads instead of ~28 paginated /api/jobs calls.
+// The last good response is kept in memory: a brief API blip serves stale data
+// instead of a 503.
 
-import { getJobsPage } from '@/lib/jobs';
-import {
-    buildCategorySitemapEntries,
-    collectAllJobs,
-    SITEMAP_CATEGORIES,
-    type CategorySitemaps,
-} from '@/lib/sitemapJobs';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
+import { BASE_URL } from '@/lib/site';
 
-const TTL_MS = 10 * 60 * 1000;
-let cached: { at: number; value: CategorySitemaps } | null = null;
-let inflight: Promise<CategorySitemaps> | null = null;
+const API_BASE_URL = process.env.API_BASE_URL ||
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    'https://api.intern-flow.in';
 
-/** Throws IncompleteSitemapError when the API list can't be verified complete. */
-export function getCategorySitemaps(): Promise<CategorySitemaps> {
-    if (cached && Date.now() - cached.at < TTL_MS)
-        return Promise.resolve(cached.value);
-    if (!inflight) {
-        inflight = (async () => {
-            const jobs = await collectAllJobs((offset, limit) => getJobsPage({ limit, offset }));
-            const value = buildCategorySitemapEntries(jobs);
-            console.log(
-                `sitemap-jobs: ${jobs.length} jobs fetched -> ` +
-                    SITEMAP_CATEGORIES.map((c) => `${c}=${value[c].length}`).join(' ')
-            );
-            cached = { at: Date.now(), value };
-            return value;
-        })().finally(() => {
-            inflight = null;
-        });
+export type SitemapFileInfo = { file_name: string; url_count: number };
+
+let lastList: SitemapFileInfo[] | null = null;
+const lastXml = new Map<string, string>();
+
+export async function getSitemapFileList(): Promise<SitemapFileInfo[]> {
+    try {
+        const res = await fetchWithTimeout(`${API_BASE_URL}/api/sitemap/files`, { next: { revalidate: 600 } }, 10000);
+        if (!res.ok)
+            throw new Error(`sitemap file list: HTTP ${res.status}`);
+        const body = (await res.json()) as { files?: SitemapFileInfo[] };
+        if (!body.files?.length)
+            throw new Error('sitemap file list empty');
+        lastList = body.files;
+        return body.files;
     }
-    return inflight;
+    catch (err) {
+        if (lastList)
+            return lastList;
+        throw err;
+    }
+}
+
+/** null = the API says the file doesn't exist; throws on transient failure. */
+export async function getSitemapFileXml(name: string): Promise<string | null> {
+    try {
+        const res = await fetchWithTimeout(`${API_BASE_URL}/api/sitemap/files/${encodeURIComponent(name)}`, { next: { revalidate: 600 } }, 15000);
+        if (res.status === 404) {
+            lastXml.delete(name);
+            return null;
+        }
+        if (!res.ok)
+            throw new Error(`sitemap file ${name}: HTTP ${res.status}`);
+        const xml = await res.text();
+        lastXml.set(name, xml);
+        return xml;
+    }
+    catch (err) {
+        const stale = lastXml.get(name);
+        if (stale)
+            return stale;
+        throw err;
+    }
+}
+
+export function sitemapFileUrls(files: SitemapFileInfo[]): string[] {
+    return files.map((f) => `${BASE_URL}/sitemaps/${f.file_name}`);
 }

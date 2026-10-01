@@ -8,7 +8,7 @@ import os
 import time
 from typing import Dict, List, Set
 from config import DEFAULT_KEYWORDS, DEFAULT_LOCATIONS, ENABLED_SCRAPERS, MAX_PAGES_PER_SOURCE
-from processors.dedupe import deduplicate, deduplicate_incremental
+from processors.dedupe import deduplicate, deduplicate_incremental, deduplicate_against_db
 from processors.enricher import enrich_batch
 from processors.normalizer import normalize_batch
 from processors.trust import score_batch
@@ -16,7 +16,7 @@ from processors.quality import filter_and_score
 from processors.content_layer import attach_content_plan
 from content_enrichment import run_content_enrichment_for_new_jobs
 from structured_enrichment import run_structured_enrichment_for_jobs
-from utils import get_logger, save_to_s3, upsert_jobs, deactivate_stale_jobs, check_liveness_for_aging_jobs, utcnow
+from utils import get_logger, save_to_s3, upsert_jobs, deactivate_stale_jobs, check_liveness_for_aging_jobs, utcnow, fetch_recent_jobs_for_dedupe
 log = get_logger('handler')
 
 def _load_scrapers() -> Dict:
@@ -150,6 +150,14 @@ def run_pipeline(keywords: List[str]=None, locations: List[str]=None, max_pages:
     else:
         deduped = deduplicate(normalized)
     log.info('After deduplication: %d', len(deduped))
+    if not dry_run and deduped:
+        try:
+            recent_db_jobs = fetch_recent_jobs_for_dedupe()
+            if recent_db_jobs:
+                deduped = deduplicate_against_db(deduped, recent_db_jobs)
+        except Exception:
+            log.exception('Cross-run DB dedupe failed (non-fatal, proceeding with in-batch-deduped set)')
+    log.info('After cross-run DB dedupe: %d', len(deduped))
     enriched = enrich_batch(deduped)
     log.info('Enriched %d jobs', len(enriched))
     enriched = score_batch(enriched)

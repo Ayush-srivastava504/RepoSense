@@ -82,6 +82,23 @@ export interface Job {
     // automatically once enrichment fills it in.
     is_thin?: boolean;
     quality_score?: number;
+    // content_tier/content_table/content_faq/segment_key — crawler/src/
+    // processors/content_layer.py computes these at crawl time (gated on
+    // legitimacy_state/is_thin) and writes them alongside every job, but
+    // until routes/jobs.py's JOB_COLUMNS included them they never reached
+    // the frontend. content_faq is deliberately [] for 'table_only' tier
+    // jobs (a low-confidence FAQ hurts trust more than no FAQ) — never
+    // render an FAQ block from an empty array.
+    content_tier?: 'full' | 'standard' | 'table_only';
+    content_table?: {
+        label: string;
+        value: string;
+    }[];
+    content_faq?: {
+        q: string;
+        a: string;
+    }[];
+    segment_key?: string;
     // Locale-aware content — migrations/024_job_translations.sql,
     // IMPLEMENTATION_PLAN.md §7. Always present (possibly []); lists every
     // locale this job actually has translated content for, regardless of

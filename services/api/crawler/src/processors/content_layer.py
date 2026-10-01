@@ -39,7 +39,7 @@ def build_table(job: Dict) -> List[Dict[str, str]]:
         {'label': 'Role', 'value': job.get('title', '')},
         {'label': 'Company', 'value': job.get('company', '')},
         {'label': 'Location', 'value': job.get('location', '')},
-        {'label': 'Type', 'value': job.get('job_type', '')},
+        {'label': 'Type', 'value': job.get('type', '')},
         {'label': 'Compensation', 'value': comp},
         {'label': 'Posted', 'value': job.get('posted_date', '')},
         {'label': 'Deadline', 'value': job.get('deadline', '') or 'Rolling'},
@@ -47,26 +47,33 @@ def build_table(job: Dict) -> List[Dict[str, str]]:
 
 
 def build_faq(job: Dict) -> List[Dict[str, str]]:
-    """Templated questions, slot-filled answers. Only called for
-    'full'/'standard' tier jobs. Each answer is deterministic from fields
-    already on the job -- the per-job LLM call only rewrites these into
-    natural prose, it doesn't invent the underlying facts, so a
-    hallucinated FAQ answer isn't possible from this layer."""
+    """Templated questions, fully-formed answers. Only called for
+    'full'/'standard' tier jobs. Each answer is a deterministic sentence
+    built straight from fields already on the job -- no LLM in this layer,
+    so a hallucinated FAQ answer isn't possible. Answers are complete
+    sentences (not fact fragments) because this is what gets rendered
+    directly as page copy and as FAQPage JSON-LD's acceptedAnswer.text --
+    both need real prose, not a slot value."""
     title, company, location = job.get('title', ''), job.get('company', ''), job.get('location', '')
     comp = job.get('salary') or job.get('stipend')
+    if _is_remote(location):
+        remote_answer = f'The {title} role at {company} is fully remote.'
+    elif location:
+        remote_answer = f'The {title} role at {company} is based in {location}, not remote.'
+    else:
+        remote_answer = f'{company} has not specified whether the {title} role is remote, hybrid, or onsite in the listing.'
+    if comp:
+        pay_answer = f'Yes -- {company} has disclosed compensation for this role: {comp}.'
+    else:
+        pay_answer = f'{company} has not disclosed compensation for the {title} role in the listing; check the original posting or ask during the application process.'
+    deadline = job.get('deadline')
+    deadline_answer = (f'The application deadline for the {title} role at {company} is {deadline}.'
+                        if deadline else
+                        f'{company} has not listed a fixed deadline for the {title} role; applications appear to be reviewed on a rolling basis.')
     return [
-        {
-            'q': f'Is the {title} role at {company} remote, hybrid, or onsite?',
-            'a_fact': 'remote' if _is_remote(location) else f'based in {location}',
-        },
-        {
-            'q': f'Is the {title} position at {company} paid?',
-            'a_fact': f'compensation disclosed: {comp}' if comp else 'compensation not disclosed by the employer',
-        },
-        {
-            'q': f'What is the application deadline for this {title} role?',
-            'a_fact': job.get('deadline') or 'no fixed deadline listed; applications reviewed on a rolling basis',
-        },
+        {'q': f'Is the {title} role at {company} remote, hybrid, or onsite?', 'a': remote_answer},
+        {'q': f'Is the {title} position at {company} paid?', 'a': pay_answer},
+        {'q': f'What is the application deadline for this {title} role?', 'a': deadline_answer},
     ]
 
 
@@ -77,7 +84,7 @@ def segment_key(job: Dict) -> str:
     accurate chart instead of each page fabricating its own."""
     role_bucket = job.get('title', '').split()[0].lower() if job.get('title') else 'general'
     loc_bucket = 'remote' if _is_remote(job.get('location', '')) else (job.get('location', '').split(',')[0].lower() or 'india')
-    return f"{job.get('job_type', '')}:{role_bucket}:{loc_bucket}"
+    return f"{job.get('type', '')}:{role_bucket}:{loc_bucket}"
 
 
 def attach_content_plan(job: Dict) -> Dict:

@@ -4,14 +4,13 @@
 //
 
 import { BASE_URL } from '@/lib/jobs';
-import { categorySitemapUrls } from '@/lib/sitemapJobs';
-import { getCategorySitemaps } from '@/lib/sitemapJobsSource';
+import { getSitemapFileList, sitemapFileUrls } from '@/lib/sitemapJobsSource';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 export async function GET() {
     let jobSitemaps: string[];
     try {
-        jobSitemaps = categorySitemapUrls(await getCategorySitemaps());
+        jobSitemaps = sitemapFileUrls(await getSitemapFileList());
     }
     catch (err) {
         // Don't publish an index that silently drops the job files: 503 makes

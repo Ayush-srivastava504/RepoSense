@@ -86,6 +86,8 @@ GOOGLE_PUBLISH_URL = 'https://indexing.googleapis.com/v3/urlNotifications:publis
 INDEXNOW_ENDPOINT = 'https://api.indexnow.org/indexnow'
 DEFAULT_JOB_CAP = 60
 DEFAULT_INTERNSHIP_CAP = 10
+DEFAULT_REMOTE_CAP = 15
+DEFAULT_GOVERNMENT_CAP = 15
 REQUEST_DELAY_S = 0.3  # be polite to Google's per-URL publish endpoint
 
 
@@ -129,15 +131,41 @@ def canonical_url(job: Dict) -> str:
 
 
 # --- Selection --------------------------------------------------------------
+#
+# Four categories, matching canonical_category() above 1:1 -- this used to
+# be a binary only_internships split, which meant remote and government
+# postings were silently pushed under the generic "jobs" bucket (any type
+# != 'internship' qualified, is_remote/is_government were never checked).
+# That's what category_runner.py's per-category daily cycle needs fixed:
+# each category now gets its own condition, its own cap, and its own
+# --category invocation, so a "government" cron run only ever selects and
+# logs government postings instead of an unlabeled mix.
 
 _SELECT_COLUMNS = (
     "id, title, company, location, salary, stipend, type, is_remote, "
     "is_government, confidence_score"
 )
 
+CATEGORY_CONDITIONS = {
+    # order matters for readability only -- these are mutually exclusive
+    # in the DB by construction (is_government/is_remote/type), matching
+    # canonical_category()'s own precedence (government > internship >
+    # remote > jobs).
+    'government': "is_government = TRUE",
+    'internships': "is_government = FALSE AND type = 'internship'",
+    'remote': "is_government = FALSE AND type IS DISTINCT FROM 'internship' AND is_remote = TRUE",
+    'jobs': "is_government = FALSE AND type IS DISTINCT FROM 'internship' AND is_remote = FALSE",
+}
+DEFAULT_CAPS = {
+    'jobs': DEFAULT_JOB_CAP,
+    'internships': DEFAULT_INTERNSHIP_CAP,
+    'remote': DEFAULT_REMOTE_CAP,
+    'government': DEFAULT_GOVERNMENT_CAP,
+}
 
-async def _select(pool, *, only_internships: bool, top_companies: List[str], limit: int) -> List[Dict]:
-    type_condition = "type = 'internship'" if only_internships else "type IS DISTINCT FROM 'internship'"
+
+async def _select(pool, *, category: str, top_companies: List[str], limit: int) -> List[Dict]:
+    condition = CATEGORY_CONDITIONS[category]
     query = f"""
         SELECT {_SELECT_COLUMNS},
                (lower(company) = ANY($1)) AS is_top_company
@@ -145,7 +173,7 @@ async def _select(pool, *, only_internships: bool, top_companies: List[str], lim
         WHERE is_active = TRUE
           AND indexnow_submitted_at IS NULL
           AND created_at::date = CURRENT_DATE
-          AND {type_condition}
+          AND {condition}
           AND NOT (is_thin AND enriched_overview IS NULL)
           AND (deadline IS NULL OR deadline > now())
         ORDER BY
@@ -158,11 +186,17 @@ async def _select(pool, *, only_internships: bool, top_companies: List[str], lim
     return [dict(r) for r in rows]
 
 
-async def select_priority_jobs(pool, job_cap: int, internship_cap: int) -> List[Dict]:
+async def select_priority_jobs(pool, caps: Dict[str, int]) -> List[Dict]:
+    """caps maps category -> limit; a category absent from caps is skipped
+    entirely (this is how a single-category cron run stays scoped to just
+    that category instead of also touching the other three)."""
     top_companies = [c.lower() for c in TOP_COMPANY_TIER]
-    jobs = await _select(pool, only_internships=False, top_companies=top_companies, limit=job_cap)
-    internships = await _select(pool, only_internships=True, top_companies=top_companies, limit=internship_cap)
-    return jobs + internships
+    selected: List[Dict] = []
+    for category, limit in caps.items():
+        if limit <= 0:
+            continue
+        selected.extend(await _select(pool, category=category, top_companies=top_companies, limit=limit))
+    return selected
 
 
 # --- IndexNow ---------------------------------------------------------------
@@ -278,14 +312,36 @@ def _log_row(target: str, ok: bool, url: str, title: str, company: str) -> None:
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument('--category', choices=['jobs', 'internships', 'remote', 'government', 'all'], default='all',
+                         help="Scope this run to one category's daily push, or 'all' (default) for every "
+                              "category in one run using each --*-cap below -- 'all' preserves the original "
+                              "combined-run behavior for anything still scheduling it that way.")
+    parser.add_argument('--cap', type=int, default=None,
+                         help='Cap for this run when --category is a single category (not "all"). '
+                              'Falls back to that category\'s --*-cap default below if omitted.')
     parser.add_argument('--job-cap', type=int, default=DEFAULT_JOB_CAP,
-                         help='Max non-internship jobs to push this run (default 60; keep in the 50-60 range)')
+                         help='Max jobs to push per run (default 60; keep in the 50-60 range)')
     parser.add_argument('--internship-cap', type=int, default=DEFAULT_INTERNSHIP_CAP,
-                         help='Max internships to push this run (default 10)')
+                         help='Max internships to push per run (default 10)')
+    parser.add_argument('--remote-cap', type=int, default=DEFAULT_REMOTE_CAP,
+                         help='Max remote postings to push per run (default 15)')
+    parser.add_argument('--government-cap', type=int, default=DEFAULT_GOVERNMENT_CAP,
+                         help='Max government postings to push per run (default 15)')
     parser.add_argument('--skip-indexnow', action='store_true')
     parser.add_argument('--skip-google', action='store_true')
     parser.add_argument('--dry-run', action='store_true', help='Select and log only, no submissions or DB writes')
     args = parser.parse_args()
+
+    per_category_cap = {
+        'jobs': args.job_cap,
+        'internships': args.internship_cap,
+        'remote': args.remote_cap,
+        'government': args.government_cap,
+    }
+    if args.category == 'all':
+        caps = per_category_cap
+    else:
+        caps = {args.category: args.cap if args.cap is not None else per_category_cap[args.category]}
 
     if not settings.DATABASE_URL:
         print('[phase_f] DATABASE_URL not set — cannot run.')
@@ -313,11 +369,13 @@ async def main() -> None:
 
     pool = await asyncpg.create_pool(settings.DATABASE_URL, min_size=1, max_size=3, command_timeout=60)
     try:
-        selected = await select_priority_jobs(pool, args.job_cap, args.internship_cap)
-        job_count = sum(1 for j in selected if j.get('type') != 'internship')
-        intern_count = sum(1 for j in selected if j.get('type') == 'internship')
-        print(f'[phase_f] Selected {len(selected)} listing(s) for same-day push '
-              f'({job_count} job(s), {intern_count} internship(s))')
+        selected = await select_priority_jobs(pool, caps)
+        counts_by_category: Dict[str, int] = {}
+        for j in selected:
+            cat = canonical_category(j)
+            counts_by_category[cat] = counts_by_category.get(cat, 0) + 1
+        breakdown = ', '.join(f'{v} {k}' for k, v in counts_by_category.items()) or 'none'
+        print(f'[phase_f] Selected {len(selected)} listing(s) for same-day push ({breakdown})')
 
         if not selected:
             print('[phase_f] Nothing new to push — done.')

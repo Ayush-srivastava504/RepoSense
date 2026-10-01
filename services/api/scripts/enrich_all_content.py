@@ -68,7 +68,9 @@ from services.translation_enrichment_service import (
 )
 
 BATCH_LIMIT_DEFAULT = 200
-REQUEST_DELAY_S = float(os.getenv('ENRICH_REQUEST_DELAY_S', '20'))
+# Providers are RPM-paced inside ContentEnrichmentService now, so the blanket per-row
+# sleep defaults to 0. Set ENRICH_REQUEST_DELAY_S to re-add one (e.g. companies/other targets).
+REQUEST_DELAY_S = float(os.getenv('ENRICH_REQUEST_DELAY_S', '0'))
 # Facts are cheap to recompute and go stale as listings turn over (internships
 # expire in 10 days), so refresh nightly. 20h rather than 24h so a job that runs at
 # the same clock time every day never sees yesterday's row as "not stale yet".

@@ -22,6 +22,7 @@
 # config change, not a silent 100% failure discovered days later in a CI
 # log.
 
+import asyncio
 import json
 import re
 from dataclasses import dataclass
@@ -29,8 +30,8 @@ from typing import Optional
 import httpx
 from configs.config import settings
 from services.llm_providers import (
-    ProviderConfig, ProviderHealth, ProviderHTTPError, call_chat_completion,
-    enabled_providers, gemini_provider, groq_provider, nvidia_provider,
+    DEFAULT_RPM, ProviderConfig, ProviderHealth, ProviderHTTPError, call_chat_completion,
+    enabled_providers, interval_for_rpm, gemini_provider, groq_provider, nvidia_provider,
 )
 
 FALLBACK_MODEL = 'template-fallback'
@@ -121,7 +122,11 @@ class ContentEnrichmentService:
         # Per-run health: rate-limit cooldowns, retired models, dead providers.
         # Without this every row re-hit every failing provider (100s of wasted
         # 404/429 calls per run) and the run spent its whole time budget on it.
-        self._health: dict[str, ProviderHealth] = {p.name: ProviderHealth() for p in self._providers}
+        self._health: dict[str, ProviderHealth] = {
+            p.name: ProviderHealth(min_interval_s=interval_for_rpm(
+                float(getattr(settings, f'{p.name.upper()}_RPM', 0) or DEFAULT_RPM.get(p.name, 0))))
+            for p in self._providers
+        }
 
     @property
     def enabled(self) -> bool:
@@ -167,7 +172,16 @@ class ContentEnrichmentService:
         if not self.enabled:
             return self._fallback(title=title, company=company, location=location, description=description, job_type=job_type) if allow_fallback else None
         user_prompt = _build_user_prompt(title, company, location, description, job_type)
-        for provider in self._ordered_providers():
+        # Round-robin order, then the provider with the freest RPM slot first (stable
+        # sort keeps the rotation on ties): a paced-out Groq no longer makes the row
+        # wait when Gemini/NVIDIA could take it right now.
+        providers = sorted(self._ordered_providers(), key=lambda p: self._health[p.name].slot_wait())
+        for provider in providers:
+            health = self._health[provider.name]
+            wait = health.slot_wait()
+            if wait > 0:
+                await asyncio.sleep(min(wait, 90.0))
+            health.reserve_slot()
             result = await self._try_provider(provider, user_prompt=user_prompt)
             if result:
                 return result

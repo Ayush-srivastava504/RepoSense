@@ -31,6 +31,44 @@ def deduplicate_incremental(new_jobs: List[Dict], existing_ids: Set[str]) -> Lis
     log.info('Incremental dedupe: %d new, %d already exist', len(filtered), len(new_jobs) - len(filtered))
     return deduplicate(filtered)
 
+def deduplicate_against_db(new_jobs: List[Dict], existing: List[Dict]) -> List[Dict]:
+    """Cross-run fuzzy dedupe: drops a job in `new_jobs` whose (title, company)
+    fuzzy-matches a row already live in the DB (`existing`, each a dict with at
+    least title/company/id -- see utils.fetch_recent_jobs_for_dedupe()).
+
+    Without this, _fuzzy_dedup() only ever compares jobs within the SAME batch.
+    A listing re-scraped from a different source on day 2 has a different `id`
+    (make_job_id hashes source+url), so `id` in existing_ids never catches it,
+    and title/company are identical (or near-identical -- '(Remote)' suffix,
+    trailing whitespace, a re-run of company-portals with slightly different
+    HTML) to a job already written on day 1. It survives in-batch dedupe
+    because there's only one copy THIS batch, and gets upserted as a second,
+    near-duplicate active listing.
+
+    Bucketed by normalized company (same O(n) grouping cost as exact dedupe)
+    so this stays cheap even against a few thousand existing rows -- only jobs
+    sharing a company are ever compared title-to-title."""
+    if not existing:
+        return new_jobs
+    by_company: Dict[str, List[str]] = {}
+    for row in existing:
+        key = _norm(row.get('company', ''))
+        if key:
+            by_company.setdefault(key, []).append(_norm(row.get('title', '')))
+    kept: List[Dict] = []
+    dropped = 0
+    for job in new_jobs:
+        company_key = _norm(job.get('company', ''))
+        title_key = _norm(job.get('title', ''))
+        candidates = by_company.get(company_key, []) if company_key else []
+        if title_key and candidates and any(_similarity(title_key, existing_title) >= TITLE_SIMILARITY_THRESHOLD
+                                             for existing_title in candidates if existing_title):
+            dropped += 1
+            continue
+        kept.append(job)
+    log.info('Cross-run DB dedupe: %d -> %d (removed %d already-live near-duplicates)', len(new_jobs), len(kept), dropped)
+    return kept
+
 def _exact_dedup(jobs: List[Dict]) -> List[Dict]:
     seen: Set[str] = set()
     results: List[Dict] = []

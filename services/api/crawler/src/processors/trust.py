@@ -34,6 +34,7 @@ def score(job: Dict) -> Dict:
         job.setdefault('logo_domain', None)
         job.setdefault('is_official_domain', False)
         job.setdefault('domain_similarity', 0.0)
+        job.setdefault('is_notable_employer', False)
     return job
 
 def _score_single(job: Dict) -> None:
@@ -49,6 +50,11 @@ def _score_single(job: Dict) -> None:
     similarity = _domain_similarity(company, domain) if domain else 0.0
     is_free_email_domain = domain in FREE_EMAIL_DOMAINS
     is_shortener = domain in URL_SHORTENERS
+    # is_mismatch stays fraud-relevant: a TOP_COMPANY_TIER name posted from an
+    # unofficial, non-ATS domain with a low name/domain match is a real anomaly
+    # signal (e.g. a scam listing squatting on "Google" or "TCS"). That's the
+    # only place a company's fame is allowed to move the fraud score -- it can
+    # only ever pull the score DOWN (via is_mismatch below), never up.
     is_mismatch = bool(domain) and is_known_company and (not is_official) and (not is_known_ats) and (similarity < 0.35)
     score_value = 0
     if is_official:
@@ -57,8 +63,16 @@ def _score_single(job: Dict) -> None:
         score_value += 20
     if is_https:
         score_value += 5
-    if is_known_company:
-        score_value += 20
+    # NOTE: no +20 for is_known_company here (removed). "This is a famous
+    # employer" and "this posting's apply link is trustworthy" used to be
+    # summed into one confidence_score, so an EA/Google/TCS listing scraped
+    # from a random aggregator (unofficial domain, no ATS match) could still
+    # clear 'verified' purely on brand recognition, while an equally-real
+    # small-company listing on its own official domain scored lower just for
+    # being unfamiliar. Employer notability is now `is_notable_employer`
+    # (below), a separate field the ranking/badge layer already reads on its
+    # own (routes/jobs.py's is_top_company badge, RANKING_EXPRESSION) --
+    # trust.py no longer needs to also fold it into the fraud score.
     if is_known_ats:
         score_value += 10
     if similarity > 0.8:
@@ -75,6 +89,10 @@ def _score_single(job: Dict) -> None:
     job['domain_similarity'] = round(similarity, 2)
     job['confidence_score'] = score_value
     job['confidence_label'] = _label_for(score_value, is_official)
+    # Separate "is this a well-known employer" signal, no longer mixed into
+    # confidence_score. Purely informational here; TOP_COMPANY_TIER in
+    # routes/jobs.py is the source of truth for the ranking bonus/badge.
+    job['is_notable_employer'] = is_known_company
     is_aggregator_domain = bool(domain) and any((domain == d or domain.endswith('.' + d) for d in AGGREGATOR_DOMAINS))
     if is_aggregator_domain:
         job['logo_domain'] = trusted_domains[0] if trusted_domains else None

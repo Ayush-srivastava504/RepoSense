@@ -141,6 +141,36 @@ def get_pg_conn():
         log.info('PostgreSQL connection successful')
     return _pg_conn
 
+def fetch_recent_jobs_for_dedupe(days: int = 45) -> List[Dict]:
+    """Title/company of currently-active jobs, for processors.dedupe.deduplicate_against_db()
+    (cross-run fuzzy dedupe -- id-based exact dedupe can't catch a listing re-scraped
+    from a different source, which gets a different id).
+
+    Bounded to `days` and is_active=true: an unbounded SELECT would grow every run as
+    the catalog does, and a title/company match against a listing that's already
+    deactivated (expired/gone) isn't a real duplicate to protect against.
+    Best-effort: returns [] on any DB error so a transient failure degrades to
+    "skip cross-run dedupe this run" rather than failing the whole crawl.
+    """
+    try:
+        conn = get_pg_conn()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT title, company FROM jobs
+            WHERE is_active = true
+              AND (posted_at IS NULL OR posted_at > now() - (%s * INTERVAL '1 day'))
+            """,
+            (days,),
+        )
+        rows = [{'title': r[0], 'company': r[1]} for r in cursor.fetchall()]
+        cursor.close()
+        log.info('Fetched %d recent active jobs for cross-run dedupe', len(rows))
+        return rows
+    except Exception as exc:
+        log.warning('fetch_recent_jobs_for_dedupe failed (skipping cross-run dedupe this run): %s', exc)
+        return []
+
 def upsert_jobs(jobs: List[Dict]) -> int:
     if not jobs:
         return 0

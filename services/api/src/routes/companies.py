@@ -7,13 +7,10 @@ import json
 
 from fastapi import APIRouter, HTTPException, Query
 from configs.db import get_db_pool
-from routes.jobs import TOP_COMPANY_TIER, _freshness_conditions
+from routes.jobs import _freshness_conditions, _top_companies
 router = APIRouter(prefix='/api/companies', tags=['companies'])
 MASS_HIRE_THRESHOLD = 8
 MAX_PER_SECTION = 60
-
-def _lower_top_companies() -> list[str]:
-    return [c.lower() for c in TOP_COMPANY_TIER]
 
 @router.get('/')
 async def get_companies(limit_per_section: int=Query(default=MAX_PER_SECTION, ge=1, le=200)):
@@ -22,7 +19,10 @@ async def get_companies(limit_per_section: int=Query(default=MAX_PER_SECTION, ge
         raise HTTPException(503, 'Database unavailable')
     freshness_sql = ' AND '.join(_freshness_conditions())
     rows = await pool.fetch(f"\n        SELECT\n            company,\n            count(*)                                   AS job_count,\n            bool_or(is_official_domain)                 AS is_official_domain,\n            (array_agg(apply_domain) FILTER (WHERE apply_domain IS NOT NULL))[1] AS apply_domain,\n            (array_agg(logo_domain) FILTER (WHERE logo_domain IS NOT NULL))[1]   AS logo_domain,\n            (array_agg(location) FILTER (WHERE location IS NOT NULL))[1]         AS sample_location,\n            max(posted_at)                              AS last_posted_at\n        FROM jobs\n        WHERE is_active = true AND {freshness_sql} AND company IS NOT NULL AND company != ''\n        GROUP BY company\n        ")
-    top_companies = set(_lower_top_companies())
+    # Earned set (static seed UNION data-driven "posts enough, legitimately" companies) --
+    # see routes/jobs.py's _top_companies() docstring. Same pool call already cached
+    # in-process, so this doesn't add a second DB round trip on a warm cache.
+    top_companies = set(await _top_companies(pool))
     top: list[dict] = []
     mass_hire: list[dict] = []
     startup: list[dict] = []

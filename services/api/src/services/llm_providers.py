@@ -12,6 +12,7 @@
 
 from dataclasses import dataclass, field
 from typing import Optional
+import re
 import time
 import httpx
 
@@ -25,6 +26,12 @@ DEFAULT_MODELS = {
     'gemini': ('gemini-3.1-flash-lite', 'gemini-3-flash-preview', 'gemini-flash-latest'),
     'nvidia': ('nvidia/nemotron-3-super-120b-a12b', 'moonshotai/kimi-k2.5', 'z-ai/glm-5.1'),
 }
+
+# Requests-per-minute each provider is paced to (override with GROQ_RPM /
+# GEMINI_RPM / NVIDIA_RPM). Deliberately below the published free-tier request
+# limits: enrichment prompts are token-heavy, so the TPM/TPD quota is usually hit
+# before the RPM one. Raise a value only after a run shows no 429s at the current one.
+DEFAULT_RPM = {'groq': 12.0, 'gemini': 10.0, 'nvidia': 20.0}
 
 DEFAULT_COOLDOWN_S = 60.0
 MAX_COOLDOWN_S = 15 * 60.0
@@ -89,6 +96,16 @@ class ProviderHealth:
     model_idx: int = 0          # index into ProviderConfig.models that last worked
     rate_limit_hits: int = 0
     retired_models: set = field(default_factory=set)
+    min_interval_s: float = 0.0  # 60 / RPM; 0 = unpaced
+    next_slot: float = 0.0       # monotonic time the next request may start
+
+    def slot_wait(self) -> float:
+        """Seconds to wait before this provider's next paced request slot."""
+        return max(0.0, self.next_slot - time.monotonic())
+
+    def reserve_slot(self) -> None:
+        now = time.monotonic()
+        self.next_slot = max(now, self.next_slot) + self.min_interval_s
 
     def available(self) -> bool:
         return not self.dead and time.monotonic() >= self.cooldown_until
@@ -105,6 +122,10 @@ class ProviderHealth:
 
     def succeeded(self) -> None:
         self.rate_limit_hits = 0
+
+
+def interval_for_rpm(rpm: float) -> float:
+    return 60.0 / rpm if rpm and rpm > 0 else 0.0
 
 
 def groq_provider(api_key: str, model: str) -> ProviderConfig:
@@ -152,6 +173,13 @@ async def call_chat_completion(
     headers = {'Authorization': f'Bearer {provider.api_key}', 'Content-Type': 'application/json'}
     async with httpx.AsyncClient(timeout=timeout_s) as client:
         resp = await client.post(provider.api_url, headers=headers, json=payload)
+        if resp.status_code == 400 and json_object and 'response_format' in payload and re.search(
+                r'response_format|json_object|json mode', resp.text, re.I):
+            # Some NIM-hosted models reject response_format. That is not a retired
+            # model, so retry once as plain text (the caller extracts JSON anyway)
+            # instead of letting the 400 write off the whole provider.
+            payload.pop('response_format')
+            resp = await client.post(provider.api_url, headers=headers, json=payload)
         if resp.status_code >= 400:
             raise ProviderHTTPError(provider.name, use_model, resp.status_code, _parse_retry_after(resp), resp.text)
         body = resp.json()
