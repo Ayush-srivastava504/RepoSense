@@ -11,6 +11,7 @@ import { BASE_URL } from '@/lib/jobs';
 import { TOOLS, getToolBySlug, getRelatedTools } from '@/app/tools/data';
 import { getRelatedArticles } from '@/app/tools/relatedArticles';
 import { getComparisonsForTool } from '@/app/tools/comparisons';
+import { TOOL_NOTES } from '@/lib/content/toolGuides';
 import {  breadcrumbSchema, faqSchema, howToSchema, softwareApplicationSchema, languageAlternates, } from '@/lib/structuredData';
 import TrackView from '@/app/components/TrackView';
 import { StepGrid, BulletGrid } from '@/app/components/FactGrid';
@@ -60,6 +61,7 @@ export default function ToolLandingPage({ params }: {
     const related = getRelatedTools(tool);
     const relatedArticles = getRelatedArticles(tool);
     const comparisons = getComparisonsForTool(tool.slug);
+    const note = TOOL_NOTES[tool.slug];
     const appSchema = softwareApplicationSchema({
         name: tool.name,
         description: tool.metaDescription,
@@ -88,12 +90,23 @@ export default function ToolLandingPage({ params }: {
       <div className="mx-auto w-full max-w-3xl px-3 py-10 sm:px-4 sm:py-14">
         <p className="eyebrow eyebrow-accent">// {tool.category.toLowerCase()}</p>
         <h1 className="display mt-2 text-3xl font-medium sm:text-4xl">{tool.name}</h1>
+        {note && (<p className="mt-1 text-sm italic" style={{ color: 'var(--indigo)' }}>{note.motto}</p>)}
         <p className="mt-3 text-lg" style={{ color: 'var(--ink-soft)' }}>{tool.tagline}</p>
         <p className="mt-4 leading-relaxed">{tool.heroDescription}</p>
 
         <Link href={tool.ctaHref} className="btn btn-primary mt-6 inline-block">
           {tool.ctaLabel}
         </Link>
+
+        {note && (<div className="panel mt-6 p-4 sm:p-5">
+            <p className="eyebrow eyebrow-accent">// have ready</p>
+            <ul className="mt-2 space-y-1 text-sm" style={{ color: 'var(--ink-soft)' }}>
+              {note.prepare.map((item) => (<li key={item} className="flex gap-2">
+                  <span aria-hidden="true">·</span>
+                  <span>{item}</span>
+                </li>))}
+            </ul>
+          </div>)}
 
         <section className="mt-10">
           <h2 className="display text-xl font-medium">Why students use it</h2>
@@ -108,6 +121,13 @@ export default function ToolLandingPage({ params }: {
             <StepGrid steps={tool.howItWorks}/>
           </div>
         </section>
+
+        {note && (<section className="mt-10">
+            <h2 className="display text-xl font-medium">Good to know before you start</h2>
+            <div className="mt-4 space-y-3">
+              {note.notes.map((paragraph, i) => (<p key={i} className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{paragraph}</p>))}
+            </div>
+          </section>)}
 
         <section className="mt-10">
           <h2 className="display text-xl font-medium">Frequently asked questions</h2>
@@ -157,6 +177,9 @@ export default function ToolLandingPage({ params }: {
 
         <section className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
           <h2 className="display text-xl font-medium">Explore more</h2>
+          <p className="mt-2 text-sm" style={{ color: 'var(--ink-soft)' }}>
+            Not sure what to use next? See <Link href="/tools" className="underline">all career tools</Link> in the order most students use them.
+          </p>
           <ul className="mt-4 grid gap-3 sm:grid-cols-3">
             <li>
               <Link href="/jobs" className="panel card-lift flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium">
