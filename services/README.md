@@ -1,6 +1,6 @@
 # RepoSense Backend Microservices (`services/`)
 
-The backend layer of RepoSense consists of high-performance Python services built on **FastAPI**, distributed background workers, scrapers, and localized ML/LLM microservices.
+The backend layer of RepoSense consists of high-performance Python services built on **FastAPI**, distributed background workers, scrapers, and localized ML/LLM microservices.s
 
 ---
 
