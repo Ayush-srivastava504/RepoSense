@@ -16,6 +16,8 @@ import PopularSkills from '@/app/components/PopularSkills';
 import { sortIndiaFirst, isIndiaJob } from '@/lib/jobPriority';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import SectionGuide from '@/app/components/SectionGuide';
+import { SECTION_GUIDES } from '@/lib/content/sectionGuides';
 import { getJobFacets } from '@/lib/facets';
 import { parseAdvancedFilters } from '@/lib/filterJobs';
 const JOBS_PER_PAGE = 12;
@@ -128,6 +130,7 @@ export default async function InternshipsPage({ searchParams, }: {
     };
 }) {
     const search = searchParams.search?.trim() || '';
+    const guideState = listPageState(searchParams);
     const locationFilter = parseLocationFilter(searchParams.loc);
     const groupFilter = parseGroupFilter(searchParams.role);
     const workModeFilter = parseWorkModeFilter(searchParams.mode);
@@ -229,6 +232,10 @@ export default async function InternshipsPage({ searchParams, }: {
             {totalJobs} found
           </span>
         </h1>
+        <p className="mt-1 text-sm italic" style={{ color: 'var(--indigo)' }}>
+          {SECTION_GUIDES['internships'].motto}
+        </p>
+
 
         <p className="mt-2 text-xs sm:text-sm" style={{
             color: 'var(--ink-soft)',
@@ -353,6 +360,8 @@ export default async function InternshipsPage({ searchParams, }: {
             </div>
           </div>
         </section>
+      
+        {guideState.page === 1 && !guideState.filtered && <SectionGuide section="internships"/>}
       </main>
     </div>);
 }

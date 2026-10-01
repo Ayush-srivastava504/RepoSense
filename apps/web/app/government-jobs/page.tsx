@@ -12,6 +12,8 @@ import JobCard from '@/app/components/JobCard';
 import FeaturedJobs from '@/app/components/FeaturedJobs';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import SectionGuide from '@/app/components/SectionGuide';
+import { SECTION_GUIDES } from '@/lib/content/sectionGuides';
 const JOBS_PER_PAGE = 12;
 export async function generateMetadata({ searchParams, }: {
     searchParams: Record<string, string | undefined>;
@@ -102,6 +104,7 @@ export default async function GovernmentJobsPage({ searchParams, }: {
     };
 }) {
     const search = searchParams.search?.trim() || '';
+    const guideState = listPageState(searchParams);
     const parsedPage = Number.parseInt(searchParams.page || '1', 10);
     const requestedPage = Number.isNaN(parsedPage) || parsedPage < 1
         ? 1
@@ -156,6 +159,10 @@ export default async function GovernmentJobsPage({ searchParams, }: {
         <h1 className="display mt-2 text-2xl sm:text-3xl font-medium">
           Government Jobs in India
         </h1>
+        <p className="mt-1 text-sm italic" style={{ color: 'var(--indigo)' }}>
+          {SECTION_GUIDES['government-jobs'].motto}
+        </p>
+
 
         <p className="mt-2 text-xs sm:text-sm" style={{
             color: 'var(--ink-soft)',
@@ -218,6 +225,8 @@ export default async function GovernmentJobsPage({ searchParams, }: {
                 : 'No government jobs are available right now. Please check again later.'}
             </p>
           </div>)}
+      
+        {guideState.page === 1 && !guideState.filtered && <SectionGuide section="government-jobs"/>}
       </main>
     </div>);
 }
