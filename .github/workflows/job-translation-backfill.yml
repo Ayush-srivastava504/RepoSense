@@ -1,0 +1,71 @@
+# Locale-aware job content backfill (IMPLEMENTATION_PLAN.md §7,
+# migrations/024_job_translations.sql) via
+# services/api/scripts/enrich_all_content.py --target translations.
+#
+# Same SSH/EC2 pattern as the other scheduled enrichment workflows. Runs
+# after job-content-enrichment.yml (04:00, ~45 min budget incl. headroom)
+# so each day's newly-enriched jobs are candidates the same night, and
+# before phase-f-priority-index.yml's first run at 05:00 — but translation
+# isn't on the critical path for indexing, so a same-day catch-up isn't
+# required if the 04:00 job overruns; whatever wasn't translated today is
+# still a candidate tomorrow.
+#
+# --target translations always requires GROQ_API_KEY (no rule-based
+# fallback exists for translation) — exits 2 if it's missing, 3 if a run
+# attempted rows but translated none.
+#
+# Locale list (currently es + pt) lives in
+# services/api/src/services/translation_enrichment_service.py's
+# TRANSLATION_LOCALES — not a workflow input, since changing it changes
+# what the whole pipeline (worker + API + frontend hreflang) advertises,
+# not just this one run.
+
+name: Job translation backfill
+
+on:
+  schedule:
+    - cron: '15 6 * * *'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Max (job, locale) candidate pairs to process this run'
+        required: false
+        default: '400'
+      max_minutes:
+        description: 'Stop starting new rows after this many minutes'
+        required: false
+        default: '20'
+      delay:
+        description: 'Seconds between Groq calls (blank = whatever the api container is configured with)'
+        required: false
+        default: ''
+
+jobs:
+  translation-backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH in and run translation backfill
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          timeout: 60s
+          # 20 min budget + headroom for a row in flight + startup.
+          command_timeout: 35m
+          script_stop: true
+          script: |
+            set -e
+            cd /home/ec2-user/RepoSense
+            DELAY="${{ github.event.inputs.delay }}"
+            ENV_ARGS=""
+            if [ -n "$DELAY" ]; then
+              case "$DELAY" in (*[!0-9.]*) echo "delay must be a number" >&2; exit 1;; esac
+              ENV_ARGS="-e ENRICH_REQUEST_DELAY_S=$DELAY"
+            fi
+            docker compose -f infrastructure/docker/docker-compose.yml \
+              exec -T $ENV_ARGS api python scripts/enrich_all_content.py \
+              --target translations \
+              --max-runtime-minutes "${{ github.event.inputs.max_minutes || '20' }}" \
+              --limit "${{ github.event.inputs.limit || '400' }}"

@@ -1,53 +1,64 @@
+# Python
 __pycache__/
 *.py[cod]
-.venv/
+*.so
+.Python
 venv/
 env/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
 *.egg-info/
-build/
 dist/
+build/
 
+# Node
 node_modules/
-node_modules_old/
 .next/
 out/
-.turbo/
-.nx/
-npm-debug.log*
-yarn-debug.log*
-pnpm-debug.log*
+*.log
 
+# Environment
 .env
-.env.*
-!.env.example
+.env.local
+.env.production
 
+# IDE
 .vscode/
 .idea/
+*.swp
 
-.DS_Store
-Thumbs.db
-desktop.ini
+# Model files - DO NOT COMMIT (uses Hugging Face Hub instead)
+# Local model cache directory
+.model_cache/
 
-*.log
-logs/
-tmp/
-temp/
-.cache/
+# Large model file extensions
+*.gguf
+*.onnx
+*.bin
+*.pt
+*.pth
+*.pkl
 
+# Deprecated local model directories (use HF instead)
+services/api/models/
+services/api/neural-generator/models/
+services/models/
+models/
+
+# Database
+*.db
 *.sqlite
 *.sqlite3
-*.db
 
-docker-compose.override.yml
+# OS
+.DS_Store
+Thumbs.db
+__pycache__/
+.pyc
 
-*.pem
-*.key
-*.crt
-
-*.swp
-*.swo
+# Logs
+logs/
+*.log
+debug.log
+error.log
+# Generated files
+generated_resumes/
+readmework*.md

@@ -1,0 +1,98 @@
+# Category-scoped daily indexing cycle — one run per category (jobs,
+# internships, remote, government), each on its own schedule, each
+# selecting and pushing only that category's postings via
+# phase_f_priority_index_push.py --category (see that script's
+# CATEGORY_CONDITIONS for the exact jobs/internships/remote/government
+# split — government = is_government, internships = type='internship',
+# remote = is_remote and neither of those, jobs = everything else).
+#
+# This is deliberately separate from phase-f-priority-index.yml, which
+# keeps running several times a day across ALL categories at once (the
+# same-day "top up whatever newly cleared the bar" fast lane). This
+# workflow is the once-a-day, per-category cycle instead — it exists so
+# each category has an independent, inspectable daily run rather than
+# being folded into one combined push where a bad government-scraper day
+# is invisible inside an otherwise-healthy total.
+#
+# Crawling itself is NOT split by category here on purpose: the crawler
+# container (see infrastructure/docker/docker-compose.yml's `crawler`
+# service) runs one continuous combined crawl across every scraper,
+# because most scrapers (internshala, linkedin, naukri, company_portals,
+# the ATS boards, dorker, generic_boards) produce a mix of jobs AND
+# internships from the same source — job type is only known after
+# normalize_batch() runs, not before scraping. Splitting the crawl itself
+# by jobs-vs-internships would mean hitting those same rate-limited
+# sources twice a day for no benefit. Only remote (REMOTE_SOURCES) and
+# government (GOVERNMENT_SOURCES) are cleanly source-separable — see
+# crawler/src/processors/normalizer.py — and those are already inside the
+# one combined crawl too. What genuinely IS independent per category, and
+# is what this workflow scopes, is everything downstream of the crawl:
+# priority indexing push today, sitemap-cache rebuild once Phase 1's
+# sitemap_cache table lands (tracked separately).
+
+name: Category Daily Index Cycle
+
+on:
+  schedule:
+    # Staggered through the morning IST so the four runs never overlap
+    # and each shows up as its own distinct block in the Actions log:
+    #   06:00 UTC = 11:30 IST -> jobs (highest volume, goes first)
+    #   06:20 UTC = 11:50 IST -> internships
+    #   06:40 UTC = 12:10 IST -> remote
+    #   07:00 UTC = 12:30 IST -> government
+    - cron: '0 6 * * *'
+    - cron: '20 6 * * *'
+    - cron: '40 6 * * *'
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+    inputs:
+      category:
+        description: 'Category to run (required for manual runs)'
+        required: true
+        type: choice
+        options: [jobs, internships, remote, government]
+      cap:
+        description: 'Max postings to push this run (blank = that category default)'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Select + log only, no submissions (true/false)'
+        required: false
+        default: 'false'
+
+jobs:
+  jobs-category:
+    if: github.event.schedule == '0 6 * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.category == 'jobs')
+    uses: ./.github/workflows/_category-index-cycle-reusable.yml
+    with:
+      category: jobs
+      cap: ${{ github.event.inputs.cap }}
+      dry_run: ${{ github.event.inputs.dry_run == 'true' }}
+    secrets: inherit
+
+  internships-category:
+    if: github.event.schedule == '20 6 * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.category == 'internships')
+    uses: ./.github/workflows/_category-index-cycle-reusable.yml
+    with:
+      category: internships
+      cap: ${{ github.event.inputs.cap }}
+      dry_run: ${{ github.event.inputs.dry_run == 'true' }}
+    secrets: inherit
+
+  remote-category:
+    if: github.event.schedule == '40 6 * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.category == 'remote')
+    uses: ./.github/workflows/_category-index-cycle-reusable.yml
+    with:
+      category: remote
+      cap: ${{ github.event.inputs.cap }}
+      dry_run: ${{ github.event.inputs.dry_run == 'true' }}
+    secrets: inherit
+
+  government-category:
+    if: github.event.schedule == '0 7 * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.category == 'government')
+    uses: ./.github/workflows/_category-index-cycle-reusable.yml
+    with:
+      category: government
+      cap: ${{ github.event.inputs.cap }}
+      dry_run: ${{ github.event.inputs.dry_run == 'true' }}
+    secrets: inherit
