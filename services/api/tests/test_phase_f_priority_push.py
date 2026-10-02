@@ -93,3 +93,62 @@ def test_slug_truncates_long_base_and_keeps_id_suffix():
 @pytest.mark.parametrize('company,expected', [('Google', True), ('some-random-startup', False)])
 def test_top_company_list_is_case_insensitive_lookup(company, expected):
     assert (company.lower() in [c.lower() for c in ['google', 'stripe']]) == expected
+
+
+# --- Google quota (rolling 24h, shared across runs) --------------------------
+
+import asyncio
+
+
+def test_quota_remaining_is_budget_minus_used_and_never_negative():
+    assert phase_f.google_quota_remaining(180, 0) == 180
+    assert phase_f.google_quota_remaining(180, 150) == 30
+    assert phase_f.google_quota_remaining(180, 180) == 0
+    assert phase_f.google_quota_remaining(180, 400) == 0
+
+
+def test_google_quota_used_counts_from_the_log_table():
+    calls = []
+
+    class FakePool:
+        async def fetchval(self, sql, *args):
+            calls.append(sql)
+            return 123
+
+    assert asyncio.run(phase_f.google_quota_used(FakePool())) == 123
+    sql = calls[0]
+    assert "priority_index_log" in sql and "'google_indexing'" in sql
+    assert "24 hours" in sql          # rolling window, not per-run
+    assert "429" in sql               # rejected requests are not counted as used
+
+
+def test_google_quota_used_treats_null_as_zero():
+    class FakePool:
+        async def fetchval(self, sql, *args):
+            return None
+
+    assert asyncio.run(phase_f.google_quota_used(FakePool())) == 0
+
+
+def test_order_for_google_puts_top_companies_first_and_keeps_order_otherwise():
+    jobs = [
+        {'id': 'a', 'is_top_company': False},
+        {'id': 'b', 'is_top_company': True},
+        {'id': 'c', 'is_top_company': False},
+        {'id': 'd', 'is_top_company': True},
+    ]
+    assert [j['id'] for j in phase_f.order_for_google(jobs)] == ['b', 'd', 'a', 'c']
+
+
+def test_order_for_google_skips_jobs_already_sent_to_google():
+    jobs = [
+        {'id': 'a', 'is_top_company': True, 'google_done': True},
+        {'id': 'b', 'is_top_company': False, 'google_done': False},
+        {'id': 'c', 'is_top_company': False},
+    ]
+    assert [j['id'] for j in phase_f.order_for_google(jobs)] == ['b', 'c']
+
+
+def test_stop_statuses_cover_quota_and_auth_errors():
+    assert {429, 401, 403} <= phase_f.GOOGLE_STOP_STATUSES
+    assert 200 not in phase_f.GOOGLE_STOP_STATUSES

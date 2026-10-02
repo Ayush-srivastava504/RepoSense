@@ -92,3 +92,98 @@ def test_load_registry_survives_missing_table():
     assert asyncio.run(sb.load_registry(_Pool(boom=True))) == []
     assert asyncio.run(sb.load_registry(_Pool(rows=[{'slug': 'jobs', 'kind': 'job_cache', 'enabled': True}]))) == [
         {'slug': 'jobs', 'kind': 'job_cache', 'enabled': True}]
+
+
+# --- rebuild() lock: only one rebuild at a time -------------------------------
+
+import asyncio
+
+
+class _FakeConn:
+    def __init__(self, lock_results):
+        self._results = list(lock_results)
+        self.sql = []
+
+    async def fetchval(self, sql, *args):
+        self.sql.append(sql)
+        return self._results.pop(0) if self._results else True
+
+    async def execute(self, sql, *args):
+        self.sql.append(sql)
+
+
+class _FakePool:
+    def __init__(self, conn):
+        self._conn = conn
+
+    def acquire(self):
+        conn = self._conn
+
+        class _Ctx:
+            async def __aenter__(self_inner):
+                return conn
+
+            async def __aexit__(self_inner, *exc):
+                return False
+
+        return _Ctx()
+
+
+def _patch_inner(monkeypatch, sb, record):
+    async def fake_inner(pool, force=False):
+        record.append(force)
+        return {'urls': 1}
+
+    monkeypatch.setattr(sb, '_rebuild_locked', fake_inner)
+    monkeypatch.setattr(sb, 'LOCK_POLL_S', 0)
+
+
+def test_rebuild_takes_and_releases_the_lock(monkeypatch):
+    import services.sitemap_builder as sb
+    ran = []
+    _patch_inner(monkeypatch, sb, ran)
+    conn = _FakeConn([True])
+    assert asyncio.run(sb.rebuild(_FakePool(conn), force=True)) == {'urls': 1}
+    assert ran == [True]
+    assert any('pg_try_advisory_lock' in s for s in conn.sql)
+    assert any('pg_advisory_unlock' in s for s in conn.sql)
+
+
+def test_rebuild_waits_for_the_other_build_then_runs(monkeypatch):
+    import services.sitemap_builder as sb
+    ran = []
+    _patch_inner(monkeypatch, sb, ran)
+    conn = _FakeConn([False, False, True])   # busy twice, then free
+    assert asyncio.run(sb.rebuild(_FakePool(conn))) == {'urls': 1}
+    assert ran == [False]
+    assert sum('pg_try_advisory_lock' in s for s in conn.sql) == 3
+
+
+def test_rebuild_gives_up_if_lock_never_frees_and_does_not_unlock(monkeypatch):
+    import services.sitemap_builder as sb
+    ran = []
+    _patch_inner(monkeypatch, sb, ran)
+    conn = _FakeConn([False] * 1000)
+    try:
+        asyncio.run(sb.rebuild(_FakePool(conn), lock_wait_s=0))
+        raised = False
+    except RuntimeError as exc:
+        raised = 'another sitemap rebuild' in str(exc)
+    assert raised
+    assert ran == []                                    # never built
+    assert not any('pg_advisory_unlock' in s for s in conn.sql)  # never held it
+
+
+def test_lock_is_released_even_if_the_build_fails(monkeypatch):
+    import services.sitemap_builder as sb
+
+    async def boom(pool, force=False):
+        raise RuntimeError('refusing to shrink')
+
+    monkeypatch.setattr(sb, '_rebuild_locked', boom)
+    conn = _FakeConn([True])
+    try:
+        asyncio.run(sb.rebuild(_FakePool(conn)))
+    except RuntimeError:
+        pass
+    assert any('pg_advisory_unlock' in s for s in conn.sql)

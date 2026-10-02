@@ -59,7 +59,16 @@
 #   GOOGLE_INDEXING_SERVICE_ACCOUNT_JSON            (inline JSON, or a path to a
 #                                                    service-account JSON file;
 #                                                    empty = skip Google leg)
-#   GOOGLE_INDEXING_DAILY_QUOT                   (default 180)
+#   GOOGLE_INDEXING_DAILY_QUOTA                     (default 180). Enforced as a ROLLING
+#                                                    24h budget across ALL runs (this
+#                                                    script, every workflow, every
+#                                                    category) by counting today's
+#                                                    google_indexing rows in
+#                                                    priority_index_log -- NOT per run.
+#                                                    The Google leg also stops at once
+#                                                    on HTTP 429 (quota) or 401/403
+#                                                    (auth), instead of retrying every
+#                                                    remaining URL.
 
 import argparse
 import asyncio
@@ -143,7 +152,8 @@ def canonical_url(job: Dict) -> str:
 
 _SELECT_COLUMNS = (
     "id, title, company, location, salary, stipend, type, is_remote, "
-    "is_government, confidence_score"
+    "is_government, confidence_score, "
+    "(google_indexing_submitted_at IS NOT NULL) AS google_done"
 )
 
 CATEGORY_CONDITIONS = {
@@ -284,6 +294,50 @@ def submit_google_indexing(
         return False, 0, str(exc)
 
 
+# --- Google quota ------------------------------------------------------------
+#
+# Google's Indexing API default is 200 publish requests/day per GCP project,
+# shared by every caller (this script runs from several workflows). The old
+# guard counted successes in a local variable that reset on every run, so it
+# never limited anything per day. The budget is now derived from
+# priority_index_log, so it holds across runs, workflows and categories.
+#
+# Rolling 24h rather than "since midnight": Google resets on its own clock
+# (Pacific time), which we don't want to depend on, and a rolling window can
+# only be stricter than the real limit.
+#
+# Every attempt that got an HTTP response counts, success or not (status_code
+# 0 = network error, never reached Google), except 429, which Google rejected
+# without serving it.
+
+# Statuses that mean "every remaining URL this run will fail the same way".
+GOOGLE_STOP_STATUSES = {429, 401, 403}
+
+
+async def google_quota_used(pool) -> int:
+    return int(await pool.fetchval(
+        """
+        SELECT COUNT(*) FROM priority_index_log
+        WHERE target = 'google_indexing'
+          AND submitted_at > now() - interval '24 hours'
+          AND COALESCE(status_code, 0) NOT IN (0, 429)
+        """
+    ) or 0)
+
+
+def google_quota_remaining(quota: int, used: int) -> int:
+    return max(0, int(quota) - int(used))
+
+
+def order_for_google(selected: List[Dict]) -> List[Dict]:
+    """Top companies first (stable otherwise), so a tight remaining budget is
+    spent on the listings most worth it. Skips jobs already pushed to Google
+    (e.g. IndexNow failed earlier but Google succeeded), which previously got
+    submitted again and burned quota twice."""
+    pending = [j for j in selected if not j.get('google_done')]
+    return sorted(pending, key=lambda j: not j.get('is_top_company'))
+
+
 # --- DB writeback ------------------------------------------------------------
 
 async def mark_submitted(pool, job_id: str, column: str) -> None:
@@ -409,29 +463,43 @@ async def main() -> None:
                 print('[phase_f] --skip-indexnow set — skipping IndexNow leg.')
 
             # --- Google Indexing API: one call per URL, quota-capped --------
+            # The budget is a rolling 24h total across ALL runs (see "Google
+            # quota" above), not a per-run counter.
             if google_sa is not None:
-                access_token = _get_google_access_token(client, google_sa)
-                if access_token is None:
-                    print('[phase_f] Could not obtain a Google access token — skipping Google leg this run.')
+                quota = settings.GOOGLE_INDEXING_DAILY_QUOTA
+                used = await google_quota_used(pool)
+                remaining = google_quota_remaining(quota, used)
+                print(f'[phase_f] Google quota: {used} used in last 24h of {quota} -> {remaining} left for this run.')
+                if remaining <= 0:
+                    print('[phase_f] Google daily quota exhausted - skipping Google leg this run.')
                 else:
-                    quota = settings.GOOGLE_INDEXING_DAILY_QUOTA
-                    pushed = 0
-                    for job in selected:
-                        if pushed >= quota:
-                            print(f'[phase_f] Reached GOOGLE_INDEXING_DAILY_QUOTA ({quota}) — stopping Google leg for this run.')
-                            break
-                        ok, status_code, snippet = submit_google_indexing(client, access_token, job['url'])
-                        _log_row('google_indexing', ok, job['url'], job['title'], job['company'])
-                        await log_submission(
-                            pool, job_id=job['id'], url=job['url'], target='google_indexing',
-                            is_top_company=bool(job.get('is_top_company')), job_type=job.get('type'),
-                            status_code=status_code, ok=ok, response_snippet=snippet,
-                        )
-                        if ok:
-                            await mark_submitted(pool, job['id'], 'google_indexing_submitted_at')
-                            pushed += 1
-                        time.sleep(REQUEST_DELAY_S)
-                    print(f'[phase_f] Google Indexing API: {pushed}/{len(selected)} succeeded this run.')
+                    access_token = _get_google_access_token(client, google_sa)
+                    if access_token is None:
+                        print('[phase_f] Could not obtain a Google access token — skipping Google leg this run.')
+                    else:
+                        google_jobs = order_for_google(selected)
+                        pushed = 0
+                        attempted = 0
+                        for job in google_jobs:
+                            if attempted >= remaining:
+                                print(f'[phase_f] Reached remaining Google quota ({remaining}) — stopping Google leg for this run.')
+                                break
+                            ok, status_code, snippet = submit_google_indexing(client, access_token, job['url'])
+                            attempted += 1
+                            _log_row('google_indexing', ok, job['url'], job['title'], job['company'])
+                            await log_submission(
+                                pool, job_id=job['id'], url=job['url'], target='google_indexing',
+                                is_top_company=bool(job.get('is_top_company')), job_type=job.get('type'),
+                                status_code=status_code, ok=ok, response_snippet=snippet,
+                            )
+                            if ok:
+                                await mark_submitted(pool, job['id'], 'google_indexing_submitted_at')
+                                pushed += 1
+                            elif status_code in GOOGLE_STOP_STATUSES:
+                                print(f'[phase_f] Google returned HTTP {status_code} — quota/auth problem, stopping Google leg: {snippet}')
+                                break
+                            time.sleep(REQUEST_DELAY_S)
+                        print(f'[phase_f] Google Indexing API: {pushed}/{len(google_jobs)} succeeded this run ({attempted} attempted).')
 
         print(f'[phase_f] Done — {len(selected)} listing(s) processed ({breakdown}).')
     finally:

@@ -11,8 +11,10 @@
 # rule could not work -- and any 429 or a `total` that drifted mid-fetch threw
 # IncompleteSitemapError -> 503. Reading the table directly removes both.
 
+import asyncio
 import os
 import re
+import time
 from datetime import datetime, timezone
 from typing import Iterable, Optional
 
@@ -189,7 +191,43 @@ def enabled_job_categories(registry: list) -> list:
     return [r['slug'] for r in registry if r['kind'] == 'job_cache' and r['enabled'] and r['slug'] in CATEGORIES]
 
 
-async def rebuild(pool, force: bool = False) -> dict:
+# Only one rebuild may run at a time. build-sitemaps.yml (hourly) and daily-pipeline.yml's
+# sitemap stage run the same script, and can overlap whenever enrichment overruns into :17.
+# Each rebuild is one transaction, so a reader never sees a half-written cache; what overlap
+# does cost is double work, and an edge case where the slower DELETE removes or keeps rows
+# based on a stale file list. A Postgres advisory lock serialises every caller (workflows,
+# manual runs, anything else) because they all share this database.
+#
+# Waiting (not skipping) is deliberate: the pipeline's sitemap stage must build AFTER
+# enrichment, so if an hourly build is mid-flight it should queue behind it and then run,
+# not be told "someone else is building" and push stale URLs to the indexers.
+#
+# The lock is session-level and lives on one dedicated connection, so it is released
+# automatically if the process dies. Postgres must be reached directly (not through a
+# transaction-mode pooler such as PgBouncer), which is how the EC2 box is set up.
+SITEMAP_LOCK_KEY = 7_028_001  # arbitrary app-wide id for pg_advisory_lock
+LOCK_WAIT_S = 180             # leaves headroom inside the 5 min command_timeout of both workflows
+LOCK_POLL_S = 2
+
+
+async def rebuild(pool, force: bool = False, lock_wait_s: float = LOCK_WAIT_S) -> dict:
+    async with pool.acquire() as lock_conn:
+        deadline = time.monotonic() + lock_wait_s
+        waited = False
+        while not await lock_conn.fetchval('SELECT pg_try_advisory_lock($1)', SITEMAP_LOCK_KEY):
+            if time.monotonic() >= deadline:
+                raise RuntimeError(f'another sitemap rebuild still running after {lock_wait_s:.0f}s; giving up')
+            if not waited:
+                print('sitemap_builder: another rebuild is running; waiting for it to finish')
+                waited = True
+            await asyncio.sleep(LOCK_POLL_S)
+        try:
+            return await _rebuild_locked(pool, force)
+        finally:
+            await lock_conn.execute('SELECT pg_advisory_unlock($1)', SITEMAP_LOCK_KEY)
+
+
+async def _rebuild_locked(pool, force: bool = False) -> dict:
     now = datetime.now(timezone.utc)
     rows = [dict(r) for r in await pool.fetch(JOB_SQL)]
     registry = await load_registry(pool)
