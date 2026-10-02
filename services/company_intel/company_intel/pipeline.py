@@ -1,10 +1,11 @@
 """seed -> crawl -> enrich. Each stage is idempotent and safe to re-run."""
 import hashlib
+import re
 from collections import defaultdict
 from typing import Optional
 
 from . import db
-from .domains import is_non_employer, normalise_domain, same_site, usable_domain
+from .domains import is_non_employer, normalise_domain, registrable, same_site, usable_domain
 from .extract import MIN_USEFUL_CHARS, content_hash, extract_page
 from .grounding import (MIN_SOURCE_CHARS, PROMPT_VERSION, SYSTEM_PROMPT, build_topic_input, parse_model_json,
                         user_prompt, validate_output)
@@ -16,15 +17,44 @@ MAX_URLS_PER_TOPIC = 2
 RECRAWL_AFTER_DAYS = 30
 
 
-def choose_domain(rows: list) -> Optional[str]:
-    """rows: [{'apply_domain','official','n'}] for ONE company -> best verified employer domain or None.
-    Only domains the trust scorer marked official count, and never a job board / ATS."""
+MIN_JOBS_UNVERIFIED = 3        # unverified domain must appear on at least this many of the company's jobs
+MIN_JOBS_NO_NAME_MATCH = 10    # ...or this many if the domain does not resemble the company name
+MAX_COMPANIES_PER_DOMAIN = 3   # a domain shared by more companies is an agency/portal, not an employer site
+
+
+def _name_matches_domain(name: Optional[str], domain: str) -> bool:
+    if not name:
+        return False
+    label = registrable(domain).split('.')[0]
+    key = re.sub(r'[^a-z0-9]+', '', name.lower())
+    first = re.sub(r'[^a-z0-9]+', '', (name.lower().split() or [''])[0])
+    if len(label) < 3:
+        return False
+    return label in key or (len(key) >= 3 and key in label) or (len(first) >= 3 and label.startswith(first))
+
+
+def choose_domain(rows: list, name: Optional[str] = None, domain_companies: Optional[dict] = None) -> Optional[str]:
+    """rows: [{'apply_domain','official','n'}] for ONE company -> best employer domain or None.
+    1) A domain the trust scorer marked official wins (most jobs first).
+    2) Otherwise fall back to the company's most common non-job-board domain, if it appears on
+       >= MIN_JOBS_UNVERIFIED jobs, is not shared by many companies (domain_companies: domain -> count of
+       distinct companies using it), and either looks like the company name or appears on >= MIN_JOBS_NO_NAME_MATCH jobs."""
     best, best_n = None, -1
     for r in rows:
         d = usable_domain(r['apply_domain'])
         if d and r['official'] and r['n'] > best_n:
             best, best_n = d, r['n']
-    return best
+    if best:
+        return best
+    for r in sorted(rows, key=lambda x: -x['n']):
+        d = usable_domain(r['apply_domain'])
+        if not d or r['n'] < MIN_JOBS_UNVERIFIED:
+            continue
+        if domain_companies is not None and domain_companies.get(d, 1) > MAX_COMPANIES_PER_DOMAIN:
+            continue
+        if _name_matches_domain(name, d) or r['n'] >= MIN_JOBS_NO_NAME_MATCH:
+            return d
+    return None
 
 
 async def seed(pool, limit: int = 5000) -> dict:
@@ -32,6 +62,13 @@ async def seed(pool, limit: int = 5000) -> dict:
     by_company = defaultdict(list)
     for r in rows:
         by_company[r['company']].append(dict(r))
+    domain_companies: dict = defaultdict(set)
+    for name, items in by_company.items():
+        for x in items:
+            d = usable_domain(x['apply_domain'])
+            if d:
+                domain_companies[d].add(name)
+    domain_companies = {d: len(c) for d, c in domain_companies.items()}
     ranked = sorted(by_company.items(), key=lambda kv: -sum(x['n'] for x in kv[1]))[:limit]
     taken: set = {r['slug'] for r in await pool.fetch('SELECT slug FROM company_entities')}
     counts = {'with_domain': 0, 'skipped': 0}
@@ -46,8 +83,8 @@ async def seed(pool, limit: int = 5000) -> dict:
             while not slug or slug in taken:
                 slug, i = f'{base}-{i}', i + 1
             taken.add(slug)
-        domain = choose_domain(items)
-        status, reason = ('pending', None) if domain else ('skipped', 'no verified official domain')
+        domain = choose_domain(items, name, domain_companies)
+        status, reason = ('pending', None) if domain else ('skipped', 'no usable employer domain')
         await pool.fetchval(db.UPSERT_ENTITY_SQL, slug, name, key, domain, status, reason)
         counts['with_domain' if domain else 'skipped'] += 1
     return counts

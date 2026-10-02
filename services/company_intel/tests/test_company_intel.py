@@ -26,12 +26,22 @@ def test_same_site_handles_multi_part_tlds():
     assert domains.same_site('www.google.com', 'google.com')
 
 
-def test_choose_domain_needs_official_and_non_aggregator():
+def test_choose_domain_prefers_official_and_skips_aggregators():
     rows = [{'apply_domain': 'linkedin.com', 'official': True, 'n': 90},
             {'apply_domain': 'acme.com', 'official': False, 'n': 50},
             {'apply_domain': 'acme.io', 'official': True, 'n': 3}]
     assert choose_domain(rows) == 'acme.io'
-    assert choose_domain(rows[:2]) is None
+    assert choose_domain(rows[:1]) is None
+
+
+def test_choose_domain_fallback_rules():
+    r = lambda d, n: [{'apply_domain': d, 'official': False, 'n': n}]
+    assert choose_domain(r('wipro.com', 3), 'Wipro') == 'wipro.com'            # name match, 3 jobs
+    assert choose_domain(r('wipro.com', 2), 'Wipro') is None                   # too few jobs
+    assert choose_domain(r('tcs.com', 5), 'Tata Consultancy Services') is None  # no name match, <10 jobs
+    assert choose_domain(r('tcs.com', 12), 'Tata Consultancy Services') == 'tcs.com'
+    assert choose_domain(r('staffing.com', 40), 'Acme', {'staffing.com': 9}) is None  # shared agency domain
+    assert choose_domain(r('greenhouse.io', 99), 'Acme') is None
 
 
 def test_slug_matches_web_and_name_key():

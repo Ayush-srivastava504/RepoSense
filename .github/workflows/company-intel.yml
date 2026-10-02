@@ -3,7 +3,7 @@
 # Weekly + manual. Separate image from the job crawler. Same SSH/EC2 pattern as company-enrichment.yml.
 #
 # ASSUMPTIONS to check before enabling the schedule: the repo checkout is at /home/ec2-user/RepoSense, the API's
-# env file (DATABASE_URL, GROQ_/GEMINI_/NVIDIA_ keys) is at services/api/.env, and Postgres is reachable on
+# env file (DATABASE_URL, GROQ_/GEMINI_/NVIDIA_ keys) is at infrastructure/docker/.env, and Postgres is reachable on
 # localhost:5432 from the host network. Migration 033 must be applied first (the API container runs migrations on deploy).
 
 name: Company intel crawl
@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: SSH in and run the company intel pipeline
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
@@ -39,12 +39,15 @@ jobs:
           port: 22
           timeout: 60s
           command_timeout: 60m
-          script_stop: true
           script: |
             set -e
             cd /home/ec2-user/RepoSense
             docker build -q -f services/company_intel/Dockerfile -t company-intel .
             ONLY="${{ github.event.inputs.only }}"
-            docker run --rm --network host --env-file services/api/.env company-intel \
+            ENV_FILE=infrastructure/docker/.env
+            # DATABASE_URL in that file points at the compose service name (@postgres), which only resolves
+            # inside the compose network. This container uses the host network, so rewrite it to localhost.
+            DB_URL="$(grep -m1 '^DATABASE_URL=' "$ENV_FILE" | cut -d= -f2- | tr -d '"' | sed 's/@postgres\b/@localhost/')"
+            docker run --rm --network host --env-file "$ENV_FILE" -e DATABASE_URL="$DB_URL" company-intel \
               python -m company_intel.run "${{ github.event.inputs.stage || 'all' }}" \
               --limit "${{ github.event.inputs.limit || '50' }}" ${ONLY:+--only "$ONLY"}

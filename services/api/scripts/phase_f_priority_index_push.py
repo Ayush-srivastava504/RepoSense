@@ -433,8 +433,7 @@ async def main() -> None:
                         time.sleep(REQUEST_DELAY_S)
                     print(f'[phase_f] Google Indexing API: {pushed}/{len(selected)} succeeded this run.')
 
-        print(f'[phase_f] Done — {len(selected)} listing(s) processed '
-              f'({job_count} job(s), {intern_count} internship(s)).')
+        print(f'[phase_f] Done — {len(selected)} listing(s) processed ({breakdown}).')
     finally:
         await pool.close()
 
