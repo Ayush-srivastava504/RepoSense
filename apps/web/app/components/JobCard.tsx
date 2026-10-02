@@ -7,6 +7,7 @@ import Link from 'next/link';
 import type { Job } from '@/lib/jobs';
 import { canonicalPathForJob } from '@/lib/slug';
 import { timeAgo } from '@/lib/timeAgo';
+import { jobPostedDate, formatPostedDate } from '@/lib/jobDates';
 import JobBadges from './JobBadges';
 import JobTags from './JobTags';
 import CompanyLogo from './CompanyLogo';
@@ -23,6 +24,8 @@ export default function JobCard({ job }: {
     basePath?: string;
 }) {
     const pay = job.salary || job.stipend;
+    // posted_at, else created_at. Omitted entirely when neither exists (no vague "Recently").
+    const posted = jobPostedDate(job);
     return (<Link href={canonicalPathForJob(job)} className="panel group flex h-full flex-col p-5 transition-all hover:-translate-y-1 hover:shadow-lg">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -72,7 +75,7 @@ export default function JobCard({ job }: {
           {pay && (<span className="font-medium" style={{ color: 'var(--ink)' }}>
               {pay}
             </span>)}
-          <span>{timeAgo(job.posted_at)}</span>
+          {posted && (<time dateTime={posted} title={formatPostedDate(posted)}>{timeAgo(posted)}</time>)}
         </div>
 
         <span className="btn btn-secondary px-3 py-1.5 text-xs transition-colors group-hover:border-[var(--indigo)] group-hover:text-[var(--indigo)]">

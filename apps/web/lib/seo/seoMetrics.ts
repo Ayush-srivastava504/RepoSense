@@ -33,6 +33,14 @@ export function estimatePixelWidth(text: string): number {
 
 const SERP_TITLE_MAX_PX = 580;
 
+// app/layout.tsx wraps every page <title> in `title.template = '%s | InternFlow'`, AFTER the page
+// has built its own title. A page that fills the whole 580px budget therefore ends up ~83px over
+// it in the SERP and Google cuts the end off (the location, then the brand). Pass
+// SERP_TITLE_PX_WITH_BRAND as `maxPx` to reserve room for the suffix. tests/internships-seo.test.ts
+// fails if the layout template and this constant drift apart.
+export const BRAND_TITLE_SUFFIX = ' | InternFlow';
+export const SERP_TITLE_PX_WITH_BRAND = SERP_TITLE_MAX_PX - estimatePixelWidth(BRAND_TITLE_SUFFIX);
+
 // Truncates at a word boundary so it never ends mid-word, then appends an
 // ellipsis (kept out of the width budget on purpose — Google adds its own
 // ellipsis on further truncation regardless, so we're not fighting that).
@@ -69,6 +77,8 @@ export function buildJobTitle(params: {
     type?: string;
     location?: string;
     isRemote?: boolean;
+    /** Pixel budget; defaults to the full SERP width. Use SERP_TITLE_PX_WITH_BRAND when the layout appends the brand. */
+    maxPx?: number;
 }): string {
     const segments = [`${params.title} at ${params.company}`];
     if (params.type) {
@@ -80,7 +90,7 @@ export function buildJobTitle(params: {
         segments.push(params.location.split(',')[0].trim());
     }
     const full = segments.join(' | ');
-    return truncateTitleForSerp(full);
+    return truncateTitleForSerp(full, params.maxPx);
 }
 
 // A job counts as stale for indexing purposes once its deadline (or, when

@@ -11,6 +11,7 @@ import Link from 'next/link';
 import type { Job } from '@/lib/jobs';
 import { getSimilarJobs } from '@/lib/jobs';
 import { companySlug, getCompanyIntel } from '@/lib/companies';
+import { jobPostedDate, formatPostedDate } from '@/lib/jobDates';
 import { matchSkillSlug } from '@/lib/skillMatch';
 import JobBadges from '@/app/components/JobBadges';
 import ApplyButton from '@/app/components/ApplyButton';
@@ -58,6 +59,8 @@ export default async function JobDetail({ job, canonicalPath, backHref, backLabe
 }) {
     const [similarJobs, companyIntel] = await Promise.all([getSimilarJobs(job.id, 6), getCompanyIntel(companySlug(job.company))]);
     const compensation = job.stipend || job.salary || null;
+    // posted_at, else created_at: same rule as the JobPosting datePosted (lib/jobDates.ts).
+    const postedDate = jobPostedDate(job);
     const deadlineTime = job.deadline
         ? new Date(job.deadline).getTime()
         : null;
@@ -71,10 +74,11 @@ export default async function JobDetail({ job, canonicalPath, backHref, backLabe
     return (<main className="mx-auto w-full max-w-3xl px-4 py-8 sm:py-10">
       <div className="flex flex-wrap items-center gap-2">
         <p className="eyebrow">
-          {job.source || 'unknown'} ·{' '}
-          {job.posted_at
-            ? new Date(job.posted_at).toLocaleDateString()
-            : 'Recent'}
+          {job.source || 'unknown'}
+          {postedDate && (<>
+              {' '}·{' '}
+              <time dateTime={postedDate}>Posted {formatPostedDate(postedDate)}</time>
+            </>)}
         </p>
 
         {job.type && (<span className="chip chip-muted text-[0.65rem]">

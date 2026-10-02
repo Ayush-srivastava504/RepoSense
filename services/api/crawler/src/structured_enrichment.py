@@ -6,11 +6,9 @@
 # (Education / Requirements / Key Skills / Notes), stored in the columns
 # added by migrations/021_structured_job_details.sql.
 #
-# Same two-path design as content_enrichment.py: a Groq LLM call when a
-# key is configured, and a deterministic rule-based fallback (ported from
-# enrichJobRuleBased in enricher.ts) when it isn't — so a job with no LLM
-# access still gets *something* better than nothing, rather than silently
-# skipping structured fields entirely. The rule-based path also attempts
+# LLM calls go through llm_client.py (pacing, 429 cooldowns, provider rotation). The deterministic
+# rule-based extractor (ported from enrichJobRuleBased in enricher.ts) is kept but is only written
+# when ENRICHMENT_ALLOW_FALLBACK=1; by default a job the LLM could not handle is left untouched. The rule-based path also attempts
 # structured_description: it never generates new prose, but if the raw
 # posting already has headings (Responsibilities:, Eligibility, etc.) it
 # re-emits that existing text under our four canonical section names.
@@ -22,17 +20,19 @@ import os
 import re
 import time
 from typing import Dict, List, Optional
-import requests
+from llm_client import LLMClient
 from utils import get_logger, get_pg_conn
 
 log = get_logger('structured_enrichment')
 
-GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
-GROQ_MODEL = os.getenv('GROQ_MODEL', 'openai/gpt-oss-120b')
-GROQ_API_KEY = os.getenv('GROQ_API_KEY', '')
 REQUEST_TIMEOUT_S = 30
-REQUEST_DELAY_S = 1.0
 BATCH_LIMIT = int(os.getenv('STRUCTURED_ENRICHMENT_BATCH_LIMIT', '250'))
+# Wall-clock budget for this stage. Rows not reached are left for the backfill.
+STAGE_MAX_SECONDS = float(os.getenv('ENRICHMENT_STAGE_MAX_SECONDS', '900'))
+# Default OFF: when no provider can answer, the row is left untouched (retried by the backfill)
+# instead of being written with rule-based guesses such as allowed_degrees=['DEGREE']. Set to 1 to
+# restore the old write-a-fallback behaviour.
+ALLOW_FALLBACK = os.getenv('ENRICHMENT_ALLOW_FALLBACK', '0').lower() in ('1', 'true', 'yes')
 
 ALLOWED_DEGREES = {'TENTH', 'INTER', 'DIPLOMA', 'DEGREE', 'PG'}
 ALLOWED_WORK_MODES = {'ONSITE', 'REMOTE', 'HYBRID'}
@@ -281,32 +281,25 @@ def _validate_and_clean(payload: Dict) -> Dict:
     return payload
 
 
-def extract_structured(title: str, company: str, location: str, description: str, job_type: str) -> Dict:
-    fallback = rule_based_extract(title, company, location, description, job_type)
-    if not GROQ_API_KEY:
-        return _validate_and_clean(fallback)
+def extract_structured(client: LLMClient, title: str, company: str, location: str, description: str, job_type: str) -> Optional[Dict]:
+    """AI-extracted fields, or None when no provider produced usable output (the caller decides
+    whether to write a rule-based fallback; see ALLOW_FALLBACK)."""
     user_prompt = '\n'.join([
         f'Title: {title}', f'Company: {company}', f'Location: {location or "not specified"}',
         f'Listing type: {job_type or "not specified"}',
         "Original description (raw scraped text, may be short or messy):",
         (description or '(no description provided)').strip()[:4000],
     ])
-    payload = {'model': GROQ_MODEL, 'messages': [{'role': 'system', 'content': SYSTEM_PROMPT}, {'role': 'user', 'content': user_prompt}], 'temperature': 0.2, 'response_format': {'type': 'json_object'}}
-    headers = {'Authorization': f'Bearer {GROQ_API_KEY}', 'Content-Type': 'application/json'}
-    try:
-        resp = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=REQUEST_TIMEOUT_S)
-        resp.raise_for_status()
-        body = resp.json()
-        content = body['choices'][0]['message']['content']
-    except (requests.RequestException, ValueError, KeyError, IndexError, TypeError) as exc:
-        log.warning('Groq structured-extraction request failed: %s — using rule-based fallback', exc)
-        return _validate_and_clean(fallback)
-    parsed = _extract_json(content)
-    if not parsed:
-        log.warning('Could not parse Groq structured JSON output — using rule-based fallback')
-        return _validate_and_clean(fallback)
-    parsed['model'] = GROQ_MODEL
-    return _validate_and_clean(parsed)
+    for _ in range(2):  # one re-ask on unparseable output; transport retries live in the client
+        content = client.complete(SYSTEM_PROMPT, user_prompt, temperature=0.2, timeout_s=REQUEST_TIMEOUT_S)
+        if content is None:
+            return None
+        parsed = _extract_json(content)
+        if isinstance(parsed, dict):
+            parsed['model'] = client.last_model or 'unknown'
+            return _validate_and_clean(parsed)
+        log.warning('Could not parse structured JSON output')
+    return None
 
 
 def _write_structured(job_id: str, fields: Dict) -> None:
@@ -323,40 +316,44 @@ def _write_structured(job_id: str, fields: Dict) -> None:
     cursor.close()
 
 
-def run_structured_enrichment_for_jobs(jobs: List[Dict], bulk: bool = False) -> Dict:
-    """Same thinnest-first priority as content_enrichment.py, same
-    ai/fallback honesty split. Intentionally a separate pass rather than
-    folded into the overview/keywords Groq call — keeps that already
-    battle-tested path untouched, at the cost of one extra Groq call per
-    job when a key is configured.
+def run_structured_enrichment_for_jobs(jobs: List[Dict], bulk: bool = False, client: Optional[LLMClient] = None) -> Dict:
+    """Thinnest-first, AI-only (see ALLOW_FALLBACK). Separate pass from the overview call so a
+    failure here never affects it.
 
-    bulk=False (default, unchanged): only jobs missing structured_description.
-    bulk=True: every job in the passed-in list is a candidate, same shape as
-    content_enrichment.py's bulk flag. The actual backlog-wide backfill (Phase B,
-    INDEXING_RECOVERY_PLAN.md) runs independently via
-    scripts/enrich_all_content.py --target structured --bulk, which queries the
-    DB directly rather than depending on index.py to hand it a jobs list — this
-    flag exists so the crawler pipeline itself can opt into the same behavior
-    if a future run ever wants to pass its own backlog query in.
+    bulk=False (default): only jobs missing structured_description.
+    bulk=True: every job in the list is a candidate. The backlog-wide backfill runs independently
+    via scripts/enrich_all_content.py --target structured --bulk.
     """
     candidates = [j for j in jobs if j.get('id')] if bulk else [
         j for j in jobs if j.get('id') and not j.get('structured_description')
     ]
     candidates.sort(key=lambda j: (len(str(j.get('description') or '')), j.get('quality_score', 100)))
     batch = candidates[:BATCH_LIMIT]
+    client = client or LLMClient(deadline=time.monotonic() + STAGE_MAX_SECONDS)
+    empty = {'enabled': client.enabled, 'attempted': 0, 'ai_enriched': 0, 'rule_based_fallback': 0, 'deferred': 0}
     if not batch:
-        return {'enabled': bool(GROQ_API_KEY), 'attempted': 0, 'ai_enriched': 0, 'rule_based_fallback': 0}
-    ai_count, fallback_count = 0, 0
+        return empty
+    if not client.enabled:
+        log.warning('No structured-enrichment provider configured — %d listing(s) left for the backfill.', len(batch))
+        return {**empty, 'deferred': len(batch)}
+    log.info('Structured enrichment: %d listing(s) (capped at %d, providers=%s, budget=%.0fs, fallback_writes=%s)', len(batch), BATCH_LIMIT, client.provider_names(), STAGE_MAX_SECONDS, ALLOW_FALLBACK)
+    ai_count = fallback_count = attempted = 0
     for job in batch:
+        if client.exhausted:
+            log.warning('Structured enrichment stopping early: providers rate-limited/unavailable beyond this stage\'s limits.')
+            break
+        attempted += 1
         try:
-            fields = extract_structured(title=job.get('title', ''), company=job.get('company', ''), location=job.get('location', ''), description=job.get('description', ''), job_type=job.get('type', ''))
-            _write_structured(job['id'], fields)
-            if fields.get('model') == 'rule-based-fallback':
-                fallback_count += 1
-            else:
+            args = dict(title=job.get('title', ''), company=job.get('company', ''), location=job.get('location', ''), description=job.get('description', ''), job_type=job.get('type', ''))
+            fields = extract_structured(client, **args)
+            if fields is not None:
+                _write_structured(job['id'], fields)
                 ai_count += 1
+            elif ALLOW_FALLBACK:
+                _write_structured(job['id'], _validate_and_clean(rule_based_extract(**args)))
+                fallback_count += 1
         except Exception:
             log.exception('Structured enrichment failed for job id=%s', job.get('id'))
-        time.sleep(REQUEST_DELAY_S)
-    log.info('Structured enrichment done: %d AI, %d rule-based fallback (of %d attempted)', ai_count, fallback_count, len(batch))
-    return {'enabled': True, 'attempted': len(batch), 'ai_enriched': ai_count, 'rule_based_fallback': fallback_count}
+    deferred = len(batch) - ai_count - fallback_count
+    log.info('Structured enrichment done: %d AI, %d rule-based fallback, %d deferred to the backfill (of %d)', ai_count, fallback_count, deferred, len(batch))
+    return {'enabled': True, 'attempted': attempted, 'ai_enriched': ai_count, 'rule_based_fallback': fallback_count, 'deferred': deferred}

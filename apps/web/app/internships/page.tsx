@@ -14,7 +14,7 @@ import { parseLocationFilter, parseGroupFilter, parseWorkModeFilter, } from '@/a
 import AdvancedJobFilters from '@/app/components/AdvancedJobFilters';
 import PopularSkills from '@/app/components/PopularSkills';
 import { sortIndiaFirst, isIndiaJob } from '@/lib/jobPriority';
-import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 import SectionGuide from '@/app/components/SectionGuide';
 import { SECTION_GUIDES } from '@/lib/content/sectionGuides';
@@ -25,13 +25,36 @@ export async function generateMetadata({ searchParams, }: {
     searchParams: Record<string, string | undefined>;
 }): Promise<Metadata> {
     const { page, filtered } = listPageState(searchParams);
+    const title = paginatedTitle('Internship Listings — India, Remote & Japan — Refreshed Daily', page);
+    const description = 'Browse the latest software engineering, sales, and finance internships in India, remote-first companies, and Japan. Filter by role and location. Updated daily.';
+    const canonical = paginatedCanonical(BASE_URL, '/internships', searchParams);
+    const ogImage = `${BASE_URL}/og-image.png`;
     return {
-        title: paginatedTitle('Internship Listings — India, Remote & Japan — Refreshed Daily', page),
-        description: 'Browse the latest software engineering, sales, and finance internships in India, remote-first companies, and Japan. Filter by role and location. Updated daily.',
+        title,
+        description,
         alternates: {
-            canonical: paginatedCanonical(BASE_URL, '/internships', searchParams),
+            canonical,
             // hreflang only for the plain first page; deeper/filtered views are not translated variants.
             ...(page === 1 && !filtered ? { languages: languageAlternates('/internships') } : {}),
+        },
+        // Without this the page inherits the ROOT layout's openGraph wholesale, so sharing /internships
+        // showed the homepage's og:title, og:description and og:url (= the homepage). Self-referencing
+        // og:url = the canonical, so ?page=N and filtered views agree with <link rel="canonical">.
+        openGraph: {
+            type: 'website',
+            siteName: 'InternFlow',
+            locale: 'en_IN',
+            url: canonical,
+            title,
+            description,
+            images: [{ url: ogImage, width: 1200, height: 630, alt: 'InternFlow — Internship listings in India, remote and Japan' }],
+        },
+        twitter: {
+            card: 'summary_large_image',
+            creator: '@internflow_in',
+            title,
+            description,
+            images: [ogImage],
         },
     };
 }
@@ -213,13 +236,13 @@ export default async function InternshipsPage({ searchParams, }: {
     ]);
     return (<div className="min-h-screen">
       <script type="application/ld+json" dangerouslySetInnerHTML={{
-          __html: JSON.stringify(crumbs),
+          __html: safeJsonLd(crumbs),
       }}/>
       <Breadcrumbs schema={crumbs}/>
 
       <main className="mx-auto max-w-6xl px-3 sm:px-4 py-8 sm:py-12">
         <script type="application/ld+json" dangerouslySetInnerHTML={{
-            __html: JSON.stringify(itemListSchema),
+            __html: safeJsonLd(itemListSchema),
         }}/>
 
         <p className="eyebrow eyebrow-accent text-xs sm:text-sm">

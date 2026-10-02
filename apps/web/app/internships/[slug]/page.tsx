@@ -10,7 +10,7 @@ import { BASE_URL } from '@/lib/jobs';
 import { buildJobFaq } from '@/lib/jobFaq';
 import { getLocalizedJob, localizedCanonicalPath, jobLanguageAlternates } from '@/lib/jobLocale';
 import {  jobPostingSchema, breadcrumbSchema, faqSchema, safeJsonLd } from '@/lib/structuredData';
-import { buildJobTitle, truncateDescription, isIndexableJob } from '@/lib/seo/seoMetrics';
+import { buildJobTitle, truncateDescription, isIndexableJob, SERP_TITLE_PX_WITH_BRAND } from '@/lib/seo/seoMetrics';
 import { jobOgImageUrl } from '@/lib/seo/ogImage';
 import JobDetail from '@/app/components/JobDetail';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -31,6 +31,8 @@ export async function generateMetadata({ params, }: {
         type: 'internship',
         location: job.location,
         isRemote: job.is_remote,
+        // layout.tsx appends ' | InternFlow' after this; reserve its width so the SERP title isn't cut off.
+        maxPx: SERP_TITLE_PX_WITH_BRAND,
     });
     const rawDescription = job.enriched_overview ||
         `Apply for the ${job.title} internship at ${job.company}${job.location ? ` in ${job.location}` : ''}. View eligibility, skills, stipend, and application details.`;
@@ -42,8 +44,12 @@ export async function generateMetadata({ params, }: {
             canonical: `${BASE_URL}${canonicalPath}`,
             languages: jobLanguageAlternates(canonicalPathForJob(job), job.translated_locales),
         },
+        // A page-level openGraph REPLACES the layout's (Next does not deep-merge it), so siteName and
+        // locale must be repeated here or og:site_name / og:locale disappear from every internship page.
         openGraph: {
             type: 'website',
+            siteName: 'InternFlow',
+            locale: 'en_IN',
             url: `${BASE_URL}${canonicalPath}`,
             title,
             description: truncateDescription(rawDescription),
@@ -51,6 +57,7 @@ export async function generateMetadata({ params, }: {
         },
         twitter: {
             card: 'summary_large_image',
+            creator: '@internflow_in',
             title,
             description: truncateDescription(rawDescription),
             images: [jobOgImageUrl(job)],
