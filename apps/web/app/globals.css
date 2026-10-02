@@ -872,17 +872,17 @@ html {
 }
 
 
-/* ─── Green mouse cursor ─────────────────────────────────
-   Vivid green (#22c55e) with a dark outline so it stays visible on light and dark
-   themes. To change the colour, replace %2322c55e (the URL-encoded hex) in both
-   data URIs below. Hotspots: arrow tip at 5,3; ring centre at 16,16.
+/* ─── Custom arrow cursor ────────────────────────────────
+   Cool indigo/violet arrow (#6366f1) with a dark navy outline so it stays visible on
+   light and dark themes. To change the colour, replace %236366f1 (the URL-encoded hex).
+   Hotspot: arrow tip at 5,3. Clickable elements use the native hand pointer.
    Text fields keep the I-beam and disabled controls keep not-allowed. */
 html {
-  cursor: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'><path d='M5 3 L5 22 L10 17.5 L13.5 25 L17 23.5 L13.6 16.2 L20.5 16 Z' fill='%2322c55e' stroke='%23052e16' stroke-width='1.6' stroke-linejoin='round'/></svg>") 5 3, auto;
+  cursor: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'><path d='M5 3 L5 22 L10 17.5 L13.5 25 L17 23.5 L13.6 16.2 L20.5 16 Z' fill='%236366f1' stroke='%231e1b4b' stroke-width='1.6' stroke-linejoin='round'/></svg>") 5 3, auto;
 }
 
 :is(a, button, summary, label[for], select, [role='button'], [role='tab'], [role='link'], .btn, .cursor-pointer):not(:disabled):not([aria-disabled='true']) {
-  cursor: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><circle cx='16' cy='16' r='11' fill='%2322c55e' fill-opacity='.28' stroke='%2322c55e' stroke-width='3'/><circle cx='16' cy='16' r='11' fill='none' stroke='%23052e16' stroke-width='1' stroke-opacity='.55'/><circle cx='16' cy='16' r='3' fill='%2322c55e' stroke='%23052e16' stroke-width='1'/></svg>") 16 16, pointer;
+  cursor: pointer;
 }
 
 input:not([type='checkbox'], [type='radio'], [type='submit'], [type='button'], [type='range']),
