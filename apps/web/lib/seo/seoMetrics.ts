@@ -102,12 +102,24 @@ export function buildJobTitle(params: {
 // opportunitySeo.ts. Shared across every job-detail route
 // (jobs/internships/remote-jobs/government-jobs [slug] pages) rather than
 // duplicated per-route so the grace period only ever needs updating once.
-export function isStaleForIndexing(job: { deadline?: string; posted_at?: string }): boolean {
-    const expiry = job.deadline
-        ? new Date(job.deadline).getTime()
-        : job.posted_at
-            ? new Date(job.posted_at).getTime() + 45 * 24 * 60 * 60 * 1000
-            : null;
+const DAY_MS = 24 * 60 * 60 * 1000;
+// Jobs that never got a posted_at (the scraper had no date) used to be immortal: no expiry was
+// computable, so they stayed indexable forever. created_at is the fallback clock, with a longer
+// 60-day window than the 45 days used for a real posted_at because created_at is only "when we first
+// saw it". Keep this in sync with STALE_GRACE_DAYS / STALE_NO_POSTED_DAYS in
+// services/api/src/services/sitemap_builder.py.
+export const STALE_GRACE_DAYS = 45;
+export const STALE_NO_POSTED_DAYS = 60;
+
+export function isStaleForIndexing(job: { deadline?: string; posted_at?: string; created_at?: string }): boolean {
+    let expiry: number | null = null;
+    if (job.deadline) {
+        expiry = new Date(job.deadline).getTime();
+    } else if (job.posted_at) {
+        expiry = new Date(job.posted_at).getTime() + STALE_GRACE_DAYS * DAY_MS;
+    } else if (job.created_at) {
+        expiry = new Date(job.created_at).getTime() + STALE_NO_POSTED_DAYS * DAY_MS;
+    }
     return expiry !== null && !Number.isNaN(expiry) && expiry < Date.now();
 }
 
@@ -131,6 +143,7 @@ export function isThinAndUnenriched(job: { is_thin?: boolean; enriched_overview?
 export function isIndexableJob(job: {
     deadline?: string;
     posted_at?: string;
+    created_at?: string;
     is_thin?: boolean;
     enriched_overview?: string;
 }): boolean {

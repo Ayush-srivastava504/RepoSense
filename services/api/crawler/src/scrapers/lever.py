@@ -6,6 +6,7 @@
 import time
 from typing import Dict, List
 from config import ATS_COMPANIES
+from ats_candidates import display_company_name
 from scrapers.ats_common import build_job, clean, dedupe, fetch_json
 from scrapers.base import BaseScraper
 from utils import make_session
@@ -36,7 +37,7 @@ class LeverScraper(BaseScraper):
         data = fetch_json(session, API_URL.format(token=token), params={'mode': 'json'})
         if not isinstance(data, list):
             return []
-        company_name = token.replace('-', ' ').replace('_', ' ').title()
+        company_name = display_company_name(token)
         out = []
         for entry in data:
             if not isinstance(entry, dict):

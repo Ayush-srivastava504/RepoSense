@@ -139,7 +139,7 @@ services:
         "python",
         "src/index.py",
         "--scrapers",
-        "internshala,linkedin,hiringcafe,unstop,cutshort,company_portals,remoteok,weworkremotely,remotive,employment_news,freejobalert,japan_jobs,japan_internships,europe_jobicy,europe_arbeitnow,europe_remotive,europe_weworkremotely,europe_remoteok,greenhouse,lever,ashby,smartrecruiters,workable,generic_boards",
+        "internshala,linkedin,hiringcafe,unstop,cutshort,company_portals,big_tech_careers,workday,remoteok,weworkremotely,remotive,employment_news,freejobalert,japan_jobs,japan_internships,europe_jobicy,europe_arbeitnow,europe_remotive,europe_weworkremotely,europe_remoteok,greenhouse,lever,ashby,smartrecruiters,workable,generic_boards",
         "--max-pages",
         "2"
       ]

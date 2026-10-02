@@ -6,6 +6,7 @@
 import time
 from typing import Dict, List
 from config import ATS_COMPANIES
+from ats_candidates import display_company_name
 from scrapers.ats_common import build_job, dedupe, fetch_json
 from scrapers.base import BaseScraper
 from utils import make_session
@@ -39,7 +40,7 @@ class GreenhouseScraper(BaseScraper):
         entries = data.get('jobs')
         if not isinstance(entries, list):
             return []
-        company_name = token.replace('-', ' ').replace('_', ' ').title()
+        company_name = display_company_name(token)
         out = []
         for entry in entries:
             if not isinstance(entry, dict):

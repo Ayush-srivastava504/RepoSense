@@ -101,6 +101,16 @@ def _load_scrapers() -> Dict:
         except ImportError as exc:
             log.warning('%s scraper unavailable: %s', _source_name, exc)
     try:
+        from scrapers.big_tech_careers import BigTechCareersScraper
+        registry['big_tech_careers'] = BigTechCareersScraper
+    except ImportError as exc:
+        log.warning('big_tech_careers scraper unavailable: %s', exc)
+    try:
+        from scrapers.workday import WorkdayScraper
+        registry['workday'] = WorkdayScraper
+    except ImportError as exc:
+        log.warning('workday scraper unavailable: %s', exc)
+    try:
         from scrapers.naukri import NaukriScraper
         registry['naukri'] = NaukriScraper
     except ImportError as exc:

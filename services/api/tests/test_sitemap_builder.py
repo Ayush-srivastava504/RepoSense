@@ -187,3 +187,12 @@ def test_lock_is_released_even_if_the_build_fails(monkeypatch):
     except RuntimeError:
         pass
     assert any('pg_advisory_unlock' in s for s in conn.sql)
+
+def test_undated_job_expires_on_created_at_after_60_days():
+    # No posted_at/deadline: created_at + 60d is the fallback clock (was: immortal, indexable forever).
+    assert not sb.is_stale_for_indexing(job(1, posted_at=None, created_at=NOW - timedelta(days=59)), NOW)
+    assert sb.is_stale_for_indexing(job(1, posted_at=None, created_at=NOW - timedelta(days=61)), NOW)
+    # Nothing to date it by at all: still not stale (unchanged behaviour).
+    assert not sb.is_stale_for_indexing(job(1, posted_at=None, created_at=None), NOW)
+    # A real posted_at keeps the 45-day rule.
+    assert sb.is_stale_for_indexing(job(1, posted_at=NOW - timedelta(days=46)), NOW)

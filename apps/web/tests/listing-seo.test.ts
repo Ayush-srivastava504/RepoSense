@@ -125,3 +125,15 @@ test('validThrough is published only for a real deadline, never invented', () =>
     const noDates: any = jobPostingSchema({ ...baseJob, posted_at: undefined }, 'https://intern-flow.in/jobs/x');
     assert.ok(!('validThrough' in noDates));
 });
+
+// ---------- created_at fallback for undated jobs ----------
+import { isStaleForIndexing, isIndexableJob } from '../lib/seo/seoMetrics';
+
+test('undated job goes stale 60 days after created_at, never before', () => {
+    const ago = (days: number) => new Date(Date.now() - days * 86400000).toISOString();
+    assert.equal(isStaleForIndexing({ created_at: ago(59) }), false);
+    assert.equal(isStaleForIndexing({ created_at: ago(61) }), true);
+    assert.equal(isStaleForIndexing({}), false);
+    assert.equal(isStaleForIndexing({ posted_at: ago(46), created_at: ago(1) }), true);
+    assert.equal(isIndexableJob({ created_at: ago(61), is_thin: false }), false);
+});

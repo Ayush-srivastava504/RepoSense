@@ -32,6 +32,7 @@ TIER_MID_DAYS = 90
 TIER_MID_MIN_QUALITY = 50
 TIER_OLD_MIN_QUALITY = 75
 STALE_GRACE_DAYS = 45
+STALE_NO_POSTED_DAYS = 60
 # Refuse to replace a healthy cache with something far smaller (bad deploy,
 # half-restored DB, enrichment table wiped). Override with --force.
 MIN_KEEP_RATIO = 0.5
@@ -86,15 +87,18 @@ def _aware(dt: Optional[datetime]) -> Optional[datetime]:
 
 
 def is_stale_for_indexing(job: dict, now: datetime) -> bool:
-    deadline, posted = _aware(job.get('deadline')), _aware(job.get('posted_at'))
+    """Deadline wins; else posted_at + 45d; else created_at + 60d (jobs the scraper never dated).
+    Must match isStaleForIndexing in apps/web/lib/seo/seoMetrics.ts."""
+    deadline = _aware(job.get('deadline'))
     if deadline is not None:
-        expiry = deadline
-    elif posted is not None:
-        expiry = posted.timestamp() + STALE_GRACE_DAYS * 86400
-        return expiry < now.timestamp()
-    else:
-        return False
-    return expiry < now
+        return deadline < now
+    posted = _aware(job.get('posted_at'))
+    if posted is not None:
+        return posted.timestamp() + STALE_GRACE_DAYS * 86400 < now.timestamp()
+    created = _aware(job.get('created_at'))
+    if created is not None:
+        return created.timestamp() + STALE_NO_POSTED_DAYS * 86400 < now.timestamp()
+    return False
 
 
 def is_indexable(job: dict, now: datetime) -> bool:
