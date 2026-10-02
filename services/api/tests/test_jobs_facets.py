@@ -168,3 +168,20 @@ class TestSlugSql:
         expr = jobs_module._slug_sql('x')
         assert "regexp_replace" in expr
         assert "'[^a-z0-9]+'" in expr
+
+
+# ---------- government rows must never leak into /jobs, /internships, /remote-jobs ----------
+def test_government_filter_is_source_aware_not_flag_only():
+    import routes.jobs as jobs_route
+    # A row crawled before migration 014 has is_government = FALSE but source = 'freejobalert'.
+    assert "source NOT IN" in jobs_route.NOT_GOVERNMENT_SQL and "is_government IS NOT TRUE" in jobs_route.NOT_GOVERNMENT_SQL
+    assert "source IN" in jobs_route.IS_GOVERNMENT_SQL
+    for src in ('freejobalert', 'employment_news'):
+        assert src in jobs_route.GOVERNMENT_SOURCES_SQL
+    # every row the API returns reports the effective flag, so canonical paths and detail routes agree
+    assert "AS is_government" in jobs_route.JOB_COLUMNS
+    # the three query builders use the shared predicates, not the raw flag
+    import inspect
+    src_code = inspect.getsource(jobs_route)
+    assert "conditions.append('is_government IS NOT TRUE')" not in src_code
+    assert "conditions.append('is_government = true')" not in src_code

@@ -16,7 +16,8 @@ def test_recent_order_has_unique_tiebreaker_and_nulls_last():
 
 
 def test_ranked_order_has_unique_tiebreaker_and_nulls_last():
-    assert re.search(r"DESC, posted_at DESC NULLS LAST, id DESC'", SRC)
+    # Sorts by COALESCE(posted_at, created_at) so undated rows rank by when we first saw them, not last forever.
+    assert re.search(r"DESC, COALESCE\(posted_at, created_at\) DESC NULLS LAST, id DESC'", SRC)
 
 
 def test_no_bare_posted_at_desc_order_by_left():

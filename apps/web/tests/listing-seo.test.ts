@@ -32,7 +32,9 @@ test('web fetchers forward exclude_government to the API (jobs, featured, facets
     assert.equal((read('lib/jobs.ts').match(/exclude_government/g) ?? []).length, 2);
     assert.ok(read('lib/facets.ts').includes("'exclude_government'"));
     const api = read('../../services/api/src/routes/jobs.py');
-    assert.ok((api.match(/is_government IS NOT TRUE/g) ?? []).length >= 3, 'list, featured and facet conditions must all exclude');
+    // The exclusion is source-aware (NOT_GOVERNMENT_SQL), not just the flag: pre-014 rows had is_government = FALSE.
+    assert.ok((api.match(/conditions\.append\(NOT_GOVERNMENT_SQL\)/g) ?? []).length >= 3, 'list, featured and facet conditions must all exclude');
+    assert.ok(/NOT_GOVERNMENT_SQL\s*=\s*f"\(is_government IS NOT TRUE AND source NOT IN/.test(api));
 });
 
 test('remote and government pages paginate server-side (no 500-row in-memory cap)', () => {

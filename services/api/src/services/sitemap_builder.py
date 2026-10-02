@@ -38,7 +38,8 @@ STALE_NO_POSTED_DAYS = 60
 MIN_KEEP_RATIO = 0.5
 
 JOB_SQL = '''
-SELECT id, title, company, location, salary, stipend, type, is_remote, is_government,
+SELECT id, title, company, location, salary, stipend, type, is_remote,
+       (is_government IS TRUE OR source IN ('freejobalert', 'employment_news', 'ssc', 'upsc')) AS is_government,
        deadline, posted_at, created_at, last_seen_at, is_thin, quality_score,
        (enriched_overview IS NOT NULL AND enriched_overview <> '') AS has_overview
 FROM jobs

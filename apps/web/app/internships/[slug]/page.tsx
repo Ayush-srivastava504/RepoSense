@@ -10,6 +10,7 @@ import { BASE_URL } from '@/lib/jobs';
 import { buildJobFaq } from '@/lib/jobFaq';
 import { getLocalizedJob, localizedCanonicalPath, jobLanguageAlternates } from '@/lib/jobLocale';
 import {  jobPostingSchema, breadcrumbSchema, faqSchema, safeJsonLd } from '@/lib/structuredData';
+import { pageOpenGraph } from '@/lib/seo/pageMeta';
 import { buildJobTitle, truncateDescription, isIndexableJob, SERP_TITLE_PX_WITH_BRAND } from '@/lib/seo/seoMetrics';
 import { jobOgImageUrl } from '@/lib/seo/ogImage';
 import JobDetail from '@/app/components/JobDetail';
@@ -44,24 +45,7 @@ export async function generateMetadata({ params, }: {
             canonical: `${BASE_URL}${canonicalPath}`,
             languages: jobLanguageAlternates(canonicalPathForJob(job), job.translated_locales),
         },
-        // A page-level openGraph REPLACES the layout's (Next does not deep-merge it), so siteName and
-        // locale must be repeated here or og:site_name / og:locale disappear from every internship page.
-        openGraph: {
-            type: 'website',
-            siteName: 'InternFlow',
-            locale: 'en_IN',
-            url: `${BASE_URL}${canonicalPath}`,
-            title,
-            description: truncateDescription(rawDescription),
-            images: [{ url: jobOgImageUrl(job), width: 1200, height: 630, alt: title }],
-        },
-        twitter: {
-            card: 'summary_large_image',
-            creator: '@internflow_in',
-            title,
-            description: truncateDescription(rawDescription),
-            images: [jobOgImageUrl(job)],
-        },
+        ...pageOpenGraph({ title, description: truncateDescription(rawDescription), url: `${BASE_URL}${canonicalPath}`, image: jobOgImageUrl(job), imageAlt: title }),
         ...(!isIndexableJob(job) ? { robots: { index: false, follow: true } } : {}),
     };
 }

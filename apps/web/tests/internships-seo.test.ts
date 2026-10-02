@@ -55,10 +55,13 @@ test('listing page sets its own openGraph + twitter via the shared helper (no lo
 });
 
 test('detail page keeps og:site_name / og:locale / twitter creator that a page-level openGraph would drop', () => {
+    // The internship detail route builds its openGraph/twitter through pageOpenGraph(), which sets all three.
     const src = read('app/internships/[slug]/page.tsx');
-    assert.ok(/siteName:\s*'InternFlow'/.test(src));
-    assert.ok(/locale:\s*'en_IN'/.test(src));
-    assert.ok(/creator:\s*'@internflow_in'/.test(src));
+    assert.ok(/pageOpenGraph\(/.test(src));
+    const helper = read('lib/seo/pageMeta.ts');
+    assert.ok(/siteName:\s*OG_SITE_NAME/.test(helper) && /OG_SITE_NAME\s*=\s*'InternFlow'/.test(helper));
+    assert.ok(/locale:\s*OG_LOCALE/.test(helper) && /OG_LOCALE\s*=\s*'en_IN'/.test(helper));
+    assert.ok(/creator:\s*TWITTER_CREATOR/.test(helper) && /TWITTER_CREATOR\s*=\s*'@internflow_in'/.test(helper));
 });
 
 // ---------- JSON-LD ----------

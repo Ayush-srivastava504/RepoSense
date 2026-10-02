@@ -10,8 +10,15 @@ import time
 from fastapi import APIRouter, HTTPException, Query
 from configs.db import get_db_pool
 router = APIRouter(prefix='/api/jobs', tags=['jobs'])
+# A row is government if it is flagged OR came from a government source. migration 014 added is_government
+# with DEFAULT FALSE and no backfill, so rows crawled before the flag existed (freejobalert / employment_news)
+# were is_government=false and leaked into /jobs and /internships. Keep this list equal to
+# GOVERNMENT_SOURCES in crawler/src/processors/normalizer.py. Migration 037 also backfills the flag.
+GOVERNMENT_SOURCES_SQL = "('freejobalert', 'employment_news', 'ssc', 'upsc')"
+IS_GOVERNMENT_SQL = f"(is_government IS TRUE OR source IN {GOVERNMENT_SOURCES_SQL})"
+NOT_GOVERNMENT_SQL = f"(is_government IS NOT TRUE AND source NOT IN {GOVERNMENT_SOURCES_SQL})"
 TOP_COMPANY_TIER = ['tcs', 'tata consultancy services', 'infosys', 'wipro', 'hcl', 'hcltech', 'cognizant', 'accenture', 'capgemini', 'tech mahindra', 'coforge', 'lti', 'ltimindtree', 'l&t infotech', 'mindtree', 'persistent systems', 'persistent', 'mphasis', 'zensar', 'zensar technologies', 'hexaware', 'hexaware technologies', 'cyient', 'niit technologies', 'niit', 'birlasoft', 'sonata software', 'happiest minds', 'tata elxsi', 'kpit', 'kpit technologies', 'virtusa', 'globant', 'publicis sapient', 'epam', 'epam systems', 'thoughtworks', 'newgen', 'newgen software', 'intellect design', 'firstsource', 'wns', 'wns global services', 'genpact', 'exl', 'exl service', 'concentrix', 'ttec', 'teleperformance', 'conduent', 'infosys bpm', 'tcs ion', 'quess corp', 'randstad', 'adecco', 'ibm', 'microsoft', 'google', 'alphabet', 'amazon', 'meta', 'facebook', 'apple', 'netflix', 'adobe', 'salesforce', 'oracle', 'sap', 'vmware', 'cisco', 'intel', 'nvidia', 'qualcomm', 'samsung', 'dell', 'hp', 'hewlett packard', 'lenovo', 'sony', 'lg', 'xiaomi', 'oneplus', 'ericsson', 'nokia', 'juniper networks', 'arista', 'f5', 'f5 networks', 'palo alto networks', 'crowdstrike', 'servicenow', 'workday', 'atlassian', 'slack', 'dropbox', 'snowflake', 'databricks', 'mongodb', 'confluent', 'elastic', 'twilio', 'stripe', 'paypal', 'square', 'block', 'uber', 'ola', 'ola cabs', 'swiggy', 'zomato', 'flipkart', 'myntra', 'paytm', 'phonepe', 'razorpay', 'cred', 'zepto', 'meesho', 'nykaa', 'policybazaar', 'freshworks', 'zoho', 'inmobi', 'browserstack', 'postman', 'chargebee', 'druva', 'mindtickle', 'cars24', 'urban company', 'dream11', 'groww', 'upstox', "byju's", 'byjus', 'unacademy', 'vedantu', 'upgrad', 'whitehat jr', 'physicswallah', 'lenskart', 'bigbasket', 'grofers', 'blinkit', 'dunzo', 'delhivery', 'shiprocket', 'sharechat', 'moj', 'dailyhunt', 'hike', 'gojek', 'deloitte', 'pwc', 'kpmg', 'ey', 'ernst & young', 'electronic arts', 'ea', 'mckinsey', 'mckinsey & company', 'bcg', 'boston consulting group', 'bain', 'bain & company', 'goldman sachs', 'jpmorgan', 'jp morgan', 'jpmorgan chase', 'morgan stanley', 'barclays', 'citi', 'citibank', 'citigroup', 'hsbc', 'deutsche bank', 'american express', 'amex', 'visa', 'mastercard', 'bank of america', 'ubs', 'nomura', 'wells fargo', 'standard chartered', 'credit suisse', 'state street', 'blackrock', 'fidelity', 'fidelity investments', 'd.e. shaw', 'de shaw', 'two sigma', 'optiver', 'citadel', 'jane street', 'reliance industries', 'reliance', 'jio', 'tata group', 'tata sons', 'mahindra', 'mahindra & mahindra', 'aditya birla group', 'aditya birla', 'bajaj', 'bajaj finserv', 'larsen & toubro', 'l&t', 'adani', 'adani group', 'itc', 'hindustan unilever', 'hul', 'asian paints', 'godrej', 'godrej group', 'maruti suzuki', 'tata motors', 'bosch', 'siemens', 'honeywell', 'ge', 'general electric', 'schneider electric', 'abb', 'airtel', 'bharti airtel', 'vodafone idea', 'vi', 'bsnl', 'juspay', 'cashfree', 'innovaccer', 'postman inc', 'yellow.ai', 'darwinbox', 'clevertap', 'hasura', 'rocketlane', 'zeta', 'amagi', 'gupshup', 'wingify', 'vwo', 'cure.fit', 'cult.fit', 'curefit', 'licious', 'rebel foods', 'eternal']
-JOB_COLUMNS = '\n    id,\n    title,\n    company,\n    description,\n    url,\n    source,\n    posted_at,\n    created_at,\n    location,\n    salary,\n    stipend,\n    type,\n    deadline,\n    confidence_score,\n    confidence_label,\n    apply_domain,\n    logo_domain,\n    is_official_domain,\n    is_remote,\n    is_government,\n    country,\n    department,\n    vacancies,\n    notification_number,\n    job_group,\n    last_seen_at,\n    enriched_overview,\n    enriched_keywords,\n    allowed_degrees,\n    allowed_courses,\n    allowed_specializations,\n    allowed_passout_years,\n    required_skills,\n    notes_highlights,\n    work_mode,\n    experience_min,\n    experience_max,\n    job_function,\n    structured_description,\n    is_thin,\n    quality_score,\n    content_tier,\n    content_table,\n    content_faq,\n    segment_key,\n    enriched_sections\n'
+JOB_COLUMNS = '\n    id,\n    title,\n    company,\n    description,\n    url,\n    source,\n    posted_at,\n    created_at,\n    location,\n    salary,\n    stipend,\n    type,\n    deadline,\n    confidence_score,\n    confidence_label,\n    apply_domain,\n    logo_domain,\n    is_official_domain,\n    is_remote,\n    (is_government IS TRUE OR source IN (\'freejobalert\', \'employment_news\', \'ssc\', \'upsc\')) AS is_government,\n    country,\n    department,\n    vacancies,\n    notification_number,\n    job_group,\n    last_seen_at,\n    enriched_overview,\n    enriched_keywords,\n    allowed_degrees,\n    allowed_courses,\n    allowed_specializations,\n    allowed_passout_years,\n    required_skills,\n    notes_highlights,\n    work_mode,\n    experience_min,\n    experience_max,\n    job_function,\n    structured_description,\n    is_thin,\n    quality_score,\n    content_tier,\n    content_table,\n    content_faq,\n    segment_key,\n    enriched_sections\n'
 BADGE_EXPRESSIONS = "\n    (COALESCE(posted_at, created_at) IS NOT NULL AND COALESCE(posted_at, created_at) > now() - interval '24 hours') AS is_new,\n    (lower(company) = ANY(:top_companies)) AS is_top_company,\n    (confidence_score >= 90 AND is_official_domain) AS is_verified_source,\n    (\n        deadline IS NOT NULL\n        AND deadline > now()\n        AND deadline < now() + interval '2 days'\n    ) AS is_hot,\n    (\n        COALESCE(posted_at, created_at) IS NOT NULL\n        AND COALESCE(posted_at, created_at) < now() - interval '30 days'\n    ) AS is_stale\n"
 RANKING_EXPRESSION = "\n    (\n        CASE WHEN lower(company) = ANY(:top_companies) THEN 40 ELSE 0 END\n        + CASE\n            WHEN COALESCE(posted_at, created_at) > now() - interval '24 hours' THEN 35\n            WHEN COALESCE(posted_at, created_at) > now() - interval '72 hours' THEN 20\n            WHEN COALESCE(posted_at, created_at) > now() - interval '7 days' THEN 8\n            WHEN COALESCE(posted_at, created_at) > now() - interval '30 days' THEN 0\n            ELSE -25\n          END\n        + (COALESCE(confidence_score, 0)::float / 100.0) * 25\n    )\n"
 
@@ -182,9 +189,9 @@ def _build_facet_scope_conditions(params: list, *, search: str | None, type: str
     if category == 'remote':
         conditions.append('is_remote = true')
     elif category == 'government':
-        conditions.append('is_government = true')
+        conditions.append(IS_GOVERNMENT_SQL)
     if exclude_government and category != 'government':
-        conditions.append('is_government IS NOT TRUE')
+        conditions.append(NOT_GOVERNMENT_SQL)
     if job_group:
         params.append(job_group)
         conditions.append(f'job_group = ${len(params)}')
@@ -280,9 +287,9 @@ async def get_jobs(exclude_government: bool=Query(default=False, description="Tr
     if category == 'remote':
         conditions.append('is_remote = true')
     elif category == 'government':
-        conditions.append('is_government = true')
+        conditions.append(IS_GOVERNMENT_SQL)
     if exclude_government and category != 'government':
-        conditions.append('is_government IS NOT TRUE')
+        conditions.append(NOT_GOVERNMENT_SQL)
     if job_group:
         params.append(job_group)
         conditions.append(f'job_group = ${len(params)}')
@@ -402,9 +409,9 @@ async def get_featured_jobs(exclude_government: bool=Query(default=False), limit
     if category == 'remote':
         conditions.append('is_remote = true')
     elif category == 'government':
-        conditions.append('is_government = true')
+        conditions.append(IS_GOVERNMENT_SQL)
     if exclude_government and category != 'government':
-        conditions.append('is_government IS NOT TRUE')
+        conditions.append(NOT_GOVERNMENT_SQL)
     if job_group:
         params.append(job_group)
         conditions.append(f'job_group = ${len(params)}')
@@ -578,7 +585,8 @@ async def get_gone_urls(since_days: int = Query(default=GONE_URLS_DEFAULT_SINCE_
         raise HTTPException(503, 'Database unavailable')
     rows = await pool.fetch(
         '''
-        SELECT id, title, company, location, salary, stipend, type, is_remote, is_government
+        SELECT id, title, company, location, salary, stipend, type, is_remote,
+               (is_government IS TRUE OR source IN ('freejobalert', 'employment_news', 'ssc', 'upsc')) AS is_government
         FROM jobs
         WHERE is_active = false
           AND deactivated_at > now() - ($1 * INTERVAL '1 day')

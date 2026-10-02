@@ -34,3 +34,10 @@ list held ~50 mostly-US boards (6 on Lever, none Indian). A company that is not 
 - Slugs are unverified guesses (no internet in the build sandbox). Run `cd services/api/crawler && python probe_boards.py` on EC2 to see which exist.
 - Companies on no public ATS (Deloitte, EY, KPMG, Accenture, Infosys, TCS, Zomato's own site) need their own scraper: see their network tab for the JSON API.
 - New jobs from these sources are thin until AI enrichment runs, so they show on list pages first and enter the sitemap after they get an overview.
+
+## Government jobs leaking into /jobs and /internships (Oct 2026)
+Cause: migration 014 added `is_government DEFAULT FALSE` and never backfilled it, so government rows crawled earlier were `false` and passed
+the `exclude_government` filter. Fix: the API now treats `source IN (freejobalert, employment_news, ssc, upsc)` as government too
+(`GOVERNMENT_SOURCES_SQL` in routes/jobs.py), returns that effective flag on every row (so `/government-jobs/[slug]` no longer 404s legacy rows
+and canonical paths are right), and `database/migrations/037_backfill_is_government.sql` fixes the stored data.
+The API change must be DEPLOYED (rebuild the api container on EC2); the Vercel frontend alone does nothing, because the filtering happens in the API.
