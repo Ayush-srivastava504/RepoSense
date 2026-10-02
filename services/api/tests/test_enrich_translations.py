@@ -54,7 +54,7 @@ def _args(**overrides):
 
 def test_translations_target_is_registered_and_not_in_all(mod):
     src = (SCRIPTS / 'enrich_all_content.py').read_text()
-    assert "choices=['jobs', 'structured', 'companies', 'translations', 'all']" in src
+    assert "choices=['jobs', 'structured', 'sections', 'companies', 'translations', 'all']" in src
     assert "args.target == 'translations'" in src
 
 
