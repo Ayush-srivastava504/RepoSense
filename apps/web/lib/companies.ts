@@ -50,14 +50,17 @@ export async function getCompanyBySlug(slug: string): Promise<Company | null> {
     const all = [...top.companies, ...mass_hire.companies, ...startup.companies];
     return all.find((c) => companySlug(c.company) === slug) ?? null;
 }
+// Throws on failure (see getJobsOrThrow) -- for sitemap routes that must not publish a silently shrunk list.
+export async function getCompaniesOrThrow(limitPerSection = 60): Promise<CompaniesResponse> {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/companies/?limit_per_section=${limitPerSection}`, { next: { revalidate: 3600 } });
+    if (!res.ok) {
+        throw new Error(`Companies API returned ${res.status}`);
+    }
+    return (await res.json()) as CompaniesResponse;
+}
 export async function getCompanies(limitPerSection = 60): Promise<CompaniesResponse> {
     try {
-        const res = await fetchWithTimeout(`${API_BASE_URL}/api/companies/?limit_per_section=${limitPerSection}`, { next: { revalidate: 3600 } });
-        if (!res.ok) {
-            console.error('Companies API returned', res.status);
-            return EMPTY_RESPONSE;
-        }
-        return (await res.json()) as CompaniesResponse;
+        return await getCompaniesOrThrow(limitPerSection);
     }
     catch (err) {
         console.error('Failed to fetch companies:', err);

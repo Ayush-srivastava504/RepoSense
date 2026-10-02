@@ -74,7 +74,7 @@ function normalizeHackathon(data: Hackathon): Hackathon {
         sources: parseStringArray(data.sources),
     };
 }
-export async function getHackathons(options: {
+type GetHackathonsOptions = {
     search?: string;
     mode?: string;
     country?: string;
@@ -82,8 +82,9 @@ export async function getHackathons(options: {
     isGlobal?: boolean;
     limit?: number;
     offset?: number;
-} = {}): Promise<Hackathon[]> {
-    try {
+};
+// Throws on failure (see getJobsOrThrow) -- for the hackathons sitemap, which must not publish a silently shrunk list.
+export async function getHackathonsOrThrow(options: GetHackathonsOptions = {}): Promise<Hackathon[]> {
         const params = new URLSearchParams({
             limit: String(options.limit ?? 20),
             offset: String(options.offset ?? 0),
@@ -108,11 +109,14 @@ export async function getHackathons(options: {
             next: { revalidate: 3600 },
         });
         if (!res.ok) {
-            console.error('Hackathons API returned', res.status, await res.text());
-            return [];
+            throw new Error(`Hackathons API returned ${res.status}`);
         }
         const data: HackathonsResponse = await res.json();
         return (data.items ?? []).map(normalizeHackathon);
+}
+export async function getHackathons(options: GetHackathonsOptions = {}): Promise<Hackathon[]> {
+    try {
+        return await getHackathonsOrThrow(options);
     }
     catch (err) {
         console.error('Failed to fetch hackathons:', err);

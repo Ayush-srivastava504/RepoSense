@@ -175,46 +175,49 @@ const EMPTY_FACETS: FacetSnapshot = {
 // companies themselves, so a selected "Skills: React" chip doesn't
 // shrink its own dropdown's option list down to just React (matches
 // routes/jobs.py's `_build_facet_scope_conditions` comment).
-export async function getJobFacets(options: {
+type GetJobFacetsOptions = {
     search?: string;
     type?: string;
     category?: 'remote' | 'government';
     job_group?: JobGroup;
     country?: string;
     work_mode?: 'ONSITE' | 'REMOTE' | 'HYBRID';
-} = {}): Promise<FacetSnapshot> {
+};
+// Throws on failure (see getJobsOrThrow) -- for the batches sitemap, which must not drop every year page on an API blip.
+export async function getJobFacetsOrThrow(options: GetJobFacetsOptions = {}): Promise<FacetSnapshot> {
     if (!process.env.API_BASE_URL) {
-        console.error('API_BASE_URL is not set');
-        return EMPTY_FACETS;
+        throw new Error('API_BASE_URL is not set');
     }
+    const params = new URLSearchParams();
+    if (options.search)
+        params.set('search', options.search);
+    if (options.type)
+        params.set('type', options.type);
+    if (options.category)
+        params.set('category', options.category);
+    if (options.job_group)
+        params.set('job_group', options.job_group);
+    if (options.country)
+        params.set('country', options.country);
+    if (options.work_mode)
+        params.set('work_mode', options.work_mode);
+    const qs = params.toString();
+    const res = await fetchWithTimeout(`${process.env.API_BASE_URL}/api/jobs/facets${qs ? `?${qs}` : ''}`, { next: { revalidate: 3600 } });
+    if (!res.ok) {
+        throw new Error(`Facets API returned ${res.status}`);
+    }
+    const data = await res.json();
+    return {
+        skills: Array.isArray(data.skills) ? data.skills : [],
+        courses: Array.isArray(data.courses) ? data.courses : [],
+        sources: Array.isArray(data.sources) ? data.sources : [],
+        batches: Array.isArray(data.batches) ? data.batches : [],
+        companies: Array.isArray(data.companies) ? data.companies : [],
+    };
+}
+export async function getJobFacets(options: GetJobFacetsOptions = {}): Promise<FacetSnapshot> {
     try {
-        const params = new URLSearchParams();
-        if (options.search)
-            params.set('search', options.search);
-        if (options.type)
-            params.set('type', options.type);
-        if (options.category)
-            params.set('category', options.category);
-        if (options.job_group)
-            params.set('job_group', options.job_group);
-        if (options.country)
-            params.set('country', options.country);
-        if (options.work_mode)
-            params.set('work_mode', options.work_mode);
-        const qs = params.toString();
-        const res = await fetchWithTimeout(`${process.env.API_BASE_URL}/api/jobs/facets${qs ? `?${qs}` : ''}`, { next: { revalidate: 3600 } });
-        if (!res.ok) {
-            console.error('Facets API returned', res.status);
-            return EMPTY_FACETS;
-        }
-        const data = await res.json();
-        return {
-            skills: Array.isArray(data.skills) ? data.skills : [],
-            courses: Array.isArray(data.courses) ? data.courses : [],
-            sources: Array.isArray(data.sources) ? data.sources : [],
-            batches: Array.isArray(data.batches) ? data.batches : [],
-            companies: Array.isArray(data.companies) ? data.companies : [],
-        };
+        return await getJobFacetsOrThrow(options);
     }
     catch (err) {
         console.error('Failed to fetch job facets:', err);

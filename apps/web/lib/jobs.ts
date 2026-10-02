@@ -202,15 +202,19 @@ function buildJobsParams(options: GetJobsOptions): URLSearchParams {
         params.set('india_first', 'true');
     return params;
 }
+// Same request as getJobs(), but a failed call THROWS instead of becoming []. Sitemap routes use this:
+// an empty array is indistinguishable from "no jobs", so a flaky API silently shrank the sitemap.
+export async function getJobsOrThrow(options: GetJobsOptions = {}): Promise<Job[]> {
+    const params = buildJobsParams(options);
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/jobs/?${params.toString()}`, { next: { revalidate: 3600 } });
+    if (!res.ok) {
+        throw new Error(`Jobs API returned ${res.status}`);
+    }
+    return coerceJobs(await res.json());
+}
 export async function getJobs(options: GetJobsOptions = {}): Promise<Job[]> {
     try {
-        const params = buildJobsParams(options);
-        const res = await fetchWithTimeout(`${API_BASE_URL}/api/jobs/?${params.toString()}`, { next: { revalidate: 3600 } });
-        if (!res.ok) {
-            console.error('Jobs API returned', res.status);
-            return [];
-        }
-        return coerceJobs(await res.json());
+        return await getJobsOrThrow(options);
     }
     catch (err) {
         console.error('Failed to fetch jobs:', err);

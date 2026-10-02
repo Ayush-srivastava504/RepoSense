@@ -3,7 +3,8 @@
 //
 //
 
-import { BASE_URL, getJobs, type Job } from '@/lib/jobs';
+import { BASE_URL, getJobsOrThrow, type Job } from '@/lib/jobs';
+import { sitemapOk, sitemapUnavailable } from '@/lib/sitemapResponse';
 import { CITIES, type CityDefinition } from '@/app/jobs-in/data';
 import { buildUrlsetXml } from '@/lib/sitemapXml';
 import { LOCATION_MIN_JOBS, belowHubThreshold } from '@/lib/seo/hubThresholds';
@@ -23,10 +24,18 @@ export async function GET() {
     // One fetch of both job types, then filter per-city in memory, rather
     // than one API round-trip per city — same shape as the per-city page
     // fetch, just batched for every city up front.
-    const [jobs, internships] = await Promise.all([
-        getJobs({ sort: 'ranked', limit: 500 }),
-        getJobs({ type: 'internship', sort: 'ranked', limit: 500 }),
-    ]);
+    // getJobsOrThrow: an API failure would otherwise count as 0 jobs and drop EVERY city hub from the sitemap.
+    let jobs: Job[];
+    let internships: Job[];
+    try {
+        [jobs, internships] = await Promise.all([
+            getJobsOrThrow({ sort: 'ranked', limit: 500 }),
+            getJobsOrThrow({ type: 'internship', sort: 'ranked', limit: 500 }),
+        ]);
+    }
+    catch (err) {
+        return sitemapUnavailable('locations', err);
+    }
     // PHASE_PLAN.md Phase 3 item 2: skip any city below LOCATION_MIN_JOBS,
     // matching the noindex gate app/jobs-in/[city]/page.tsx's
     // generateMetadata now applies — a sitemap entry for a noindexed page
@@ -45,5 +54,5 @@ export async function GET() {
                 priority: 0.7,
             })),
     ]);
-    return new Response(xml, { headers: { 'Content-Type': 'application/xml' } });
+    return sitemapOk(xml);
 }

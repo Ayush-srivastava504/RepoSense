@@ -1,5 +1,6 @@
 # Chained daily loop:  enrich -> sitemap rebuild -> index push (4 categories) -> gone-URL submit.
 # Beside the sitemap stage: enrich -> charts (nightly chart_stats aggregation, non-blocking).
+# After the job index pushes: index-routes (IndexNow for the 10 non-job sitemaps, non-blocking).
 # Each stage starts only when the previous one has finished, so IndexNow/Google are never
 # told about pages whose enrichment hasn't landed in sitemap_cache yet (previously these ran
 # by clock: enrich 04:00, sitemap hourly, index 06:00-07:00). Crawl stays a continuous
@@ -139,6 +140,30 @@ jobs:
       dry_run: ${{ github.event.inputs.dry_run == 'true' }}
       run_id: ${{ github.run_id }}
     secrets: inherit
+
+  index-routes:
+    # Push new/changed/removed URLs from the NON-job sitemaps (static, hackathons, tools, blog, skills, companies,
+    # locations, batches, resume, careers) to IndexNow. State lives in route_sitemap_urls (migration 032).
+    # A sitemap that answers 503 is skipped and retried next run. Runs beside `gone`; failure blocks nothing.
+    needs: [sitemap, index-government]
+    if: ${{ !cancelled() && needs.sitemap.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          timeout: 60s
+          command_timeout: 10m
+          script_stop: true
+          script: |
+            set -e
+            cd /home/ec2-user/RepoSense
+            docker compose -f infrastructure/docker/docker-compose.yml exec -T api \
+              python scripts/pipeline_stage.py --run-id "${{ github.run_id }}" --stage index:routes -- \
+              python scripts/push_route_sitemaps.py ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
 
   gone:
     # Tell IndexNow engines (Bing/Yandex/Naver/Seznam) about jobs deactivated in the last day.

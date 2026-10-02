@@ -8,14 +8,22 @@
 // one API call total instead of BATCHES.length.
 
 import { BASE_URL } from '@/lib/jobs';
-import { getJobFacets } from '@/lib/facets';
+import { getJobFacetsOrThrow } from '@/lib/facets';
+import { sitemapOk, sitemapUnavailable } from '@/lib/sitemapResponse';
 import { BATCHES } from '@/app/batch/data';
 import { buildUrlsetXml } from '@/lib/sitemapXml';
 import { BATCH_MIN_JOBS, belowHubThreshold } from '@/lib/seo/hubThresholds';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-    const facets = await getJobFacets();
+    // getJobFacetsOrThrow: an API failure would otherwise count every year as 0 jobs and drop all batch pages.
+    let facets: Awaited<ReturnType<typeof getJobFacetsOrThrow>>;
+    try {
+        facets = await getJobFacetsOrThrow();
+    }
+    catch (err) {
+        return sitemapUnavailable('batches', err);
+    }
     const countByYear = new Map(facets.batches.map((b) => [b.value, b.count]));
     // PHASE_PLAN.md Phase 3 item 2: skip any batch year below
     // BATCH_MIN_JOBS, matching the noindex gate
@@ -32,5 +40,5 @@ export async function GET() {
                 priority: 0.7,
             })),
     ]);
-    return new Response(xml, { headers: { 'Content-Type': 'application/xml' } });
+    return sitemapOk(xml);
 }

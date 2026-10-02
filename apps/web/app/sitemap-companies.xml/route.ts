@@ -4,21 +4,21 @@
 //
 
 import { BASE_URL } from '@/lib/jobs';
-import { getCompanies, companySlug } from '@/lib/companies';
+import { getCompaniesOrThrow, companySlug } from '@/lib/companies';
+import { sitemapOk, sitemapUnavailable } from '@/lib/sitemapResponse';
 import { buildUrlsetXml } from '@/lib/sitemapXml';
 export const dynamic = 'force-dynamic';
 export async function GET() {
-    let all: Awaited<ReturnType<typeof getCompanies>>['top']['companies'] = [];
+    let all: Awaited<ReturnType<typeof getCompaniesOrThrow>>['top']['companies'] = [];
     try {
         // 200 is the API's hard cap (limit_per_section, le=200); requesting more 422s.
-        const { top, mass_hire, startup } = await getCompanies(200);
+        const { top, mass_hire, startup } = await getCompaniesOrThrow(200);
         all = [...top.companies, ...mass_hire.companies, ...startup.companies];
     }
     catch (err) {
-        // Without this, a single failed upstream call throws out of the route
-        // handler and Next.js serves its HTML error page in place of the sitemap,
-        // which Search Console flags as invalid XML.
-        console.error('Failed to build companies sitemap:', err);
+        // A failed upstream call must not become a sitemap holding only /companies (search engines read
+        // that as "every company page was removed"); 503 + Retry-After makes them keep what they have.
+        return sitemapUnavailable('companies', err);
     }
     const xml = buildUrlsetXml([
         { loc: `${BASE_URL}/companies`, changefreq: 'daily', priority: 0.8 },
@@ -31,5 +31,5 @@ export async function GET() {
             priority: 0.6,
         })),
     ]);
-    return new Response(xml, { headers: { 'Content-Type': 'application/xml' } });
+    return sitemapOk(xml);
 }

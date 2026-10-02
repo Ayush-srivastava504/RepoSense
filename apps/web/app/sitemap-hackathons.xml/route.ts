@@ -3,7 +3,8 @@
 //
 //
 
-import { getHackathons, BASE_URL } from '@/lib/hackathons';
+import { getHackathonsOrThrow, BASE_URL } from '@/lib/hackathons';
+import { sitemapOk, sitemapUnavailable } from '@/lib/sitemapResponse';
 import { buildUrlsetXml, toLastmod } from '@/lib/sitemapXml';
 export const dynamic = 'force-dynamic';
 // Give this route more headroom on platforms that respect it (e.g. Vercel Pro).
@@ -12,7 +13,7 @@ export const maxDuration = 60;
 const PAGE_SIZE = 50;
 const MAX_PAGES = 20;
 export async function GET() {
-    let hackathons: Awaited<ReturnType<typeof getHackathons>> = [];
+    let hackathons: Awaited<ReturnType<typeof getHackathonsOrThrow>> = [];
     try {
         // Fetch pages in small concurrent batches rather than either (a) fully
         // sequentially, which can exceed a serverless function's timeout and cut
@@ -31,23 +32,19 @@ export async function GET() {
                 { length: Math.min(BATCH_CONCURRENCY, MAX_PAGES - batchStart) },
                 (_, i) => batchStart + i
             );
-            const results = await Promise.allSettled(
-                batchPages.map((page) => getHackathons({ limit: PAGE_SIZE, offset: page * PAGE_SIZE }))
+            // Promise.all: any failed page rejects -> 503 below. A partial list would be a silent shrink.
+            const results = await Promise.all(
+                batchPages.map((page) => getHackathonsOrThrow({ limit: PAGE_SIZE, offset: page * PAGE_SIZE }))
             );
-            for (const result of results) {
-                // Assemble in order and stop at the first failed or short page, so we
-                // never splice in a later page while silently skipping a failed earlier
-                // one and leaving a gap in the sitemap.
-                if (result.status !== 'fulfilled')
-                    break outer;
-                hackathons = hackathons.concat(result.value);
-                if (result.value.length < PAGE_SIZE)
+            for (const items of results) {
+                hackathons = hackathons.concat(items);
+                if (items.length < PAGE_SIZE)
                     break outer;
             }
         }
     }
     catch (err) {
-        console.error('Failed to build hackathons sitemap:', err);
+        return sitemapUnavailable('hackathons', err);
     }
     const xml = buildUrlsetXml(hackathons
         .filter((hackathon) => hackathon?.slug)
@@ -57,5 +54,5 @@ export async function GET() {
         changefreq: 'daily' as const,
         priority: 0.7,
     })));
-    return new Response(xml, { headers: { 'Content-Type': 'application/xml' } });
+    return sitemapOk(xml);
 }
