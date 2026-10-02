@@ -42,3 +42,8 @@ Everything not yet done on the ML-engineer-article SEO plan, and why.
 
 - **hreflang** — intentionally gated off until real per-locale translations
   exist; enabling it now would be premature, not an oversight.
+- **FAQ schema (company pages)** — Intentionally not shipped, and now not in the code either. Google limits FAQ
+  rich results to authoritative government and health sites, FAQ markup is not a ranking factor, and copying a
+  company's own Q&A adds little unique content. Session 13 removed the groundwork (verbatim Q&A extraction in
+  `company_intel/extract.py`, migration `034_company_faq.sql`, the `CompanyFaq` component and the FAQPage JSON-LD on
+  `/companies/[company]`); migration `035_drop_company_faq.sql` drops the `company_sources.faq` column where 034 had run.

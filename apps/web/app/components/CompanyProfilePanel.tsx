@@ -22,7 +22,8 @@ function formatDate(iso: string): string {
     return new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-export default function CompanyProfilePanel({ profile }: { profile: CompanyProfile | null }) {
+// hideOverview: the crawled "What {company} does" section is already on the page, so only the job-derived facts are shown.
+export default function CompanyProfilePanel({ profile, hideOverview = false }: { profile: CompanyProfile | null; hideOverview?: boolean }) {
     if (!profile || !profile.overview)
         return null;
 
@@ -33,11 +34,14 @@ export default function CompanyProfilePanel({ profile }: { profile: CompanyProfi
     const hasSkills = facts.skills && facts.skills.length > 0;
     const hasCourses = facts.courses && facts.courses.length > 0;
     const hasExperience = facts.experience !== null;
+    const hasFactBlocks = hasLocations || workModeEntries.length > 0 || hasFunctions || hasSkills || hasCourses || hasExperience;
+    if (hideOverview && !hasFactBlocks)
+        return null;
 
     return (<section className="panel mt-6 flex flex-col gap-4 p-5 text-sm">
       <div>
-        <h2 className="display text-lg font-medium">About {profile.company}</h2>
-        <p className="mt-2 leading-relaxed" style={{ color: 'var(--ink)' }}>{profile.overview}</p>
+        <h2 className="display text-lg font-medium">{hideOverview ? `${profile.company} hiring snapshot` : `About ${profile.company}`}</h2>
+        {!hideOverview && (<p className="mt-2 leading-relaxed" style={{ color: 'var(--ink)' }}>{profile.overview}</p>)}
       </div>
 
       {(hasLocations || workModeEntries.length > 0 || hasFunctions) && (<div className="grid gap-4 sm:grid-cols-3">

@@ -13,3 +13,8 @@ import { BASE_URL, type Job } from '../jobs';
 export function jobOgImageUrl(job: Pick<Job, 'id'>): string {
     return `${BASE_URL}/og/${job.id}.png`;
 }
+
+// Per-company share image, rendered by app/og/company/[filename]/route.tsx.
+export function companyOgImageUrl(slug: string): string {
+    return `${BASE_URL}/og/company/${slug}.png`;
+}

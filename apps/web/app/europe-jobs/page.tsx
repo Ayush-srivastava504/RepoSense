@@ -10,17 +10,27 @@ import { getJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import HubExplore from '@/app/components/HubExplore';
 import SectionGuide from '@/app/components/SectionGuide';
 import { HUB_GUIDES } from '@/lib/content/hubGuides';
+import { listPageState, paginatedCanonical, paginatedTitle } from '@/lib/seo/pagination';
 const JOBS_PER_PAGE = 12;
-export const metadata: Metadata = {
-    title: 'Europe Jobs: UK, Germany, Netherlands & Remote',
-    description: 'Full-time, contract, and part-time roles based in Europe or open to remote applicants, sourced from Jobicy, Arbeitnow, Remotive, and more — refreshed daily.',
-    alternates: {
-        canonical: `${BASE_URL}/europe-jobs`,
-        languages: languageAlternates('/europe-jobs'),
-    },
-};
+// Was a static `metadata` object: every ?page=N and ?search= view shared one title and canonicalised to
+// page 1. Same treatment as /remote-jobs now: "Page N" title suffix, self-canonical for deeper pages,
+// canonical to the plain URL for search views, hreflang only on the plain first page.
+export async function generateMetadata({ searchParams, }: {
+    searchParams: Record<string, string | undefined>;
+}): Promise<Metadata> {
+    const { page, filtered } = listPageState(searchParams);
+    return {
+        title: paginatedTitle('Europe Jobs: UK, Germany, Netherlands & Remote', page),
+        description: 'Full-time, contract, and part-time roles based in Europe or open to remote applicants, sourced from Jobicy, Arbeitnow, Remotive, and more — refreshed daily.',
+        alternates: {
+            canonical: paginatedCanonical(BASE_URL, '/europe-jobs', searchParams),
+            ...(page === 1 && !filtered ? { languages: languageAlternates('/europe-jobs') } : {}),
+        },
+    };
+}
 function Pagination({ currentPage, totalPages, search, }: {
     currentPage: number;
     totalPages: number;
@@ -173,6 +183,8 @@ export default async function EuropeJobsPage({ searchParams, }: {
             </p>
           </div>)}
       
+        {!search && <HubExplore currentSection="/europe-jobs" jobs={allJobs} companiesTitle="Companies hiring in Europe"/>}
+
         {!search && requestedPage === 1 && <SectionGuide section="europe-jobs"/>}
       </main>
     </div>);

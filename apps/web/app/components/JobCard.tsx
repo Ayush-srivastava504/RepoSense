@@ -42,7 +42,7 @@ export default function JobCard({ job }: {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        {job.location && (<span className="chip chip-muted text-[11px]">📍 {job.location}</span>)}
+        {job.location && (<span className="chip chip-muted text-[11px]">{job.location}</span>)}
 
         {job.type && <span className="chip chip-muted text-[11px]">{job.type}</span>}
 
@@ -64,7 +64,7 @@ export default function JobCard({ job }: {
       </p>
 
       {job.notes_highlights && (<p className="mt-2 text-[11px] font-medium" style={{ color: 'var(--rust)' }}>
-          ⚡ {job.notes_highlights}
+          {job.notes_highlights}
         </p>)}
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-3" style={{ borderColor: 'var(--line)' }}>

@@ -15,6 +15,7 @@ import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import JobCard from '@/app/components/JobCard';
 import TrackView from '@/app/components/TrackView';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import HubExplore from '@/app/components/HubExplore';
 import EntityNotes from '@/app/components/EntityNotes';
 import { RESUME_NOTES } from '@/lib/content/entityNotes';
 
@@ -59,7 +60,9 @@ export default async function ResumeForRolePage({ params, }: {
         notFound();
 
     const url = `${BASE_URL}/resume-for/${role.slug}`;
-    const jobs = await getJobs({ search: role.searchTerm, sort: 'ranked', limit: 6 });
+    // Fetch a few more than the 6 cards shown so the company links below reflect who is hiring for this role.
+    const openings = await getJobs({ search: role.searchTerm, sort: 'ranked', limit: 12 });
+    const jobs = openings.slice(0, 6);
     const related = getRelatedResumeRoles(role);
     const career = getCareerBySlug(role.slug);
 
@@ -136,6 +139,11 @@ export default async function ResumeForRolePage({ params, }: {
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {jobs.map((job) => (<JobCard key={job.id} job={job} basePath={`/${canonicalPathForJob(job).split('/')[1]}`}/>))}
             </div>
+            <p className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-sm">
+              <Link href={`/jobs?search=${encodeURIComponent(role.searchTerm)}`} className="underline">All {role.name} jobs</Link>
+              <Link href={`/internships?search=${encodeURIComponent(role.searchTerm)}`} className="underline">{role.name} internships</Link>
+              {career && (<Link href={`/careers/${career.slug}`} className="underline">{role.name} career guide</Link>)}
+            </p>
           </section>)}
 
         <EntityNotes note={RESUME_NOTES[role.slug]} idPrefix="resume"/>
@@ -151,6 +159,8 @@ export default async function ResumeForRolePage({ params, }: {
                 </li>))}
             </ul>
           </section>)}
+
+        <HubExplore jobs={openings} companiesTitle={`Companies hiring ${role.name}s`} resumeGuides={false} skillSlugs={role.relatedSkillSlugs} skillsTitle={`Skills to show on a ${role.name} resume`}/>
       </div>
     </main>);
 }

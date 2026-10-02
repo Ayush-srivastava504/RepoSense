@@ -50,10 +50,10 @@ const SOURCE_LABELS: Record<string, string> = {
     workable: 'Workable',
 };
 
-const WORK_MODE_LABELS: Record<string, { label: string; icon: string }> = {
-    ONSITE: { label: 'Onsite', icon: '🏢' },
-    REMOTE: { label: 'Remote', icon: '🏠' },
-    HYBRID: { label: 'Hybrid', icon: '🔀' },
+const WORK_MODE_LABELS: Record<string, { label: string }> = {
+    ONSITE: { label: 'Onsite' },
+    REMOTE: { label: 'Remote' },
+    HYBRID: { label: 'Hybrid' },
 };
 
 const DEGREE_LABELS: Record<string, string> = {
@@ -98,15 +98,15 @@ export default function JobTags({ job, variant = 'card', className = '', }: {
 
     return (<div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
       {workMode && (<span className="chip chip-rust text-[11px]">
-          {workMode.icon} {workMode.label}
+          {workMode.label}
         </span>)}
 
       {education && (<span className="chip chip-green text-[11px]">
-          🎓 {education}
+          {education}
         </span>)}
 
       {source && (<span className="chip chip-purple text-[11px]">
-          🔗 {source}
+          {source}
         </span>)}
 
       {job.job_function && (<span className="chip chip-indigo text-[11px]">

@@ -23,6 +23,7 @@ import { companySlug } from '@/lib/companies';
 import { getCityForLocation } from '@/app/jobs-in/data';
 import { SKILLS } from '@/app/skills/data';
 import { getBatchByYear } from '@/app/batch/data';
+import { matchCareer, matchResumeRole, regionHubForJob } from '@/lib/hubLinks';
 
 const ROLE_LABELS: Record<string, string> = {
     software: 'Software Engineer',
@@ -97,6 +98,21 @@ export default function ExploreRelated({ job, basePath = '/jobs' }: { job: Job; 
             label: `${ROLE_LABELS[job.job_group]} Jobs`,
             icon: 'role',
         });
+    }
+
+    // Region lists (Japan, Europe) have no detail pages of their own, so this is their only inbound link from a job.
+    const region = regionHubForJob(job);
+    if (region) {
+        links.push({ href: region.href, label: region.label, icon: 'location' });
+    }
+    // Resume guide and career hub, only when the job title really names that role.
+    const resumeRole = matchResumeRole(job.title);
+    if (resumeRole) {
+        links.push({ href: `/resume-for/${resumeRole.slug}`, label: `${resumeRole.name} Resume Guide`, icon: 'role' });
+    }
+    const career = matchCareer(job.title);
+    if (career) {
+        links.push({ href: `/careers/${career.slug}`, label: `${career.name} Career Path`, icon: 'role' });
     }
 
     if (links.length === 0) return null;

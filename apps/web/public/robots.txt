@@ -15,6 +15,7 @@ Allow: /government-jobs
 Allow: /japan-jobs
 Allow: /europe-jobs
 Allow: /companies
+Allow: /company-directory
 Allow: /hackathons
 Allow: /blog
 Allow: /blog/

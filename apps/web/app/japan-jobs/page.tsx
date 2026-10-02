@@ -10,6 +10,8 @@ import { getJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import { listPageState, paginatedTitle } from '@/lib/seo/pagination';
+import HubExplore from '@/app/components/HubExplore';
 import SectionGuide from '@/app/components/SectionGuide';
 import { HUB_GUIDES } from '@/lib/content/hubGuides';
 const JOBS_PER_PAGE = 12;
@@ -17,29 +19,37 @@ type JapanType = 'job' | 'internship';
 function parseType(raw?: string): JapanType {
     return raw === 'internship' ? 'internship' : 'job';
 }
+// `type=internship` is its own page (own canonical); only `search` and `page` count as filters here.
+// Deeper pages used to canonicalise to page 1 with an identical title; they now self-canonicalise with a
+// "Page N" title, and search views point at the plain URL.
 export async function generateMetadata({ searchParams, }: {
-    searchParams: {
-        type?: string;
-    };
+    searchParams: Record<string, string | undefined>;
 }): Promise<Metadata> {
-    const type = parseType(searchParams.type);
+    const { type: rawType, ...rest } = searchParams;
+    const type = parseType(rawType);
+    const { page, filtered } = listPageState(rest);
+    const query = new URLSearchParams();
+    if (type === 'internship')
+        query.set('type', 'internship');
+    const plainPath = `/japan-jobs${query.toString() ? `?${query.toString()}` : ''}`;
+    if (page > 1 && !filtered)
+        query.set('page', String(page));
+    const canonicalPath = `/japan-jobs${query.toString() ? `?${query.toString()}` : ''}`;
+    const alternates = {
+        canonical: `${BASE_URL}${canonicalPath}`,
+        ...(page === 1 && !filtered ? { languages: languageAlternates(plainPath) } : {}),
+    };
     if (type === 'internship') {
         return {
-            title: 'Japan Internships — Tokyo, Osaka & Remote-for-Japan',
+            title: paginatedTitle('Japan Internships — Tokyo, Osaka & Remote-for-Japan', page),
             description: 'Internships based in Japan or open to remote applicants based in Japan, sourced from Himalayas and Remote OK and refreshed daily.',
-            alternates: {
-                canonical: `${BASE_URL}/japan-jobs?type=internship`,
-                languages: languageAlternates('/japan-jobs?type=internship'),
-            },
+            alternates,
         };
     }
     return {
-        title: 'Japan Jobs — Tokyo, Osaka & Remote-for-Japan',
+        title: paginatedTitle('Japan Jobs — Tokyo, Osaka & Remote-for-Japan', page),
         description: 'Full-time, contract, and part-time roles based in Japan or open to remote applicants based in Japan, sourced from Himalayas and Remote OK and refreshed daily.',
-        alternates: {
-            canonical: `${BASE_URL}/japan-jobs`,
-            languages: languageAlternates('/japan-jobs'),
-        },
+        alternates,
     };
 }
 function TypeTabs({ type, search }: {
@@ -235,6 +245,8 @@ export default async function JapanJobsPage({ searchParams, }: {
             </p>
           </div>)}
       
+        {!search && <HubExplore currentSection="/japan-jobs" jobs={allJobs} companiesTitle="Companies hiring in Japan"/>}
+
         {!search && requestedPage === 1 && type === 'job' && <SectionGuide section="japan-jobs"/>}
       </main>
     </div>);

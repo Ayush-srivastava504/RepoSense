@@ -42,13 +42,68 @@ export function companySlug(name: string): string {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
 }
+export interface CompanyTopic {
+    topic_key: string;
+    title: string;
+    body: string;
+    bullets: string[];
+    source_urls: string[];
+    enriched_at: string;
+}
+export interface CompanyIntel {
+    slug: string;
+    name: string;
+    official_domain: string | null;
+    logo_domain: string | null;
+    last_crawled_at: string | null;
+    job_count: number;
+    last_posted_at: string | null;
+    topics: CompanyTopic[];
+}
+// GET /api/companies/by-slug/{slug}: crawled-and-enriched topics for one company. 404 (no entity yet)
+// and any failure resolve to null -- the page then renders from the jobs data alone.
+export async function getCompanyIntel(slug: string): Promise<CompanyIntel | null> {
+    try {
+        const res = await fetchWithTimeout(`${API_BASE_URL}/api/companies/by-slug/${encodeURIComponent(slug)}`, { next: { revalidate: 3600 } });
+        if (!res.ok)
+            return null;
+        return (await res.json()) as CompanyIntel;
+    }
+    catch (err) {
+        console.error('Failed to fetch company intel:', err);
+        return null;
+    }
+}
+// Companies with enough published topics to be indexable even with no live jobs.
+export async function getIntelSitemapEntries(): Promise<{ slug: string; name: string; updated_at: string | null }[]> {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/companies/intel/sitemap`, { next: { revalidate: 3600 } });
+    if (res.status === 404)
+        return []; // API not deployed with the intel endpoint yet: no intel-only companies, not a failure
+    if (!res.ok)
+        throw new Error(`Company intel sitemap API returned ${res.status}`);
+    return ((await res.json()) as { companies: { slug: string; name: string; updated_at: string | null }[] }).companies;
+}
 export async function getCompanyBySlug(slug: string): Promise<Company | null> {
-    // 200 is the API's hard cap (limit_per_section, le=200) — asking for more 422s and
-    // getCompanies() swallows that into an empty response, so this would silently 404
-    // every company page.
+    // 200 is the API's hard cap (limit_per_section, le=200) -- asking for more 422s and
+    // getCompanies() swallows that into an empty response. Companies past that cap (or with
+    // no live jobs) are resolved through their entity instead of 404ing.
     const { top, mass_hire, startup } = await getCompanies(200);
     const all = [...top.companies, ...mass_hire.companies, ...startup.companies];
-    return all.find((c) => companySlug(c.company) === slug) ?? null;
+    const found = all.find((c) => companySlug(c.company) === slug);
+    if (found)
+        return found;
+    const intel = await getCompanyIntel(slug);
+    if (!intel)
+        return null;
+    return {
+        company: intel.name,
+        job_count: intel.job_count,
+        is_official_domain: Boolean(intel.official_domain),
+        apply_domain: intel.official_domain ?? undefined,
+        logo_domain: intel.logo_domain ?? undefined,
+        last_posted_at: intel.last_posted_at ?? undefined,
+        tier: 'startup',
+    };
 }
 // Throws on failure (see getJobsOrThrow) -- for sitemap routes that must not publish a silently shrunk list.
 export async function getCompaniesOrThrow(limitPerSection = 60): Promise<CompaniesResponse> {
@@ -111,4 +166,36 @@ export async function getCompanyProfile(company: string): Promise<CompanyProfile
         console.error('Failed to fetch company profile:', err);
         return null;
     }
+}
+
+// A-Z company directory: gives every company (including those past the hub's per-tier cap) a crawlable link path.
+export interface DirectoryLetter {
+    letter: string;
+    count: number;
+}
+export interface CompanyDirectoryPage {
+    letters: DirectoryLetter[];
+    letter: string | null;
+    total: number;
+    companies: Company[];
+}
+export const DIRECTORY_PAGE_SIZE = 100;
+export async function getCompanyDirectory(letter?: string, page = 1): Promise<CompanyDirectoryPage | null> {
+    const qs = new URLSearchParams();
+    if (letter) {
+        qs.set('letter', letter);
+        qs.set('limit', String(DIRECTORY_PAGE_SIZE));
+        qs.set('offset', String((Math.max(1, page) - 1) * DIRECTORY_PAGE_SIZE));
+    }
+    try {
+        const res = await fetchWithTimeout(`${API_BASE_URL}/api/companies/directory?${qs.toString()}`, { next: { revalidate: 3600 } });
+        return res.ok ? (await res.json()) as CompanyDirectoryPage : null;
+    }
+    catch (err) {
+        console.error('Failed to fetch company directory:', err);
+        return null;
+    }
+}
+export function directoryLabel(letter: string): string {
+    return letter === '0-9' ? '0-9' : letter === 'other' ? 'Other' : letter.toUpperCase();
 }

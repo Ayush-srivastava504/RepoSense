@@ -59,6 +59,7 @@ from services.company_facts_service import (
     FACTS_MODEL, build_facts, build_keywords, render_overview,
 )
 from services.content_enrichment_service import ContentEnrichmentService, FALLBACK_MODEL
+from services.job_sections_service import JobSectionsService, has_enough_source
 from services.structured_enrichment_service import (
     FALLBACK_MODEL as STRUCTURED_FALLBACK_MODEL,
     StructuredEnrichmentService,
@@ -142,6 +143,67 @@ async def enrich_jobs(pool, args) -> dict:
         await asyncio.sleep(REQUEST_DELAY_S)
     print(f'[enrich_all_content] jobs: enriched {enriched}/{len(rows)} (ai={ai}, fallback={fallback})')
     return {'attempted': len(rows), 'enriched': enriched, 'ai': ai, 'fallback': fallback, 'stopped_early': stopped_early}
+
+
+SECTIONS_QUERY = """
+SELECT id, title, company, location, description, type, salary, stipend, deadline, work_mode, experience_min,
+       experience_max, allowed_degrees, allowed_courses, allowed_passout_years, required_skills, structured_description
+FROM jobs
+WHERE is_active = true AND enriched_sections IS NULL
+  AND length(coalesce(structured_description, description, '')) >= 250
+ORDER BY (lower(company) = ANY($2::text[])) DESC, posted_at DESC NULLS LAST
+LIMIT $1
+"""
+
+
+async def enrich_sections(pool, args) -> dict:
+    """Responsibilities / prep tips / common mistakes / ATS keywords / FAQ answers for job pages.
+    Top-company and newest listings first. No template fallback: a row the model cannot ground is left NULL
+    and retried next run."""
+    service = JobSectionsService()
+    try:
+        from routes.jobs import TOP_COMPANY_TIER
+        top = [c.lower() for c in TOP_COMPANY_TIER]
+    except Exception:  # priority ordering is a nicety; never block the run on it
+        top = []
+    rows = await pool.fetch(SECTIONS_QUERY, args.limit, top)
+    print(f'[enrich_all_content] sections: {len(rows)} candidate(s) (ai_enabled={service.enabled})')
+    done = skipped = 0
+    stopped_early = False
+    for row in rows:
+        if _out_of_time(args):
+            stopped_early = True
+            print(f'[enrich_all_content] sections: --max-runtime-minutes budget spent after {done} row(s); stopping')
+            break
+        if service.all_providers_dead:
+            print('[enrich_all_content] sections: every AI provider is unusable; stopping.')
+            break
+        wait = service.seconds_until_any_provider()
+        if wait > 0:
+            if args.deadline is not None:
+                wait = min(wait, max(0.0, args.deadline - time.monotonic()))
+            await asyncio.sleep(wait)
+            if _out_of_time(args):
+                stopped_early = True
+                break
+        job = dict(row)
+        if not has_enough_source(job):
+            skipped += 1
+            continue
+        result = await service.generate(job)
+        if result is None:
+            skipped += 1
+            continue
+        if not args.dry_run:
+            await pool.execute(
+                'UPDATE jobs SET enriched_sections = $2::jsonb, enriched_sections_model = $3, enriched_sections_at = now() WHERE id = $1',
+                row['id'], json.dumps(result.sections), result.model)
+        else:
+            print(json.dumps({'id': row['id'], 'sections': result.sections}, ensure_ascii=False)[:1200])
+        done += 1
+        await asyncio.sleep(REQUEST_DELAY_S)
+    print(f'[enrich_all_content] sections: wrote {done}/{len(rows)} (skipped/failed={skipped})')
+    return {'attempted': len(rows), 'enriched': done, 'skipped': skipped, 'stopped_early': stopped_early}
 
 
 _STRUCTURED_SET = """
@@ -414,7 +476,7 @@ async def enrich_translations(pool, args) -> dict:
 
 async def main():
     parser = argparse.ArgumentParser(description='Bulk/fallback content enrichment for jobs and internships')
-    parser.add_argument('--target', choices=['jobs', 'structured', 'companies', 'translations', 'all'], default='all')
+    parser.add_argument('--target', choices=['jobs', 'structured', 'sections', 'companies', 'translations', 'all'], default='all')
     parser.add_argument('--limit', type=int, default=BATCH_LIMIT_DEFAULT)
     parser.add_argument('--bulk', action='store_true', help='Process all rows, not just never-enriched ones — for backfilling every page at once')
     parser.add_argument('--no-fallback', action='store_true', help='jobs/structured: never store template or rule-based fallback content. Rows Groq cannot handle are left for the next run; exits 2 if GROQ_API_KEY is not set, and 3 if a target attempted rows but enriched none.')
@@ -426,6 +488,10 @@ async def main():
     if not settings.DATABASE_URL:
         print('[enrich_all_content] DATABASE_URL not set — cannot run.')
         sys.exit(1)
+    if args.target == 'sections' and not JobSectionsService().enabled:
+        # No rule-based substitute exists for grounded sections, so a missing key means nothing can be done.
+        print('[enrich_all_content] --target sections needs GROQ_API_KEY / GEMINI_API_KEY / NVIDIA_API_KEY, none is set in this environment — refusing to run.')
+        sys.exit(2)
     if args.target == 'translations' and not TranslationEnrichmentService().enabled:
         # Unlike jobs/structured, translation has no rule-based fallback — there is no
         # honest non-LLM substitute, so a missing key means "there is nothing this run
@@ -454,13 +520,15 @@ async def main():
             summary['jobs'] = await enrich_jobs(pool, args)
         if args.target in ('structured', 'all'):
             summary['structured'] = await enrich_structured(pool, args)
+        if args.target == 'sections':
+            summary['sections'] = await enrich_sections(pool, args)
         if args.target == 'companies':
             summary['companies'] = await enrich_companies(pool, args)
         if args.target == 'translations':
             summary['translations'] = await enrich_translations(pool, args)
         print(f'[enrich_all_content] done in {(time.monotonic() - started) / 60:.1f} min:', json.dumps(summary))
         if args.no_fallback:
-            stalled = [n for n in ('jobs', 'structured') if summary.get(n, {}).get('attempted') and not summary[n]['enriched'] and not summary[n].get('stopped_early')]
+            stalled = [n for n in ('jobs', 'structured', 'sections') if summary.get(n, {}).get('attempted') and not summary[n]['enriched'] and not summary[n].get('stopped_early')]
             if stalled:
                 # Every candidate failed (Groq outage, or the same rows failing every night at the
                 # head of the queue). Fail the run so it shows up instead of looking healthy.

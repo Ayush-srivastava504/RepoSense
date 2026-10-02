@@ -99,6 +99,15 @@ export interface Job {
         a: string;
     }[];
     segment_key?: string;
+    // AI-written, validator-grounded page sections (services/api/src/services/job_sections_service.py, migration 036).
+    // null/absent until `enrich_all_content.py --target sections` has processed the job -- the page just omits them.
+    enriched_sections?: {
+        responsibilities?: string[];
+        prep_tips?: string[];
+        common_mistakes?: string[];
+        ats_keywords?: string[];
+        faqs?: { q: string; a: string }[];
+    } | null;
     // Locale-aware content — migrations/024_job_translations.sql,
     // IMPLEMENTATION_PLAN.md §7. Always present (possibly []); lists every
     // locale this job actually has translated content for, regardless of

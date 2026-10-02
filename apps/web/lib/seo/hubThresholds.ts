@@ -38,3 +38,13 @@ export const BATCH_MIN_JOBS = 3;
 export function belowHubThreshold(count: number, min: number): boolean {
     return count < min;
 }
+
+// Company hubs: a company page is worth an index slot when it has real jobs OR a real
+// enriched profile. One job and no profile is a near-empty page.
+export const COMPANY_MIN_JOBS = 2;
+// Published crawled topics needed to index a company page on content alone (keep in sync
+// with MIN_PUBLISHED_TOPICS in services/company_intel/company_intel/topics.py and routes/companies.py).
+export const COMPANY_MIN_TOPICS = 5;
+export function companyIsThin(jobCount: number, hasProfile: boolean, publishedTopics = 0): boolean {
+    return !hasProfile && publishedTopics < COMPANY_MIN_TOPICS && belowHubThreshold(jobCount, COMPANY_MIN_JOBS);
+}

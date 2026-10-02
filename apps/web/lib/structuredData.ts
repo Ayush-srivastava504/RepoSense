@@ -4,6 +4,7 @@
 // shape, which is what Google's Rich Results tooling actually rewards.
 
 import { normalizeCountryCode } from './country';
+import { usableLogoDomain } from './logoDomain';
 import { hreflangLinks } from './hreflang';
 import { BASE_URL, type Job } from './jobs';
 export const ORG_NAME = 'InternFlow';
@@ -56,6 +57,21 @@ export function languageAlternates(path: string): Record<string, string> {
     // {} while HREFLANG_ENABLED is false (see lib/hreflang.ts): Next renders no
     // <link rel="alternate" hreflang> tags for an empty map.
     return Object.fromEntries(hreflangLinks(path).map((l) => [l.lang, l.href]));
+}
+// ItemList for a hub page: one entry per company actually rendered on that page, in render order.
+export function itemListSchema(name: string, items: { name: string; url: string }[], startPosition = 1) {
+    return {
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        name,
+        numberOfItems: items.length,
+        itemListElement: items.map((item, i) => ({
+            '@type': 'ListItem',
+            position: startPosition + i,
+            name: item.name,
+            url: item.url,
+        })),
+    };
 }
 export function faqSchema(faqs: {
     question: string;
@@ -142,14 +158,20 @@ export function eventSchema(params: {
     country?: string;
     organizer?: string;
     imageUrl?: string;
-}) {
+}): Record<string, any> | null {
+    // Google requires startDate, and a location for offline events. Emitting an
+    // Event without them is a Rich Results error, so emit nothing instead.
+    if (!params.startDate)
+        return null;
+    if (!params.isOnline && !params.location && !normalizeCountryCode(params.country))
+        return null;
     const schema: Record<string, any> = {
         '@context': 'https://schema.org',
         '@type': 'Event',
         name: params.name,
         description: params.description || params.name,
         url: params.url,
-        ...(params.startDate ? { startDate: params.startDate } : {}),
+        startDate: params.startDate,
         ...(params.endDate ? { endDate: params.endDate } : {}),
         eventAttendanceMode: params.isOnline
             ? 'https://schema.org/OnlineEventAttendanceMode'
@@ -170,7 +192,7 @@ export function eventSchema(params: {
     else {
         schema.location = {
             '@type': 'Place',
-            name: params.location || params.country || 'TBA',
+            name: params.location || params.country,
             address: {
                 '@type': 'PostalAddress',
                 addressLocality: params.location,
@@ -273,7 +295,15 @@ export function salaryToBaseSalary(
 export function safeJsonLd(value: unknown): string {
     return JSON.stringify(value).replace(/</g, '\\u003c');
 }
-export function jobPostingSchema(job: Job, canonicalUrl: string) {
+// Returns null when Google's required location fields cannot be stated truthfully:
+//  - remote job whose country is not resolvable ('Europe', 'Worldwide', a city) --
+//    applicantLocationRequirements is required for TELECOMMUTE postings;
+//  - on-site job with neither a location string nor a resolvable country -- an
+//    empty PostalAddress fails jobLocation validation.
+// An omitted schema is better than an invalid one: invalid items show up as errors
+// in Search Console and can drag down the whole JobPosting report. The page itself
+// still renders and is indexable as a normal page.
+export function jobPostingSchema(job: Job, canonicalUrl: string): Record<string, any> | null {
     const employmentType = /intern/i.test(job.type ?? '')
         ? 'INTERN'
         : /part.?time/i.test(job.type ?? '')
@@ -315,8 +345,8 @@ export function jobPostingSchema(job: Job, canonicalUrl: string) {
         hiringOrganization: {
             '@type': 'Organization',
             name: job.company,
-            ...(job.apply_domain ? { sameAs: `https://${job.apply_domain}` } : {}),
-            ...(job.logo_domain ? { logo: `https://www.google.com/s2/favicons?domain=${job.logo_domain}&sz=256` } : {}),
+            ...(usableLogoDomain(job.apply_domain) ? { sameAs: `https://${usableLogoDomain(job.apply_domain)}` } : {}),
+            ...(usableLogoDomain(job.logo_domain) ? { logo: `https://www.google.com/s2/favicons?domain=${usableLogoDomain(job.logo_domain)}&sz=256` } : {}),
         },
         // These listings redirect off-site to the employer's own application flow rather
         // than accepting an application directly on this URL.
@@ -329,8 +359,9 @@ export function jobPostingSchema(job: Job, canonicalUrl: string) {
         // requirement rather than assert one Google can't resolve. A blank
         // column keeps the site's long-standing India default.
         const remoteCountry = jobCountryCode(job.country);
-        if (remoteCountry)
-            schema.applicantLocationRequirements = { '@type': 'Country', name: remoteCountry };
+        if (!remoteCountry)
+            return null;
+        schema.applicantLocationRequirements = { '@type': 'Country', name: remoteCountry };
     }
     else if (job.location) {
         schema.jobLocation = {
@@ -347,12 +378,12 @@ export function jobPostingSchema(job: Job, canonicalUrl: string) {
         // jobLocation for non-TELECOMMUTE postings, so fall back to a
         // country-level Place rather than omitting the field (which is what
         // was producing the "Missing field jobLocation" validation error).
+        const fallbackCountry = jobCountryCode(job.country);
+        if (!fallbackCountry)
+            return null;
         schema.jobLocation = {
             '@type': 'Place',
-            address: {
-                '@type': 'PostalAddress',
-                ...(jobCountryCode(job.country) ? { addressCountry: jobCountryCode(job.country) } : {}),
-            },
+            address: { '@type': 'PostalAddress', addressCountry: fallbackCountry },
         };
     }
     // Structured breakdown fields (structured_enrichment.py) feed the
@@ -389,4 +420,26 @@ export function jobPostingSchema(job: Job, canonicalUrl: string) {
         schema.baseSalary = baseSalary;
     }
     return schema;
+}
+
+// Employer entity for /companies/[slug]. Only asserts what we know: the website is
+// included only when the domain is a verified official employer domain, and the logo
+// only when it is not a job board / ATS favicon.
+export function companyOrganizationSchema(params: {
+    name: string;
+    pageUrl: string;
+    officialDomain?: string | null;
+    isOfficialDomain?: boolean;
+    description?: string | null;
+}) {
+    const domain = params.isOfficialDomain ? usableLogoDomain(params.officialDomain) : undefined;
+    return {
+        '@context': 'https://schema.org',
+        '@type': 'Organization',
+        name: params.name,
+        '@id': `${params.pageUrl}#organization`,
+        ...(domain ? { url: `https://${domain}`, sameAs: [`https://${domain}`] } : {}),
+        // No `logo`: we do not hold the company's own logo file, and a favicon-service URL is not one.
+        ...(params.description ? { description: params.description } : {}),
+    };
 }

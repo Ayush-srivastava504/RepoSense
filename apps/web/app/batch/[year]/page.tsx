@@ -22,6 +22,8 @@ import { BATCH_MIN_JOBS, belowHubThreshold } from '@/lib/seo/hubThresholds';
 import JobCard from '@/app/components/JobCard';
 import TrackView from '@/app/components/TrackView';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import HubExplore from '@/app/components/HubExplore';
+import { topCompaniesFromJobs } from '@/lib/hubLinks';
 import EntityNotes from '@/app/components/EntityNotes';
 import { BATCH_NOTES } from '@/lib/content/entityNotes';
 
@@ -83,7 +85,7 @@ export default async function BatchHubPage({ params, }: {
     const url = `${BASE_URL}/batch/${batchDef.year}`;
     const { jobs, internships } = await getBatchJobs(batchDef.year);
     const related = getRelatedBatches(batchDef);
-    const companies = Array.from(new Set([...jobs, ...internships].map((j) => j.company))).slice(0, 8);
+    const companies = topCompaniesFromJobs([...jobs, ...internships], 8).map((c) => c.name);
 
     const crumbs = breadcrumbSchema([
         { name: 'Home', url: BASE_URL },
@@ -177,6 +179,8 @@ export default async function BatchHubPage({ params, }: {
                 </li>))}
             </ul>
           </section>)}
+
+        <HubExplore batches skipBatchYears={[batchDef.year, ...related.map((r) => r.year)]}/>
       </div>
     </main>);
 }

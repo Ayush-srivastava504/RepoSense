@@ -10,6 +10,8 @@ import { notFound } from 'next/navigation';
 import { BASE_URL, getJobs, type Job } from '@/lib/jobs';
 import { canonicalPathForJob } from '@/lib/slug';
 import { companySlug } from '@/lib/companies';
+import { topCompaniesFromJobs } from '@/lib/hubLinks';
+import HubExplore from '@/app/components/HubExplore';
 import { CITIES, getCityBySlug, getRelatedCities, type CityDefinition } from '@/app/jobs-in/data';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import { LOCATION_MIN_JOBS, belowHubThreshold } from '@/lib/seo/hubThresholds';
@@ -92,7 +94,8 @@ export default async function CityHubPage({ params, }: {
     const displayJobs = jobs.slice(0, DISPLAY_LIMIT);
     const displayInternships = internships.slice(0, DISPLAY_LIMIT);
     const related = getRelatedCities(city);
-    const companies = Array.from(new Set([...jobs, ...internships].map((j) => j.company))).slice(0, 8);
+    // Most listings first, so the company links point at the hubs that carry the most jobs for this city.
+    const companies = topCompaniesFromJobs([...jobs, ...internships], 8).map((c) => c.name);
 
     const crumbs = breadcrumbSchema([
         { name: 'Home', url: BASE_URL },
@@ -211,6 +214,8 @@ export default async function CityHubPage({ params, }: {
                 </li>))}
             </ul>
           </section>)}
+
+        <HubExplore cities skipCitySlugs={[city.slug, ...related.map((r) => r.slug)]} skipBatchYears={[]}/>
       </div>
     </main>);
 }

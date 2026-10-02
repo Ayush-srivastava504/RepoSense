@@ -7,7 +7,9 @@ import type { Metadata } from 'next';
 import { getCompanies } from '@/lib/companies';
 import { BASE_URL } from '@/lib/jobs';
 import CompanyCard from '@/app/components/CompanyCard';
-import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
+import { breadcrumbSchema, itemListSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
+import Link from 'next/link';
+import { companySlug, directoryLabel, getCompanyDirectory } from '@/lib/companies';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 import SectionGuide from '@/app/components/SectionGuide';
 import { HUB_GUIDES } from '@/lib/content/hubGuides';
@@ -17,6 +19,13 @@ export const metadata: Metadata = {
     alternates: {
         canonical: `${BASE_URL}/companies`,
         languages: languageAlternates('/companies'),
+    },
+    openGraph: {
+        type: 'website',
+        url: `${BASE_URL}/companies`,
+        title: 'Companies Hiring — Top, Mass-Hiring & Startups',
+        description: 'Every company with an active listing on InternFlow, grouped into Top Companies, companies mass-hiring right now, and startups.',
+        images: [{ url: `${BASE_URL}/og-image.png`, width: 1200, height: 630, alt: 'Companies hiring on InternFlow' }],
     },
 };
 function Section({ id, eyebrow, title, description, companies, total, accent, }: {
@@ -62,12 +71,16 @@ function Section({ id, eyebrow, title, description, companies, total, accent, }:
 export default async function CompaniesPage() {
     const { top, mass_hire, startup, mass_hire_threshold } = await getCompanies();
     const totalCompanies = top.total + mass_hire.total + startup.total;
+    const directory = await getCompanyDirectory();
+    const listed = [...top.companies, ...mass_hire.companies, ...startup.companies];
+    const itemList = itemListSchema('Companies hiring on InternFlow', listed.map((c) => ({ name: c.company, url: `${BASE_URL}/companies/${companySlug(c.company)}` })));
     const breadcrumb = breadcrumbSchema([
         { name: 'Home', url: BASE_URL },
         { name: 'Companies', url: `${BASE_URL}/companies` },
     ]);
     return (<main className="mx-auto max-w-6xl px-3 sm:px-4 py-8 sm:py-12">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}/>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumb) }}/>
+      {listed.length > 0 && (<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(itemList) }}/>)}
       <Breadcrumbs schema={breadcrumb}/>
 
       <header>
@@ -109,6 +122,15 @@ export default async function CompaniesPage() {
           No companies with active listings right now — check back after the next crawl.
         </p>)}
     
+      {directory && directory.letters.length > 0 && (<nav aria-label="Browse all companies A to Z" className="mt-10">
+          <h2 className="display text-xl font-medium">Browse all companies A–Z</h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {directory.letters.map((l) => (<Link key={l.letter} href={`/company-directory/${l.letter}`} className="chip chip-muted text-xs touch-manipulation">
+                {directoryLabel(l.letter)} ({l.count})
+              </Link>))}
+          </div>
+        </nav>)}
+
       <SectionGuide section="companies"/>
     </main>);
 }

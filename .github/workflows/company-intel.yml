@@ -1,0 +1,50 @@
+# Company intelligence crawler (services/company_intel): seeds company entities from jobs, crawls each
+# company's OWN website (robots.txt respected), then writes grounded AI topic sections.
+# Weekly + manual. Separate image from the job crawler. Same SSH/EC2 pattern as company-enrichment.yml.
+#
+# ASSUMPTIONS to check before enabling the schedule: the repo checkout is at /home/ec2-user/RepoSense, the API's
+# env file (DATABASE_URL, GROQ_/GEMINI_/NVIDIA_ keys) is at services/api/.env, and Postgres is reachable on
+# localhost:5432 from the host network. Migration 033 must be applied first (the API container runs migrations on deploy).
+
+name: Company intel crawl
+
+on:
+  schedule:
+    - cron: '30 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: 'seed | crawl | enrich | all'
+        required: false
+        default: 'all'
+      limit:
+        description: 'Max companies per stage'
+        required: false
+        default: '50'
+      only:
+        description: 'Single company slug (optional)'
+        required: false
+        default: ''
+
+jobs:
+  company-intel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH in and run the company intel pipeline
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          timeout: 60s
+          command_timeout: 60m
+          script_stop: true
+          script: |
+            set -e
+            cd /home/ec2-user/RepoSense
+            docker build -q -f services/company_intel/Dockerfile -t company-intel .
+            ONLY="${{ github.event.inputs.only }}"
+            docker run --rm --network host --env-file services/api/.env company-intel \
+              python -m company_intel.run "${{ github.event.inputs.stage || 'all' }}" \
+              --limit "${{ github.event.inputs.limit || '50' }}" ${ONLY:+--only "$ONLY"}

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { normalizeCountryCode } from '../lib/country';
-import { jobPostingSchema } from '../lib/structuredData';
+import { jobPostingSchema, eventSchema } from '../lib/structuredData';
 
 const read = (rel: string) => readFileSync(resolve(__dirname, '..', rel), 'utf8');
 
@@ -33,14 +33,27 @@ const baseJob: any = {
     posted_at: new Date().toISOString(),
 };
 
-test('jobPosting: remote job in "Europe"/"Worldwide" gets no bogus applicantLocationRequirements', () => {
+test('jobPosting: remote job in \"Europe\"/\"Worldwide\" emits no schema (required applicantLocationRequirements cannot be stated)', () => {
     for (const country of ['Europe', 'Worldwide']) {
-        const s: any = jobPostingSchema({ ...baseJob, is_remote: true, country }, 'https://intern-flow.in/remote-jobs/x');
-        assert.equal(s.jobLocationType, 'TELECOMMUTE');
-        assert.equal(s.applicantLocationRequirements, undefined, country);
+        assert.equal(jobPostingSchema({ ...baseJob, is_remote: true, country }, 'https://intern-flow.in/remote-jobs/x'), null, country);
     }
     const ok: any = jobPostingSchema({ ...baseJob, is_remote: true, country: 'Japan' }, 'https://intern-flow.in/remote-jobs/x');
+    assert.equal(ok.jobLocationType, 'TELECOMMUTE');
     assert.deepEqual(ok.applicantLocationRequirements, { '@type': 'Country', name: 'JP' });
+});
+
+test('jobPosting: on-site job with no location and an unresolvable country emits no schema', () => {
+    assert.equal(jobPostingSchema({ ...baseJob, country: 'Europe' }, 'https://intern-flow.in/jobs/x'), null);
+    const blank: any = jobPostingSchema({ ...baseJob }, 'https://intern-flow.in/jobs/x');
+    assert.equal(blank.jobLocation.address.addressCountry, 'IN');
+});
+
+test('event: no startDate, or offline with no location/country, emits no schema', () => {
+    const base = { name: 'Hack', url: 'https://intern-flow.in/hackathons/h', isOnline: false };
+    assert.equal(eventSchema({ ...base, location: 'Pune' }), null);
+    assert.equal(eventSchema({ ...base, startDate: '2026-12-01' }), null);
+    assert.ok(eventSchema({ ...base, startDate: '2026-12-01', location: 'Pune' }));
+    assert.ok(eventSchema({ ...base, startDate: '2026-12-01', isOnline: true }));
 });
 
 test('jobPosting: on-site addressCountry is an ISO code, omitted when the column holds a location', () => {
