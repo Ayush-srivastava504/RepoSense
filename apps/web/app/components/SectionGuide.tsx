@@ -9,10 +9,17 @@
 import Link from 'next/link';
 import FAQAccordion from '@/app/components/FAQAccordion';
 import { faqSchema } from '@/lib/structuredData';
-import { SECTION_GUIDES, type SectionKey } from '@/lib/content/sectionGuides';
+import { SECTION_GUIDES, type SectionGuideContent } from '@/lib/content/sectionGuides';
 
-export default function SectionGuide({ section }: { section: SectionKey }) {
-    const guide = SECTION_GUIDES[section];
+// `section` is a plain string on purpose: several pages (companies, tools, careers, batch,
+// jobs-in, resume-for, japan-jobs, europe-jobs) already render <SectionGuide> but have no
+// guide written yet. Those render nothing instead of failing the build / crashing the page.
+// To add one: add the key to SectionKey + SECTION_GUIDES in lib/content/sectionGuides.ts.
+export default function SectionGuide({ section }: { section: string }) {
+    const guide = (SECTION_GUIDES as Record<string, SectionGuideContent | undefined>)[section];
+    if (!guide) {
+        return null;
+    }
     const schema = faqSchema(guide.faqs);
 
     return (
