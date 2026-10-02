@@ -10,7 +10,8 @@ import { BASE_URL } from '@/lib/jobs';
 import { buildJobFaq } from '@/lib/jobFaq';
 import { getLocalizedJob, localizedCanonicalPath, jobLanguageAlternates } from '@/lib/jobLocale';
 import {  jobPostingSchema, breadcrumbSchema, faqSchema, safeJsonLd } from '@/lib/structuredData';
-import { truncateTitleForSerp, truncateDescription, isIndexableJob } from '@/lib/seo/seoMetrics';
+import { truncateTitleForSerp, truncateDescription, isIndexableJob, SERP_TITLE_PX_WITH_BRAND } from '@/lib/seo/seoMetrics';
+import { pageOpenGraph } from '@/lib/seo/pageMeta';
 import { jobOgImageUrl } from '@/lib/seo/ogImage';
 import JobDetail from '@/app/components/JobDetail';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -25,29 +26,19 @@ export async function generateMetadata({ params, }: {
     if (!job || !job.is_government) {
         return {};
     }
-    const title = truncateTitleForSerp(`${job.title}${job.department ? ` — ${job.department}` : ''}`);
+    // layout.tsx appends ' | InternFlow' after this; reserve its width so the SERP title isn't cut off.
+    const title = truncateTitleForSerp(`${job.title}${job.department ? ` — ${job.department}` : ''}`, SERP_TITLE_PX_WITH_BRAND);
     const rawDescription = `${job.department ? `${job.department} recruitment: ` : ''}${job.title}${job.vacancies ? `. ${job.vacancies} vacancies.` : '.'} View eligibility, notification details, and the official application link.`;
+    const description = truncateDescription(rawDescription);
     const canonicalPath = localizedCanonicalPath(canonicalPathForJob(job), content);
     return {
         title,
-        description: truncateDescription(rawDescription),
+        description,
         alternates: {
             canonical: `${BASE_URL}${canonicalPath}`,
             languages: jobLanguageAlternates(canonicalPathForJob(job), job.translated_locales),
         },
-        openGraph: {
-            type: 'website',
-            url: `${BASE_URL}${canonicalPath}`,
-            title,
-            description: truncateDescription(rawDescription),
-            images: [{ url: jobOgImageUrl(job), width: 1200, height: 630, alt: title }],
-        },
-        twitter: {
-            card: 'summary_large_image',
-            title,
-            description: truncateDescription(rawDescription),
-            images: [jobOgImageUrl(job)],
-        },
+        ...pageOpenGraph({ title, description, url: `${BASE_URL}${canonicalPath}`, image: jobOgImageUrl(job), imageAlt: title }),
         ...(!isIndexableJob(job) ? { robots: { index: false, follow: true } } : {}),
     };
 }

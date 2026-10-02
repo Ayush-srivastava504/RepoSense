@@ -10,7 +10,8 @@ import { BASE_URL } from '@/lib/jobs';
 import { buildJobFaq } from '@/lib/jobFaq';
 import { getLocalizedJob, localizedCanonicalPath, jobLanguageAlternates } from '@/lib/jobLocale';
 import {  jobPostingSchema, breadcrumbSchema, faqSchema, safeJsonLd } from '@/lib/structuredData';
-import { buildJobTitle, truncateDescription, isIndexableJob } from '@/lib/seo/seoMetrics';
+import { buildJobTitle, truncateDescription, isIndexableJob, SERP_TITLE_PX_WITH_BRAND } from '@/lib/seo/seoMetrics';
+import { pageOpenGraph } from '@/lib/seo/pageMeta';
 import { jobOgImageUrl } from '@/lib/seo/ogImage';
 import JobDetail from '@/app/components/JobDetail';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -30,30 +31,21 @@ export async function generateMetadata({ params, }: {
         company: job.company,
         type: job.type,
         isRemote: true,
+        // layout.tsx appends ' | InternFlow' after this; reserve its width so the SERP title isn't cut off.
+        maxPx: SERP_TITLE_PX_WITH_BRAND,
     });
     const rawDescription = job.enriched_overview ||
         `Apply for the remote ${job.title} role at ${job.company}${job.location ? ` (${job.location})` : ''}. View skills, compensation, and application details.`;
+    const description = truncateDescription(rawDescription);
     const canonicalPath = localizedCanonicalPath(canonicalPathForJob(job), content);
     return {
         title,
-        description: truncateDescription(rawDescription),
+        description,
         alternates: {
             canonical: `${BASE_URL}${canonicalPath}`,
             languages: jobLanguageAlternates(canonicalPathForJob(job), job.translated_locales),
         },
-        openGraph: {
-            type: 'website',
-            url: `${BASE_URL}${canonicalPath}`,
-            title,
-            description: truncateDescription(rawDescription),
-            images: [{ url: jobOgImageUrl(job), width: 1200, height: 630, alt: title }],
-        },
-        twitter: {
-            card: 'summary_large_image',
-            title,
-            description: truncateDescription(rawDescription),
-            images: [jobOgImageUrl(job)],
-        },
+        ...pageOpenGraph({ title, description, url: `${BASE_URL}${canonicalPath}`, image: jobOgImageUrl(job), imageAlt: title }),
         ...(!isIndexableJob(job) ? { robots: { index: false, follow: true } } : {}),
     };
 }

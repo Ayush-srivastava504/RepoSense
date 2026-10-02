@@ -94,9 +94,9 @@ export function buildJobTitle(params: {
 }
 
 // A job counts as stale for indexing purposes once its deadline (or, when
-// no deadline was scraped, 45 days past posted_at — matching the
-// validThrough fallback in structuredData.ts's jobPostingSchema()) has
-// passed. Google explicitly recommends noindex-ing expired JobPosting
+// no deadline was scraped, 45 days past posted_at) has passed. This is
+// independent of the JobPosting schema: jobPostingSchema() only emits
+// validThrough for a real scraped deadline and never invents one. Google explicitly recommends noindex-ing expired JobPosting
 // pages rather than deleting them outright (broken links, lost
 // backlinks) — this mirrors FresherFlow's 45-day grace-period noindex in
 // opportunitySeo.ts. Shared across every job-detail route

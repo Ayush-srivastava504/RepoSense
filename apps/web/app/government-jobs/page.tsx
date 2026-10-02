@@ -4,13 +4,14 @@
 //
 
 import type { Metadata } from 'next';
-import { listPageState, paginatedCanonical, paginatedTitle } from '@/lib/seo/pagination';
+import { listPageState } from '@/lib/seo/pagination';
+import { listingMetadata } from '@/lib/seo/pageMeta';
 import Link from 'next/link';
 import { canonicalPathForJob } from '@/lib/slug';
-import { getJobs, getFeaturedJobs, BASE_URL, } from '@/lib/jobs';
+import { getJobsPage, getFeaturedJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
 import FeaturedJobs from '@/app/components/FeaturedJobs';
-import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 import SectionGuide from '@/app/components/SectionGuide';
 import { SECTION_GUIDES } from '@/lib/content/sectionGuides';
@@ -18,16 +19,15 @@ const JOBS_PER_PAGE = 12;
 export async function generateMetadata({ searchParams, }: {
     searchParams: Record<string, string | undefined>;
 }): Promise<Metadata> {
-    const { page, filtered } = listPageState(searchParams);
-    return {
-        title: paginatedTitle('Government Jobs — Sarkari Naukri Notifications', page),
-        description: 'Latest government job notifications from Employment News and FreeJobAlert — department, post, vacancies, and direct-apply links. Refreshed daily.',
-        alternates: {
-            canonical: paginatedCanonical(BASE_URL, '/government-jobs', searchParams),
-            // hreflang only for the plain first page; deeper/filtered views are not translated variants.
-            ...(page === 1 && !filtered ? { languages: languageAlternates('/government-jobs') } : {}),
-        },
-    };
+    // Purpose: government recruitment notifications only (is_government). The only list page that shows them.
+    return listingMetadata({
+        path: '/government-jobs',
+        title: 'Government Jobs in India — Sarkari Naukri Notifications',
+        description: 'Latest government job notifications in India from Employment News and FreeJobAlert: department, post, vacancies and direct-apply links. Refreshed daily.',
+        searchParams,
+        imageAlt: 'InternFlow — Government job notifications in India (Sarkari Naukri)',
+        languages: languageAlternates('/government-jobs'),
+    });
 }
 function Pagination({ currentPage, totalPages, search, }: {
     currentPage: number;
@@ -110,24 +110,33 @@ export default async function GovernmentJobsPage({ searchParams, }: {
         ? 1
         : parsedPage;
     const showFeatured = !search && requestedPage === 1;
-    const [allJobs, featured] = await Promise.all([
-        getJobs({
-            search,
-            category: 'government',
-            sort: 'ranked',
-        }),
+    const fetchJobsPage = (page: number) => getJobsPage({
+        search,
+        category: 'government',
+        sort: 'ranked',
+        limit: JOBS_PER_PAGE,
+        offset: (page - 1) * JOBS_PER_PAGE,
+    });
+    // Real LIMIT/OFFSET pagination (the old getJobs() call capped the feed at 500 rows and sliced in memory).
+    const [firstPage, featured] = await Promise.all([
+        fetchJobsPage(requestedPage),
         showFeatured
             ? getFeaturedJobs({
                 category: 'government',
             })
             : Promise.resolve([]),
     ]);
-    const totalJobs = allJobs.length;
-    const totalPages = Math.max(1, Math.ceil(totalJobs / JOBS_PER_PAGE));
+    let jobs = firstPage.jobs;
+    let totalJobs = firstPage.total;
+    let totalPages = Math.max(1, Math.ceil(totalJobs / JOBS_PER_PAGE));
     const currentPage = Math.min(requestedPage, totalPages);
+    if (currentPage !== requestedPage) {
+        const clamped = await fetchJobsPage(currentPage);
+        jobs = clamped.jobs;
+        totalJobs = clamped.total;
+        totalPages = Math.max(1, Math.ceil(totalJobs / JOBS_PER_PAGE));
+    }
     const startIndex = (currentPage - 1) * JOBS_PER_PAGE;
-    const endIndex = Math.min(startIndex + JOBS_PER_PAGE, totalJobs);
-    const jobs = allJobs.slice(startIndex, endIndex);
     const itemListSchema = {
         '@context': 'https://schema.org',
         '@type': 'ItemList',
@@ -143,13 +152,13 @@ export default async function GovernmentJobsPage({ searchParams, }: {
     ]);
     return (<div className="min-h-screen">
       <script type="application/ld+json" dangerouslySetInnerHTML={{
-          __html: JSON.stringify(crumbs),
+          __html: safeJsonLd(crumbs),
       }}/>
       <Breadcrumbs schema={crumbs}/>
 
       <main className="mx-auto max-w-6xl px-3 sm:px-4 py-8 sm:py-12">
         <script type="application/ld+json" dangerouslySetInnerHTML={{
-            __html: JSON.stringify(itemListSchema),
+            __html: safeJsonLd(itemListSchema),
         }}/>
 
         <p className="eyebrow eyebrow-accent text-xs sm:text-sm">
@@ -173,7 +182,7 @@ export default async function GovernmentJobsPage({ searchParams, }: {
           where available.{' '}
 
           <Link href="/jobs" className="underline">
-            See all jobs
+            See private-sector jobs
           </Link>
         </p>
 

@@ -10,7 +10,8 @@ import { BASE_URL } from '@/lib/jobs';
 import { buildJobFaq } from '@/lib/jobFaq';
 import { getLocalizedJob, localizedCanonicalPath, jobLanguageAlternates } from '@/lib/jobLocale';
 import {  jobPostingSchema, breadcrumbSchema, faqSchema, safeJsonLd } from '@/lib/structuredData';
-import { buildJobTitle, truncateDescription, isIndexableJob } from '@/lib/seo/seoMetrics';
+import { buildJobTitle, truncateDescription, isIndexableJob, SERP_TITLE_PX_WITH_BRAND } from '@/lib/seo/seoMetrics';
+import { pageOpenGraph } from '@/lib/seo/pageMeta';
 import { jobOgImageUrl } from '@/lib/seo/ogImage';
 import JobDetail from '@/app/components/JobDetail';
 import TrackView from '@/app/components/TrackView';
@@ -32,6 +33,8 @@ export async function generateMetadata({ params, }: {
         type: job.type,
         location: job.location,
         isRemote: job.is_remote,
+        // layout.tsx appends ' | InternFlow' after this; reserve its width so the SERP title isn't cut off.
+        maxPx: SERP_TITLE_PX_WITH_BRAND,
     });
     const rawDescription = job.enriched_overview ||
         `Apply for ${job.title} at ${job.company}${job.location ? ` in ${job.location}` : ''}. View eligibility, skills, salary, and application details.`;
@@ -45,19 +48,7 @@ export async function generateMetadata({ params, }: {
             canonical: `${BASE_URL}${canonicalPath}`,
             languages: jobLanguageAlternates(canonicalPathForJob(job), job.translated_locales),
         },
-        openGraph: {
-            type: 'website',
-            url: `${BASE_URL}${canonicalPath}`,
-            title,
-            description,
-            images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
-        },
-        twitter: {
-            card: 'summary_large_image',
-            title,
-            description,
-            images: [ogImage],
-        },
+        ...pageOpenGraph({ title, description, url: `${BASE_URL}${canonicalPath}`, image: ogImage, imageAlt: title }),
         // Defense in depth alongside the JobPosting schema's validThrough:
         // Search Console can take days to re-crawl and honor a stale
         // validThrough, so this header/meta noindex acts immediately on

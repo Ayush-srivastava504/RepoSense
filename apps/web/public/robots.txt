@@ -84,6 +84,16 @@ Disallow: /hi/government-jobs/
 Disallow: /*?*search=
 Disallow: /*?*loc=
 Disallow: /*?*sort=
+# Advanced filter facets (AdvancedJobFilters.tsx / role chips). Each combination is a near-duplicate of the
+# base list page, which already canonicalises filtered views to itself. Path-based hubs (/jobs-in/...,
+# /skills/..., /batch/...) are unaffected.
+Disallow: /*?*role=
+Disallow: /*?*mode=
+Disallow: /*?*skills=
+Disallow: /*?*course=
+Disallow: /*?*source=
+Disallow: /*?*batch=
+Disallow: /*?*company=
 
 # AI training crawlers — blocked site-wide, independent of the `User-agent: *`
 # block above (a bot only obeys its own explicit block, or falls back to `*`

@@ -168,7 +168,7 @@ def _parse_multi(value: str | None) -> list[str]:
 
 FACET_MAX_OPTIONS = 60
 
-def _build_facet_scope_conditions(params: list, *, search: str | None, type: str | None, category: str | None, job_group: str | None, country: str | None, work_mode: str | None) -> list[str]:
+def _build_facet_scope_conditions(params: list, *, search: str | None, type: str | None, category: str | None, job_group: str | None, country: str | None, work_mode: str | None, exclude_government: bool = False) -> list[str]:
     """Same scoping semantics as get_jobs's search/type/category/job_group/
     country/work_mode conditions, deliberately NOT including
     skill/course/source/batch/company — those are exactly the filters the
@@ -183,6 +183,8 @@ def _build_facet_scope_conditions(params: list, *, search: str | None, type: str
         conditions.append('is_remote = true')
     elif category == 'government':
         conditions.append('is_government = true')
+    if exclude_government and category != 'government':
+        conditions.append('is_government IS NOT TRUE')
     if job_group:
         params.append(job_group)
         conditions.append(f'job_group = ${len(params)}')
@@ -263,7 +265,7 @@ async def _batch_facet_counts(pool, where: str, params: list) -> list[dict]:
     return [dict(row) for row in rows]
 
 @router.get('/')
-async def get_jobs(limit: int=Query(default=200, ge=1, le=500), offset: int=Query(default=0, ge=0), source: str | None=Query(default=None), search: str | None=Query(default=None), type: str | None=Query(default=None, description="Filter by job type, e.g. 'internship'"), category: str | None=Query(default=None, pattern='^(remote|government)$', description="'remote' for is_remote=true, 'government' for is_government=true"), job_group: str | None=Query(default=None, pattern='^(software|sales|finance|other)$', description='Coarse role filter: software | sales | finance | other'), country: str | None=Query(default=None, description="Filter by country, e.g. 'Japan'. Case-insensitive exact match."), company: str | None=Query(default=None, description='Filter by company name. Case-insensitive exact match, used by /companies/[slug] hub pages.'), skill: str | None=Query(default=None, description='Filter by skill/technology. Matches the structured required_skills array first (exact, case-insensitive), then enriched_keywords, then falls back to title/description — used by /skills/[slug] hub pages.'), work_mode: str | None=Query(default=None, pattern='^(ONSITE|REMOTE|HYBRID)$', description='Filter by extracted work mode: ONSITE | REMOTE | HYBRID.'), course: str | None=Query(default=None, description='Filter by allowed course/degree, e.g. "B.Tech" or "Diploma". Matches allowed_courses array, case-insensitive.'), sort: str=Query(default='recent', pattern='^(recent|ranked)$', description="'recent' (default, unchanged) or 'ranked' for the boosted first-page ordering"), skills: str | None=Query(default=None, description='Phase 2 multi-select (PHASE_PLAN.md item 2): comma-separated skill slugs from GET /api/jobs/facets, e.g. "react-js,python". ANDed with the other filters; a job matches if it has ANY of the listed skills.'), courses: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated course slugs from the facets endpoint.'), sources: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated source slugs from the facets endpoint.'), batches: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated passout-year strings, e.g. "2026,2027".'), companies: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated company slugs from the facets endpoint.'), india_only: bool=Query(default=False, description='Phase 2 pagination follow-up: server-side equivalent of the frontend\'s isIndiaJob() filter (country is null/blank/India). Lets /jobs and /internships paginate the "India" location filter with real LIMIT/OFFSET instead of over-fetching and filtering client-side.'), india_first: bool=Query(default=False, description='Phase 2 pagination follow-up: server-side equivalent of the frontend\'s sortIndiaFirst() — orders India/blank-country rows first, then remote, then Japan, then everything else, before the existing sort/ranked ordering as a tiebreaker within each group.')):
+async def get_jobs(exclude_government: bool=Query(default=False, description="True drops is_government rows. /jobs, /internships and /remote-jobs use it so government notifications only appear on /government-jobs."), limit: int=Query(default=200, ge=1, le=500), offset: int=Query(default=0, ge=0), source: str | None=Query(default=None), search: str | None=Query(default=None), type: str | None=Query(default=None, description="Filter by job type, e.g. 'internship'"), category: str | None=Query(default=None, pattern='^(remote|government)$', description="'remote' for is_remote=true, 'government' for is_government=true"), job_group: str | None=Query(default=None, pattern='^(software|sales|finance|other)$', description='Coarse role filter: software | sales | finance | other'), country: str | None=Query(default=None, description="Filter by country, e.g. 'Japan'. Case-insensitive exact match."), company: str | None=Query(default=None, description='Filter by company name. Case-insensitive exact match, used by /companies/[slug] hub pages.'), skill: str | None=Query(default=None, description='Filter by skill/technology. Matches the structured required_skills array first (exact, case-insensitive), then enriched_keywords, then falls back to title/description — used by /skills/[slug] hub pages.'), work_mode: str | None=Query(default=None, pattern='^(ONSITE|REMOTE|HYBRID)$', description='Filter by extracted work mode: ONSITE | REMOTE | HYBRID.'), course: str | None=Query(default=None, description='Filter by allowed course/degree, e.g. "B.Tech" or "Diploma". Matches allowed_courses array, case-insensitive.'), sort: str=Query(default='recent', pattern='^(recent|ranked)$', description="'recent' (default, unchanged) or 'ranked' for the boosted first-page ordering"), skills: str | None=Query(default=None, description='Phase 2 multi-select (PHASE_PLAN.md item 2): comma-separated skill slugs from GET /api/jobs/facets, e.g. "react-js,python". ANDed with the other filters; a job matches if it has ANY of the listed skills.'), courses: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated course slugs from the facets endpoint.'), sources: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated source slugs from the facets endpoint.'), batches: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated passout-year strings, e.g. "2026,2027".'), companies: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated company slugs from the facets endpoint.'), india_only: bool=Query(default=False, description='Phase 2 pagination follow-up: server-side equivalent of the frontend\'s isIndiaJob() filter (country is null/blank/India). Lets /jobs and /internships paginate the "India" location filter with real LIMIT/OFFSET instead of over-fetching and filtering client-side.'), india_first: bool=Query(default=False, description='Phase 2 pagination follow-up: server-side equivalent of the frontend\'s sortIndiaFirst() — orders India/blank-country rows first, then remote, then Japan, then everything else, before the existing sort/ranked ordering as a tiebreaker within each group.')):
     pool = await get_db_pool()
     if pool is None:
         raise HTTPException(503, 'Database unavailable')
@@ -279,6 +281,8 @@ async def get_jobs(limit: int=Query(default=200, ge=1, le=500), offset: int=Quer
         conditions.append('is_remote = true')
     elif category == 'government':
         conditions.append('is_government = true')
+    if exclude_government and category != 'government':
+        conditions.append('is_government IS NOT TRUE')
     if job_group:
         params.append(job_group)
         conditions.append(f'job_group = ${len(params)}')
@@ -378,7 +382,7 @@ async def get_jobs(limit: int=Query(default=200, ge=1, le=500), offset: int=Quer
     return {'jobs': [_decode_job_json_fields(dict(row)) for row in rows], 'total': total, 'limit': limit, 'offset': offset}
 
 @router.get('/featured')
-async def get_featured_jobs(limit: int=Query(default=6, ge=1, le=12), type: str | None=Query(default=None), category: str | None=Query(default=None, pattern='^(remote|government)$', description="'remote' for is_remote=true, 'government' for is_government=true"), job_group: str | None=Query(default=None, pattern='^(software|sales|finance|other)$'), country: str | None=Query(default=None)):
+async def get_featured_jobs(exclude_government: bool=Query(default=False), limit: int=Query(default=6, ge=1, le=12), type: str | None=Query(default=None), category: str | None=Query(default=None, pattern='^(remote|government)$', description="'remote' for is_remote=true, 'government' for is_government=true"), job_group: str | None=Query(default=None, pattern='^(software|sales|finance|other)$'), country: str | None=Query(default=None)):
     pool = await get_db_pool()
     if pool is None:
         raise HTTPException(503, 'Database unavailable')
@@ -399,6 +403,8 @@ async def get_featured_jobs(limit: int=Query(default=6, ge=1, le=12), type: str 
         conditions.append('is_remote = true')
     elif category == 'government':
         conditions.append('is_government = true')
+    if exclude_government and category != 'government':
+        conditions.append('is_government IS NOT TRUE')
     if job_group:
         params.append(job_group)
         conditions.append(f'job_group = ${len(params)}')
@@ -413,7 +419,7 @@ async def get_featured_jobs(limit: int=Query(default=6, ge=1, le=12), type: str 
     rows = await pool.fetch(f'\n        SELECT\n            {JOB_COLUMNS},\n            {badges_sql}\n        FROM jobs\n        {where}\n        ORDER BY {ranking_sql} DESC, posted_at DESC\n        LIMIT ${limit_pos}\n        ', *params, limit)
     return {'jobs': [_decode_job_json_fields(dict(row)) for row in rows]}
 @router.get('/facets')
-async def get_jobs_facets(search: str | None=Query(default=None), type: str | None=Query(default=None), category: str | None=Query(default=None, pattern='^(remote|government)$'), job_group: str | None=Query(default=None, pattern='^(software|sales|finance|other)$'), country: str | None=Query(default=None), work_mode: str | None=Query(default=None, pattern='^(ONSITE|REMOTE|HYBRID)$')):
+async def get_jobs_facets(exclude_government: bool=Query(default=False), search: str | None=Query(default=None), type: str | None=Query(default=None), category: str | None=Query(default=None, pattern='^(remote|government)$'), job_group: str | None=Query(default=None, pattern='^(software|sales|finance|other)$'), country: str | None=Query(default=None), work_mode: str | None=Query(default=None, pattern='^(ONSITE|REMOTE|HYBRID)$')):
     """Phase 2 (PHASE_PLAN.md item 1): computes Skills/Course/Source/Batch/
     Company option counts against the FULL active-jobs table, scoped by
     the same location+role+mode+search params the list endpoint takes —
@@ -425,7 +431,7 @@ async def get_jobs_facets(search: str | None=Query(default=None), type: str | No
     if pool is None:
         raise HTTPException(503, 'Database unavailable')
     params: list = []
-    conditions = _build_facet_scope_conditions(params, search=search, type=type, category=category, job_group=job_group, country=country, work_mode=work_mode)
+    conditions = _build_facet_scope_conditions(params, search=search, type=type, category=category, job_group=job_group, country=country, work_mode=work_mode, exclude_government=exclude_government)
     where = ' AND '.join(conditions)
     skills_arr_expr = "CASE WHEN required_skills IS NOT NULL THEN required_skills ELSE enriched_keywords END"
     skills, courses, sources, batches, companies = await asyncio.gather(

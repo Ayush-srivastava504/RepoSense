@@ -4,14 +4,15 @@
 //
 
 import type { Metadata } from 'next';
-import { listPageState, paginatedCanonical, paginatedTitle } from '@/lib/seo/pagination';
+import { listPageState } from '@/lib/seo/pagination';
+import { listingMetadata } from '@/lib/seo/pageMeta';
 import Link from 'next/link';
 import { canonicalPathForJob } from '@/lib/slug';
-import { getJobs, getFeaturedJobs, BASE_URL, } from '@/lib/jobs';
+import { getJobs, getJobsPage, getFeaturedJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
 import FeaturedJobs from '@/app/components/FeaturedJobs';
 import { RoleFilter, parseGroupFilter } from '@/app/components/JobFilters';
-import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 import HubExplore from '@/app/components/HubExplore';
 import SectionGuide from '@/app/components/SectionGuide';
@@ -20,16 +21,15 @@ const JOBS_PER_PAGE = 12;
 export async function generateMetadata({ searchParams, }: {
     searchParams: Record<string, string | undefined>;
 }): Promise<Metadata> {
-    const { page, filtered } = listPageState(searchParams);
-    return {
-        title: paginatedTitle('Remote Jobs — US, UK & Worldwide', page),
-        description: 'Remote software, product, and data roles from Himalayas, Remote OK, We Work Remotely, and Remotive. Refreshed daily, open to India, US, UK, and worldwide.',
-        alternates: {
-            canonical: paginatedCanonical(BASE_URL, '/remote-jobs', searchParams),
-            // hreflang only for the plain first page; deeper/filtered views are not translated variants.
-            ...(page === 1 && !filtered ? { languages: languageAlternates('/remote-jobs') } : {}),
-        },
-    };
+    // Purpose: remote roles only (is_remote), open to India, US, UK and worldwide. Matches the on-page <h1>.
+    return listingMetadata({
+        path: '/remote-jobs',
+        title: 'Remote Jobs — India, US, UK & Worldwide, Updated Daily',
+        description: 'Remote software, product, data and sales roles from Himalayas, Remote OK, We Work Remotely and Remotive. Updated daily, open to India, US, UK and worldwide.',
+        searchParams,
+        imageAlt: 'InternFlow — Remote jobs open to India, US, UK and worldwide',
+        languages: languageAlternates('/remote-jobs'),
+    });
 }
 function Pagination({ currentPage, totalPages, search, role, }: {
     currentPage: number;
@@ -121,21 +121,40 @@ export default async function RemoteJobsPage({ searchParams, }: {
         search,
         category: 'remote' as const,
         sort: 'ranked' as const,
+        // A remote government notification belongs on /government-jobs, not here.
+        excludeGovernment: true,
         ...(groupFilter !== 'all' ? { job_group: groupFilter } : {}),
     };
     const showFeatured = !search && requestedPage === 1;
-    const [allJobs, featured] = await Promise.all([
-        getJobs(jobsFilterOptions),
+    const fetchJobsPage = (page: number) => getJobsPage({
+        ...jobsFilterOptions,
+        limit: JOBS_PER_PAGE,
+        offset: (page - 1) * JOBS_PER_PAGE,
+    });
+    // Real LIMIT/OFFSET pagination: the old getJobs() call fetched at most 500 rows and sliced them in
+    // memory, so totalJobs was capped at 500 and page 43+ of a bigger feed could never be reached.
+    const [firstPage, featured, hubJobs] = await Promise.all([
+        fetchJobsPage(requestedPage),
         showFeatured
             ? getFeaturedJobs(jobsFilterOptions)
             : Promise.resolve([]),
+        // HubExplore only needs a wide sample to rank "companies hiring"; skipped when searching (it is hidden then).
+        search
+            ? Promise.resolve([])
+            : getJobs({ ...jobsFilterOptions, limit: 100 }),
     ]);
-    const totalJobs = allJobs.length;
-    const totalPages = Math.max(1, Math.ceil(totalJobs / JOBS_PER_PAGE));
+    let jobs = firstPage.jobs;
+    let totalJobs = firstPage.total;
+    let totalPages = Math.max(1, Math.ceil(totalJobs / JOBS_PER_PAGE));
     const currentPage = Math.min(requestedPage, totalPages);
+    if (currentPage !== requestedPage) {
+        // ?page= past the last page: refetch the clamped page (only the out-of-range case pays for this).
+        const clamped = await fetchJobsPage(currentPage);
+        jobs = clamped.jobs;
+        totalJobs = clamped.total;
+        totalPages = Math.max(1, Math.ceil(totalJobs / JOBS_PER_PAGE));
+    }
     const startIndex = (currentPage - 1) * JOBS_PER_PAGE;
-    const endIndex = Math.min(startIndex + JOBS_PER_PAGE, totalJobs);
-    const jobs = allJobs.slice(startIndex, endIndex);
     const itemListSchema = {
         '@context': 'https://schema.org',
         '@type': 'ItemList',
@@ -151,13 +170,13 @@ export default async function RemoteJobsPage({ searchParams, }: {
     ]);
     return (<div className="min-h-screen">
       <script type="application/ld+json" dangerouslySetInnerHTML={{
-          __html: JSON.stringify(crumbs),
+          __html: safeJsonLd(crumbs),
       }}/>
       <Breadcrumbs schema={crumbs}/>
 
       <main className="mx-auto max-w-6xl px-3 sm:px-4 py-8 sm:py-12">
         <script type="application/ld+json" dangerouslySetInnerHTML={{
-            __html: JSON.stringify(itemListSchema),
+            __html: safeJsonLd(itemListSchema),
         }}/>
 
         <p className="eyebrow eyebrow-accent text-xs sm:text-sm">
@@ -181,6 +200,10 @@ export default async function RemoteJobsPage({ searchParams, }: {
 
           <Link href="/jobs" className="underline">
             See all jobs
+          </Link>
+          {' · '}
+          <Link href="/internships" className="underline">
+            Internships
           </Link>
         </p>
 
@@ -237,7 +260,7 @@ export default async function RemoteJobsPage({ searchParams, }: {
             </p>
           </div>)}
       
-        {!search && <HubExplore currentSection="/remote-jobs" jobs={allJobs}/>}
+        {!search && <HubExplore currentSection="/remote-jobs" jobs={hubJobs}/>}
 
         {guideState.page === 1 && !guideState.filtered && <SectionGuide section="remote-jobs"/>}
       </main>

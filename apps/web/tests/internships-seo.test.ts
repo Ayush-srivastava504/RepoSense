@@ -44,12 +44,14 @@ test('internship detail page reserves the brand width', () => {
 });
 
 // ---------- Open Graph ----------
-test('listing page sets its own openGraph + twitter (no longer inherits the homepage URL/title)', () => {
+test('listing page sets its own openGraph + twitter via the shared helper (no longer inherits the homepage URL/title)', () => {
     const src = read('app/internships/page.tsx');
-    assert.ok(/openGraph:\s*\{/.test(src));
-    assert.ok(/twitter:\s*\{/.test(src));
-    assert.ok(/url:\s*canonical/.test(src), 'og:url must equal the canonical URL');
-    assert.ok(/siteName:\s*'InternFlow'/.test(src));
+    assert.ok(/listingMetadata\(/.test(src));
+    const helper = read('lib/seo/pageMeta.ts');
+    assert.ok(/openGraph:\s*\{/.test(helper));
+    assert.ok(/twitter:\s*\{/.test(helper));
+    assert.ok(/url:\s*canonical/.test(helper), 'og:url must equal the canonical URL');
+    assert.ok(/siteName:\s*OG_SITE_NAME/.test(helper) && /OG_SITE_NAME\s*=\s*'InternFlow'/.test(helper));
 });
 
 test('detail page keeps og:site_name / og:locale / twitter creator that a page-level openGraph would drop', () => {

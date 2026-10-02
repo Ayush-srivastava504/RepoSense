@@ -4,7 +4,8 @@
 //
 
 import type { Metadata } from 'next';
-import { listPageState, paginatedCanonical, paginatedTitle } from '@/lib/seo/pagination';
+import { listPageState } from '@/lib/seo/pagination';
+import { listingMetadata } from '@/lib/seo/pageMeta';
 import Link from 'next/link';
 import { canonicalPathForJob } from '@/lib/slug';
 import { getJobsPage, getFeaturedJobs, BASE_URL, } from '@/lib/jobs';
@@ -24,39 +25,15 @@ const JOBS_PER_PAGE = 12;
 export async function generateMetadata({ searchParams, }: {
     searchParams: Record<string, string | undefined>;
 }): Promise<Metadata> {
-    const { page, filtered } = listPageState(searchParams);
-    const title = paginatedTitle('Internship Listings — India, Remote & Japan — Refreshed Daily', page);
-    const description = 'Browse the latest software engineering, sales, and finance internships in India, remote-first companies, and Japan. Filter by role and location. Updated daily.';
-    const canonical = paginatedCanonical(BASE_URL, '/internships', searchParams);
-    const ogImage = `${BASE_URL}/og-image.png`;
-    return {
-        title,
-        description,
-        alternates: {
-            canonical,
-            // hreflang only for the plain first page; deeper/filtered views are not translated variants.
-            ...(page === 1 && !filtered ? { languages: languageAlternates('/internships') } : {}),
-        },
-        // Without this the page inherits the ROOT layout's openGraph wholesale, so sharing /internships
-        // showed the homepage's og:title, og:description and og:url (= the homepage). Self-referencing
-        // og:url = the canonical, so ?page=N and filtered views agree with <link rel="canonical">.
-        openGraph: {
-            type: 'website',
-            siteName: 'InternFlow',
-            locale: 'en_IN',
-            url: canonical,
-            title,
-            description,
-            images: [{ url: ogImage, width: 1200, height: 630, alt: 'InternFlow — Internship listings in India, remote and Japan' }],
-        },
-        twitter: {
-            card: 'summary_large_image',
-            creator: '@internflow_in',
-            title,
-            description,
-            images: [ogImage],
-        },
-    };
+    // Purpose: internships only (tech and non-tech), government notifications excluded.
+    return listingMetadata({
+        path: '/internships',
+        title: 'Internships in India, Remote & Japan — Updated Daily',
+        description: 'Browse the latest tech and non-tech internships in India, remote-first companies and Japan: software, data, marketing, sales and finance. Updated daily.',
+        searchParams,
+        imageAlt: 'InternFlow — Internship listings in India, remote and Japan',
+        languages: languageAlternates('/internships'),
+    });
 }
 function Pagination({ currentPage, totalPages, search, loc, role, extraParams, }: {
     currentPage: number;
@@ -166,6 +143,8 @@ export default async function InternshipsPage({ searchParams, }: {
         search,
         type: 'internship',
         sort: 'ranked' as const,
+        // Government notifications have their own page (/government-jobs); keep them out of internships.
+        excludeGovernment: true,
         ...(locationFilter === 'remote' ? { category: 'remote' as const } : {}),
         ...(locationFilter === 'japan' ? { country: 'Japan' } : {}),
         ...(groupFilter !== 'all' ? { job_group: groupFilter } : {}),
@@ -269,6 +248,10 @@ export default async function InternshipsPage({ searchParams, }: {
 
           <Link href="/jobs" className="underline">
             See all jobs
+          </Link>
+          {' · '}
+          <Link href="/remote-jobs" className="underline">
+            Remote jobs
           </Link>
         </p>
 

@@ -170,6 +170,9 @@ interface GetJobsOptions {
     // "India" location filter with real LIMIT/OFFSET — see getJobsPage().
     indiaOnly?: boolean;
     indiaFirst?: boolean;
+    // Drops is_government rows server-side. /jobs, /internships and /remote-jobs set this so
+    // government notifications live only on /government-jobs (their own purpose-built section).
+    excludeGovernment?: boolean;
 }
 function buildJobsParams(options: GetJobsOptions): URLSearchParams {
     const params = new URLSearchParams({
@@ -209,6 +212,8 @@ function buildJobsParams(options: GetJobsOptions): URLSearchParams {
         params.set('india_only', 'true');
     if (options.indiaFirst)
         params.set('india_first', 'true');
+    if (options.excludeGovernment)
+        params.set('exclude_government', 'true');
     return params;
 }
 // Same request as getJobs(), but a failed call THROWS instead of becoming []. Sitemap routes use this:
@@ -264,11 +269,14 @@ export async function getFeaturedJobs(options: {
     job_group?: JobGroup;
     country?: string;
     limit?: number;
+    excludeGovernment?: boolean;
 } = {}): Promise<Job[]> {
     try {
         const params = new URLSearchParams({
             limit: String(options.limit ?? 6),
         });
+        if (options.excludeGovernment)
+            params.set('exclude_government', 'true');
         if (options.type)
             params.set('type', options.type);
         if (options.category)

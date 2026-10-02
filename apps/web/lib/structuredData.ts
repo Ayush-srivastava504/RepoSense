@@ -321,13 +321,10 @@ export function jobPostingSchema(job: Job, canonicalUrl: string): Record<string,
     // listing") is the last resort since it moves on every crawl and can
     // mislead Google about how fresh a listing actually is.
     const datePosted = jobDatePosted(job);
-    // Google requires validThrough (or treats the posting as stale); fall back to
-    // datePosted + 45 days, or 30 days out, when neither posted_at nor last_seen_at
-    // is available.
-    const validThrough = job.deadline
-        ?? (datePosted
-            ? new Date(new Date(datePosted).getTime() + 45 * 24 * 60 * 60 * 1000).toISOString()
-            : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString());
+    // validThrough is only published when the source gave a real application deadline. It used to be
+    // invented (datePosted + 45 days, or now + 30 days) -- a made-up expiry is a false statement to Google.
+    // Jobs without a deadline are handled by the staleness rule (isStaleForIndexing), the noindex rule and
+    // the 410 pages instead.
     const schema: Record<string, any> = {
         '@context': 'https://schema.org',
         '@type': 'JobPosting',
@@ -341,7 +338,7 @@ export function jobPostingSchema(job: Job, canonicalUrl: string): Record<string,
         // Omit rather than emit an empty/invalid datePosted when the source gave us
         // neither a posted date nor a last-seen timestamp.
         ...(datePosted ? { datePosted } : {}),
-        validThrough,
+        ...(job.deadline ? { validThrough: job.deadline } : {}),
         employmentType,
         hiringOrganization: {
             '@type': 'Organization',

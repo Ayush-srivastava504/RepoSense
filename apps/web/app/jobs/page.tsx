@@ -2,7 +2,8 @@
 // Defines component(s)/export(s): JOBS_PER_PAGE, Pagination, JobsPage
 
 import type { Metadata } from 'next';
-import { listPageState, paginatedCanonical, paginatedTitle } from '@/lib/seo/pagination';
+import { listPageState } from '@/lib/seo/pagination';
+import { listingMetadata } from '@/lib/seo/pageMeta';
 import Link from 'next/link';
 
 import { canonicalPathForJob } from '@/lib/slug';
@@ -14,7 +15,7 @@ import { parseLocationFilter, parseGroupFilter, parseWorkModeFilter, } from '@/a
 import AdvancedJobFilters from '@/app/components/AdvancedJobFilters';
 import PopularSkills from '@/app/components/PopularSkills';
 import { sortIndiaFirst, isIndiaJob } from '@/lib/jobPriority';
-import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
+import {  breadcrumbSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 import SectionGuide from '@/app/components/SectionGuide';
 import { SECTION_GUIDES } from '@/lib/content/sectionGuides';
@@ -24,16 +25,17 @@ const JOBS_PER_PAGE = 12;
 export async function generateMetadata({ searchParams, }: {
     searchParams: Record<string, string | undefined>;
 }): Promise<Metadata> {
-    const { page, filtered } = listPageState(searchParams);
-    return {
-        title: paginatedTitle('Job & Internship Listings — India, Remote & Japan — Refreshed Daily', page),
-        description: 'Browse the latest software engineering, sales, and finance jobs and internships from India, remote companies, and Japan. Updated daily, no login required.',
-        alternates: {
-            canonical: paginatedCanonical(BASE_URL, '/jobs', searchParams),
-            // hreflang only for the plain first page; deeper/filtered views are not translated variants.
-            ...(page === 1 && !filtered ? { languages: languageAlternates('/jobs') } : {}),
-        },
-    };
+    // Purpose: the general feed -- tech AND non-tech roles (software, data, sales, finance, ...) in India,
+    // remote and Japan. Government notifications are excluded (they live on /government-jobs), and the
+    // title/description say what the page actually lists.
+    return listingMetadata({
+        path: '/jobs',
+        title: 'Jobs in India — Tech & Non-Tech Openings, Updated Daily',
+        description: 'Browse the latest tech and non-tech jobs in India, remote and Japan: software, data, sales, finance and more. Updated daily, no login required.',
+        searchParams,
+        imageAlt: 'InternFlow — Latest tech and non-tech jobs in India, remote and Japan',
+        languages: languageAlternates('/jobs'),
+    });
 }
 function Pagination({ currentPage, totalPages, search, loc, role, extraParams, }: {
     currentPage: number;
@@ -136,6 +138,8 @@ export default async function JobsPage({ searchParams, }: {
     const jobsFilterOptions = {
         search,
         sort: 'ranked' as const,
+        // Government notifications have their own page (/government-jobs); keep them out of the general feed.
+        excludeGovernment: true,
         ...(locationFilter === 'remote' ? { category: 'remote' as const } : {}),
         ...(locationFilter === 'japan' ? { country: 'Japan' } : {}),
         ...(groupFilter !== 'all' ? { job_group: groupFilter } : {}),
@@ -210,13 +214,13 @@ export default async function JobsPage({ searchParams, }: {
       <JobsSearchTracker search={search} resultCount={totalJobs}/>
 
       <script type="application/ld+json" dangerouslySetInnerHTML={{
-          __html: JSON.stringify(crumbs),
+          __html: safeJsonLd(crumbs),
       }}/>
       <Breadcrumbs schema={crumbs}/>
 
       <main className="mx-auto max-w-6xl px-3 sm:px-4 py-8 sm:py-12">
         <script type="application/ld+json" dangerouslySetInnerHTML={{
-            __html: JSON.stringify(itemListSchema),
+            __html: safeJsonLd(itemListSchema),
         }}/>
 
         <p className="eyebrow eyebrow-accent text-xs sm:text-sm">
@@ -235,11 +239,19 @@ export default async function JobsPage({ searchParams, }: {
 
 
         <p className="mt-2 text-xs sm:text-sm" style={{ color: 'var(--ink-soft)' }}>
-          Our full job feed, aggregated from multiple platforms and refreshed
-          daily.{' '}
+          Tech and non-tech jobs, aggregated from multiple platforms and
+          refreshed daily. Looking for something specific?{' '}
 
           <Link href="/internships" className="underline">
-            See internships only
+            Internships
+          </Link>
+          {' · '}
+          <Link href="/remote-jobs" className="underline">
+            Remote jobs
+          </Link>
+          {' · '}
+          <Link href="/government-jobs" className="underline">
+            Government jobs
           </Link>
         </p>
 
@@ -309,7 +321,7 @@ export default async function JobsPage({ searchParams, }: {
           <p className="eyebrow eyebrow-accent text-xs sm:text-sm">// about this page</p>
 
           <h2 className="display mt-2 text-xl sm:text-2xl font-medium">
-            Find High Paying Jobs and Internships in India, Remote, and Japan
+            Find Tech and Non-Tech Jobs in India, Remote, and Japan
           </h2>
 
           <div className="mt-4 grid gap-6 sm:grid-cols-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
