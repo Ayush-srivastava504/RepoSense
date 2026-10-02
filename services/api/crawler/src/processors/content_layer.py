@@ -20,7 +20,8 @@ def content_tier(job: Dict) -> str:
                     (a low-confidence FAQ answer is worse for trust/SEO
                     than no FAQ at all)
     """
-    if job.get('legitimacy_state') == 'verified' and not job.get('is_thin'):
+    if (job.get('legitimacy_state') == 'verified' and not job.get('is_thin')
+            and job.get('gov_relevance') != 'general'):
         return 'full'
     if job.get('legitimacy_state') in ('verified', 'likely'):
         return 'standard'

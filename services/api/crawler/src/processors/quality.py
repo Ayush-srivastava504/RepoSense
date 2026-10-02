@@ -14,7 +14,7 @@
 #      priority enrichment instead of silently published as-is.
 #
 # Defines function(s): is_rejected_apply_url, is_listing_url,
-#   assess_legitimacy, filter_and_score
+#   assess_legitimacy, assess_government_legitimacy, classify_government_relevance, filter_and_score
 
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
@@ -184,6 +184,102 @@ def assess_legitimacy(job: Dict, source_count: int = 1) -> Dict:
     return {'state': 'uncertain', 'reasons': reasons, 'checked_at': checked_at}
 
 
+# --- Government notices (3d) ------------------------------------------------
+# assess_legitimacy() keys off compensation + description length, which a
+# government notification never has (pay is a pay-scale in the PDF, the listing
+# row is ~1 line). Every govt post therefore came out 'uncertain' + is_thin and
+# was permanently excluded from sitemaps. Government postings get their own
+# scorer based on what a real notification *does* carry: advt no., department,
+# vacancy count, last date, and (sometimes) an official .gov.in/.nic.in link.
+#
+# Scope = hybrid: tech/PSU notices can reach 'verified'/'full'; general
+# sarkari notices are kept (reach) but capped so they rank below and never
+# earn LLM-heavy 'full' content.
+import re as _re
+
+GOV_TECH_TITLE_RE = _re.compile(
+    r'\b(engineer(?:s|ing)?|gets?|graduate\s+engineer|scientists?|scientific|programmers?|'
+    r'developers?|software|it\s+officer|computer|ict|cyber|data\s+(?:analyst|scientist|entry\s+operator)|'
+    r'system(?:s)?\s+(?:analyst|admin\w*|officer|manager)|technical|je|ae|gate)\b', _re.I)
+GOV_TRAINEE_TITLE_RE = _re.compile(
+    r'\b(trainee|executive|officer|manager|apprentice|management\s+trainee|graduate)\b', _re.I)
+GOV_PSU_ORG_RE = _re.compile(
+    r'\b(isro|drdo|barc|npcil|bhel|ongc|ntpc|gail|iocl|indian\s+oil|bpcl|hpcl|sail|bel|hal|nhpc|nlc|'
+    r'power\s*grid|coal\s+india|cdac|c-dac|nic|bsnl|rites|ircon|rvnl|dmrc|aai|airports\s+authority|'
+    r'bharat\s+electronics|hindustan\s+aeronautics|cochin\s+shipyard|mecon|beml|mazagon|goa\s+shipyard|'
+    r'garden\s+reach|bharat\s+heavy|iit|nit|iisc|iiit|nielit|drdl|hpcl|mangalore\s+refinery|nalco|'
+    r'balmer\s+lawrie)\b', _re.I)
+
+GENERAL_GOV_QUALITY_CAP = 60   # below TIER_OLD_MIN_QUALITY (75) in sitemap_builder: fresh/mid tiers only
+GOV_STRUCT_FIELDS = ('notification_number', 'department', 'vacancies', 'deadline')
+
+
+def classify_government_relevance(job: Dict) -> str:
+    """'tech_psu' | 'general'. Title decides; a PSU/tech org only counts when
+    the post itself is a trainee/officer-type role (not a PSU clerk/peon)."""
+    title = job.get('title') or ''
+    org = f"{job.get('department') or ''} {job.get('company') or ''}"
+    if GOV_TECH_TITLE_RE.search(title):
+        return 'tech_psu'
+    if GOV_PSU_ORG_RE.search(org) and GOV_TRAINEE_TITLE_RE.search(title):
+        return 'tech_psu'
+    return 'general'
+
+
+def _gov_struct_count(job: Dict) -> int:
+    n = 0
+    for f in GOV_STRUCT_FIELDS:
+        v = job.get(f)
+        if f == 'department' and (not v or str(v).strip().lower() == 'government recruitment'):
+            continue
+        if v is not None and str(v).strip():
+            n += 1
+    return n
+
+
+def assess_government_legitimacy(job: Dict, source_count: int = 1) -> Dict:
+    """Deterministic legitimacy for government notices. Returns the same shape
+    as assess_legitimacy plus is_thin, relevance and a quality_score."""
+    checked_at = datetime.now(timezone.utc).isoformat(timespec='seconds')
+    host = _host_of(job.get('apply_url') or job.get('url') or '')
+    official = _is_govt_domain(host)
+    structured = _gov_struct_count(job)
+    has_notice_no = bool((job.get('notification_number') or '').strip())
+    has_deadline = bool(str(job.get('deadline') or '').strip())
+    relevance = classify_government_relevance(job)
+
+    reasons: List[str] = [f'Government notification ({relevance.replace("_", "/")} relevance).']
+    if official:
+        reasons.append('Apply link is an official government domain.')
+    if has_notice_no:
+        reasons.append('Carries an advertisement/notification number.')
+    if source_count >= 2:
+        reasons.append(f'Observed on {source_count} sources.')
+
+    if (official or source_count >= 2) and has_notice_no and has_deadline:
+        state = 'verified'
+    elif structured >= 2:
+        state = 'likely'
+    else:
+        state = 'uncertain'
+        reasons.append('Too few structured notification fields (advt no., department, vacancies, last date).')
+
+    # Facts-heavy notices are not "thin" even with a 1-line description: the
+    # content table is built from exactly these fields.
+    is_thin = len(job.get('description') or '') < THIN_DESCRIPTION_THRESHOLD and structured < 3
+
+    if relevance == 'general' and state == 'verified':
+        state = 'likely'
+        reasons.append('General (non-technical) notice: capped below verified.')
+
+    score = 40 + {'verified': 40, 'likely': 20}.get(state, 0) + (0 if is_thin else 20)
+    if relevance == 'general':
+        score = min(score, GENERAL_GOV_QUALITY_CAP)
+    score = max(0, min(100, score))
+    return {'state': state, 'reasons': reasons, 'checked_at': checked_at,
+            'is_thin': is_thin, 'relevance': relevance, 'quality_score': score}
+
+
 # --- Entry point ---------------------------------------------------------
 
 def filter_and_score(jobs: List[Dict]) -> Tuple[List[Dict], List[Dict]]:
@@ -206,6 +302,15 @@ def filter_and_score(jobs: List[Dict]) -> Tuple[List[Dict], List[Dict]]:
             rejected.append(job)
             continue
         source_count = seen_apply_urls.get(apply_url, 1)
+        if job.get('is_government'):
+            verdict = assess_government_legitimacy(job, source_count=source_count)
+            job['legitimacy_state'] = verdict['state']
+            job['legitimacy_reasons'] = verdict['reasons']
+            job['is_thin'] = verdict['is_thin']
+            job['quality_score'] = verdict['quality_score']
+            job['gov_relevance'] = verdict['relevance']  # in-memory only (content_tier uses it); not a DB column
+            kept.append(job)
+            continue
         verdict = assess_legitimacy(job, source_count=source_count)
         desc_len = len(job.get('description') or '')
         is_thin = desc_len < THIN_DESCRIPTION_THRESHOLD

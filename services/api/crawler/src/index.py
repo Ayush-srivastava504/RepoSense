@@ -16,7 +16,7 @@ from processors.quality import filter_and_score
 from processors.content_layer import attach_content_plan
 from content_enrichment import run_content_enrichment_for_new_jobs
 from structured_enrichment import run_structured_enrichment_for_jobs
-from utils import get_logger, save_to_s3, upsert_jobs, deactivate_stale_jobs, check_liveness_for_aging_jobs, utcnow, fetch_recent_jobs_for_dedupe
+from utils import get_logger, save_to_s3, upsert_jobs, deactivate_stale_jobs, check_liveness_for_aging_jobs, utcnow, fetch_recent_jobs_for_dedupe, log_pipeline_run
 log = get_logger('handler')
 
 def _load_scrapers() -> Dict:
@@ -230,6 +230,8 @@ def run_pipeline(keywords: List[str]=None, locations: List[str]=None, max_pages:
     elapsed = round(time.time() - started, 1)
     summary = {'status': 'ok', 'started_at': started_at, 'elapsed_sec': elapsed, 'source_counts': source_counts, 'raw_total': len(raw_jobs), 'normalized': len(normalized), 'deduplicated': len(deduped), 'enriched': len(enriched), 'quality_rejected': len(rejected_jobs), 'quality_thin_flagged': sum((1 for j in enriched if j.get('is_thin'))), 'written_db': written, 'deactivated_stale': deactivated, 'content_enrichment': content_enrichment_summary, 'structured_enrichment': structured_enrichment_summary, 's3_key': s3_key}
     log.info('Pipeline done in %.1fs | summary=%s', elapsed, json.dumps(summary))
+    if not dry_run:
+        log_pipeline_run('crawl', 'ok', elapsed, {k: summary[k] for k in ('raw_total', 'normalized', 'deduplicated', 'quality_rejected', 'written_db', 'deactivated_stale', 'source_counts')})
     return summary
 
 def _run_scraper(scraper, keywords, locations, max_pages) -> List[Dict]:

@@ -47,3 +47,48 @@ def test_categories_chunking_and_xml():
 
 def test_dedupes_ids():
     assert sb.build_files([job(1), job(1)], NOW)['jobs-1.xml'][2] == 1
+
+
+# --- Phase 8: sitemap_categories registry -------------------------------------
+
+def _mixed():
+    return [job(1, type='internship'), job(2, is_remote=True), job(3, is_government=True), job(4)]
+
+
+def test_registry_disables_a_job_category():
+    files = sb.build_files(_mixed(), NOW, enabled=['jobs', 'internships', 'remote-jobs'])
+    assert not any(n.startswith('government-jobs') for n in files)
+    assert {'jobs-1.xml', 'internships-1.xml', 'remote-jobs-1.xml'} <= set(files)
+
+
+def test_enabled_none_keeps_all_categories():
+    files = sb.build_files(_mixed(), NOW)
+    assert {c for c, *_ in files.values()} == set(sb.CATEGORIES)
+
+
+def test_enabled_job_categories_from_registry_rows():
+    reg = [
+        {'slug': 'jobs', 'kind': 'job_cache', 'enabled': True},
+        {'slug': 'government-jobs', 'kind': 'job_cache', 'enabled': False},
+        {'slug': 'skills', 'kind': 'route', 'enabled': True},
+        {'slug': 'bogus-jobs', 'kind': 'job_cache', 'enabled': True},  # unknown slug ignored
+    ]
+    assert sb.enabled_job_categories(reg) == ['jobs']
+    assert sb.enabled_job_categories([]) == list(sb.CATEGORIES)  # empty/unavailable registry -> old behaviour
+
+
+class _Pool:
+    def __init__(self, rows=None, boom=False):
+        self.rows, self.boom = rows, boom
+
+    async def fetch(self, sql, *a):
+        if self.boom:
+            raise RuntimeError('relation "sitemap_categories" does not exist')
+        return self.rows
+
+
+def test_load_registry_survives_missing_table():
+    import asyncio
+    assert asyncio.run(sb.load_registry(_Pool(boom=True))) == []
+    assert asyncio.run(sb.load_registry(_Pool(rows=[{'slug': 'jobs', 'kind': 'job_cache', 'enabled': True}]))) == [
+        {'slug': 'jobs', 'kind': 'job_cache', 'enabled': True}]

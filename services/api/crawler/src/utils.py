@@ -141,6 +141,21 @@ def get_pg_conn():
         log.info('PostgreSQL connection successful')
     return _pg_conn
 
+def log_pipeline_run(stage: str, status: str, duration_s: float, detail: Dict) -> None:
+    """Best-effort row in pipeline_runs (migration 029). Never raises."""
+    try:
+        conn = get_pg_conn()
+        cur = conn.cursor()
+        cur.execute("INSERT INTO pipeline_runs (run_id, stage, status, finished_at, duration_s, detail) VALUES (%s, %s, %s, now(), %s, %s)",
+                    (f"crawler-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}", stage, status, round(duration_s, 1), Json(detail)))
+        conn.commit()
+    except Exception as exc:
+        log.warning('pipeline_runs log write failed (non-fatal): %s', exc)
+        try:
+            get_pg_conn().rollback()
+        except Exception:
+            pass
+
 def fetch_recent_jobs_for_dedupe(days: int = 45) -> List[Dict]:
     """Title/company of currently-active jobs, for processors.dedupe.deduplicate_against_db()
     (cross-run fuzzy dedupe -- id-based exact dedupe can't catch a listing re-scraped

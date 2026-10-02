@@ -20,6 +20,11 @@ on:
         required: false
         type: boolean
         default: false
+      run_id:
+        description: 'Groups this stage with the rest of a chained daily run in pipeline_runs'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   push:
@@ -36,7 +41,7 @@ jobs:
           timeout: 60s
           command_timeout: 15m
           script_stop: true
-          envs: CATEGORY,CAP,DRY_RUN
+          envs: CATEGORY,CAP,DRY_RUN,RUN_ID
           capture_stdout: true
           script: |
             set -e
@@ -54,11 +59,13 @@ jobs:
 
             docker compose -f infrastructure/docker/docker-compose.yml \
               run --rm --entrypoint python api \
-              scripts/phase_f_priority_index_push.py $EXTRA_ARGS
+              scripts/pipeline_stage.py --run-id "${RUN_ID:-manual-$(date +%s)}" --stage "index:$CATEGORY" -- \
+              python scripts/phase_f_priority_index_push.py $EXTRA_ARGS
         env:
           CATEGORY: ${{ inputs.category }}
           CAP: ${{ inputs.cap }}
           DRY_RUN: ${{ inputs.dry_run }}
+          RUN_ID: ${{ inputs.run_id }}
 
       - name: Log summary
         if: always()

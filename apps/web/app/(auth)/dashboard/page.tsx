@@ -171,7 +171,8 @@ function DashboardContent() {
             setLoadingActivity(false);
         });
     }, [user]);
-    const firstName = user?.email?.split('@')[0] ?? 'there';
+    // Guest accounts have an auto-generated id as their email local-part (guest-6d40aad9...), which is not a name.
+    const firstName = user?.is_guest ? 'there' : (user?.email?.split('@')[0] ?? 'there');
     const newUser = stats && stats.total_reviews === 0 && stats.repos_connected === 0;
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -183,7 +184,7 @@ function DashboardContent() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="eyebrow eyebrow-accent">{t('dashboard.eyebrowOverview', '// overview')}</p>
-          <h1 className="display mt-2 text-2xl font-medium sm:text-3xl">
+          <h1 className="display mt-2 text-2xl font-medium [overflow-wrap:anywhere] sm:text-3xl">
             {user ? `${greeting()}, ${firstName}` : t('dashboard.greetingGuestTitle', 'Find your next internship')}
           </h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--ink-soft)' }}>

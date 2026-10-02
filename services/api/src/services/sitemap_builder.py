@@ -21,6 +21,9 @@ if SITE_URL.split('//', 1)[-1].startswith('www.'):
     SITE_URL = 'https://intern-flow.in'
 
 CATEGORIES = ('jobs', 'internships', 'remote-jobs', 'government-jobs')
+# slug <-> job_rule. The slug is also the URL prefix on the site, so it is fixed by the web
+# routes; the sitemap_categories table (migration 030) decides which of these are ENABLED.
+RULE_SLUGS = {'government': 'government-jobs', 'internship': 'internships', 'remote': 'remote-jobs', 'default': 'jobs'}
 URLS_PER_FILE = 1000
 TIER_FRESH_DAYS = 30
 TIER_MID_DAYS = 90
@@ -139,19 +142,22 @@ def build_urlset(entries: list) -> str:
             + '\n'.join(body) + '\n</urlset>')
 
 
-def build_files(jobs: Iterable[dict], now: Optional[datetime] = None) -> dict:
-    """-> {file_name: (category, page, url_count, xml)}"""
+def build_files(jobs: Iterable[dict], now: Optional[datetime] = None, enabled: Optional[Iterable[str]] = None) -> dict:
+    """-> {file_name: (category, page, url_count, xml)}
+    `enabled` = job-category slugs allowed by the sitemap_categories registry (None = all)."""
     now = now or datetime.now(timezone.utc)
-    buckets = {c: [] for c in CATEGORIES}
+    allowed = set(CATEGORIES if enabled is None else enabled)
+    buckets = {c: [] for c in CATEGORIES if c in allowed}
     seen = set()
     for job in jobs:
         jid = job.get('id')
         if not jid or jid in seen:
             continue
         seen.add(jid)
-        if not is_job_for_sitemap(job, now):
+        category = category_for_job(job)
+        if category not in buckets or not is_job_for_sitemap(job, now):
             continue
-        buckets[category_for_job(job)].append(
+        buckets[category].append(
             (f'{SITE_URL}{canonical_path(job)}', to_lastmod(job.get('posted_at') or job.get('created_at'), now)))
     files = {}
     for category, entries in buckets.items():
@@ -164,10 +170,31 @@ def build_files(jobs: Iterable[dict], now: Optional[datetime] = None) -> dict:
     return files
 
 
+REGISTRY_SQL = 'SELECT slug, kind, job_rule, path, enabled, sort_order FROM sitemap_categories ORDER BY sort_order, slug'
+
+
+async def load_registry(pool) -> list:
+    """Registry rows as dicts. Falls back to all-job-categories-enabled (the pre-registry
+    behaviour) when the table is missing/empty/unreadable, so a build never fails on it."""
+    try:
+        rows = [dict(r) for r in await pool.fetch(REGISTRY_SQL)]
+    except Exception:
+        rows = []
+    return rows
+
+
+def enabled_job_categories(registry: list) -> list:
+    if not registry:
+        return list(CATEGORIES)
+    return [r['slug'] for r in registry if r['kind'] == 'job_cache' and r['enabled'] and r['slug'] in CATEGORIES]
+
+
 async def rebuild(pool, force: bool = False) -> dict:
     now = datetime.now(timezone.utc)
     rows = [dict(r) for r in await pool.fetch(JOB_SQL)]
-    files = build_files(rows, now)
+    registry = await load_registry(pool)
+    enabled = enabled_job_categories(registry)
+    files = build_files(rows, now, enabled)
     new_total = sum(f[2] for f in files.values())
     old_total = await pool.fetchval('SELECT COALESCE(SUM(url_count), 0) FROM sitemap_cache') or 0
     if not force and old_total > 0 and new_total < old_total * MIN_KEEP_RATIO:
@@ -184,5 +211,5 @@ async def rebuild(pool, force: bool = False) -> dict:
                          url_count=EXCLUDED.url_count, xml=EXCLUDED.xml, built_at=EXCLUDED.built_at''',
                     name, category, page, count, xml)
             await conn.execute('DELETE FROM sitemap_cache WHERE NOT (file_name = ANY($1::text[]))', list(files))
-    per_cat = {c: sum(f[2] for f in files.values() if f[0] == c) for c in CATEGORIES}
+    per_cat = {c: sum(f[2] for f in files.values() if f[0] == c) for c in enabled}
     return {'jobs_scanned': len(rows), 'urls': new_total, 'files': len(files), 'per_category': per_cat}

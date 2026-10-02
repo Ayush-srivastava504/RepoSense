@@ -250,7 +250,7 @@ export default async function JobsPage({ searchParams, }: {
 
           <div className="flex flex-col gap-2 sm:gap-3">
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-              <input type="text" name="search" defaultValue={search} placeholder="Search title, company, skills, location..." className="w-full flex-1 rounded-lg border px-3 sm:px-4 py-2.5 sm:py-3 text-sm" style={{
+              <input type="text" name="search" defaultValue={search} placeholder="Search title, company, skills, location..." className="w-full flex-1 rounded-lg border px-3 sm:px-4 py-2.5 sm:py-3 text-base sm:text-sm" style={{
             background: 'var(--surface)',
             borderColor: 'var(--border)',
             color: 'var(--ink)',

@@ -199,7 +199,7 @@ export default async function JapanJobsPage({ searchParams, }: {
         <form method="GET" action="/japan-jobs" className="mt-6 sm:mt-8">
           {type === 'internship' && <input type="hidden" name="type" value="internship"/>}
           <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row">
-            <input type="text" name="search" defaultValue={search} placeholder="Search title, company, skills..." className="w-full flex-1 rounded-lg border px-3 sm:px-4 py-2.5 sm:py-3 text-sm" style={{
+            <input type="text" name="search" defaultValue={search} placeholder="Search title, company, skills..." className="w-full flex-1 rounded-lg border px-3 sm:px-4 py-2.5 sm:py-3 text-base sm:text-sm" style={{
             background: 'var(--surface)',
             borderColor: 'var(--border)',
             color: 'var(--ink)',

@@ -28,8 +28,8 @@
 name: Job content enrichment
 
 on:
-  schedule:
-    - cron: '0 4 * * *'
+  # Scheduled run moved to daily-pipeline.yml (enrich -> sitemap -> index -> gone chain).
+  # Kept as a manual trigger for ad-hoc/backfill runs.
   workflow_dispatch:
     inputs:
       limit:

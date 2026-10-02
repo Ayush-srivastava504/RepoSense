@@ -67,8 +67,8 @@ export default function JobCard({ job }: {
           ⚡ {job.notes_highlights}
         </p>)}
 
-      <div className="mt-4 flex items-center justify-between gap-2 border-t pt-3" style={{ borderColor: 'var(--line)' }}>
-        <div className="flex flex-col text-[11px]" style={{ color: 'var(--muted)' }}>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-3" style={{ borderColor: 'var(--line)' }}>
+        <div className="flex min-w-0 flex-col text-[11px]" style={{ color: 'var(--muted)' }}>
           {pay && (<span className="font-medium" style={{ color: 'var(--ink)' }}>
               {pay}
             </span>)}

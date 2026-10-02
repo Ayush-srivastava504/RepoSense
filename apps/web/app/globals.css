@@ -71,6 +71,14 @@ body {
 }
 
 @layer base {
+  /* `grid gap-3 sm:grid-cols-3` has no column template below `sm`, so the browser makes
+     one `auto` column that grows to the widest item's min-content width. A 0-min
+     single column keeps grid items inside the screen. Any grid-cols-* utility
+     (which is generated later) overrides this. */
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   ::selection {
     background: var(--indigo-soft);
     color: var(--indigo);
@@ -89,15 +97,33 @@ body {
   .shell {
     background: var(--paper);
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
   }
 
   .container-xl {
+    /* width:100% is required: with margin:auto inside a flex column (AppShell's
+       .main-column) the box otherwise shrinks to its content, so one long
+       unbreakable string pushes the whole page wider than the phone screen. */
+    width: 100%;
     max-width: 72rem;
     margin: 0 auto;
+    box-sizing: border-box;
     padding-left: 1.25rem;
     padding-right: 1.25rem;
+    /* Inherited by everything on every page inside the app shell. Long unbreakable
+       strings (URLs, emails, ids, scraped titles) wrap instead of widening the page.
+       `anywhere` (not `break-word`) also lowers the min-content size, so flex and
+       grid items can shrink below such a string. Only affects text that would
+       otherwise overflow; normal words still wrap at spaces first. */
+    overflow-wrap: anywhere;
+  }
+
+  /* Data tables keep normal wrapping: `anywhere` would let auto-layout columns
+     collapse and break words mid-letter on tablets instead of scrolling. */
+  .container-xl table {
+    overflow-wrap: normal;
   }
 
   @media (min-width: 640px) {
@@ -135,6 +161,7 @@ body {
 
   /* Cards / panels */
   .panel {
+    min-width: 0;
     background: var(--paper-dim);
     border: 1px solid var(--line-strong);
     border-radius: var(--radius-md);
@@ -302,6 +329,8 @@ body {
 
   /* Status chips */
   .chip {
+    max-width: 100%;
+    min-width: 0;
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;

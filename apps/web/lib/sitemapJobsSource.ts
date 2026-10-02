@@ -14,6 +14,9 @@ const API_BASE_URL = process.env.API_BASE_URL ||
 
 export type SitemapFileInfo = { file_name: string; url_count: number };
 
+export type SitemapRegistryEntry = { slug: string; kind: 'job_cache' | 'route'; path: string | null; sort_order: number };
+
+let lastCategories: SitemapRegistryEntry[] | null = null;
 let lastList: SitemapFileInfo[] | null = null;
 const lastXml = new Map<string, string>();
 
@@ -59,4 +62,26 @@ export async function getSitemapFileXml(name: string): Promise<string | null> {
 
 export function sitemapFileUrls(files: SitemapFileInfo[]): string[] {
     return files.map((f) => `${BASE_URL}/sitemaps/${f.file_name}`);
+}
+
+/**
+ * Enabled sitemap_categories rows (migration 030), or null when the registry is
+ * unavailable -- callers fall back to their built-in list, so a registry problem
+ * never takes the index down.
+ */
+export async function getSitemapCategories(): Promise<SitemapRegistryEntry[] | null> {
+    try {
+        const res = await fetchWithTimeout(`${API_BASE_URL}/api/sitemap/categories`, { next: { revalidate: 600 } }, 8000);
+        if (!res.ok)
+            throw new Error(`sitemap categories: HTTP ${res.status}`);
+        const body = (await res.json()) as { categories?: SitemapRegistryEntry[] };
+        if (!body.categories?.length)
+            throw new Error('sitemap categories empty');
+        lastCategories = body.categories;
+        return body.categories;
+    }
+    catch (err) {
+        console.warn('Sitemap registry unavailable, using built-in list:', err);
+        return lastCategories;
+    }
 }
