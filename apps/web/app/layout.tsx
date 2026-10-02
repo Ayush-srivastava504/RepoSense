@@ -32,7 +32,7 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
     metadataBase: new URL(BASE_URL),
     title: {
-        default: 'InternFlow — High Paying Jobs, Remote Jobs & Internships + AI Resume Builder',
+        default: 'InternFlow — Jobs, Internships & AI Resume Tools',
         template: '%s | InternFlow',
     },
     description: 'Find high paying jobs, remote jobs, government jobs, and internships, plus an ATS-friendly resume builder, cover letter generator, and AI GitHub code review.',

@@ -8,7 +8,7 @@ import type { Metadata } from 'next';
 import { BASE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
-    title: 'AI GitHub Code Review for Students & Early-Career Engineers',
+    title: 'AI GitHub Code Review for Students',
     description: 'Connect your GitHub account and get an AI review of your repositories: code quality issues, suggested fixes, and portfolio-ready feedback.',
     alternates: { canonical: `${BASE_URL}/github` },
     openGraph: {

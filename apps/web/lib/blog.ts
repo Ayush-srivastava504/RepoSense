@@ -25,6 +25,10 @@ export interface ChartDefinition {
   title: string;
   description?: string;
   dataSource?: string;
+  /** chart_stats key (e.g. "topic:machine-learning-engineer"); when set, series data comes from /api/charts at render time */
+  statsKey?: string;
+  /** which stat feeds the chart: skills or experience (x-axis labels are the lookup keys) */
+  metric?: 'skills' | 'experience';
   xAxis?: string[];
   series: ChartSeries[];
 }

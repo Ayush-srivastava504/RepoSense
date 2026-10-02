@@ -15,7 +15,7 @@ from configs.db import get_db_pool
 from configs.redis import get_redis
 from middleware.rate_limit import rate_limit_middleware
 from utils.logger import setup_logger
-from routes import auth, github, resume, jobs, companies, hackathons, subscription, webhooks, linkedin, ats, dashboard, leetcode, auto_apply, sitemap
+from routes import auth, github, resume, jobs, companies, hackathons, subscription, webhooks, linkedin, ats, dashboard, leetcode, auto_apply, sitemap, charts
 from routes.async_jobs import router as async_jobs_router
 from api.routes import router as review_router
 from api.routes_self_healing import router as self_healing_router
@@ -70,6 +70,7 @@ def create_application() -> FastAPI:
     app.include_router(resume.router)
     app.include_router(jobs.router)
     app.include_router(sitemap.router)
+    app.include_router(charts.router)
     app.include_router(companies.router)
     app.include_router(hackathons.router)
     app.include_router(subscription.router)

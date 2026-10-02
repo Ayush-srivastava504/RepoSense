@@ -8,7 +8,7 @@ import type { Metadata } from 'next';
 import { BASE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
-    title: 'ATS-Friendly Resume Builder for Students & Early-Career Engineers',
+    title: 'ATS-Friendly Resume Builder for Students',
     description: 'Build an ATS-friendly resume with AI-assisted writing. Add your experience, education, and projects in a clean, recruiter-readable layout.',
     alternates: { canonical: `${BASE_URL}/resume/builder` },
     openGraph: {

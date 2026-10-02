@@ -13,7 +13,7 @@ import FAQAccordion from '@/app/components/FAQAccordion';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 
 export const metadata: Metadata = {
-    title: 'Skills for Resume: Hard Skills, Soft Skills & Technical Skills',
+    title: 'Resume Skills: Hard, Soft & Technical Skills',
     description: 'The exact skills to put on your resume — hard skills, soft skills, and technical skills, with real examples by field, how many to list, and live jobs by skill.',
     keywords: [
         'skills for resume',

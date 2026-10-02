@@ -9,6 +9,9 @@ import Script from 'next/script';
 import { notFound } from 'next/navigation';
 import { headers, cookies } from 'next/headers';
 import { BASE_URL } from '@/lib/jobs';
+import type { ComponentProps } from 'react';
+import StatBarChart from '@/app/components/StatBarChart';
+import { getChartStats, seriesFor } from '@/lib/chartStats';
 import { getAllPosts, getPostBySlug, isStructuredBody, articleWordCount, type BodySection } from '@/lib/blog';
 import { getToolsForArticle } from '@/app/tools/data';
 import { breadcrumbSchema, faqSchema, languageAlternates, ORG_NAME, ORG_LOGO } from '@/lib/structuredData';
@@ -250,6 +253,18 @@ export default async function BlogPostPage({ params }: Props) {
 
   const linkedTools = getToolsForArticle(post.slug);
 
+  // Charts render only from real nightly aggregates (chart_stats). A chart with no statsKey, no
+  // stats row yet (too few listings), or a label the stats don't cover is omitted -- never faked.
+  const liveCharts: ComponentProps<typeof StatBarChart>[] = [];
+  for (const chart of post.charts ?? []) {
+    if (!chart.statsKey || !chart.metric || !chart.xAxis?.length) continue;
+    const stats = await getChartStats(chart.statsKey);
+    const values = stats ? seriesFor(stats, chart.metric, chart.xAxis) : null;
+    if (!stats || !values) continue;
+    liveCharts.push({ title: chart.title, description: chart.description, labels: chart.xAxis, values,
+      sampleSize: chart.metric === 'experience' ? stats.stats.experience_known : stats.sample_size, computedAt: stats.computed_at });
+  }
+
   const crumbs = breadcrumbSchema([
     { name: 'Home', url: BASE_URL },
     { name: 'Blog', url: `${BASE_URL}/blog` },
@@ -392,20 +407,11 @@ export default async function BlogPostPage({ params }: Props) {
           {isStructuredBody(post.body) ? renderStructuredBody(post.body) : renderBody(post.body)}
         </div>
 
-        {post.charts && post.charts.length > 0 && (
+        {liveCharts.length > 0 && (
           <div className="mt-8 space-y-6">
-            {post.charts
-              .filter((chart) => chart.series.some((s) => s.data.length > 0))
-              .map((chart) => (
-                <div key={chart.title} className="rounded-xl border p-5" style={{ borderColor: 'var(--line)' }}>
-                  <h3 className="text-base font-medium">{chart.title}</h3>
-                  {chart.description && (
-                    <p className="mt-1 text-sm" style={{ color: 'var(--ink-soft)' }}>{chart.description}</p>
-                  )}
-                  {/* Chart rendering wired up once the data pipeline populates chart.series[].data;
-                      charts with empty series are filtered out above rather than shown blank. */}
-                </div>
-              ))}
+            {liveCharts.map((c) => (
+              <StatBarChart key={c.title} {...c} />
+            ))}
           </div>
         )}
 

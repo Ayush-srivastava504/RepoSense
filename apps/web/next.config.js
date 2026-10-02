@@ -26,6 +26,12 @@ const nextConfig = {
 	async headers() {
 		return [
 			{
+				// HSTS: HTTPS-only for a year on this host. Deliberately no includeSubDomains/preload --
+				// api.* and any other subdomain must be confirmed HTTPS-clean before widening this.
+				source: '/:path*',
+				headers: [{ key: 'Strict-Transport-Security', value: 'max-age=31536000' }],
+			},
+			{
 				source: '/:path*(svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)',
 				headers: [
 					{
@@ -39,6 +45,12 @@ const nextConfig = {
 
 	async redirects() {
 		return [
+			{
+				// /resume has no page of its own (only /resume/builder), so it 404'd while the homepage links to it.
+				source: '/resume',
+				destination: '/resume/builder',
+				permanent: true,
+			},
 			{
 				source: '/japan-internships',
 				destination: '/japan-jobs?type=internship',

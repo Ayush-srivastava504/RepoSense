@@ -14,7 +14,7 @@ import SectionGuide from '@/app/components/SectionGuide';
 import { HUB_GUIDES } from '@/lib/content/hubGuides';
 const JOBS_PER_PAGE = 12;
 export const metadata: Metadata = {
-    title: 'Europe Jobs — UK, Germany, Netherlands & Remote-for-Europe',
+    title: 'Europe Jobs: UK, Germany, Netherlands & Remote',
     description: 'Full-time, contract, and part-time roles based in Europe or open to remote applicants, sourced from Jobicy, Arbeitnow, Remotive, and more — refreshed daily.',
     alternates: {
         canonical: `${BASE_URL}/europe-jobs`,

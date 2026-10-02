@@ -8,7 +8,7 @@ import type { Metadata } from 'next';
 import { BASE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
-    title: 'LinkedIn Profile Optimizer — Score & Rewrite Your Profile',
+    title: 'LinkedIn Profile Optimizer & Rewriter',
     description: 'Score your LinkedIn profile against 14 recruiter-relevant checks, then get an AI-rewritten headline, about section, and a prioritized list of fixes.',
     alternates: { canonical: `${BASE_URL}/linkedin` },
     openGraph: {
