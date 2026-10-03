@@ -14,7 +14,7 @@
 
 ## What the code CANNOT fix (infrastructure) - check these
 The crawl-stats screenshot shows `intern-flow.in` (the canonical host) failing server connectivity while `www.intern-flow.in` is healthy. Page source shows Cloudflare scripts (`/cdn-cgi/...`) on the apex, so check:
-1. `curl -sI https://intern-flow.in | grep -iE "^(HTTP|server|cf-ray|location)"` and the same for `https://www.intern-flow.in`. If apex says `server: cloudflare` and www says `server: Vercel`, the two hosts take different paths and the apex is the one failing.
+1. `curl -sI https://intern-flow.in | grep -iE "^(HTTP|server|cf-ray|location)"` and the same for `If apex says `server: cloudflare` and www says `server: Vercel`, the two hosts take different paths and the apex is the one failing.
 2. Cloudflare -> Security -> Events: filter by User Agent contains `Googlebot`, last 7 days. Any Challenge / Block / Managed Challenge rows = Cloudflare is fighting Googlebot. Turn off Bot Fight Mode, or add a rule: `cf.client.bot` -> Skip.
 3. Cloudflare -> SSL/TLS mode must be Full (strict) in front of Vercel. Flexible causes redirect loops / connection failures.
 4. Vercel recommends DNS-only (grey cloud) for its domains. If you do not need Cloudflare caching/WAF for the web app, switch the apex A record to DNS-only.

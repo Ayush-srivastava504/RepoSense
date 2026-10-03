@@ -1,7 +1,7 @@
 # Module: services/api/tests/test_gone_ids.py
 # Covers GET /api/jobs/gone-ids -- the bulk companion to GET /{job_id}/status
 # used by the web middleware's 410 check (apps/web/lib/goneJobs.ts). DB
-# access is mocked, same FakePool pattern as test_jobs_facets.py.
+# access is mocked, same FakePool pattern as test_jobs_facets.py
 
 import sys
 import types
