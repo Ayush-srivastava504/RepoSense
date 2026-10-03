@@ -4,7 +4,7 @@ The Next.js 14 frontend for the RepoSense platform. Built with React 18, TypeScr
 
 ---
 
-## 🚀 Key Features
+##  Key Features
 
 - **App Router Architecture**: Optimized server-side rendering (SSR) and static site generation (SSG) with incremental static regeneration (`revalidate = 3600`).
 - **Full Internationalization (i18n)**: Out-of-the-box support for **9 global locales**:
