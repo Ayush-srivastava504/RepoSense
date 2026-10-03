@@ -191,7 +191,22 @@ export async function getCompaniesOrThrow(limitPerSection = 60): Promise<Compani
     if (!res.ok) {
         throw new Error(`Companies API returned ${res.status}`);
     }
-    return (await res.json()) as CompaniesResponse;
+    return normalizeCompaniesResponse(await res.json());
+}
+// The API can answer 200 with an error body or a section set to null; `top.companies` on that was a TypeError -> 500.
+export function normalizeCompaniesResponse(raw: any): CompaniesResponse {
+    const section = (v: any): CompanySection => ({
+        companies: Array.isArray(v?.companies)
+            ? v.companies.filter((c: any) => c && typeof c.company === 'string' && c.company.trim())
+            : [],
+        total: Number.isFinite(Number(v?.total)) ? Number(v.total) : 0,
+    });
+    return {
+        top: section(raw?.top),
+        mass_hire: section(raw?.mass_hire),
+        startup: section(raw?.startup),
+        mass_hire_threshold: Number.isFinite(Number(raw?.mass_hire_threshold)) ? Number(raw.mass_hire_threshold) : 0,
+    };
 }
 export async function getCompanies(limitPerSection = 60): Promise<CompaniesResponse> {
     try {

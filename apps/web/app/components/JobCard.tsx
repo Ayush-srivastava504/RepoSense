@@ -63,7 +63,7 @@ export default function JobCard({ job }: {
         </p>)}
 
       <p className="mt-4 flex-1 text-sm leading-7" style={{ color: 'var(--ink-soft)' }}>
-        {job.description ? `${job.description.substring(0, 160)}...` : 'No description available.'}
+        {typeof job.description === 'string' && job.description ? `${job.description.substring(0, 160)}...` : 'No description available.'}
       </p>
 
       {job.notes_highlights && (<p className="mt-2 text-[11px] font-medium" style={{ color: 'var(--rust)' }}>

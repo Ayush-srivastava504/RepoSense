@@ -24,9 +24,15 @@ import CompanyTopics from '@/app/components/CompanyTopics';
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
-    const { top, mass_hire, startup } = await getCompanies(100);
-    const all = [...top.companies, ...mass_hire.companies, ...startup.companies];
-    return all.map((c) => ({ company: companySlug(c.company) }));
+    try {
+        const { top, mass_hire, startup } = await getCompanies(100);
+        const all = [...top.companies, ...mass_hire.companies, ...startup.companies];
+        return all.map((c) => ({ company: companySlug(c.company) }));
+    }
+    catch (err) {
+        console.error('generateStaticParams failed for companies', err);
+        return [];
+    }
 }
 
 export async function generateMetadata({ params, searchParams, }: {
@@ -106,10 +112,14 @@ export default async function CompanyHubPage({ params, searchParams, }: {
         page === 1 ? getJobs({ company: company.company, type: 'internship', limit: 12, sort: 'ranked' }) : Promise.resolve([]),
         page === 1 ? getCompanies(60) : Promise.resolve(null),
     ]);
-    const { jobs, total } = jobsRes.status === 'fulfilled' ? jobsRes.value : { jobs: [], total: 0 };
+    // Drop malformed rows (null / no id) so one bad job can't crash the whole page.
+    const validJob = (j: any) => j && typeof j === 'object' && j.id != null && typeof j.title === 'string' && typeof j.company === 'string';
+    const jobsRaw = jobsRes.status === 'fulfilled' ? jobsRes.value : { jobs: [], total: 0 };
+    const jobs = (Array.isArray(jobsRaw.jobs) ? jobsRaw.jobs : []).filter(validJob);
+    const total = Number.isFinite(jobsRaw.total) ? jobsRaw.total : jobs.length;
     const profile = profileRes.status === 'fulfilled' ? profileRes.value : null;
     const intel = intelRes.status === 'fulfilled' ? intelRes.value : null;
-    const internshipsFirst = internshipsRes.status === 'fulfilled' ? internshipsRes.value : [];
+    const internshipsFirst = (internshipsRes.status === 'fulfilled' && Array.isArray(internshipsRes.value) ? internshipsRes.value : []).filter(validJob);
     const companiesData = companiesRes.status === 'fulfilled' ? companiesRes.value : null;
     const topics = intel?.topics ?? [];
     const totalPages = Math.max(1, Math.ceil(total / COMPANY_JOBS_PER_PAGE));
@@ -117,11 +127,17 @@ export default async function CompanyHubPage({ params, searchParams, }: {
     if (page > totalPages)
         notFound();
     const internships = page === 1 ? internshipsFirst : jobs.filter((j) => j.type === 'internship');
-    const related = companiesData
-        ? relatedCompanies([...companiesData.top.companies, ...companiesData.mass_hire.companies, ...companiesData.startup.companies], company)
-        : [];
+    let related: ReturnType<typeof relatedCompanies> = [];
+    try {
+        related = companiesData
+            ? relatedCompanies([...companiesData.top.companies, ...companiesData.mass_hire.companies, ...companiesData.startup.companies], company)
+            : [];
+    }
+    catch (err) {
+        console.error('relatedCompanies failed', err);
+    }
     const fullTimeJobs = jobs.filter((j) => j.type !== 'internship');
-    const keywords = Array.from(new Set(jobs.flatMap((j) => j.enriched_keywords ?? []))).slice(0, 12);
+    const keywords = Array.from(new Set(jobs.flatMap((j) => (Array.isArray(j.enriched_keywords) ? j.enriched_keywords : [])))).filter((k): k is string => typeof k === 'string' && k.length > 0).slice(0, 12);
 
     const crumbs = breadcrumbSchema([
         { name: 'Home', url: BASE_URL },
