@@ -17,7 +17,7 @@ from scrapers.base import BaseScraper
 from utils import make_session
 
 PAGE_SIZE = 20
-QUERIES = ['intern', 'graduate', 'fresher', 'entry level']
+QUERIES = ['intern', 'graduate', 'fresher', 'entry level', 'trainee', 'graduate engineer trainee', 'associate engineer', 'qa', 'test engineer']
 MAX_PAGES_PER_QUERY = 3
 MAX_DETAIL_FETCHES_PER_SITE = 40  # one extra request per kept job; caps run time
 HEADERS = {'Content-Type': 'application/json', 'Accept': 'application/json'}

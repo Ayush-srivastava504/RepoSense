@@ -5,12 +5,12 @@
 
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
-import { jobIdFromSlug, canonicalCategoryForJob, canonicalPathForJob } from '@/lib/slug';
+import { jobIdFromSlug, jobSlug, canonicalCategoryForJob, canonicalPathForJob } from '@/lib/slug';
 import { BASE_URL } from '@/lib/jobs';
 import { buildJobFaq } from '@/lib/jobFaq';
 import { getLocalizedJob, localizedCanonicalPath, jobLanguageAlternates } from '@/lib/jobLocale';
 import {  jobPostingSchema, breadcrumbSchema, faqSchema, safeJsonLd } from '@/lib/structuredData';
-import { truncateTitleForSerp, truncateDescription, isIndexableJob, SERP_TITLE_PX_WITH_BRAND } from '@/lib/seo/seoMetrics';
+import { buildGovernmentTitle, formatLastDate, truncateDescription, isIndexableJob, SERP_TITLE_PX_WITH_BRAND } from '@/lib/seo/seoMetrics';
 import { pageOpenGraph } from '@/lib/seo/pageMeta';
 import { jobOgImageUrl } from '@/lib/seo/ogImage';
 import JobDetail from '@/app/components/JobDetail';
@@ -27,8 +27,13 @@ export async function generateMetadata({ params, }: {
         return {};
     }
     // layout.tsx appends ' | InternFlow' after this; reserve its width so the SERP title isn't cut off.
-    const title = truncateTitleForSerp(`${job.title}${job.department ? ` — ${job.department}` : ''}`, SERP_TITLE_PX_WITH_BRAND);
-    const rawDescription = `${job.department ? `${job.department} recruitment: ` : ''}${job.title}${job.vacancies ? `. ${job.vacancies} vacancies.` : '.'} View eligibility, notification details, and the official application link.`;
+    const title = buildGovernmentTitle({
+        title: job.title, department: job.department, vacancies: job.vacancies,
+        deadline: job.deadline, posted_at: job.posted_at, created_at: job.created_at,
+        maxPx: SERP_TITLE_PX_WITH_BRAND,
+    });
+    const lastDate = formatLastDate(job.deadline);
+    const rawDescription = `${job.department ? `${job.department} recruitment: ` : ''}${job.title}${job.vacancies ? `. ${job.vacancies} vacancies` : ''}${lastDate ? `. Last date: ${lastDate}` : ''}. View eligibility, notification details and the official application link.`;
     const description = truncateDescription(rawDescription);
     const canonicalPath = localizedCanonicalPath(canonicalPathForJob(job), content);
     return {
@@ -57,6 +62,11 @@ export default async function GovernmentJobDetailPage({ params, }: {
     // with a canonical pointing elsewhere: a duplicate page for Google to sort out.
     if (canonicalCategoryForJob(job) !== 'government-jobs') {
         permanentRedirect(canonicalPathForJob(job));
+    }
+    // Any slug that is not exactly the canonical one (stale title/city/pay in an old indexed URL, wrong case,
+    // or a made-up prefix before a real id) 308s to it, so one job has exactly one URL.
+    if (params.slug !== jobSlug(job)) {
+        permanentRedirect(localizedCanonicalPath(canonicalPathForJob(job), content));
     }
     const canonicalPath = localizedCanonicalPath(canonicalPathForJob(job), content);
     const canonicalUrl = `${BASE_URL}${canonicalPath}`;

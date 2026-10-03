@@ -34,7 +34,10 @@ export async function GET() {
         ]);
     }
     catch (err) {
-        return sitemapUnavailable('locations', err);
+        return sitemapUnavailable('locations', err, () => buildUrlsetXml([
+            { loc: `${BASE_URL}/jobs-in`, changefreq: 'weekly', priority: 0.8 },
+            ...CITIES.map((city) => ({ loc: `${BASE_URL}/jobs-in/${city.slug}`, changefreq: 'daily' as const, priority: 0.7 })),
+        ]));
     }
     // PHASE_PLAN.md Phase 3 item 2: skip any city below LOCATION_MIN_JOBS,
     // matching the noindex gate app/jobs-in/[city]/page.tsx's
@@ -54,5 +57,5 @@ export async function GET() {
                 priority: 0.7,
             })),
     ]);
-    return sitemapOk(xml);
+    return sitemapOk(xml, 'locations');
 }

@@ -19,7 +19,10 @@ const WORK_MODE_LABELS: Record<string, string> = {
 };
 
 function formatDate(iso: string): string {
-    return new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    const d = new Date(iso);
+    if (!iso || Number.isNaN(d.getTime()))
+        return '';
+    return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 // hideOverview: the crawled "What {company} does" section is already on the page, so only the job-derived facts are shown.
@@ -33,7 +36,7 @@ export default function CompanyProfilePanel({ profile, hideOverview = false }: {
     const hasFunctions = facts.job_functions && facts.job_functions.length > 0;
     const hasSkills = facts.skills && facts.skills.length > 0;
     const hasCourses = facts.courses && facts.courses.length > 0;
-    const hasExperience = facts.experience !== null;
+    const hasExperience = Boolean(facts.experience);
     const hasFactBlocks = hasLocations || workModeEntries.length > 0 || hasFunctions || hasSkills || hasCourses || hasExperience;
     if (hideOverview && !hasFactBlocks)
         return null;
@@ -77,7 +80,7 @@ export default function CompanyProfilePanel({ profile, hideOverview = false }: {
           {hasExperience && facts.experience!.fresher_listings > 0 && (<span>{facts.experience!.fresher_listings} fresher-friendly listing{facts.experience!.fresher_listings === 1 ? '' : 's'}</span>)}
         </div>)}
 
-      {facts.latest_posted && (<p className="text-xs" style={{ color: 'var(--ink-soft)' }}>
+      {facts.latest_posted && facts.as_of && (<p className="text-xs" style={{ color: 'var(--ink-soft)' }}>
           As of {formatDate(facts.as_of)} — latest listing posted {formatDate(facts.latest_posted)}.
         </p>)}
     </section>);

@@ -185,3 +185,12 @@ def test_government_filter_is_source_aware_not_flag_only():
     src_code = inspect.getsource(jobs_route)
     assert "conditions.append('is_government IS NOT TRUE')" not in src_code
     assert "conditions.append('is_government = true')" not in src_code
+
+
+def test_api_host_is_kept_out_of_google():
+    # Search Console listed api.intern-flow.in as a crawled host with problems. The JSON API must send noindex on
+    # every response and answer /robots.txt with Disallow: / so Googlebot stops spending the API box's capacity.
+    import pathlib
+    src = (pathlib.Path(__file__).resolve().parents[1] / 'src' / 'core' / 'app.py').read_text()
+    assert "X-Robots-Tag'] = 'noindex, nofollow'" in src
+    assert "@app.get('/robots.txt'" in src and "Disallow: /" in src

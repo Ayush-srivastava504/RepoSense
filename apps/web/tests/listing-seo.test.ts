@@ -139,3 +139,92 @@ test('undated job goes stale 60 days after created_at, never before', () => {
     assert.equal(isStaleForIndexing({ posted_at: ago(46), created_at: ago(1) }), true);
     assert.equal(isIndexableJob({ created_at: ago(61), is_thin: false }), false);
 });
+
+// ---------- government detail title ----------
+import { buildGovernmentTitle, formatLastDate } from '../lib/seo/seoMetrics';
+
+test('government title leads with department, says Recruitment + year + posts, fits the SERP budget', () => {
+    const t = buildGovernmentTitle({ title: 'Junior Engineer (Electrical)', department: 'BHEL', vacancies: '120', deadline: '2026-10-30T00:00:00Z', maxPx: SERP_TITLE_PX_WITH_BRAND });
+    assert.equal(t, 'BHEL Junior Engineer (Electrical) Recruitment 2026 (120 Posts)');
+    assert.ok(estimatePixelWidth(t) <= SERP_TITLE_PX_WITH_BRAND);
+    // no invented year / non-numeric vacancies / department already in the post name
+    assert.equal(buildGovernmentTitle({ title: 'BHEL Clerk', department: 'BHEL', vacancies: 'Various' }), 'BHEL Clerk Recruitment');
+    assert.ok(!/\b20\d\d\b/.test(buildGovernmentTitle({ title: 'Clerk' })));
+    assert.equal(formatLastDate('2026-10-30T00:00:00Z'), '30 Oct 2026');
+    assert.equal(formatLastDate('not a date'), null);
+});
+
+test('government detail page uses buildGovernmentTitle and puts the last date in the description', () => {
+    const src = read('app/government-jobs/[slug]/page.tsx');
+    assert.ok(/buildGovernmentTitle\(/.test(src) && /Last date:/.test(src));
+});
+
+// ---------- detail-route hardening ----------
+test('all four detail routes 308 a non-canonical slug to the canonical URL', () => {
+    for (const p of ['jobs', 'internships', 'remote-jobs', 'government-jobs']) {
+        const src = read(`app/${p}/[slug]/page.tsx`);
+        assert.ok(/params\.slug !== jobSlug\(job\)/.test(src), p);
+        assert.ok(/permanentRedirect\(localizedCanonicalPath\(canonicalPathForJob\(job\), content\)\)/.test(src), p);
+    }
+});
+
+test('a job page has exactly one <main> and never prints "unknown" as its source', () => {
+    const detail = read('app/components/JobDetail.tsx');
+    assert.ok(!/<main/.test(detail), 'JobDetail is nested inside each route\'s <main>; use <article>');
+    assert.ok(/<article/.test(detail));
+    assert.ok(!/'unknown'/.test(detail));
+    for (const p of ['jobs', 'internships', 'remote-jobs', 'government-jobs']) {
+        assert.equal((read(`app/${p}/[slug]/page.tsx`).match(/<main/g) ?? []).length, 1, p);
+    }
+});
+
+// ---------- sitemap resilience ----------
+import { sitemapOk, sitemapUnavailable, mapWithLimit, _clearSitemapCache } from '../lib/sitemapResponse';
+
+test('a failing sitemap build serves the last good copy, then a static fallback, and only then 503', async () => {
+    _clearSitemapCache();
+    // nothing known yet and no fallback: 503 + Retry-After (companies / hackathons keep this behaviour)
+    const cold = sitemapUnavailable('t1', new Error('api down'));
+    assert.equal(cold.status, 503);
+    assert.equal(cold.headers.get('Retry-After'), '900');
+    // static-list sitemaps (skills / cities / batches) never 503: they serve the fallback
+    const fb = sitemapUnavailable('t1', new Error('api down'), () => '<urlset>fallback</urlset>');
+    assert.equal(fb.status, 200);
+    assert.equal(fb.headers.get('x-sitemap-served'), 'fallback');
+    assert.equal(await fb.text(), '<urlset>fallback</urlset>');
+    // once a real build succeeded, a later failure serves that copy (stale), not the fallback
+    sitemapOk('<urlset>real</urlset>', 't1');
+    const stale = sitemapUnavailable('t1', new Error('api down'), () => '<urlset>fallback</urlset>');
+    assert.equal(stale.status, 200);
+    assert.equal(stale.headers.get('x-sitemap-served'), 'stale');
+    assert.equal(await stale.text(), '<urlset>real</urlset>');
+    assert.ok(/stale-if-error/.test(stale.headers.get('Cache-Control') ?? ''));
+    // degraded answers are cached briefly so the CDN retries the real build soon
+    assert.ok(/s-maxage=300/.test(stale.headers.get('Cache-Control') ?? ''));
+});
+
+test('mapWithLimit never exceeds the concurrency cap and keeps result order', async () => {
+    let inFlight = 0;
+    let peak = 0;
+    const out = await mapWithLimit([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 3, async (n) => {
+        inFlight++;
+        peak = Math.max(peak, inFlight);
+        await new Promise((r) => setTimeout(r, 5));
+        inFlight--;
+        return n * 2;
+    });
+    assert.ok(peak <= 3, `peak ${peak}`);
+    assert.deepEqual(out, [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]);
+});
+
+test('every API-backed sitemap route goes through the resilient helper (named cache) and skills is capped', () => {
+    for (const r of ['skills', 'locations', 'batches', 'companies', 'hackathons']) {
+        const src = read(`app/sitemap-${r}.xml/route.ts`);
+        assert.ok(new RegExp(`sitemapOk\\(.*'${r}'\\)`).test(src), r);
+    }
+    for (const r of ['skills', 'locations', 'batches']) {
+        assert.ok(/sitemapUnavailable\('\w+', err, \(\) =>/.test(read(`app/sitemap-${r}.xml/route.ts`)), `${r} needs a static fallback`);
+    }
+    assert.ok(/mapWithLimit\(SKILLS, 4/.test(read('app/sitemap-skills.xml/route.ts')));
+    assert.ok(!/new Response\(.*503/.test(read('app/sitemap.xml/route.ts')));
+});

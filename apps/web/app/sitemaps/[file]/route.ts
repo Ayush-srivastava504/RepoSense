@@ -7,6 +7,7 @@
 
 import { parseSitemapFileName } from '@/lib/sitemapJobs';
 import { getSitemapFileXml } from '@/lib/sitemapJobsSource';
+import { sitemapOk, sitemapUnavailable } from '@/lib/sitemapResponse';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -19,19 +20,10 @@ export async function GET(_req: Request, { params }: { params: { file: string } 
         const xml = await getSitemapFileXml(params.file);
         if (xml === null)
             return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'public, s-maxage=300' } });
-        return new Response(xml, {
-            headers: {
-                'Content-Type': 'application/xml; charset=utf-8',
-                'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-            },
-        });
+        return sitemapOk(xml, `file:${params.file}`);
     }
     catch (err) {
-        // 503 (not a partial/empty 200): Google keeps its last good copy and retries.
-        console.error('Failed to build category sitemap:', err);
-        return new Response('Sitemap temporarily unavailable', {
-            status: 503,
-            headers: { 'Retry-After': '900', 'Cache-Control': 'no-store' },
-        });
+        // Last good copy of this file if we have one; else 503 (Google keeps its last good copy and retries).
+        return sitemapUnavailable(`file:${params.file}`, err);
     }
 }

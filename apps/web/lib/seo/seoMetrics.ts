@@ -149,3 +149,36 @@ export function isIndexableJob(job: {
 }): boolean {
     return !isStaleForIndexing(job) && !isThinAndUnenriched(job);
 }
+
+// Government notices are searched as "<department> <post> recruitment 2026" and judged by vacancy count and last
+// date, not by "{role} at {company} | Job". Builds that title (department first, "Recruitment {year}", then the
+// post and vacancies), pixel-truncated like buildJobTitle. The year comes from the deadline (the year the
+// recruitment closes), else posted_at / created_at, so the title never invents a year.
+export function buildGovernmentTitle(params: {
+    title: string;
+    department?: string | null;
+    vacancies?: string | null;
+    deadline?: string | null;
+    posted_at?: string | null;
+    created_at?: string | null;
+    maxPx?: number;
+}): string {
+    const yearSource = [params.deadline, params.posted_at, params.created_at].find((v) => v && !Number.isNaN(new Date(v).getTime()));
+    const year = yearSource ? new Date(yearSource).getUTCFullYear() : null;
+    const dept = (params.department || '').trim();
+    const post = params.title.trim();
+    const vac = (params.vacancies || '').toString().trim();
+    const vacPart = /^\d[\d,]*$/.test(vac) ? ` (${vac} Posts)` : '';
+    const lead = dept && !post.toLowerCase().includes(dept.toLowerCase()) ? `${dept} ${post}` : post;
+    const full = `${lead} Recruitment${year ? ` ${year}` : ''}${vacPart}`;
+    return truncateTitleForSerp(full, params.maxPx);
+}
+
+// "Last date: 30 Oct 2026" in a fixed format (no locale lookup, so server and browser agree).
+export function formatLastDate(deadline?: string | null): string | null {
+    if (!deadline) return null;
+    const d = new Date(deadline);
+    if (Number.isNaN(d.getTime())) return null;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}

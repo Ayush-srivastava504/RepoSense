@@ -4,11 +4,13 @@
 #
 
 import json
+import logging
 
 from fastapi import APIRouter, HTTPException, Query
 from configs.db import get_db_pool
 from routes.jobs import _freshness_conditions, _top_companies
 from services.company_directory import directory_letter, sort_key
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix='/api/companies', tags=['companies'])
 MASS_HIRE_THRESHOLD = 8
 # Job boards / ATS hosts are not the employer; never pick one as a company's logo domain
@@ -111,33 +113,73 @@ async def get_intel_sitemap():
     return {'companies': [{'slug': r['slug'], 'name': r['name'], 'updated_at': r['updated_at']} for r in rows]}
 
 
+def _as_list(value) -> list:
+    """asyncpg returns jsonb as text; tolerate text, null and wrong shapes so a bad row never 500s the endpoint."""
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except ValueError:
+            return []
+    return value if isinstance(value, list) else []
+
+
+def _slug_sql_expr(column: str = 'company') -> str:
+    # Same transform as companySlug() in apps/web/lib/companies.ts and company_slug() in company_intel/db.py.
+    return f"trim(both '-' from regexp_replace(lower({column}), '[^a-z0-9]+', '-', 'g'))"
+
+
 @router.get('/by-slug/{slug}')
 async def get_company_by_slug(slug: str):
     """Entity + published topics + live-job summary for one company. Declared before the
-    /{company}/profile route so a company slugged 'profile' cannot shadow it."""
+    /{company}/profile route so a company slugged 'profile' cannot shadow it.
+    Falls back to the jobs table when there is no intel entity yet, so any company with live jobs has a page.
+    Never 500s on a missing/old company_intel schema or odd rows: those degrade to 'no topics'."""
     pool = await get_db_pool()
     if pool is None:
         raise HTTPException(503, 'Database unavailable')
-    entity = await pool.fetchrow(
-        'SELECT id, slug, name, official_domain, logo_domain, last_crawled_at FROM company_entities WHERE slug = $1 AND status = \'active\'', slug)
-    if entity is None:
-        raise HTTPException(404, 'Unknown company')
-    topics = await pool.fetch(
-        'SELECT topic_key, title, body, bullets, source_urls, enriched_at FROM company_topics '
-        'WHERE entity_id = $1 AND status = \'published\' ORDER BY id', entity['id'])
+    slug = slug.strip().lower()
+    entity = None
+    topics: list = []
+    try:
+        entity = await pool.fetchrow(
+            'SELECT id, slug, name, official_domain, logo_domain, last_crawled_at FROM company_entities '
+            'WHERE slug = $1 AND status = \'active\'', slug)
+        if entity is not None:
+            topics = await pool.fetch(
+                'SELECT topic_key, title, body, bullets, source_urls, enriched_at FROM company_topics '
+                'WHERE entity_id = $1 AND status = \'published\' ORDER BY id', entity['id'])
+    except Exception as exc:  # missing tables (migration 033 not applied yet), bad rows, ...
+        logger.warning('company intel lookup failed for %s: %s', slug, exc)
+        entity, topics = None, []
     freshness_sql = ' AND '.join(_freshness_conditions())
+    name = entity['name'] if entity is not None else None
+    if name is None:
+        row = await pool.fetchrow(
+            f"SELECT company FROM jobs WHERE is_active = true AND {freshness_sql} AND company IS NOT NULL "
+            f"AND {_slug_sql_expr()} = $1 GROUP BY company ORDER BY count(*) DESC LIMIT 1", slug)
+        if row is None:
+            raise HTTPException(404, 'Unknown company')
+        name = row['company']
     jobs = await pool.fetchrow(
         f"SELECT count(*) AS job_count, max(posted_at) AS last_posted_at FROM jobs "
-        f"WHERE is_active = true AND {freshness_sql} AND lower(company) = lower($1)", entity['name'])
+        f"WHERE is_active = true AND {freshness_sql} AND lower(company) = lower($1)", name)
     out_topics = []
     for t in topics:
-        d = dict(t)
-        if isinstance(d.get('bullets'), str):  # asyncpg returns jsonb as text
-            d['bullets'] = json.loads(d['bullets'])
-        out_topics.append(d)
-    return {'slug': entity['slug'], 'name': entity['name'], 'official_domain': entity['official_domain'],
-            'logo_domain': entity['logo_domain'], 'last_crawled_at': entity['last_crawled_at'],
-            'job_count': jobs['job_count'], 'last_posted_at': jobs['last_posted_at'], 'topics': out_topics}
+        body = t['body']
+        if not isinstance(body, str) or not body.strip():
+            continue
+        out_topics.append({
+            'topic_key': t['topic_key'], 'title': t['title'] or t['topic_key'], 'body': body,
+            'bullets': [b for b in _as_list(t['bullets']) if isinstance(b, str)],
+            'source_urls': [u for u in (t['source_urls'] or []) if isinstance(u, str)],
+            'enriched_at': t['enriched_at'],
+        })
+    return {'slug': entity['slug'] if entity is not None else slug, 'name': name,
+            'official_domain': entity['official_domain'] if entity is not None else None,
+            'logo_domain': entity['logo_domain'] if entity is not None else None,
+            'last_crawled_at': entity['last_crawled_at'] if entity is not None else None,
+            'job_count': jobs['job_count'] if jobs else 0, 'last_posted_at': jobs['last_posted_at'] if jobs else None,
+            'topics': out_topics}
 
 
 @router.get('/{company}/profile')
@@ -145,14 +187,24 @@ async def get_company_profile(company: str):
     pool = await get_db_pool()
     if pool is None:
         raise HTTPException(503, 'Database unavailable')
-    row = await pool.fetchrow(
-        'SELECT company, overview, keywords, facts, model, enriched_at FROM company_profiles WHERE lower(company) = lower($1)',
-        company,
-    )
+    try:
+        row = await pool.fetchrow(
+            'SELECT company, overview, keywords, facts, model, enriched_at FROM company_profiles WHERE lower(company) = lower($1)',
+            company,
+        )
+    except Exception as exc:  # table missing / transient DB error: no profile, not a 500
+        logger.warning('company profile lookup failed for %s: %s', company, exc)
+        raise HTTPException(404, 'No profile for this company yet')
     # A row with no overview means the company has too few facts for a profile.
     if row is None or not row['overview']:
         raise HTTPException(404, 'No profile for this company yet')
     out = dict(row)
-    if isinstance(out.get('facts'), str):  # asyncpg returns jsonb as text
-        out['facts'] = json.loads(out['facts'])
+    for key in ('facts', 'keywords'):  # asyncpg returns jsonb as text
+        if isinstance(out.get(key), str):
+            try:
+                out[key] = json.loads(out[key])
+            except ValueError:
+                out[key] = None
+    if not isinstance(out.get('facts'), dict):
+        raise HTTPException(404, 'No profile for this company yet')
     return out

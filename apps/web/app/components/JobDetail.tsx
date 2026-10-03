@@ -12,6 +12,7 @@ import type { Job } from '@/lib/jobs';
 import { getSimilarJobs } from '@/lib/jobs';
 import { companySlug, getCompanyIntel } from '@/lib/companies';
 import { jobPostedDate, formatPostedDate } from '@/lib/jobDates';
+import { sourceLabel } from '@/lib/facets';
 import { matchSkillSlug } from '@/lib/skillMatch';
 import JobBadges from '@/app/components/JobBadges';
 import ApplyButton from '@/app/components/ApplyButton';
@@ -71,12 +72,12 @@ export default async function JobDetail({ job, canonicalPath, backHref, backLabe
         timeUntilDeadline > 0 &&
         timeUntilDeadline <
             1000 * 60 * 60 * 24 * 3;
-    return (<main className="mx-auto w-full max-w-3xl px-4 py-8 sm:py-10">
+    return (<article className="mx-auto w-full max-w-3xl px-4 py-8 sm:py-10">
       <div className="flex flex-wrap items-center gap-2">
         <p className="eyebrow">
-          {job.source || 'unknown'}
+          {job.source ? sourceLabel(job.source) : null}
           {postedDate && (<>
-              {' '}·{' '}
+              {job.source ? ' · ' : null}
               <time dateTime={postedDate}>Posted {formatPostedDate(postedDate)}</time>
             </>)}
         </p>
@@ -197,5 +198,5 @@ export default async function JobDetail({ job, canonicalPath, backHref, backLabe
       </div>
 
       <SimilarJobs jobs={similarJobs}/>
-    </main>);
+    </article>);
 }

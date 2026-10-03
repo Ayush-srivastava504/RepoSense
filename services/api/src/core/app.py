@@ -8,6 +8,7 @@ import time
 import json
 import uuid
 from fastapi import FastAPI, Request
+from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from configs.config import settings
@@ -63,6 +64,18 @@ def create_application() -> FastAPI:
         response = await call_next(request)
         response.headers['X-Process-Time'] = str(time.monotonic() - start)
         return response
+    # api.intern-flow.in is a JSON API, not a website: keep it out of Google entirely. Search Console showed
+    # Googlebot crawling it (and flagging "problems"), which spends the 1 GB API box's capacity on crawler traffic
+    # and pollutes the host report. X-Robots-Tag covers every response; /robots.txt stops the crawl up front.
+    @app.middleware('http')
+    async def api_noindex_header(request: Request, call_next):
+        response = await call_next(request)
+        response.headers['X-Robots-Tag'] = 'noindex, nofollow'
+        return response
+
+    @app.get('/robots.txt', include_in_schema=False)
+    async def api_robots_txt():
+        return PlainTextResponse('User-agent: *\nDisallow: /\n', headers={'Cache-Control': 'public, max-age=86400'})
     app.add_middleware(CORSMiddleware, allow_origins=settings.CORS_ORIGINS, allow_origin_regex=settings.CORS_ORIGIN_REGEX, allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
     app.include_router(auth.router)
     app.include_router(dashboard.router)

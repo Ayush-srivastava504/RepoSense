@@ -4,6 +4,7 @@
 //
 
 import { BASE_URL } from '@/lib/jobs';
+import { sitemapOk, sitemapUnavailable } from '@/lib/sitemapResponse';
 import { getSitemapCategories, getSitemapFileList, sitemapFileUrls } from '@/lib/sitemapJobsSource';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -15,11 +16,8 @@ export async function GET() {
     catch (err) {
         // Don't publish an index that silently drops the job files: 503 makes
         // Google keep the last good index and retry.
-        console.error('Failed to build sitemap index:', err);
-        return new Response('Sitemap temporarily unavailable', {
-            status: 503,
-            headers: { 'Retry-After': '900', 'Cache-Control': 'no-store' },
-        });
+        // Last good index if this instance has one, else 503 (Google keeps its last good index and retries).
+        return sitemapUnavailable('index', err);
     }
     // Built-in list = the pre-registry behaviour; used only if /api/sitemap/categories is unavailable.
     const FALLBACK_ROUTE_PATHS = [
@@ -69,10 +67,5 @@ ${sitemaps
   </sitemap>`)
         .join('\n')}
 </sitemapindex>`;
-    return new Response(body, {
-        headers: {
-            'Content-Type': 'application/xml',
-            'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-        },
-    });
+    return sitemapOk(body, 'index');
 }

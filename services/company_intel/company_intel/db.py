@@ -37,6 +37,16 @@ ON CONFLICT (name_key) DO UPDATE SET
 RETURNING id
 """
 
+UPSERT_MANUAL_ENTITY_SQL = """
+INSERT INTO company_entities (slug, name, name_key, official_domain, domain_source, logo_domain, status, status_reason)
+VALUES ($1, $2, $3, $4, 'manual', $4, 'pending', NULL)
+ON CONFLICT (name_key) DO UPDATE SET
+    official_domain = EXCLUDED.official_domain, logo_domain = EXCLUDED.logo_domain, domain_source = 'manual',
+    status = CASE WHEN company_entities.status IN ('blocked', 'active') THEN company_entities.status ELSE 'pending' END,
+    status_reason = NULL, updated_at = now()
+RETURNING id
+"""
+
 NEXT_TO_CRAWL_SQL = """
 SELECT id, slug, name, official_domain FROM company_entities
 WHERE status IN ('pending', 'active') AND official_domain IS NOT NULL

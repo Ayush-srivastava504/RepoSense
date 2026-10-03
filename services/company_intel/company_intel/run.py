@@ -41,7 +41,10 @@ async def main(argv: list) -> int:
             wikidata = None if args.no_wikidata else WikidataSource(wd_client)
             try:
                 for e in await pool.fetch(db.NEXT_TO_CRAWL_SQL, args.limit, args.only, pipeline.RECRAWL_AFTER_DAYS):
-                    print('crawl', e['slug'], await pipeline.crawl_entity(pool, fetcher, e, wikidata=wikidata))
+                    try:
+                        print('crawl', e['slug'], await pipeline.crawl_entity(pool, fetcher, e, wikidata=wikidata))
+                    except Exception as exc:  # one failing company must not abort the batch
+                        print('crawl', e['slug'], 'FAILED', repr(exc), file=sys.stderr)
             finally:
                 await fetcher.close()
                 await wd_client.aclose()
@@ -54,7 +57,10 @@ async def main(argv: list) -> int:
                 return 2
             writer = Writer(providers)
             for e in await pool.fetch(db.NEXT_TO_ENRICH_SQL, args.limit, args.only):
-                print('enrich', e['slug'], await pipeline.enrich_entity(pool, writer, e, dry_run=args.dry_run))
+                try:
+                    print('enrich', e['slug'], await pipeline.enrich_entity(pool, writer, e, dry_run=args.dry_run))
+                except Exception as exc:
+                    print('enrich', e['slug'], 'FAILED', repr(exc), file=sys.stderr)
     finally:
         await pool.close()
     return 0

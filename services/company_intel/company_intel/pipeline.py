@@ -57,6 +57,21 @@ def choose_domain(rows: list, name: Optional[str] = None, domain_companies: Opti
     return None
 
 
+async def seed_manual(pool) -> int:
+    """Upsert the curated MANUAL_COMPANIES with their verified domains. Idempotent."""
+    from .manual_companies import MANUAL_COMPANIES
+    n = 0
+    for name, domain in MANUAL_COMPANIES:
+        key = db.name_key(name)
+        existing = await pool.fetchrow('SELECT slug FROM company_entities WHERE name_key = $1', key)
+        slug = existing['slug'] if existing else db.company_slug(name)
+        if not existing and await pool.fetchval('SELECT 1 FROM company_entities WHERE slug = $1', slug):
+            slug = f'{slug}-2'
+        await pool.fetchval(db.UPSERT_MANUAL_ENTITY_SQL, slug, name, key, normalise_domain(domain))
+        n += 1
+    return n
+
+
 async def seed(pool, limit: int = 5000) -> dict:
     rows = await pool.fetch(db.SEED_ROWS_SQL)
     by_company = defaultdict(list)
@@ -87,6 +102,7 @@ async def seed(pool, limit: int = 5000) -> dict:
         status, reason = ('pending', None) if domain else ('skipped', 'no usable employer domain')
         await pool.fetchval(db.UPSERT_ENTITY_SQL, slug, name, key, domain, status, reason)
         counts['with_domain' if domain else 'skipped'] += 1
+    counts['manual'] = await seed_manual(pool)
     return counts
 
 
@@ -97,7 +113,7 @@ async def _store_wikidata(pool, wikidata, entity, site: str) -> int:
     if not doc:
         return 0
     await pool.execute(db.UPSERT_SOURCE_SQL, entity['id'], doc['url'], 'overview', doc['title'], doc['text'],
-                       content_hash(doc['text']), None)
+                       content_hash(doc['text']))
     return 1
 
 

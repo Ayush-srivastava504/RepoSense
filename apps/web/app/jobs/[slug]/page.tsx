@@ -5,7 +5,7 @@
 
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
-import { jobIdFromSlug, canonicalCategoryForJob, canonicalPathForJob } from '@/lib/slug';
+import { jobIdFromSlug, jobSlug, canonicalCategoryForJob, canonicalPathForJob } from '@/lib/slug';
 import { BASE_URL } from '@/lib/jobs';
 import { buildJobFaq } from '@/lib/jobFaq';
 import { getLocalizedJob, localizedCanonicalPath, jobLanguageAlternates } from '@/lib/jobLocale';
@@ -75,6 +75,11 @@ export default async function JobDetailPage({ params, }: {
     // <link rel="canonical">.
     if (canonicalCategoryForJob(job) !== 'jobs') {
         permanentRedirect(canonicalPathForJob(job));
+    }
+    // Any slug that is not exactly the canonical one (stale title/city/pay in an old indexed URL, wrong case,
+    // or a made-up prefix before a real id) 308s to it, so one job has exactly one URL.
+    if (params.slug !== jobSlug(job)) {
+        permanentRedirect(localizedCanonicalPath(canonicalPathForJob(job), content));
     }
     const canonicalPath = localizedCanonicalPath(canonicalPathForJob(job), content);
     const canonicalUrl = `${BASE_URL}${canonicalPath}`;

@@ -47,5 +47,5 @@ export async function GET() {
             priority: 0.5,
         })),
     ]);
-    return sitemapOk(xml);
+    return sitemapOk(xml, 'companies');
 }

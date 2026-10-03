@@ -22,7 +22,10 @@ export async function GET() {
         facets = await getJobFacetsOrThrow();
     }
     catch (err) {
-        return sitemapUnavailable('batches', err);
+        return sitemapUnavailable('batches', err, () => buildUrlsetXml([
+            { loc: `${BASE_URL}/batch`, changefreq: 'weekly', priority: 0.8 },
+            ...BATCHES.map((b) => ({ loc: `${BASE_URL}/batch/${b.year}`, changefreq: 'daily' as const, priority: 0.7 })),
+        ]));
     }
     const countByYear = new Map(facets.batches.map((b) => [b.value, b.count]));
     // PHASE_PLAN.md Phase 3 item 2: skip any batch year below
@@ -40,5 +43,5 @@ export async function GET() {
                 priority: 0.7,
             })),
     ]);
-    return sitemapOk(xml);
+    return sitemapOk(xml, 'batches');
 }

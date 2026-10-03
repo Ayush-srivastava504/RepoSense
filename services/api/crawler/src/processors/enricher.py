@@ -8,8 +8,13 @@ from typing import Dict, List, Optional, Tuple
 from utils import get_logger
 log = get_logger('enricher')
 CATEGORY_RULES: List[Tuple[str, List[str]]] = [('Software Engineering', ['software', 'developer', 'engineer', 'sde', 'backend', 'frontend', 'fullstack', 'full stack', 'web dev', 'application', 'system analyst', 'systems analyst']), ('Data Science & ML', ['data scien', 'machine learning', 'deep learning', 'ml engineer', 'nlp', 'computer vision', 'ai research', 'data analyst']), ('DevOps & Cloud', ['devops', 'cloud', 'infrastructure', 'sre', 'reliability', 'kubernetes', 'docker', 'aws', 'azure', 'gcp']), ('Sales', ['sales executive', 'sales representative', 'sales manager', 'business development', 'account executive', 'account manager', 'bdr', 'sdr', 'inside sales', 'field sales', 'pre-sales', 'presales', 'sales associate', 'territory manager', 'channel sales', 'revenue growth']), ('Finance', ['finance', 'financial analyst', 'accountant', 'accounting', 'audit', 'auditor', 'taxation', 'tax analyst', 'investment banking', 'equity research', 'credit analyst', 'treasury', 'bookkeeping', 'financial planning', 'fp&a', 'controller', 'chartered accountant'])]
-CATEGORY_TO_GROUP: Dict[str, str] = {'Software Engineering': 'software', 'Data Science & ML': 'software', 'DevOps & Cloud': 'software', 'Sales': 'sales', 'Finance': 'finance'}
+CATEGORY_TO_GROUP: Dict[str, str] = {'QA & Testing': 'software', 'Software Engineering': 'software', 'Data Science & ML': 'software', 'DevOps & Cloud': 'software', 'Sales': 'sales', 'Finance': 'finance'}
 SKILL_PATTERNS: List[Tuple[str, str]] = [('\\bpython\\b', 'Python'), ('\\bjava\\b(?!script)', 'Java'), ('\\bjavascript\\b|\\bjs\\b', 'JavaScript'), ('\\btypescript\\b|\\bts\\b', 'TypeScript'), ('\\bc\\+\\+\\b|\\bcpp\\b', 'C++'), ('\\breact(?:\\.?js)?\\b', 'React'), ('\\bnode(?:\\.?js)?\\b', 'Node.js'), ('\\bdjango\\b', 'Django'), ('\\bflask\\b', 'Flask'), ('\\bfastapi\\b', 'FastAPI'), ('\\btensorflow\\b|\\btf\\b', 'TensorFlow'), ('\\bpytorch\\b', 'PyTorch'), ('\\bpandas\\b', 'Pandas'), ('\\bnumpy\\b', 'NumPy'), ('\\bmysql\\b', 'MySQL'), ('\\bpostgresql\\b|\\bpostgres\\b', 'PostgreSQL'), ('\\bmongodb\\b', 'MongoDB'), ('\\bredis\\b', 'Redis'), ('\\baws\\b', 'AWS'), ('\\bazure\\b', 'Azure'), ('\\bdocker\\b', 'Docker'), ('\\bkubernetes\\b|\\bk8s\\b', 'Kubernetes'), ('\\bspark\\b', 'Apache Spark'), ('\\bkafka\\b', 'Kafka'), ('\\bairflow\\b', 'Airflow')]
+
+# Title-only on purpose: nearly every software job description mentions "testing", so the body would
+# misfile ordinary developer roles. "Test engineer" / "QA analyst" / "SDET" in the title is unambiguous.
+QA_TITLE_RE = re.compile(r'\b(qa|sdet|quality\s+(?:assurance|engineer|analyst)|software\s+test(?:er|ing)?|test(?:ing)?\s+(?:engineer|analyst|associate|trainee|lead)|(?:manual|automation|performance)\s+test(?:er|ing)?|tester)\b', re.I)
+
 
 def enrich(job: Dict) -> Dict:
     try:
@@ -27,7 +32,7 @@ def enrich_batch(jobs: List[Dict]) -> List[Dict]:
 def _enrich_single(job: Dict) -> None:
     text_corpus = ' '.join([job.get('title', ''), job.get('description', ''), ' '.join(job.get('skills', [])), ' '.join(job.get('requirements', []))]).lower()
     if not job.get('category'):
-        job['category'] = _classify_category(text_corpus)
+        job['category'] = 'QA & Testing' if QA_TITLE_RE.search(job.get('title', '') or '') else _classify_category(text_corpus)
     if not job.get('job_group'):
         job['job_group'] = CATEGORY_TO_GROUP.get(job['category'], 'other')
     extracted_skills = _extract_skills(text_corpus)

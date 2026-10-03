@@ -54,5 +54,5 @@ export async function GET() {
         changefreq: 'daily' as const,
         priority: 0.7,
     })));
-    return sitemapOk(xml);
+    return sitemapOk(xml, 'hackathons');
 }

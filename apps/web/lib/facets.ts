@@ -127,9 +127,11 @@ const SOURCE_LABELS: Record<string, string> = {
     freejobalert: 'FreeJobAlert',
     dorker: 'Web Discovery',
     generic_boards: 'Job Boards',
+    workday: 'Company Careers',
+    big_tech_careers: 'Company Careers',
 };
 
-function sourceLabel(raw: string): string {
+export function sourceLabel(raw: string): string {
     const key = raw.toLowerCase().trim();
     return SOURCE_LABELS[key] ?? raw.replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }

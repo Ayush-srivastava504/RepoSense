@@ -26,17 +26,35 @@ const ROUTES: [string, () => Promise<{ GET: () => Promise<Response> }>][] = [
     ['batches', () => import('../app/sitemap-batches.xml/route')],
 ];
 
+const STATIC_LIST_ROUTES = new Set(['skills', 'locations', 'batches']);
+
 test.after(() => { globalThis.fetch = realFetch; });
 
 for (const [name, load] of ROUTES) {
     for (const mode of ['fail500', 'throw'] as const) {
-        test(`${name}: API ${mode} -> 503 with Retry-After, not a shrunk 200`, async () => {
-            mockFetch(mode);
-            const res = await (await load()).GET();
-            assert.equal(res.status, 503);
-            assert.equal(res.headers.get('Retry-After'), '900');
-            assert.equal(res.headers.get('Cache-Control'), 'no-store');
-        });
+        if (STATIC_LIST_ROUTES.has(name)) {
+            // Their URL list ships with the app, so an API failure serves the full static list (200) instead of a
+            // 503 that Search Console reports as "Couldn't fetch". It can never shrink: every hub is included.
+            test(`${name}: API ${mode} -> 200 static fallback (full hub list), never a 503 or a shrunk sitemap`, async () => {
+                mockFetch(mode);
+                const res = await (await load()).GET();
+                assert.equal(res.status, 200);
+                assert.equal(res.headers.get('x-sitemap-served'), 'fallback');
+                assert.match(res.headers.get('Cache-Control') ?? '', /stale-if-error/);
+                const xml = await res.text();
+                assert.match(xml, /<urlset[\s\S]*<\/urlset>/);
+                assert.ok((xml.match(/<loc>/g) ?? []).length > 5, 'fallback must list every hub, not an empty/shrunk set');
+            });
+        } else {
+            // companies / hackathons only exist in the API: a partial list would read as "removed", so 503 stays.
+            test(`${name}: API ${mode} -> 503 with Retry-After, not a shrunk 200`, async () => {
+                mockFetch(mode);
+                const res = await (await load()).GET();
+                assert.equal(res.status, 503);
+                assert.equal(res.headers.get('Retry-After'), '900');
+                assert.equal(res.headers.get('Cache-Control'), 'no-store');
+            });
+        }
     }
     test(`${name}: healthy API -> 200 urlset`, async () => {
         mockFetch('ok');

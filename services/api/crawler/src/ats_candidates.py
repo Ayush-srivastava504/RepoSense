@@ -29,6 +29,9 @@ CANDIDATE_ATS: Dict[str, List[str]] = {
     ],
     'smartrecruiters': [
         'swiggy', 'wipro', 'mcdonalds', 'publicissapient', 'capgemini', 'nvidia', 'servicenow', 'adidas',
+        # IT services / consulting (unverified slugs; probe_boards.py reports which exist)
+        'globallogic', 'cognizant', 'accenture', 'techmahindra', 'tcs', 'infosys', 'hcltech', 'ltimindtree',
+        'mphasis', 'coforge', 'persistent', 'zeta', 'zoho',
     ],
     'workable': ['zomato', 'swiggy', 'razorpay'],
 }
@@ -47,6 +50,18 @@ WORKDAY_TENANTS: List[Dict[str, str]] = [
     {'company': 'Mastercard', 'host': 'mastercard.wd1.myworkdayjobs.com', 'tenant': 'mastercard', 'site': 'CorporateCareers'},
     {'company': 'Qualcomm', 'host': 'qualcomm.wd5.myworkdayjobs.com', 'tenant': 'qualcomm', 'site': 'External'},
     {'company': 'Walmart', 'host': 'walmart.wd5.myworkdayjobs.com', 'tenant': 'walmart', 'site': 'WalmartExternal'},
+    # Added for the requested IT-services / Big Four / industrial employers. Same caveat: tenant + site are
+    # best guesses, a wrong one 404s and is skipped. Verify with `python probe_boards.py workday` on EC2 and
+    # correct the host/site from the company's real careers URL (https://<host>/<locale>/<site>).
+    {'company': 'Caterpillar', 'host': 'cat.wd5.myworkdayjobs.com', 'tenant': 'cat', 'site': 'CaterpillarCareers'},
+    {'company': 'KPMG', 'host': 'kpmg.wd1.myworkdayjobs.com', 'tenant': 'kpmg', 'site': 'KPMG'},
+    {'company': 'Capgemini', 'host': 'capgemini.wd3.myworkdayjobs.com', 'tenant': 'capgemini', 'site': 'CapgeminiCareers'},
+    {'company': 'Cognizant', 'host': 'cognizant.wd1.myworkdayjobs.com', 'tenant': 'cognizant', 'site': 'CognizantCareers'},
+    {'company': 'Accenture', 'host': 'accenture.wd3.myworkdayjobs.com', 'tenant': 'accenture', 'site': 'AccentureCareers'},
+    {'company': 'Deloitte', 'host': 'deloitte.wd1.myworkdayjobs.com', 'tenant': 'deloitte', 'site': 'Deloitte_Careers'},
+    {'company': 'EY', 'host': 'ey.wd3.myworkdayjobs.com', 'tenant': 'ey', 'site': 'EY_Careers'},
+    {'company': 'GlobalLogic', 'host': 'globallogic.wd1.myworkdayjobs.com', 'tenant': 'globallogic', 'site': 'GlobalLogicCareers'},
+    {'company': 'Zeta', 'host': 'zeta.wd1.myworkdayjobs.com', 'tenant': 'zeta', 'site': 'Zeta'},
 ]
 
 # Board slug -> proper display name. Without this the scrapers title-case the slug ('scaleai' -> 'Scaleai',
@@ -59,6 +74,9 @@ DISPLAY_NAMES: Dict[str, str] = {
     'servicenow': 'ServiceNow', 'khatabook': 'Khatabook', 'cred': 'CRED', 'eternal': 'Zomato (Eternal)',
     'mindtickle': 'Mindtickle', 'grafana-labs': 'Grafana Labs', 'pagerduty': 'PagerDuty', 'crowdstrike': 'CrowdStrike',
     'palantir': 'Palantir', 'clevertap': 'CleverTap', 'hasura': 'Hasura', 'wipro': 'Wipro', 'zepto': 'Zepto',
+    'globallogic': 'GlobalLogic', 'cognizant': 'Cognizant', 'accenture': 'Accenture', 'techmahindra': 'Tech Mahindra',
+    'tcs': 'TCS', 'infosys': 'Infosys', 'hcltech': 'HCLTech', 'ltimindtree': 'LTIMindtree', 'mphasis': 'Mphasis',
+    'coforge': 'Coforge', 'persistent': 'Persistent Systems', 'zeta': 'Zeta', 'zoho': 'Zoho', 'capgemini': 'Capgemini',
 }
 
 

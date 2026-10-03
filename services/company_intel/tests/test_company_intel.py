@@ -225,3 +225,42 @@ def test_render_fallback_only_for_empty_shells():
     full = _fetch_with_renderer('<html><body><main><p>' + 'Plenty of server rendered text here. ' * 15 + '</p></main></body></html>', r2)
     assert not full.rendered and r2.calls == 0
 
+
+
+# --- manual seed list + wikidata source arity (regression for the post-FAQ-removal crash) ---
+
+def test_manual_companies_use_real_employer_domains():
+    from company_intel.manual_companies import MANUAL_COMPANIES
+    from company_intel.domains import is_non_employer
+    from company_intel import db
+    names = [n for n, _ in MANUAL_COMPANIES]
+    assert len({db.name_key(n) for n in names}) == len(names), 'duplicate company'
+    wanted = {'capgemini', 'cognizant', 'globallogic', 'caterpillar', 'zeta', 'zoho', 'deloitte', 'ey', 'kpmg',
+              'accenture', 'infosys', 'tcs', 'techmahindra'}
+    assert wanted <= {db.name_key(n) for n in names}
+    for name, domain in MANUAL_COMPANIES:
+        assert '.' in domain and '/' not in domain, name
+        assert not is_non_employer(domain), name
+
+
+def test_store_wikidata_passes_exactly_the_sql_parameters():
+    import asyncio
+    import re
+    from company_intel import db, pipeline
+
+    class FakePool:
+        def __init__(self):
+            self.calls = []
+
+        async def execute(self, sql, *args):
+            self.calls.append((sql, args))
+
+    class FakeWikidata:
+        async def fetch(self, site, name):
+            return {'url': 'https://www.wikidata.org/wiki/Q1', 'title': 'T', 'text': 'x' * 50}
+
+    pool = FakePool()
+    asyncio.run(pipeline._store_wikidata(pool, FakeWikidata(), {'id': 1, 'name': 'Acme'}, 'acme.com'))
+    sql, args = pool.calls[0]
+    assert sql == db.UPSERT_SOURCE_SQL
+    assert len(args) == max(int(n) for n in re.findall(r'\$(\d+)', sql))

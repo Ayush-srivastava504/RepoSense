@@ -33,6 +33,16 @@ export async function generateMetadata({ params, searchParams, }: {
     params: { company: string };
     searchParams: { page?: string };
 }): Promise<Metadata> {
+  try {
+    return await buildCompanyMetadata(params, searchParams);
+  }
+  catch (err) {
+    console.error('generateMetadata failed for company', params.company, err);
+    return { robots: { index: false, follow: true } };
+  }
+}
+
+async function buildCompanyMetadata(params: { company: string }, searchParams: { page?: string }): Promise<Metadata> {
     const company = await getCompanyBySlug(params.company);
     if (!company)
         return {};
@@ -88,13 +98,19 @@ export default async function CompanyHubPage({ params, searchParams, }: {
     const url = `${BASE_URL}/companies/${params.company}${page > 1 ? `?page=${page}` : ''}`;
     // Page 1 also asks for this company's internships directly: in the single ranked list they can sit
     // past the first 30 rows behind full-time roles, which left them with no link from the company hub.
-    const [{ jobs, total }, profile, intel, internshipsFirst, companiesData] = await Promise.all([
+    // Every secondary source is optional: one failing call must degrade that block, never 500 the page.
+    const [jobsRes, profileRes, intelRes, internshipsRes, companiesRes] = await Promise.allSettled([
         getJobsPage({ company: company.company, limit: COMPANY_JOBS_PER_PAGE, offset: (page - 1) * COMPANY_JOBS_PER_PAGE, sort: 'ranked' }),
         getCompanyProfile(company.company),
         getCompanyIntel(params.company),
         page === 1 ? getJobs({ company: company.company, type: 'internship', limit: 12, sort: 'ranked' }) : Promise.resolve([]),
         page === 1 ? getCompanies(60) : Promise.resolve(null),
     ]);
+    const { jobs, total } = jobsRes.status === 'fulfilled' ? jobsRes.value : { jobs: [], total: 0 };
+    const profile = profileRes.status === 'fulfilled' ? profileRes.value : null;
+    const intel = intelRes.status === 'fulfilled' ? intelRes.value : null;
+    const internshipsFirst = internshipsRes.status === 'fulfilled' ? internshipsRes.value : [];
+    const companiesData = companiesRes.status === 'fulfilled' ? companiesRes.value : null;
     const topics = intel?.topics ?? [];
     const totalPages = Math.max(1, Math.ceil(total / COMPANY_JOBS_PER_PAGE));
     // ?page=N past the last page is a real 404, not an empty indexable page.

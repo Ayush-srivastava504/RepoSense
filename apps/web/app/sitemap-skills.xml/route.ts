@@ -4,7 +4,7 @@
 //
 
 import { BASE_URL, getJobsOrThrow } from '@/lib/jobs';
-import { sitemapOk, sitemapUnavailable } from '@/lib/sitemapResponse';
+import { sitemapOk, sitemapUnavailable, mapWithLimit } from '@/lib/sitemapResponse';
 import { SKILLS } from '@/app/skills/data';
 import { buildUrlsetXml } from '@/lib/sitemapXml';
 import { SKILL_MIN_JOBS, belowHubThreshold } from '@/lib/seo/hubThresholds';
@@ -18,18 +18,22 @@ export async function GET() {
     // getJobsOrThrow: an API failure would otherwise count as 0 jobs and drop EVERY skill hub from the sitemap.
     let counts: number[];
     try {
-        counts = await Promise.all(SKILLS.map(async (skill) => {
+        // 4 skills at a time (8 API calls) instead of all ~24 skills at once (~48 calls) against a 1 GB API box.
+        counts = await mapWithLimit(SKILLS, 4, async (skill) => {
             const [jobs, internships] = await Promise.all([
                 getJobsOrThrow({ skill: skill.searchTerm, type: undefined, limit: 9, sort: 'ranked' }),
                 getJobsOrThrow({ skill: skill.searchTerm, type: 'internship', limit: 6, sort: 'ranked' }),
             ]);
             return jobs.length + internships.length;
-        }));
+        });
     }
     catch (err) {
-        return sitemapUnavailable('skills', err);
+        return sitemapUnavailable('skills', err, () => buildSkillsXml(SKILLS.map(() => Infinity)));
     }
-    const xml = buildUrlsetXml([
+    return sitemapOk(buildSkillsXml(counts), 'skills');
+}
+function buildSkillsXml(counts: number[]): string {
+    return buildUrlsetXml([
         { loc: `${BASE_URL}/skills`, changefreq: 'weekly', priority: 0.8 },
         ...SKILLS
             .filter((_, i) => !belowHubThreshold(counts[i], SKILL_MIN_JOBS))
@@ -39,5 +43,4 @@ export async function GET() {
                 priority: 0.7,
             })),
     ]);
-    return sitemapOk(xml);
 }

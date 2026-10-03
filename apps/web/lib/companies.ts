@@ -60,6 +60,86 @@ export interface CompanyIntel {
     last_posted_at: string | null;
     topics: CompanyTopic[];
 }
+function asStringArray(value: unknown): string[] {
+    let v: unknown = value;
+    if (typeof value === 'string') {
+        try {
+            v = JSON.parse(value);
+        }
+        catch {
+            return value.trim() ? [value] : [];
+        }
+    }
+    if (!Array.isArray(v))
+        return [];
+    return Array.from(new Set(v.filter((x): x is string => typeof x === 'string' && x.trim().length > 0)));
+}
+// The API can hand back jsonb as text, null arrays or odd shapes; the page must never throw on them (that was a 500).
+export function normalizeIntel(raw: any): CompanyIntel | null {
+    if (!raw || typeof raw !== 'object' || typeof raw.slug !== 'string' || typeof raw.name !== 'string')
+        return null;
+    const topics: CompanyTopic[] = (Array.isArray(raw.topics) ? raw.topics : [])
+        .filter((t: any) => t && typeof t.topic_key === 'string' && typeof t.body === 'string' && t.body.trim())
+        .map((t: any) => ({
+            topic_key: t.topic_key,
+            title: typeof t.title === 'string' ? t.title : t.topic_key,
+            body: t.body,
+            bullets: asStringArray(t.bullets),
+            source_urls: asStringArray(t.source_urls),
+            enriched_at: typeof t.enriched_at === 'string' ? t.enriched_at : '',
+        }));
+    return {
+        slug: raw.slug,
+        name: raw.name,
+        official_domain: raw.official_domain ?? null,
+        logo_domain: raw.logo_domain ?? null,
+        last_crawled_at: raw.last_crawled_at ?? null,
+        job_count: Number.isFinite(Number(raw.job_count)) ? Number(raw.job_count) : 0,
+        last_posted_at: raw.last_posted_at ?? null,
+        topics,
+    };
+}
+export function normalizeProfile(raw: any): CompanyProfile | null {
+    if (!raw || typeof raw !== 'object' || typeof raw.overview !== 'string' || !raw.overview)
+        return null;
+    let facts = raw.facts;
+    if (typeof facts === 'string') {
+        try {
+            facts = JSON.parse(facts);
+        }
+        catch {
+            facts = null;
+        }
+    }
+    if (!facts || typeof facts !== 'object')
+        return null;
+    const list = (v: unknown) => (Array.isArray(v) ? v.filter((x: any) => x && typeof x.name === 'string') : []);
+    const exp = facts.experience && typeof facts.experience === 'object' ? facts.experience : null;
+    return {
+        company: String(raw.company ?? ''),
+        overview: raw.overview,
+        keywords: Array.isArray(raw.keywords) ? raw.keywords.filter((k: unknown) => typeof k === 'string') : null,
+        model: String(raw.model ?? ''),
+        enriched_at: String(raw.enriched_at ?? ''),
+        facts: {
+            as_of: typeof facts.as_of === 'string' ? facts.as_of : '',
+            active_listings: Number(facts.active_listings) || 0,
+            internships: Number(facts.internships) || 0,
+            jobs: Number(facts.jobs) || 0,
+            locations: list(facts.locations),
+            work_modes: facts.work_modes && typeof facts.work_modes === 'object' ? facts.work_modes : {},
+            remote_listings: Number(facts.remote_listings) || 0,
+            job_functions: list(facts.job_functions),
+            skills: list(facts.skills),
+            courses: list(facts.courses),
+            experience: exp ? { min: exp.min ?? null, max: exp.max ?? null, fresher_listings: Number(exp.fresher_listings) || 0 } : null,
+            pay: { stipend_listings: Number(facts.pay?.stipend_listings) || 0, salary_listings: Number(facts.pay?.salary_listings) || 0 },
+            official_domain: facts.official_domain ?? null,
+            first_listed: facts.first_listed ?? null,
+            latest_posted: facts.latest_posted ?? null,
+        },
+    };
+}
 // GET /api/companies/by-slug/{slug}: crawled-and-enriched topics for one company. 404 (no entity yet)
 // and any failure resolve to null -- the page then renders from the jobs data alone.
 export async function getCompanyIntel(slug: string): Promise<CompanyIntel | null> {
@@ -67,7 +147,7 @@ export async function getCompanyIntel(slug: string): Promise<CompanyIntel | null
         const res = await fetchWithTimeout(`${API_BASE_URL}/api/companies/by-slug/${encodeURIComponent(slug)}`, { next: { revalidate: 3600 } });
         if (!res.ok)
             return null;
-        return (await res.json()) as CompanyIntel;
+        return normalizeIntel(await res.json());
     }
     catch (err) {
         console.error('Failed to fetch company intel:', err);
@@ -160,7 +240,7 @@ export async function getCompanyProfile(company: string): Promise<CompanyProfile
         const res = await fetchWithTimeout(`${API_BASE_URL}/api/companies/${encodeURIComponent(company)}/profile`, { next: { revalidate: 3600 } });
         if (!res.ok)
             return null;
-        return (await res.json()) as CompanyProfile;
+        return normalizeProfile(await res.json());
     }
     catch (err) {
         console.error('Failed to fetch company profile:', err);
