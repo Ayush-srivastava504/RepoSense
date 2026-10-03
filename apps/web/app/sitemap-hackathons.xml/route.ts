@@ -1,58 +1,10 @@
 // Module: app/sitemap-hackathons.xml/route.ts
-// Defines component(s)/export(s): PAGE_SIZE, MAX_PAGES, GET
-//
-//
+// Build, fallback and lastmod live in lib/routeSitemaps.ts; the answer policy (cache layers, never a 5xx) in
+// lib/sitemapResponse.ts.
+import { serveRouteSitemap } from '@/lib/routeSitemaps';
 
-import { getHackathonsOrThrow, BASE_URL } from '@/lib/hackathons';
-import { sitemapOk, sitemapUnavailable } from '@/lib/sitemapResponse';
-import { buildUrlsetXml, toLastmod } from '@/lib/sitemapXml';
 export const dynamic = 'force-dynamic';
-// Give this route more headroom on platforms that respect it (e.g. Vercel Pro).
-// Harmless no-op elsewhere.
+// Headroom for a cold build on platforms that honour it (Vercel); a no-op elsewhere.
 export const maxDuration = 60;
-const PAGE_SIZE = 50;
-const MAX_PAGES = 20;
-export async function GET() {
-    let hackathons: Awaited<ReturnType<typeof getHackathonsOrThrow>> = [];
-    try {
-        // Fetch pages in small concurrent batches rather than either (a) fully
-        // sequentially, which can exceed a serverless function's timeout and cut
-        // the response off mid-write, dropping the closing </urlset> tag (Search
-        // Console: "Missing XML tag"), or (b) all MAX_PAGES at once, which fires a
-        // burst of requests from one IP against an API that rate-limits
-        // unauthenticated callers per minute — a large enough burst eats most of
-        // that budget on its own, and getHackathons() swallows a failed request
-        // into an empty array, which this loop then reads as "no more pages" and
-        // stops immediately, producing an empty sitemap. Batching keeps
-        // concurrency (and requests-per-minute) low while still bounding wall
-        // time, and the common case only ever needs one batch.
-        const BATCH_CONCURRENCY = 5;
-        outer: for (let batchStart = 0; batchStart < MAX_PAGES; batchStart += BATCH_CONCURRENCY) {
-            const batchPages = Array.from(
-                { length: Math.min(BATCH_CONCURRENCY, MAX_PAGES - batchStart) },
-                (_, i) => batchStart + i
-            );
-            // Promise.all: any failed page rejects -> 503 below. A partial list would be a silent shrink.
-            const results = await Promise.all(
-                batchPages.map((page) => getHackathonsOrThrow({ limit: PAGE_SIZE, offset: page * PAGE_SIZE }))
-            );
-            for (const items of results) {
-                hackathons = hackathons.concat(items);
-                if (items.length < PAGE_SIZE)
-                    break outer;
-            }
-        }
-    }
-    catch (err) {
-        return sitemapUnavailable('hackathons', err);
-    }
-    const xml = buildUrlsetXml(hackathons
-        .filter((hackathon) => hackathon?.slug)
-        .map((hackathon) => ({
-        loc: `${BASE_URL}/hackathons/${hackathon.slug}`,
-        lastmod: toLastmod(hackathon.first_seen_at),
-        changefreq: 'daily' as const,
-        priority: 0.7,
-    })));
-    return sitemapOk(xml, 'hackathons');
-}
+
+export const GET = () => serveRouteSitemap('hackathons');

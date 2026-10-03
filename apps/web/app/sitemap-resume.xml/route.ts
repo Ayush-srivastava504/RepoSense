@@ -1,20 +1,10 @@
 // Module: app/sitemap-resume.xml/route.ts
-// Defines component(s)/export(s): GET
-//
-//
+// Build, fallback and lastmod live in lib/routeSitemaps.ts; the answer policy (cache layers, never a 5xx) in
+// lib/sitemapResponse.ts.
+import { serveRouteSitemap } from '@/lib/routeSitemaps';
 
-import { BASE_URL } from '@/lib/jobs';
-import { RESUME_ROLES } from '@/app/resume-for/data';
-import { buildUrlsetXml } from '@/lib/sitemapXml';
 export const dynamic = 'force-dynamic';
-export async function GET() {
-    const xml = buildUrlsetXml([
-        { loc: `${BASE_URL}/resume-for`, changefreq: 'weekly', priority: 0.8 },
-        ...RESUME_ROLES.map((role) => ({
-            loc: `${BASE_URL}/resume-for/${role.slug}`,
-            changefreq: 'weekly' as const,
-            priority: 0.7,
-        })),
-    ]);
-    return new Response(xml, { headers: { 'Content-Type': 'application/xml' } });
-}
+// Headroom for a cold build on platforms that honour it (Vercel); a no-op elsewhere.
+export const maxDuration = 60;
+
+export const GET = () => serveRouteSitemap('resume');

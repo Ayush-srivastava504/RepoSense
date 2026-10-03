@@ -6,13 +6,13 @@
 // instead of a 503.
 
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
-import { BASE_URL } from '@/lib/site';
 
 const API_BASE_URL = process.env.API_BASE_URL ||
     process.env.NEXT_PUBLIC_API_BASE_URL ||
     'https://api.intern-flow.in';
 
-export type SitemapFileInfo = { file_name: string; url_count: number };
+// built_at = when the file's CONTENT last changed (the API only bumps it when the XML differs), so it is an honest <lastmod>.
+export type SitemapFileInfo = { file_name: string; url_count: number; built_at?: string };
 
 export type SitemapRegistryEntry = { slug: string; kind: 'job_cache' | 'route'; path: string | null; sort_order: number };
 
@@ -58,10 +58,6 @@ export async function getSitemapFileXml(name: string): Promise<string | null> {
             return stale;
         throw err;
     }
-}
-
-export function sitemapFileUrls(files: SitemapFileInfo[]): string[] {
-    return files.map((f) => `${BASE_URL}/sitemaps/${f.file_name}`);
 }
 
 /**

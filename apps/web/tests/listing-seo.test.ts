@@ -179,28 +179,58 @@ test('a job page has exactly one <main> and never prints "unknown" as its source
 });
 
 // ---------- sitemap resilience ----------
-import { sitemapOk, sitemapUnavailable, mapWithLimit, _clearSitemapCache } from '../lib/sitemapResponse';
+import { serveSitemap, mapWithLimit, _clearSitemapCache } from '../lib/sitemapResponse';
 
 test('a failing sitemap build serves the last good copy, then a static fallback, and only then 503', async () => {
     _clearSitemapCache();
-    // nothing known yet and no fallback: 503 + Retry-After (companies / hackathons keep this behaviour)
-    const cold = sitemapUnavailable('t1', new Error('api down'));
+    const boom = async () => { throw new Error('api down'); };
+    // nothing known yet and no fallback (per-file job sitemaps): 503 + Retry-After, the only 5xx left
+    const cold = await serveSitemap('t1', boom);
     assert.equal(cold.status, 503);
     assert.equal(cold.headers.get('Retry-After'), '900');
-    // static-list sitemaps (skills / cities / batches) never 503: they serve the fallback
-    const fb = sitemapUnavailable('t1', new Error('api down'), () => '<urlset>fallback</urlset>');
+    // every route sitemap passes a fallback: a 200, never a 503
+    const fb = await serveSitemap('t1', boom, () => ({ xml: '<urlset>fallback</urlset>' }));
     assert.equal(fb.status, 200);
     assert.equal(fb.headers.get('x-sitemap-served'), 'fallback');
     assert.equal(await fb.text(), '<urlset>fallback</urlset>');
+    // even a fallback that itself throws ends in the documented last resort, not an unhandled error
+    const brokenFb = await serveSitemap('t1', boom, () => { throw new Error('fallback bug'); });
+    assert.equal(brokenFb.status, 503);
     // once a real build succeeded, a later failure serves that copy (stale), not the fallback
-    sitemapOk('<urlset>real</urlset>', 't1');
-    const stale = sitemapUnavailable('t1', new Error('api down'), () => '<urlset>fallback</urlset>');
+    const ok = await serveSitemap('t1', async () => ({ xml: '<urlset>real</urlset>', lastmod: '2026-10-01T00:00:00.000Z' }), () => ({ xml: '<urlset>fallback</urlset>' }));
+    assert.equal(ok.status, 200);
+    assert.equal(ok.headers.get('x-sitemap-served'), 'fresh');
+    assert.equal(ok.headers.get('Last-Modified'), 'Thu, 01 Oct 2026 00:00:00 GMT');
+    const stale = await serveSitemap('t1', boom, () => ({ xml: '<urlset>fallback</urlset>' }));
     assert.equal(stale.status, 200);
     assert.equal(stale.headers.get('x-sitemap-served'), 'stale');
     assert.equal(await stale.text(), '<urlset>real</urlset>');
     assert.ok(/stale-if-error/.test(stale.headers.get('Cache-Control') ?? ''));
     // degraded answers are cached briefly so the CDN retries the real build soon
     assert.ok(/s-maxage=300/.test(stale.headers.get('Cache-Control') ?? ''));
+    // a healthy answer is cached for an hour at the CDN
+    assert.ok(/s-maxage=3600/.test(ok.headers.get('Cache-Control') ?? ''));
+});
+
+test('a build that resolves null is a 404, not an outage', async () => {
+    _clearSitemapCache();
+    const res = await serveSitemap('t2', async () => null);
+    assert.equal(res.status, 404);
+});
+
+test('a build that hangs is cut off and answered from the fallback instead of running into the platform timeout', async () => {
+    _clearSitemapCache();
+    const realSetTimeout = globalThis.setTimeout;
+    // collapse the 25 s deadline to 5 ms for this test only
+    (globalThis as any).setTimeout = (fn: () => void, ms?: number, ...a: unknown[]) => realSetTimeout(fn, ms === 25_000 ? 5 : ms, ...a);
+    try {
+        const res = await serveSitemap('t3', () => new Promise(() => {}), () => ({ xml: '<urlset>fallback</urlset>' }));
+        assert.equal(res.status, 200);
+        assert.equal(res.headers.get('x-sitemap-served'), 'fallback');
+    }
+    finally {
+        globalThis.setTimeout = realSetTimeout;
+    }
 });
 
 test('mapWithLimit never exceeds the concurrency cap and keeps result order', async () => {
@@ -217,14 +247,16 @@ test('mapWithLimit never exceeds the concurrency cap and keeps result order', as
     assert.deepEqual(out, [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]);
 });
 
-test('every API-backed sitemap route goes through the resilient helper (named cache) and skills is capped', () => {
-    for (const r of ['skills', 'locations', 'batches', 'companies', 'hackathons']) {
+test('every sitemap route is a one-liner over the resilient helper, and skills stays capped', () => {
+    for (const r of ['static', 'hackathons', 'tools', 'blog', 'skills', 'companies', 'locations', 'batches', 'resume', 'careers']) {
         const src = read(`app/sitemap-${r}.xml/route.ts`);
-        assert.ok(new RegExp(`sitemapOk\\(.*'${r}'\\)`).test(src), r);
+        assert.ok(new RegExp(`serveRouteSitemap\\('${r}'\\)`).test(src), r);
+        assert.ok(!/new Response\(/.test(src), `${r} must not build its own response (no cache headers, no fallback)`);
     }
-    for (const r of ['skills', 'locations', 'batches']) {
-        assert.ok(/sitemapUnavailable\('\w+', err, \(\) =>/.test(read(`app/sitemap-${r}.xml/route.ts`)), `${r} needs a static fallback`);
-    }
-    assert.ok(/mapWithLimit\(SKILLS, 4/.test(read('app/sitemap-skills.xml/route.ts')));
-    assert.ok(!/new Response\(.*503/.test(read('app/sitemap.xml/route.ts')));
+    const registry = read('lib/routeSitemaps.ts');
+    assert.ok(/mapWithLimit\(SKILLS, 4/.test(registry));
+    // every registry entry has a fallback and a lastmod
+    assert.equal((registry.match(/^    fallback:/gm) ?? []).length, 10);
+    assert.equal((registry.match(/^    lastmod: (getLatestJobDate|async)/gm) ?? []).length, 10);
+    assert.ok(!/503/.test(read('app/sitemap.xml/route.ts')));
 });

@@ -251,7 +251,10 @@ async def _rebuild_locked(pool, force: bool = False) -> dict:
                     '''INSERT INTO sitemap_cache (file_name, category, page, url_count, xml, built_at)
                        VALUES ($1,$2,$3,$4,$5,now())
                        ON CONFLICT (file_name) DO UPDATE SET category=EXCLUDED.category, page=EXCLUDED.page,
-                         url_count=EXCLUDED.url_count, xml=EXCLUDED.xml, built_at=EXCLUDED.built_at''',
+                         url_count=EXCLUDED.url_count, xml=EXCLUDED.xml,
+                       -- built_at is served as the index <lastmod>: only move it when the content really changed
+                       built_at=CASE WHEN sitemap_cache.xml IS DISTINCT FROM EXCLUDED.xml
+                                     THEN EXCLUDED.built_at ELSE sitemap_cache.built_at END''',
                     name, category, page, count, xml)
             await conn.execute('DELETE FROM sitemap_cache WHERE NOT (file_name = ANY($1::text[]))', list(files))
     per_cat = {c: sum(f[2] for f in files.values() if f[0] == c) for c in enabled}

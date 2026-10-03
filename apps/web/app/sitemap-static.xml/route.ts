@@ -1,53 +1,10 @@
 // Module: app/sitemap-static.xml/route.ts
-// Defines component(s)/export(s): GET
-
-import { BASE_URL } from '@/lib/jobs';
-import { buildUrlsetXml } from '@/lib/sitemapXml';
-import { hreflangLinks } from '@/lib/hreflang';
+// Build, fallback and lastmod live in lib/routeSitemaps.ts; the answer policy (cache layers, never a 5xx) in
+// lib/sitemapResponse.ts.
+import { serveRouteSitemap } from '@/lib/routeSitemaps';
 
 export const dynamic = 'force-dynamic';
+// Headroom for a cold build on platforms that honour it (Vercel); a no-op elsewhere.
+export const maxDuration = 60;
 
-export async function GET() {
-
-  // Primary static hubs with multilingual support
-  const coreHubs = [
-    { path: '', changefreq: 'daily' as const, priority: 1.0 },
-    { path: '/jobs', changefreq: 'daily' as const, priority: 0.9 },
-    { path: '/internships', changefreq: 'daily' as const, priority: 0.9 },
-    { path: '/remote-jobs', changefreq: 'daily' as const, priority: 0.9 },
-    { path: '/government-jobs', changefreq: 'daily' as const, priority: 0.9 },
-    { path: '/companies', changefreq: 'daily' as const, priority: 0.8 },
-    { path: '/hackathons', changefreq: 'daily' as const, priority: 0.8 },
-    { path: '/japan-jobs', changefreq: 'daily' as const, priority: 0.8 },
-    { path: '/europe-jobs', changefreq: 'daily' as const, priority: 0.8 },
-    { path: '/tools', changefreq: 'weekly' as const, priority: 0.8 },
-    { path: '/about', changefreq: 'monthly' as const, priority: 0.6 },
-    { path: '/leetcode', changefreq: 'weekly' as const, priority: 0.7 },
-    { path: '/resume/builder', changefreq: 'monthly' as const, priority: 0.7 },
-    { path: '/ats-checker', changefreq: 'monthly' as const, priority: 0.7 },
-    { path: '/cover-letter', changefreq: 'monthly' as const, priority: 0.7 },
-    { path: '/github', changefreq: 'monthly' as const, priority: 0.7 },
-    { path: '/linkedin', changefreq: 'monthly' as const, priority: 0.7 },
-    // /login and /register deliberately excluded — noindexed via
-    // middleware.ts's NOINDEX_PREFIXES (Phase 2 audit, PHASE_PLAN.md
-    // item 7); a sitemap entry for a noindexed page is a conflicting
-    // signal to crawlers.
-  ];
-
-  const entries = coreHubs.map((hub) => {
-    // Empty while hreflang is disabled (lib/hreflang.ts) -> plain <urlset>, no xhtml namespace.
-    const alternates = hreflangLinks(hub.path);
-
-    return {
-      loc: `${BASE_URL}${hub.path}`,
-      changefreq: hub.changefreq,
-      priority: hub.priority,
-      alternates,
-    };
-  });
-
-  const xml = buildUrlsetXml(entries);
-  return new Response(xml, {
-    headers: { 'Content-Type': 'application/xml; charset=utf-8' },
-  });
-}
+export const GET = () => serveRouteSitemap('static');
