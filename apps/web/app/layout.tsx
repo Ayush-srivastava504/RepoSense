@@ -9,6 +9,7 @@ import Script from 'next/script';
 import { Inter, Fraunces, IBM_Plex_Mono } from 'next/font/google';
 import AppShell from './components/AppShell';
 import { BASE_URL } from '@/lib/site';
+import { ADSENSE_SRC } from '@/lib/adsense';
 const inter = Inter({
     subsets: ['latin'],
     variable: '--font-body',
@@ -153,7 +154,12 @@ export default function RootLayout({ children, }: Readonly<{
     // read it inside blog/[slug] specifically -- no static-param conflict
     // there -- rather than globally in the root layout.
     return (<html lang="en">
-      
+      <head>
+        {/* Google AdSense: site verification + eligibility. Must be a plain
+            <script> in <head> so Google's crawler can see it in the raw HTML. */}
+        <script async src={ADSENSE_SRC} crossOrigin="anonymous"/>
+        <meta name="google-adsense-account" content="ca-pub-5594205569635986"/>
+      </head>
       <body className={`${inter.variable} ${fraunces.variable} ${plexMono.variable} font-sans antialiased`}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{
             __html: JSON.stringify(organizationSchema),

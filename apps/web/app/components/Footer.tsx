@@ -75,7 +75,18 @@ export default function Footer() {
     {
       headingKey: 'footer.contact',
       fallbackHeading: 'Contact',
-      links: [{ fallback: 'creatoramplified@gmail.com', href: 'mailto:creatoramplified@gmail.com' }],
+      links: [
+        { fallback: 'Contact us', href: '/contact' },
+        { fallback: 'creatoramplified@gmail.com', href: 'mailto:creatoramplified@gmail.com' },
+      ],
+    },
+    {
+      headingKey: 'footer.legal',
+      fallbackHeading: 'Legal',
+      links: [
+        { fallback: 'Privacy Policy', href: '/privacy' },
+        { fallback: 'Terms of Service', href: '/terms' },
+      ],
     },
   ];
 

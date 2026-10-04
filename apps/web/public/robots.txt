@@ -25,6 +25,9 @@ Allow: /careers
 Allow: /resume-for
 Allow: /jobs-in
 Allow: /about
+Allow: /contact
+Allow: /privacy
+Allow: /terms
 
 # Private & API routes
 Disallow: /dashboard

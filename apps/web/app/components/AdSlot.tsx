@@ -1,36 +1,21 @@
 // Module: app/components/AdSlot.tsx
-// Defines component(s)/export(s): ADSENSE_SRC, AdSlot
-// Defines function(s): loadAdsenseScript
+// Defines component(s)/export(s): AdSlot
 //
+// Reusable Google AdSense ad unit. The AdSense loader script is included once,
+// site-wide, in app/layout.tsx <head>; this component only renders the <ins>
+// unit and queues it. Until a real slot ID is supplied (see lib/adsense.ts) it
+// renders nothing, so it is safe to place on pages before AdSense approval.
 
 'use client';
 import { useEffect, useRef } from 'react';
+import { ADSENSE_CLIENT } from '@/lib/adsense';
+
 declare global {
     interface Window {
         adsbygoogle: any[];
     }
 }
-const ADSENSE_SRC = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3315793616023053';
-let adsenseScriptPromise: Promise<void> | null = null;
-function loadAdsenseScript(): Promise<void> {
-    if (adsenseScriptPromise)
-        return adsenseScriptPromise;
-    adsenseScriptPromise = new Promise((resolve, reject) => {
-        const existing = document.querySelector<HTMLScriptElement>(`script[src="${ADSENSE_SRC}"]`);
-        if (existing) {
-            resolve();
-            return;
-        }
-        const script = document.createElement('script');
-        script.src = ADSENSE_SRC;
-        script.async = true;
-        script.crossOrigin = 'anonymous';
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error('Failed to load AdSense script'));
-        document.head.appendChild(script);
-    });
-    return adsenseScriptPromise;
-}
+
 export default function AdSlot({ slot, format = 'auto', className = '', style, }: {
     slot: string;
     format?: string;
@@ -38,20 +23,19 @@ export default function AdSlot({ slot, format = 'auto', className = '', style, }
     style?: React.CSSProperties;
 }) {
     const pushed = useRef(false);
+    const enabled = /^\d{6,}$/.test(slot);
     useEffect(() => {
-        if (pushed.current)
+        if (!enabled || pushed.current)
             return;
         pushed.current = true;
-        loadAdsenseScript()
-            .then(() => {
-            try {
-                (window.adsbygoogle = window.adsbygoogle || []).push({});
-            }
-            catch (err) {
-                console.error('AdSense push failed:', err);
-            }
-        })
-            .catch((err) => console.error(err));
-    }, []);
-    return (<ins className={`adsbygoogle ${className}`} style={{ display: 'block', ...style }} data-ad-client="ca-pub-3315793616023053" data-ad-slot={slot} data-ad-format={format} data-full-width-responsive="true"/>);
+        try {
+            (window.adsbygoogle = window.adsbygoogle || []).push({});
+        }
+        catch (err) {
+            console.error('AdSense push failed:', err);
+        }
+    }, [enabled]);
+    if (!enabled)
+        return null;
+    return (<ins className={`adsbygoogle ${className}`} style={{ display: 'block', ...style }} data-ad-client={ADSENSE_CLIENT} data-ad-slot={slot} data-ad-format={format} data-full-width-responsive="true"/>);
 }
