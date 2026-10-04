@@ -1,137 +1,110 @@
 // Module: app/components/Footer.tsx
 // Defines component(s)/export(s): Footer
 
-'use client';
 import Link from 'next/link';
 import Logo from './Logo';
-import { useTranslation } from '@/i18n/LanguageContext';
+
+const COLUMNS: { heading: string; links: { href: string; label: string }[] }[] = [
+  {
+    heading: 'Product',
+    links: [
+      { href: '/jobs', label: 'Jobs' },
+      { href: '/internships', label: 'Internships' },
+      { href: '/remote-jobs', label: 'Remote jobs' },
+      { href: '/resume/builder', label: 'Resume builder' },
+      { href: '/ats-checker', label: 'ATS resume checker' },
+      { href: '/cover-letter', label: 'Cover letter generator' },
+      { href: '/leetcode', label: 'Coding practice' },
+    ],
+  },
+  {
+    heading: 'Resources',
+    links: [
+      { href: '/careers', label: 'Career paths' },
+      { href: '/resume-for', label: 'Resume guides' },
+      { href: '/jobs-in', label: 'Jobs by city' },
+      { href: '/batch', label: 'Jobs by batch' },
+      { href: '/skills', label: 'Jobs by skill' },
+      { href: '/companies', label: 'Companies hiring' },
+      { href: '/blog', label: 'Blog' },
+    ],
+  },
+  {
+    heading: 'Company',
+    links: [
+      { href: '/about', label: 'About' },
+      { href: '/contact', label: 'Contact us' },
+      { href: '/hackathons', label: 'Hackathons' },
+      { href: '/government-jobs', label: 'Government jobs' },
+    ],
+  },
+  {
+    heading: 'Legal',
+    links: [
+      { href: '/privacy', label: 'Privacy Policy' },
+      { href: '/terms', label: 'Terms of Service' },
+    ],
+  },
+];
+
+const linkStyle = { color: 'var(--ink-soft)' } as const;
+const inline = 'underline underline-offset-2 transition hover:opacity-80';
+const inlineStyle = { color: 'var(--ink)' } as const;
 
 export default function Footer() {
-  const { t } = useTranslation();
-
-  const columns = [
-    {
-      headingKey: 'footer.product',
-      fallbackHeading: 'Product',
-      links: [
-        { labelKey: 'nav.dashboard', fallback: 'Overview', href: '/dashboard' },
-        { labelKey: 'nav.about', fallback: 'About', href: '/about' },
-        { labelKey: 'nav.jobs', fallback: 'Jobs', href: '/jobs' },
-        { labelKey: 'nav.internships', fallback: 'Internships', href: '/internships' },
-        { labelKey: 'nav.remoteJobs', fallback: 'Remote jobs', href: '/remote-jobs' },
-        { labelKey: 'nav.governmentJobs', fallback: 'Government jobs', href: '/government-jobs' },
-        { labelKey: 'nav.companies', fallback: 'Companies', href: '/companies' },
-        { labelKey: 'nav.skills', fallback: 'Browse by skill', href: '/skills' },
-        { labelKey: 'nav.jobsByCity', fallback: 'Browse by city', href: '/jobs-in' },
-        { labelKey: 'nav.jobsByBatch', fallback: 'Browse by batch', href: '/batch' },
-        { labelKey: 'nav.careerPaths', fallback: 'Career paths', href: '/careers' },
-        { labelKey: 'nav.resumeGuides', fallback: 'Resume guides', href: '/resume-for' },
-        { labelKey: 'nav.hackathons', fallback: 'Hackathons', href: '/hackathons' },
-        { labelKey: 'nav.japanJobs', fallback: 'Japan jobs & internships', href: '/japan-jobs' },
-        { labelKey: 'nav.europeJobs', fallback: 'Europe jobs', href: '/europe-jobs' },
-        { labelKey: 'nav.blog', fallback: 'Blog', href: '/blog' },
-      ],
-    },
-    {
-      headingKey: 'footer.interviewPrep',
-      fallbackHeading: 'Interview prep',
-      links: [
-        { labelKey: 'nav.leetcode', fallback: 'LeetCode', href: '/leetcode' },
-        { labelKey: 'nav.readmeGenerator', fallback: 'AI code review', href: '/github' },
-      ],
-    },
-    {
-      headingKey: 'footer.popularSkills',
-      fallbackHeading: 'Popular skills',
-      links: [
-        { fallback: 'Python jobs', href: '/skills/python' },
-        { fallback: 'React jobs', href: '/skills/react' },
-        { fallback: 'SQL jobs', href: '/skills/sql' },
-        { fallback: 'AWS jobs', href: '/skills/aws' },
-        { fallback: 'Java jobs', href: '/skills/java' },
-        { labelKey: 'nav.skills', fallback: 'All skills', href: '/skills' },
-      ],
-    },
-    {
-      headingKey: 'footer.aiTools',
-      fallbackHeading: 'AI tools',
-      links: [
-        { labelKey: 'nav.allTools', fallback: 'All tools', href: '/tools' },
-        { labelKey: 'nav.readmeGenerator', fallback: 'GitHub README generator', href: '/tools/github-readme-generator' },
-        { labelKey: 'nav.atsChecker', fallback: 'ATS resume checker', href: '/tools/ats-resume-checker' },
-        { labelKey: 'nav.resumeBuilder', fallback: 'Resume builder', href: '/tools/resume-builder' },
-        { labelKey: 'nav.linkedinOptimizer', fallback: 'LinkedIn optimizer', href: '/tools/linkedin-optimizer' },
-        { labelKey: 'nav.coverLetter', fallback: 'Cover letter generator', href: '/tools/cover-letter-generator' },
-      ],
-    },
-    {
-      headingKey: 'footer.account',
-      fallbackHeading: 'Account',
-      links: [
-        { labelKey: 'nav.signIn', fallback: 'Sign in', href: '/login' },
-        { fallback: 'Create account', href: '/register' },
-      ],
-    },
-    {
-      headingKey: 'footer.contact',
-      fallbackHeading: 'Contact',
-      links: [
-        { fallback: 'Contact us', href: '/contact' },
-        { fallback: 'creatoramplified@gmail.com', href: 'mailto:creatoramplified@gmail.com' },
-      ],
-    },
-    {
-      headingKey: 'footer.legal',
-      fallbackHeading: 'Legal',
-      links: [
-        { fallback: 'Privacy Policy', href: '/privacy' },
-        { fallback: 'Terms of Service', href: '/terms' },
-      ],
-    },
-  ];
-
   return (
-    <footer className="border-t" style={{ borderColor: 'var(--line)' }}>
-      <div className="container-xl py-10">
-        <div className="flex flex-col gap-8 sm:flex-row sm:justify-between">
-          <div className="max-w-xs">
-            <Logo />
-            <p className="mt-3 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-              {t('footer.tagline', 'AI code review and resume generation built for students, not enterprises.')}
+    <footer className="mt-8 border-t" style={{ borderColor: 'var(--line)' }}>
+      <div className="container-xl py-10 sm:py-14">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-5">
+          <div className="col-span-2 lg:col-span-1">
+            <Link href="/" aria-label="InternFlow home" className="inline-block">
+              <Logo />
+            </Link>
+            <p className="mt-4 max-w-xs text-sm leading-relaxed" style={linkStyle}>
+              Job and internship discovery, resume tools and interview prep for college
+              students and freshers in India.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-10">
-            {columns.map((col, idx) => (
-              <div key={idx}>
-                <p className="eyebrow eyebrow-accent mb-3">
-                  // {t(col.headingKey, col.fallbackHeading).toLowerCase()}
-                </p>
-                <ul className="space-y-2">
-                  {col.links.map((l, i) => (
-                    <li key={i}>
-                      <Link href={l.href} className="text-sm transition hover:underline" style={{ color: 'var(--ink-soft)' }}>
-                        {l.labelKey ? t(l.labelKey, l.fallback) : l.fallback}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+          {COLUMNS.map((col) => (
+            <nav key={col.heading} aria-label={col.heading}>
+              <p className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>{col.heading}</p>
+              <ul className="mt-4 space-y-3">
+                {col.links.map((l) => (
+                  <li key={l.href}>
+                    <Link href={l.href} className="text-sm transition hover:underline" style={linkStyle}>
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
+        </div>
+
+        <div className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
+          <p className="max-w-3xl text-sm leading-relaxed" style={linkStyle}>
+            InternFlow is a job and internship search platform for B.Tech, BCA, MCA, B.Sc and MBA
+            freshers. Browse <Link href="/jobs" className={inline} style={inlineStyle}>fresher jobs</Link> and{' '}
+            <Link href="/internships" className={inline} style={inlineStyle}>internships</Link>, explore{' '}
+            <Link href="/careers/software-engineer" className={inline} style={inlineStyle}>software engineer</Link>,{' '}
+            <Link href="/careers/data-engineer" className={inline} style={inlineStyle}>data engineer</Link> and{' '}
+            <Link href="/careers/ai-ml-engineer" className={inline} style={inlineStyle}>AI/ML engineer</Link> careers, and
+            get ready to apply with the free{' '}
+            <Link href="/resume/builder" className={inline} style={inlineStyle}>resume builder</Link>,{' '}
+            <Link href="/ats-checker" className={inline} style={inlineStyle}>ATS checker</Link> and{' '}
+            <Link href="/cover-letter" className={inline} style={inlineStyle}>cover letter generator</Link>.
+          </p>
         </div>
 
         <div
-          className="mt-10 flex flex-col gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-between"
-          style={{ borderColor: 'var(--line)' }}
+          className="mt-8 flex flex-col gap-2 border-t pt-6 text-xs sm:flex-row sm:items-center sm:justify-between"
+          style={{ borderColor: 'var(--line)', color: 'var(--muted)' }}
         >
-          <p className="eyebrow">
-            © {new Date().getFullYear()} InternFlow — {t('footer.copyright', 'built for students, not enterprises')}
-          </p>
-          <p className="eyebrow">
-            <a href="mailto:creatoramplified@gmail.com">creatoramplified@gmail.com</a>
-            {' · '}
-            {t('footer.madeIn', 'made in India')}
+          <p>© {new Date().getFullYear()} InternFlow. All rights reserved.</p>
+          <p>
+            <a href="mailto:creatoramplified@gmail.com" className="hover:underline">creatoramplified@gmail.com</a>
+            {' · '}Made in India
           </p>
         </div>
       </div>
