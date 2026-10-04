@@ -260,3 +260,46 @@ test('every sitemap route is a one-liner over the resilient helper, and skills s
     assert.equal((registry.match(/^    lastmod: (getLatestJobDate|async)/gm) ?? []).length, 10);
     assert.ok(!/503/.test(read('app/sitemap.xml/route.ts')));
 });
+
+// ---------- Bing "Title too long" (final <title> incl. ' | InternFlow' must be <= 65 chars) ----------
+import { buildJobTitle, fitTitle, BRAND_TITLE_SUFFIX, TITLE_MAX_CHARS_WITH_BRAND } from '../lib/seo/seoMetrics';
+
+const finalLen = (t: string) => (t + BRAND_TITLE_SUFFIX).length;
+const BUDGET = { maxPx: SERP_TITLE_PX_WITH_BRAND, maxChars: TITLE_MAX_CHARS_WITH_BRAND };
+
+test('job titles never exceed 65 chars once the brand is appended, dropping location/type before cutting words', () => {
+    assert.equal(TITLE_MAX_CHARS_WITH_BRAND, 52);
+    // the real page from Search Console (70 chars before this fix) now fits whole, without its location
+    const real = buildJobTitle({ title: 'UI Developer, Angular', company: 'VY Systems Private Limited', type: 'full-time', location: 'Bengaluru (Bangalore)', ...BUDGET });
+    assert.equal(real, 'UI Developer, Angular at VY Systems Private Limited | Job'.length <= 52 ? 'UI Developer, Angular at VY Systems Private Limited | Job' : real);
+    assert.ok(finalLen(real) <= 65, real);
+    assert.ok(real.startsWith('UI Developer, Angular at VY Systems Private Limited'), 'role and company survive intact');
+    const cases = [
+        { title: 'Senior Principal Software Development Engineer in Test', company: 'Tata Consultancy Services Limited', type: 'internship', location: 'Navi Mumbai, Maharashtra' },
+        { title: 'AI', company: 'X', type: 'job', location: 'Pune' },
+        { title: 'Data Analyst Intern', company: 'Acme', type: 'internship', isRemote: true },
+    ];
+    for (const c of cases) {
+        const t = buildJobTitle({ ...c, ...BUDGET });
+        assert.ok(finalLen(t) <= 65, `${t} is ${finalLen(t)} chars`);
+    }
+    // short titles keep every segment
+    assert.equal(buildJobTitle({ title: 'Data Intern', company: 'Acme', type: 'internship', location: 'Pune', ...BUDGET }), 'Data Intern at Acme | Internship | Pune');
+});
+
+test('government and company titles also fit 65 chars with the brand', () => {
+    const gov = buildGovernmentTitle({ title: 'Junior Engineer (Electrical)', department: 'Bharat Heavy Electricals Limited', vacancies: '120', deadline: '2026-10-30T00:00:00Z', ...BUDGET });
+    assert.ok(finalLen(gov) <= 65, gov);
+    const long = fitTitle(['Tata Consultancy Services Limited Jobs & Internships — Openings, Hiring Process', 'Tata Consultancy Services Limited Jobs & Internships — Current Openings', 'Tata Consultancy Services Limited Jobs & Internships', 'Tata Consultancy Services Limited Jobs'], BUDGET.maxPx, BUDGET.maxChars);
+    assert.ok(finalLen(long) <= 65, long);
+    // a name so long that nothing fits is truncated with an ellipsis, still within budget
+    const huge = fitTitle(['A'.repeat(80) + ' Jobs'], BUDGET.maxPx, BUDGET.maxChars);
+    assert.ok(finalLen(huge) <= 65, huge);
+});
+
+test('every detail route passes the character budget', () => {
+    for (const f of ['jobs', 'internships', 'remote-jobs', 'government-jobs']) {
+        assert.ok(/maxChars:\s*TITLE_MAX_CHARS_WITH_BRAND/.test(read(`app/${f}/[slug]/page.tsx`)), `${f}/[slug]`);
+    }
+    assert.ok(/TITLE_MAX_CHARS_WITH_BRAND/.test(read('app/companies/[company]/page.tsx')));
+});

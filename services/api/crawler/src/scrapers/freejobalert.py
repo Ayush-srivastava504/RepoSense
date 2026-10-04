@@ -3,6 +3,7 @@
 # Defines function(s): _clean
 #
 
+from utils import has_intern_word
 import re
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -267,7 +268,7 @@ class FreeJobAlertScraper(BaseScraper):
 
     def _detect_job_type(self, title: str) -> str:
         value = title.lower()
-        if 'intern' in value:
+        if has_intern_word(value):
             return 'internship'
         if 'apprentice' in value:
             return 'apprenticeship'

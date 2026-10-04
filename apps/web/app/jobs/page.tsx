@@ -2,6 +2,7 @@
 // Defines component(s)/export(s): JOBS_PER_PAGE, Pagination, JobsPage
 
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { listPageState } from '@/lib/seo/pagination';
 import { listingMetadata } from '@/lib/seo/pageMeta';
 import Link from 'next/link';
@@ -140,6 +141,10 @@ export default async function JobsPage({ searchParams, }: {
         sort: 'ranked' as const,
         // Government notifications have their own page (/government-jobs); keep them out of the general feed.
         excludeGovernment: true,
+        // /jobs shows jobs only: real internships live on /internships (same API test, so the two never overlap).
+        excludeType: 'internship' as const,
+        // 0-1 year / fresher roles (esp. from top companies) rank first on page 1.
+        fresherFirst: true,
         ...(locationFilter === 'remote' ? { category: 'remote' as const } : {}),
         ...(locationFilter === 'japan' ? { country: 'Japan' } : {}),
         ...(groupFilter !== 'all' ? { job_group: groupFilter } : {}),
@@ -186,10 +191,14 @@ export default async function JobsPage({ searchParams, }: {
     // out-of-range case pays for a second request; the common case above
     // is a single fetch.
     if (currentPage !== requestedPage) {
-        const clamped = await fetchJobsPage(currentPage);
-        jobs = clamped.jobs;
-        totalJobs = clamped.total;
-        totalPages = Math.max(1, Math.ceil(totalJobs / JOBS_PER_PAGE));
+        // Past the last page: send the visitor/crawler to the real last page instead of rendering its content again
+        // under a self-canonical ?page=N URL (a duplicate of the last page). Temporary (307): the total moves daily.
+        const qs = new URLSearchParams();
+        for (const [key, value] of Object.entries(searchParams)) {
+            if (typeof value === 'string' && value && key !== 'page') qs.set(key, value);
+        }
+        if (currentPage > 1) qs.set('page', String(currentPage));
+        redirect(`/jobs${qs.toString() ? `?${qs.toString()}` : ''}`);
     }
     const featured = locationFilter === 'india'
         ? fetchedFeatured.filter(isIndiaJob)
@@ -338,9 +347,10 @@ export default async function JobsPage({ searchParams, }: {
 
               <p className="mt-3">
                 Every listing is checked for freshness: newly posted roles are
-                ranked first, and listings that have been open for more than
-                30 days are automatically de-ranked and eventually retired if
-                they&apos;re no longer active. We prioritize high paying jobs and verified remote opportunities, ensuring you spend less time applying to
+                ranked first, with entry-level and fresher roles (0-1 years of
+                experience) from top companies near the top. Listings open for
+                more than 30 days drop below every recent listing and are
+                eventually retired if they&apos;re no longer active. We prioritize high paying jobs and verified remote opportunities, ensuring you spend less time applying to
                 jobs that have already closed or do not meet your expectations.
               </p>
             </div>

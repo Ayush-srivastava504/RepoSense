@@ -4,11 +4,10 @@
 // app/sitemap-<slug>.xml/route.ts is a one-liner over serveRouteSitemap(); app/sitemap.xml/route.ts reads
 // routeSitemapLastmod() for each <sitemap> entry.
 //
-// <lastmod> policy: a date is only ever a real timestamp from our data (newest job posted_at, blog updatedAt,
-// hackathon first_seen_at, company last_posted_at). If it cannot be determined the tag is omitted; it is never
-// "now" and never the deploy time. Two sitemaps carry no lastmod on purpose: tools (static copy).
-// Pages that show a live job list (hubs, careers, resume-for, batches) use the newest job date as an upper bound
-// on "the page changed" -- a new job anywhere changes the "latest openings" block on them.
+// <lastmod> policy: a date is only ever a real timestamp from our data, never "now" and never the deploy time. If it
+// cannot be determined the tag is omitted. For every page that renders a live job list the date is the newest posted
+// date among EXACTLY the jobs that page renders (the same query the page makes: same filter, sort and limit), so it
+// moves only when the page's visible list can have changed. tools has no date on purpose (static copy).
 import { BASE_URL, getJobsOrThrow, type Job } from '@/lib/jobs';
 import { getHackathonsOrThrow } from '@/lib/hackathons';
 import { getCompaniesOrThrow, getIntelSitemapEntries, getCompanyDirectory, companySlug } from '@/lib/companies';
@@ -54,6 +53,14 @@ export async function getLatestJobDate(): Promise<string | undefined> {
     return newestJobDate(await getJobsOrThrow({ limit: 20, sort: 'recent' }));
 }
 
+type JobQuery = Parameters<typeof getJobsOrThrow>[0];
+
+/** Newest posted date among the jobs a hub page actually renders. Throws if the API is unavailable. */
+async function renderedJobsDate(queries: JobQuery[]): Promise<string | undefined> {
+    const lists = await Promise.all(queries.map((q) => getJobsOrThrow(q)));
+    return newestJobDate(lists.flat());
+}
+
 // ---------------------------------------------------------------- static
 const CORE_HUBS = [
     { path: '', changefreq: 'daily' as const, priority: 1.0, live: true },
@@ -77,10 +84,33 @@ const CORE_HUBS = [
     // noindexed page is a conflicting signal).
 ];
 
-function staticEntries(latestJob?: string): SitemapUrlEntry[] {
+// The queries each live hub page makes for its first page of results (see app/<hub>/page.tsx).
+const HUB_QUERIES: Record<string, JobQuery[]> = {
+    '/jobs': [{ excludeGovernment: true, excludeType: 'internship', sort: 'ranked', limit: 12 }],
+    '/internships': [{ type: 'internship', excludeGovernment: true, sort: 'ranked', limit: 12 }],
+    '/remote-jobs': [{ category: 'remote', excludeGovernment: true, excludeType: 'internship', sort: 'ranked', limit: 12 }],
+    '/government-jobs': [{ category: 'government', sort: 'ranked', limit: 12 }],
+    '/japan-jobs': [{ country: 'Japan', sort: 'ranked', limit: 12 }],
+    '/europe-jobs': [{ country: 'Europe', sort: 'ranked', limit: 12 }],
+};
+
+/** path -> lastmod for the live hubs of the static sitemap. */
+async function staticHubDates(): Promise<Record<string, string | undefined>> {
+    const paths = Object.keys(HUB_QUERIES);
+    const [perHub, latest, hackathons] = await Promise.all([
+        mapWithLimit(paths, 3, (p) => renderedJobsDate(HUB_QUERIES[p])),
+        getLatestJobDate(),
+        getHackathonsOrThrow({ limit: HACKATHON_PAGE_SIZE, offset: 0 }),
+    ]);
+    const dates: Record<string, string | undefined> = { '': latest, '/companies': latest, '/hackathons': newestLastmod(hackathons.map((h) => h.first_seen_at)) };
+    paths.forEach((p, i) => { dates[p] = perHub[i]; });
+    return dates;
+}
+
+function staticEntries(dates: Record<string, string | undefined> = {}): SitemapUrlEntry[] {
     return CORE_HUBS.map((hub) => ({
         loc: `${BASE_URL}${hub.path}`,
-        lastmod: hub.live ? latestJob : undefined,
+        lastmod: hub.live ? dates[hub.path] : undefined,
         changefreq: hub.changefreq,
         priority: hub.priority,
         // Empty while hreflang is disabled (lib/hreflang.ts) -> plain <urlset>, no xhtml namespace.
@@ -91,9 +121,9 @@ function staticEntries(latestJob?: string): SitemapUrlEntry[] {
 const staticSitemap: RouteSitemap = {
     slug: 'static',
     path: '/sitemap-static.xml',
-    build: async () => done(staticEntries(await getLatestJobDate())),
+    build: async () => done(staticEntries(await staticHubDates())),
     fallback: () => done(staticEntries()),
-    lastmod: getLatestJobDate,
+    lastmod: async () => newestLastmod(Object.values(await staticHubDates())),
 };
 
 // ---------------------------------------------------------------- hackathons
@@ -267,13 +297,23 @@ const locationsSitemap: RouteSitemap = {
 };
 
 // ---------------------------------------------------------------- batches
-function batchEntries(countByYear: Map<string, number> | null, latestJob?: string): SitemapUrlEntry[] {
+/** year -> newest posted date among the jobs /batch/<year> renders (same two queries as the page). */
+async function batchDates(): Promise<Map<string, string | undefined>> {
+    const dates = await mapWithLimit(BATCHES, 3, (b) =>
+        renderedJobsDate([
+            { batches: [b.year], type: undefined, limit: 9, sort: 'ranked' },
+            { batches: [b.year], type: 'internship', limit: 6, sort: 'ranked' },
+        ]));
+    return new Map(BATCHES.map((b, i) => [b.year, dates[i]]));
+}
+
+function batchEntries(countByYear: Map<string, number> | null, dates: Map<string, string | undefined> = new Map()): SitemapUrlEntry[] {
     return [
-        { loc: `${BASE_URL}/batch`, lastmod: latestJob, changefreq: 'weekly', priority: 0.8 },
+        { loc: `${BASE_URL}/batch`, lastmod: newestLastmod([...dates.values()]), changefreq: 'weekly', priority: 0.8 },
         ...BATCHES
             // A year absent from the facets (zero live jobs) counts as 0 and is dropped (noindex gate, as before).
             .filter((b) => !countByYear || !belowHubThreshold(countByYear.get(b.year) ?? 0, BATCH_MIN_JOBS))
-            .map((b) => ({ loc: `${BASE_URL}/batch/${b.year}`, lastmod: latestJob, changefreq: 'daily' as const, priority: 0.7 })),
+            .map((b) => ({ loc: `${BASE_URL}/batch/${b.year}`, lastmod: dates.get(b.year), changefreq: 'daily' as const, priority: 0.7 })),
     ];
 }
 
@@ -284,47 +324,57 @@ const batchesSitemap: RouteSitemap = {
         // getJobFacetsOrThrow: an API failure would otherwise count every year as 0 jobs and drop all batch pages.
         const facets = await getJobFacetsOrThrow();
         const countByYear = new Map(facets.batches.map((b) => [b.value, b.count]));
-        return done(batchEntries(countByYear, await getLatestJobDate()));
+        return done(batchEntries(countByYear, await batchDates()));
     },
     fallback: () => done(batchEntries(null)),
-    lastmod: getLatestJobDate,
+    lastmod: async () => newestLastmod([...(await batchDates()).values()]),
 };
 
 // ---------------------------------------------------------------- careers / resume-for
+/** slug -> newest posted date among the jobs /careers/<slug> renders (same two queries as the page). */
+async function careerDates(): Promise<Map<string, string | undefined>> {
+    const dates = await mapWithLimit(CAREERS, 3, (c) =>
+        renderedJobsDate([
+            { search: c.searchTerm, type: undefined, limit: 6, sort: 'ranked' },
+            { search: c.searchTerm, type: 'internship', limit: 6, sort: 'ranked' },
+        ]));
+    return new Map(CAREERS.map((c, i) => [c.slug, dates[i]]));
+}
+
+function careerEntries(dates: Map<string, string | undefined> = new Map()): SitemapUrlEntry[] {
+    return [
+        { loc: `${BASE_URL}/careers`, lastmod: newestLastmod([...dates.values()]), changefreq: 'weekly', priority: 0.8 },
+        ...CAREERS.map((c) => ({ loc: `${BASE_URL}/careers/${c.slug}`, lastmod: dates.get(c.slug), changefreq: 'daily' as const, priority: 0.7 })),
+    ];
+}
+
 const careersSitemap: RouteSitemap = {
     slug: 'careers',
     path: '/sitemap-careers.xml',
-    build: async () => {
-        const latest = await getLatestJobDate();
-        return done([
-            { loc: `${BASE_URL}/careers`, lastmod: latest, changefreq: 'weekly', priority: 0.8 },
-            ...CAREERS.map((c) => ({ loc: `${BASE_URL}/careers/${c.slug}`, lastmod: latest, changefreq: 'daily' as const, priority: 0.7 })),
-        ]);
-    },
-    fallback: () =>
-        done([
-            { loc: `${BASE_URL}/careers`, changefreq: 'weekly', priority: 0.8 },
-            ...CAREERS.map((c) => ({ loc: `${BASE_URL}/careers/${c.slug}`, changefreq: 'daily' as const, priority: 0.7 })),
-        ]),
-    lastmod: getLatestJobDate,
+    build: async () => done(careerEntries(await careerDates())),
+    fallback: () => done(careerEntries()),
+    lastmod: async () => newestLastmod([...(await careerDates()).values()]),
 };
+
+/** slug -> newest posted date among the openings /resume-for/<slug> renders (same query as the page). */
+async function resumeDates(): Promise<Map<string, string | undefined>> {
+    const dates = await mapWithLimit(RESUME_ROLES, 3, (r) => renderedJobsDate([{ search: r.searchTerm, sort: 'ranked', limit: 12 }]));
+    return new Map(RESUME_ROLES.map((r, i) => [r.slug, dates[i]]));
+}
+
+function resumeEntries(dates: Map<string, string | undefined> = new Map()): SitemapUrlEntry[] {
+    return [
+        { loc: `${BASE_URL}/resume-for`, lastmod: newestLastmod([...dates.values()]), changefreq: 'weekly', priority: 0.8 },
+        ...RESUME_ROLES.map((r) => ({ loc: `${BASE_URL}/resume-for/${r.slug}`, lastmod: dates.get(r.slug), changefreq: 'weekly' as const, priority: 0.7 })),
+    ];
+}
 
 const resumeSitemap: RouteSitemap = {
     slug: 'resume',
     path: '/sitemap-resume.xml',
-    build: async () => {
-        const latest = await getLatestJobDate();
-        return done([
-            { loc: `${BASE_URL}/resume-for`, lastmod: latest, changefreq: 'weekly', priority: 0.8 },
-            ...RESUME_ROLES.map((r) => ({ loc: `${BASE_URL}/resume-for/${r.slug}`, lastmod: latest, changefreq: 'weekly' as const, priority: 0.7 })),
-        ]);
-    },
-    fallback: () =>
-        done([
-            { loc: `${BASE_URL}/resume-for`, changefreq: 'weekly', priority: 0.8 },
-            ...RESUME_ROLES.map((r) => ({ loc: `${BASE_URL}/resume-for/${r.slug}`, changefreq: 'weekly' as const, priority: 0.7 })),
-        ]),
-    lastmod: getLatestJobDate,
+    build: async () => done(resumeEntries(await resumeDates())),
+    fallback: () => done(resumeEntries()),
+    lastmod: async () => newestLastmod([...(await resumeDates()).values()]),
 };
 
 // ---------------------------------------------------------------- companies

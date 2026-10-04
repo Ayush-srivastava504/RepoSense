@@ -4,6 +4,7 @@
 //
 
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { listPageState } from '@/lib/seo/pagination';
 import { listingMetadata } from '@/lib/seo/pageMeta';
 import Link from 'next/link';
@@ -123,6 +124,8 @@ export default async function RemoteJobsPage({ searchParams, }: {
         sort: 'ranked' as const,
         // A remote government notification belongs on /government-jobs, not here.
         excludeGovernment: true,
+        // Remote internships live on /internships (its remote location filter); this page lists jobs only.
+        excludeType: 'internship' as const,
         ...(groupFilter !== 'all' ? { job_group: groupFilter } : {}),
     };
     const showFeatured = !search && requestedPage === 1;
@@ -148,11 +151,14 @@ export default async function RemoteJobsPage({ searchParams, }: {
     let totalPages = Math.max(1, Math.ceil(totalJobs / JOBS_PER_PAGE));
     const currentPage = Math.min(requestedPage, totalPages);
     if (currentPage !== requestedPage) {
-        // ?page= past the last page: refetch the clamped page (only the out-of-range case pays for this).
-        const clamped = await fetchJobsPage(currentPage);
-        jobs = clamped.jobs;
-        totalJobs = clamped.total;
-        totalPages = Math.max(1, Math.ceil(totalJobs / JOBS_PER_PAGE));
+        // Past the last page: redirect to the real last page instead of rendering a duplicate of it under a
+        // self-canonical ?page=N URL. Temporary (307): the total moves daily.
+        const qs = new URLSearchParams();
+        for (const [key, value] of Object.entries(searchParams)) {
+            if (typeof value === 'string' && value && key !== 'page') qs.set(key, value);
+        }
+        if (currentPage > 1) qs.set('page', String(currentPage));
+        redirect(`/remote-jobs${qs.toString() ? `?${qs.toString()}` : ''}`);
     }
     const startIndex = (currentPage - 1) * JOBS_PER_PAGE;
     const itemListSchema = {

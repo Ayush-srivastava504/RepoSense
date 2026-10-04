@@ -11,7 +11,7 @@ import { buildJobFaq } from '@/lib/jobFaq';
 import { getLocalizedJob, localizedCanonicalPath, jobLanguageAlternates } from '@/lib/jobLocale';
 import {  jobPostingSchema, breadcrumbSchema, faqSchema, safeJsonLd } from '@/lib/structuredData';
 import { pageOpenGraph } from '@/lib/seo/pageMeta';
-import { buildJobTitle, truncateDescription, isIndexableJob, SERP_TITLE_PX_WITH_BRAND } from '@/lib/seo/seoMetrics';
+import { buildJobTitle, truncateDescription, isIndexableJob, SERP_TITLE_PX_WITH_BRAND, TITLE_MAX_CHARS_WITH_BRAND } from '@/lib/seo/seoMetrics';
 import { jobOgImageUrl } from '@/lib/seo/ogImage';
 import JobDetail from '@/app/components/JobDetail';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -34,6 +34,7 @@ export async function generateMetadata({ params, }: {
         isRemote: job.is_remote,
         // layout.tsx appends ' | InternFlow' after this; reserve its width so the SERP title isn't cut off.
         maxPx: SERP_TITLE_PX_WITH_BRAND,
+        maxChars: TITLE_MAX_CHARS_WITH_BRAND,
     });
     const rawDescription = job.enriched_overview ||
         `Apply for the ${job.title} internship at ${job.company}${job.location ? ` in ${job.location}` : ''}. View eligibility, skills, stipend, and application details.`;

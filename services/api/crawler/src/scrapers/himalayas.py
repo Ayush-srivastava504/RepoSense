@@ -3,6 +3,7 @@
 # Defines function(s): _clean, _extract_location_names, _to_iso_date
 #
 
+from utils import has_intern_word
 import re
 import time
 from typing import Dict, List, Optional
@@ -110,7 +111,7 @@ class HimalayasScraper(BaseScraper):
         locations = _extract_location_names(restrictions)
         location = ', '.join(locations) if locations else 'Worldwide'
         employment_type = _clean(entry.get('employmentType')).lower()
-        if 'intern' in employment_type:
+        if has_intern_word(employment_type):
             job_type = 'internship'
         elif 'contract' in employment_type:
             job_type = 'contract'

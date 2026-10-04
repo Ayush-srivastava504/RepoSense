@@ -3,6 +3,7 @@
 # europe_weworkremotely.py).
 # Every source function here was independently checked before being wired
 
+from utils import has_intern_word
 import re
 import xml.etree.ElementTree as ET
 from typing import Dict, List, Optional
@@ -29,7 +30,7 @@ def _looks_european(text: str) -> bool:
 
 def _job_type_from_text(text: str) -> str:
     lower = text.lower()
-    if 'intern' in lower:
+    if has_intern_word(lower):
         return 'internship'
     if 'contract' in lower or 'freelance' in lower:
         return 'contract'

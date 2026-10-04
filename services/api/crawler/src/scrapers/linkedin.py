@@ -3,6 +3,7 @@
 # Defines function(s): _clean, _infer_type
 #
 
+from utils import has_intern_word
 import os
 import random
 import re
@@ -140,7 +141,7 @@ def _clean(text: str) -> str:
 
 def _infer_type(title: str) -> str:
     title = (title or '').lower()
-    if 'intern' in title:
+    if has_intern_word(title):
         return 'internship'
     if 'contract' in title or 'freelance' in title:
         return 'contract'

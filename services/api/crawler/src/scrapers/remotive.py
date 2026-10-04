@@ -3,6 +3,7 @@
 # No browser required.
 #
 
+from utils import has_intern_word
 import re
 from typing import Dict, List, Optional
 import requests
@@ -89,7 +90,7 @@ class RemotiveScraper(BaseScraper):
         if not apply_url:
             return None
         job_type_raw = _clean(entry.get('job_type')).lower()
-        if 'intern' in job_type_raw:
+        if has_intern_word(job_type_raw):
             job_type = 'internship'
         elif 'contract' in job_type_raw or 'freelance' in job_type_raw:
             job_type = 'contract'

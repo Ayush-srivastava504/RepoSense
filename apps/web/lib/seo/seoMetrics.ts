@@ -41,19 +41,39 @@ const SERP_TITLE_MAX_PX = 580;
 export const BRAND_TITLE_SUFFIX = ' | InternFlow';
 export const SERP_TITLE_PX_WITH_BRAND = SERP_TITLE_MAX_PX - estimatePixelWidth(BRAND_TITLE_SUFFIX);
 
+// Bing Webmaster Tools' SEO report flags any <title> over 65 characters ("Title too long"), counted on the FINAL
+// title including the layout's ' | InternFlow'. The 580px budget above allows ~70 characters, so every job /
+// internship / remote / government / company page tripped it. Pages pass TITLE_MAX_CHARS_WITH_BRAND as `maxChars` so
+// the page part stays within 65 - 13 = 52 characters. Without `maxChars` nothing changes (other routes unaffected).
+export const BING_TITLE_MAX_CHARS = 65;
+export const TITLE_MAX_CHARS_WITH_BRAND = BING_TITLE_MAX_CHARS - BRAND_TITLE_SUFFIX.length;
+
+function fits(title: string, maxPx: number, maxChars: number): boolean {
+    return estimatePixelWidth(title) <= maxPx && title.length <= maxChars;
+}
+
 // Truncates at a word boundary so it never ends mid-word, then appends an
-// ellipsis (kept out of the width budget on purpose — Google adds its own
-// ellipsis on further truncation regardless, so we're not fighting that).
-export function truncateTitleForSerp(title: string, maxPx: number = SERP_TITLE_MAX_PX): string {
-    if (estimatePixelWidth(title) <= maxPx) return title;
+// ellipsis (kept out of the pixel budget on purpose — Google adds its own
+// ellipsis on further truncation regardless, so we're not fighting that; but it IS counted in `maxChars`).
+export function truncateTitleForSerp(title: string, maxPx: number = SERP_TITLE_MAX_PX, maxChars: number = Infinity): string {
+    if (fits(title, maxPx, maxChars)) return title;
     const words = title.split(' ');
     let out = '';
     for (const word of words) {
         const candidate = out ? `${out} ${word}` : word;
-        if (estimatePixelWidth(candidate) > maxPx) break;
+        // keep room for the ellipsis character
+        if (estimatePixelWidth(candidate) > maxPx || candidate.length + 1 > maxChars) break;
         out = candidate;
     }
-    return out ? `${out}…` : title.slice(0, 60);
+    return out ? `${out}…` : title.slice(0, Math.min(60, maxChars - 1)).trimEnd() + (maxChars < 60 ? '…' : '');
+}
+
+// Picks the first candidate (most descriptive first) that fits both budgets, so a long title loses its optional
+// segments (location, type, vacancy count...) before any word of the role or company is cut. Only if even the shortest
+// does not fit is it truncated.
+export function fitTitle(candidates: string[], maxPx: number = SERP_TITLE_MAX_PX, maxChars: number = Infinity): string {
+    const found = candidates.find((c) => fits(c, maxPx, maxChars));
+    return found ?? truncateTitleForSerp(candidates[candidates.length - 1], maxPx, maxChars);
 }
 
 const DESCRIPTION_MAX_CHARS = 158;
@@ -79,18 +99,15 @@ export function buildJobTitle(params: {
     isRemote?: boolean;
     /** Pixel budget; defaults to the full SERP width. Use SERP_TITLE_PX_WITH_BRAND when the layout appends the brand. */
     maxPx?: number;
+    /** Character budget (Bing). Use TITLE_MAX_CHARS_WITH_BRAND when the layout appends the brand. */
+    maxChars?: number;
 }): string {
-    const segments = [`${params.title} at ${params.company}`];
-    if (params.type) {
-        segments.push(params.type === 'internship' ? 'Internship' : params.type === 'contract' ? 'Contract' : 'Job');
-    }
-    if (params.isRemote) {
-        segments.push('Remote');
-    } else if (params.location) {
-        segments.push(params.location.split(',')[0].trim());
-    }
-    const full = segments.join(' | ');
-    return truncateTitleForSerp(full, params.maxPx);
+    const lead = `${params.title} at ${params.company}`;
+    const typeSeg = params.type ? (params.type === 'internship' ? 'Internship' : params.type === 'contract' ? 'Contract' : 'Job') : '';
+    const placeSeg = params.isRemote ? 'Remote' : params.location ? params.location.split(',')[0].trim() : '';
+    const join = (...segs: string[]) => segs.filter(Boolean).join(' | ');
+    // Most descriptive first; the location goes first when space is short, then the type.
+    return fitTitle([join(lead, typeSeg, placeSeg), join(lead, typeSeg), lead], params.maxPx, params.maxChars);
 }
 
 // A job counts as stale for indexing purposes once its deadline (or, when
@@ -162,6 +179,7 @@ export function buildGovernmentTitle(params: {
     posted_at?: string | null;
     created_at?: string | null;
     maxPx?: number;
+    maxChars?: number;
 }): string {
     const yearSource = [params.deadline, params.posted_at, params.created_at].find((v) => v && !Number.isNaN(new Date(v).getTime()));
     const year = yearSource ? new Date(yearSource).getUTCFullYear() : null;
@@ -170,8 +188,12 @@ export function buildGovernmentTitle(params: {
     const vac = (params.vacancies || '').toString().trim();
     const vacPart = /^\d[\d,]*$/.test(vac) ? ` (${vac} Posts)` : '';
     const lead = dept && !post.toLowerCase().includes(dept.toLowerCase()) ? `${dept} ${post}` : post;
-    const full = `${lead} Recruitment${year ? ` ${year}` : ''}${vacPart}`;
-    return truncateTitleForSerp(full, params.maxPx);
+    const base = `${lead} Recruitment`;
+    return fitTitle(
+        [`${base}${year ? ` ${year}` : ''}${vacPart}`, `${base}${year ? ` ${year}` : ''}`, base],
+        params.maxPx,
+        params.maxChars,
+    );
 }
 
 // "Last date: 30 Oct 2026" in a fixed format (no locale lookup, so server and browser agree).

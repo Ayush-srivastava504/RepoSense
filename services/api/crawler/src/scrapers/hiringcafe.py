@@ -9,7 +9,7 @@ from typing import Dict, List, Optional
 from urllib.parse import quote, urljoin
 from bs4 import BeautifulSoup
 from scrapers.base import BaseScraper
-from utils import safe_post
+from utils import safe_post, has_intern_word
 BASE = 'https://hiring.cafe'
 SEARCH_JOBS_ENDPOINT = f'{BASE}/api/search-jobs'
 SEARCH_PAGE = f'{BASE}/'
@@ -215,7 +215,7 @@ class HiringCafeScraper(BaseScraper):
         if apply_url and (not str(apply_url).startswith('http')):
             apply_url = urljoin(BASE, str(apply_url))
         commitment = str(raw.get('commitment_type') or raw.get('commitmentType') or 'full-time').lower()
-        job_type = 'internship' if 'intern' in commitment else 'full-time'
+        job_type = 'internship' if has_intern_word(commitment) else 'full-time'
         posted_date = str(raw.get('posted_date') or raw.get('date_fetched') or raw.get('createdAt') or '')
         return {'title': title, 'company': company_name, 'location': location, 'type': job_type, 'salary': salary, 'description': _clean(description), 'skills': raw.get('skills', []) if isinstance(raw.get('skills'), list) else [], 'apply_url': apply_url, 'posted_date': posted_date, 'is_remote': is_remote, 'country': 'Worldwide'}
 

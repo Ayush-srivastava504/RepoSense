@@ -198,3 +198,34 @@ test('job file sitemap: served with lastmod header, 404 for unknown names, stale
     assert.equal(stale.status, 200);
     assert.equal(await stale.text(), xml);
 });
+
+// ---------------------------------------------------------------- exact per-page lastmod
+test('careers / resume-for / batch / hub lastmods come from the jobs THAT page renders, not from the newest job anywhere', async () => {
+    const OLD = daysAgo(20);
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/api/jobs/facets') || !url.includes('/api/jobs')) return new Response(JSON.stringify(apiBody(url)), { status: 200 });
+        const q = new URL(url).searchParams;
+        // only "software engineer" and the 2026 batch have a fresh job; everything else last posted 20 days ago
+        const fresh = q.get('search') === 'software engineer' || q.get('batches') === '2026';
+        return new Response(JSON.stringify({ jobs: [{ id: 'x', title: 'T', company: 'C', location: 'Pune', posted_at: fresh ? NEWEST_JOB : OLD }] }), { status: 200 });
+    }) as typeof fetch;
+    const block = (xml: string, path: string) => xml.split('<url>').find((b) => b.includes(`<loc>https://intern-flow.in${path}</loc>`)) ?? '';
+
+    const careers = await (await (await load('careers')).GET()).text();
+    assert.ok(block(careers, '/careers/software-engineer').includes(`<lastmod>${NEWEST_JOB}</lastmod>`));
+    const other = [...careers.matchAll(/<loc>https:\/\/intern-flow.in\/careers\/(?!software-engineer)([^<]+)<\/loc>\s*<lastmod>([^<]+)</g)];
+    assert.ok(other.length >= 1 && other.every((m) => m[2] === OLD), 'other roles keep their own older date');
+    assert.ok(block(careers, '/careers').includes(`<lastmod>${NEWEST_JOB}</lastmod>`), 'the hub is the newest of its children');
+
+    const batches = await (await (await load('batches')).GET()).text();
+    assert.ok(block(batches, '/batch/2026').includes(`<lastmod>${NEWEST_JOB}</lastmod>`));
+    assert.ok(!batches.includes('/batch/2027'), 'the mock facets give 2027 no jobs, so it stays out (noindex gate)');
+
+    const resume = await (await (await load('resume')).GET()).text();
+    assert.ok(lastmods(resume).includes(NEWEST_JOB) && lastmods(resume).includes(OLD), 'roles differ');
+
+    const stat = await (await (await load('static')).GET()).text();
+    assert.ok(block(stat, '/internships').includes(`<lastmod>${OLD}</lastmod>`), 'a hub with no new job keeps its old date');
+    assert.ok(!block(stat, '/about').includes('<lastmod>'));
+});

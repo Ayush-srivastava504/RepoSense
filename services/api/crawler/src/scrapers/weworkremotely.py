@@ -7,7 +7,7 @@ import re
 from typing import Dict, List, Optional
 from bs4 import BeautifulSoup
 from scrapers.base import BaseScraper
-from utils import safe_get
+from utils import safe_get, has_intern_word
 FEEDS = ['https://weworkremotely.com/categories/remote-programming-jobs.rss', 'https://weworkremotely.com/categories/remote-devops-sysadmin-jobs.rss', 'https://weworkremotely.com/categories/remote-product-jobs.rss', 'https://weworkremotely.com/categories/remote-design-jobs.rss']
 TITLE_RE = re.compile('^(?P<company>.+?):\\s*(?P<title>.+)$')
 
@@ -53,6 +53,6 @@ class WeWorkRemotelyScraper(BaseScraper):
         region = region_tag.text.strip() if region_tag else 'Worldwide'
         category_tag = item.find('category')
         job_type = 'full-time'
-        if category_tag and 'intern' in category_tag.text.lower():
+        if category_tag and has_intern_word(category_tag.text.lower()):
             job_type = 'internship'
         return {'title': title, 'company': company, 'location': region, 'type': job_type, 'description': description, 'apply_url': link, 'posted_date': posted_date, 'is_remote': True, 'country': region}

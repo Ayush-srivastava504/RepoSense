@@ -173,6 +173,11 @@ interface GetJobsOptions {
     // Drops is_government rows server-side. /jobs, /internships and /remote-jobs set this so
     // government notifications live only on /government-jobs (their own purpose-built section).
     excludeGovernment?: boolean;
+    // 'internship' drops real internships server-side. /jobs sets it so the jobs page shows jobs only; the API uses the
+    // same title-based test as type=internship, so /jobs and /internships never overlap.
+    excludeType?: 'internship';
+    // /jobs page: boost 0-1 year / fresher roles from the last 30 days (only meaningful with sort: 'ranked').
+    fresherFirst?: boolean;
 }
 function buildJobsParams(options: GetJobsOptions): URLSearchParams {
     const params = new URLSearchParams({
@@ -214,6 +219,10 @@ function buildJobsParams(options: GetJobsOptions): URLSearchParams {
         params.set('india_first', 'true');
     if (options.excludeGovernment)
         params.set('exclude_government', 'true');
+    if (options.excludeType)
+        params.set('exclude_type', options.excludeType);
+    if (options.fresherFirst)
+        params.set('fresher_first', 'true');
     return params;
 }
 // Same request as getJobs(), but a failed call THROWS instead of becoming []. Sitemap routes use this:
@@ -270,6 +279,8 @@ export async function getFeaturedJobs(options: {
     country?: string;
     limit?: number;
     excludeGovernment?: boolean;
+    excludeType?: 'internship';
+    fresherFirst?: boolean;
 } = {}): Promise<Job[]> {
     try {
         const params = new URLSearchParams({
@@ -277,6 +288,10 @@ export async function getFeaturedJobs(options: {
         });
         if (options.excludeGovernment)
             params.set('exclude_government', 'true');
+        if (options.excludeType)
+            params.set('exclude_type', options.excludeType);
+        if (options.fresherFirst)
+            params.set('fresher_first', 'true');
         if (options.type)
             params.set('type', options.type);
         if (options.category)

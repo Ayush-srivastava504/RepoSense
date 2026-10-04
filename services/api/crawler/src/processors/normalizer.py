@@ -8,7 +8,7 @@ import re
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 from config import JOB_TYPE_MAP, SKILL_ALIASES
-from utils import get_logger, utcnow
+from utils import get_logger, utcnow, has_intern_word
 log = get_logger('normalizer')
 CANONICAL_FIELDS = {'id': str, 'title': str, 'company': str, 'location': str, 'type': str, 'duration': str, 'stipend': str, 'salary': str, 'description': str, 'requirements': list, 'skills': list, 'apply_url': str, 'source': str, 'posted_date': str, 'deadline': str, 'is_remote': bool, 'experience_required': str, 'scraped_at': str, 'category': str, 'seniority': str, 'normalized_location': str, 'is_government': bool, 'country': str, 'department': str, 'vacancies': str, 'notification_number': str}
 GOVERNMENT_SOURCES = {'employment_news', 'freejobalert'}
@@ -48,7 +48,7 @@ def _normalize_single(raw: Dict) -> Dict:
     job['posted_date'] = _normalize_date(raw.get('posted_date', ''))
     job['deadline'] = _normalize_date(raw.get('deadline', ''))
     raw_type = _str(raw.get('type', '')).lower()
-    job['type'] = _normalize_type(raw_type, job['title'])
+    job['type'] = _guard_internship_type(_normalize_type(raw_type, job['title']), job['title'], job['source'])
     is_remote = raw.get('is_remote', False)
     if not is_remote:
         is_remote = _detect_remote(job['location'] + ' ' + job['title'])
@@ -136,12 +136,27 @@ def _normalize_money(value) -> str:
         return f'₹{number:,.0f}'
     return text
 
+# Keep equal to INTERNSHIP_PLATFORMS_SQL / SENIOR_TITLE_RE in src/routes/jobs.py and migration 038.
+INTERNSHIP_PLATFORMS = {'internshala', 'unstop'}
+SENIOR_TITLE_RE = re.compile(r"\b(manager|director|vp|vice president|senior|sr|principal|chief|head of|team lead|tech lead|architect)\b", re.I)
+
+
+def _guard_internship_type(job_type: str, title: str, source: str) -> str:
+    """A scraper may say 'internship' for a row that is not one (a category page mixing roles, a 'Manager - International
+    Sales' title). Real = the title has the word intern/internship, or an internship-only marketplace and not senior."""
+    if job_type != 'internship' or has_intern_word(title):
+        return job_type
+    if source in INTERNSHIP_PLATFORMS and not SENIOR_TITLE_RE.search(title or ''):
+        return job_type
+    return 'full-time'
+
+
 def _normalize_type(raw_type: str, title: str) -> str:
     for key, value in JOB_TYPE_MAP.items():
         if key in raw_type:
             return value
     title = title.lower()
-    if 'intern' in title:
+    if has_intern_word(title):
         return 'internship'
     if 'contract' in title or 'freelance' in title:
         return 'contract'

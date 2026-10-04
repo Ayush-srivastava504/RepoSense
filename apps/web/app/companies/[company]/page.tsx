@@ -11,7 +11,7 @@ import { relatedCompanies } from '@/lib/companyLinks';
 import RelatedCompanies from '@/app/components/RelatedCompanies';
 import { getCompanies, getCompanyBySlug, getCompanyIntel, getCompanyProfile, companySlug } from '@/lib/companies';
 import { companyIsThin } from '@/lib/seo/hubThresholds';
-import { truncateDescription, truncateTitleForSerp } from '@/lib/seo/seoMetrics';
+import { truncateDescription, fitTitle, SERP_TITLE_PX_WITH_BRAND, TITLE_MAX_CHARS_WITH_BRAND } from '@/lib/seo/seoMetrics';
 import { companyOgImageUrl } from '@/lib/seo/ogImage';
 import {  breadcrumbSchema, companyOrganizationSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
 import JobCard from '@/app/components/JobCard';
@@ -57,7 +57,14 @@ async function buildCompanyMetadata(params: { company: string }, searchParams: {
     const pageSuffix = page > 1 ? ` — Page ${page}` : '';
     const [profile, intel] = await Promise.all([getCompanyProfile(company.company), getCompanyIntel(params.company)]);
     const hasHiringProcess = Boolean(intel?.topics.some((t) => t.topic_key === 'hiring_process'));
-    const title = truncateTitleForSerp(`${company.company} Jobs & Internships — ${hasHiringProcess ? 'Openings, Hiring Process' : 'Current Openings'}${pageSuffix}`);
+    // layout.tsx appends ' | InternFlow'; Bing flags a final <title> over 65 characters, so drop the optional tail first.
+    const co = company.company;
+    const title = fitTitle([
+        ...(hasHiringProcess ? [`${co} Jobs & Internships — Openings, Hiring Process${pageSuffix}`] : []),
+        `${co} Jobs & Internships — Current Openings${pageSuffix}`,
+        `${co} Jobs & Internships${pageSuffix}`,
+        `${co} Jobs${pageSuffix}`,
+    ], SERP_TITLE_PX_WITH_BRAND, TITLE_MAX_CHARS_WITH_BRAND);
     const overview = intel?.topics.find((t) => t.topic_key === 'overview')?.body;
     const jobsLine = `${company.job_count} active listing${company.job_count === 1 ? '' : 's'} at ${company.company} right now.`;
     const description = truncateDescription(overview ? `${overview} ${jobsLine}${pageSuffix}` : `${jobsLine} Browse jobs and internships, with the skills they ask for. Updated daily on InternFlow.${pageSuffix}`);

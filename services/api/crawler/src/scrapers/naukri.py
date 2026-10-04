@@ -27,7 +27,7 @@ from urllib.parse import quote
 from bs4 import BeautifulSoup
 from scrapers.ats_common import clean
 from scrapers.base import BaseScraper
-from utils import make_session
+from utils import make_session, has_intern_word
 
 BASE = 'https://www.naukri.com'
 HEADERS = {
@@ -155,7 +155,7 @@ class NaukriScraper(BaseScraper):
             'title': title,
             'company': company,
             'location': location or 'India',
-            'type': 'internship' if 'intern' in title.lower() else 'full-time',
+            'type': 'internship' if has_intern_word(title.lower()) else 'full-time',
             'description': clean(entry.get('jobDescription', '')),
             'skills': [clean(s) for s in (entry.get('tagsAndSkills', '') or '').split(',') if s.strip()],
             'apply_url': apply_url,
@@ -189,7 +189,7 @@ class NaukriScraper(BaseScraper):
                 'title': title,
                 'company': company,
                 'location': clean(location_el.get_text(strip=True)) if location_el else 'India',
-                'type': 'internship' if 'intern' in title.lower() else 'full-time',
+                'type': 'internship' if has_intern_word(title.lower()) else 'full-time',
                 'description': clean(card.get_text(' ', strip=True))[:2000],
                 'skills': [],
                 'apply_url': href if (href or '').startswith('http') else (f'{BASE}{href}' if href else ''),

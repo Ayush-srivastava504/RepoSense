@@ -17,10 +17,58 @@ router = APIRouter(prefix='/api/jobs', tags=['jobs'])
 GOVERNMENT_SOURCES_SQL = "('freejobalert', 'employment_news', 'ssc', 'upsc')"
 IS_GOVERNMENT_SQL = f"(is_government IS TRUE OR source IN {GOVERNMENT_SOURCES_SQL})"
 NOT_GOVERNMENT_SQL = f"(is_government IS NOT TRUE AND source NOT IN {GOVERNMENT_SOURCES_SQL})"
+# --- Real internships vs jobs -------------------------------------------------------------------------------------
+# `type = 'internship'` alone is not trustworthy: scrapers used a substring test ('intern' in title) that also hit
+# "International"/"Internal", so manager/executive roles were typed internship and showed on /internships. A row counts
+# as a REAL internship when its title has the WORD intern/internship, or it comes from an internship-only marketplace
+# and is not a senior title. /internships uses REAL_INTERNSHIP_SQL, /jobs uses its negation, so the two pages partition
+# the data exactly (a mistyped row shows on /jobs, never on /internships). Migration 038 fixes the stored type.
+INTERN_TITLE_RE = r'\m(intern|interns|internship|internships)\M'
+INTERNSHIP_PLATFORMS_SQL = "('internshala', 'unstop')"
+SENIOR_TITLE_RE = r'\m(manager|director|vp|vice president|senior|sr|principal|chief|head of|team lead|tech lead|architect)\M'
+REAL_INTERNSHIP_SQL = (
+    f"(type = 'internship' AND (title ~* '{INTERN_TITLE_RE}' "
+    f"OR (source IN {INTERNSHIP_PLATFORMS_SQL} AND title !~* '{SENIOR_TITLE_RE}')))"
+)
+NOT_INTERNSHIP_SQL = f"(NOT COALESCE({REAL_INTERNSHIP_SQL}, false))"
+
+# --- Fresher boost (/jobs page only, via fresher_first=true) -------------------------------------------------------
+# Added ON TOP of RANKING_EXPRESSION so a 0-1 year role at a top company (+40) lands on page 1. Gated to listings from
+# the last 30 days, so it can never lift an old listing above fresh ones (old best case stays below 0: -35 + 30).
+# experience_min/max default to 0/0 when unknown (structured_enrichment.py), so "0" alone is NOT evidence: an explicit
+# "0-1 / 0-2 years" is (max 1-2), otherwise the title must say fresher / graduate / entry level / junior.
+FRESHER_TITLE_RE = r'\m(fresher|freshers|new grad|new graduate|graduate|entry[ -]level|junior|jr|trainee|associate)\M'
+FRESHER_SQL = (
+    f"((experience_min = 0 AND experience_max BETWEEN 1 AND 2) OR title ~* '{FRESHER_TITLE_RE}')"
+    f" AND title !~* '{SENIOR_TITLE_RE}'"
+)
+FRESHER_BOOST_EXPRESSION = (
+    f"(CASE WHEN ({FRESHER_SQL}) AND COALESCE(posted_at, created_at) > now() - interval '30 days' THEN 30 ELSE 0 END)"
+)
+
+
+def _type_conditions(params: list, type: str | None, exclude_type: str | None) -> list[str]:
+    """type=internship -> REAL_INTERNSHIP_SQL; exclude_type=internship -> its negation; anything else is a plain match."""
+    conds: list[str] = []
+    if type == 'internship':
+        conds.append(REAL_INTERNSHIP_SQL)
+    elif type:
+        params.append(type)
+        conds.append(f'type = ${len(params)}')
+    if exclude_type == 'internship':
+        conds.append(NOT_INTERNSHIP_SQL)
+    return conds
+
+
 TOP_COMPANY_TIER = ['tcs', 'tata consultancy services', 'infosys', 'wipro', 'hcl', 'hcltech', 'cognizant', 'accenture', 'capgemini', 'tech mahindra', 'coforge', 'lti', 'ltimindtree', 'l&t infotech', 'mindtree', 'persistent systems', 'persistent', 'mphasis', 'zensar', 'zensar technologies', 'hexaware', 'hexaware technologies', 'cyient', 'niit technologies', 'niit', 'birlasoft', 'sonata software', 'happiest minds', 'tata elxsi', 'kpit', 'kpit technologies', 'virtusa', 'globant', 'publicis sapient', 'epam', 'epam systems', 'thoughtworks', 'newgen', 'newgen software', 'intellect design', 'firstsource', 'wns', 'wns global services', 'genpact', 'exl', 'exl service', 'concentrix', 'ttec', 'teleperformance', 'conduent', 'infosys bpm', 'tcs ion', 'quess corp', 'randstad', 'adecco', 'ibm', 'microsoft', 'google', 'alphabet', 'amazon', 'meta', 'facebook', 'apple', 'netflix', 'adobe', 'salesforce', 'oracle', 'sap', 'vmware', 'cisco', 'intel', 'nvidia', 'qualcomm', 'samsung', 'dell', 'hp', 'hewlett packard', 'lenovo', 'sony', 'lg', 'xiaomi', 'oneplus', 'ericsson', 'nokia', 'juniper networks', 'arista', 'f5', 'f5 networks', 'palo alto networks', 'crowdstrike', 'servicenow', 'workday', 'atlassian', 'slack', 'dropbox', 'snowflake', 'databricks', 'mongodb', 'confluent', 'elastic', 'twilio', 'stripe', 'paypal', 'square', 'block', 'uber', 'ola', 'ola cabs', 'swiggy', 'zomato', 'flipkart', 'myntra', 'paytm', 'phonepe', 'razorpay', 'cred', 'zepto', 'meesho', 'nykaa', 'policybazaar', 'freshworks', 'zoho', 'inmobi', 'browserstack', 'postman', 'chargebee', 'druva', 'mindtickle', 'cars24', 'urban company', 'dream11', 'groww', 'upstox', "byju's", 'byjus', 'unacademy', 'vedantu', 'upgrad', 'whitehat jr', 'physicswallah', 'lenskart', 'bigbasket', 'grofers', 'blinkit', 'dunzo', 'delhivery', 'shiprocket', 'sharechat', 'moj', 'dailyhunt', 'hike', 'gojek', 'deloitte', 'pwc', 'kpmg', 'ey', 'ernst & young', 'electronic arts', 'ea', 'mckinsey', 'mckinsey & company', 'bcg', 'boston consulting group', 'bain', 'bain & company', 'goldman sachs', 'jpmorgan', 'jp morgan', 'jpmorgan chase', 'morgan stanley', 'barclays', 'citi', 'citibank', 'citigroup', 'hsbc', 'deutsche bank', 'american express', 'amex', 'visa', 'mastercard', 'bank of america', 'ubs', 'nomura', 'wells fargo', 'standard chartered', 'credit suisse', 'state street', 'blackrock', 'fidelity', 'fidelity investments', 'd.e. shaw', 'de shaw', 'two sigma', 'optiver', 'citadel', 'jane street', 'reliance industries', 'reliance', 'jio', 'tata group', 'tata sons', 'mahindra', 'mahindra & mahindra', 'aditya birla group', 'aditya birla', 'bajaj', 'bajaj finserv', 'larsen & toubro', 'l&t', 'adani', 'adani group', 'itc', 'hindustan unilever', 'hul', 'asian paints', 'godrej', 'godrej group', 'maruti suzuki', 'tata motors', 'bosch', 'siemens', 'honeywell', 'ge', 'general electric', 'schneider electric', 'abb', 'airtel', 'bharti airtel', 'vodafone idea', 'vi', 'bsnl', 'juspay', 'cashfree', 'innovaccer', 'postman inc', 'yellow.ai', 'darwinbox', 'clevertap', 'hasura', 'rocketlane', 'zeta', 'caterpillar', 'globallogic', 'amagi', 'gupshup', 'wingify', 'vwo', 'cure.fit', 'cult.fit', 'curefit', 'licious', 'rebel foods', 'eternal']
 JOB_COLUMNS = '\n    id,\n    title,\n    company,\n    description,\n    url,\n    source,\n    posted_at,\n    created_at,\n    location,\n    salary,\n    stipend,\n    type,\n    deadline,\n    confidence_score,\n    confidence_label,\n    apply_domain,\n    logo_domain,\n    is_official_domain,\n    is_remote,\n    (is_government IS TRUE OR source IN (\'freejobalert\', \'employment_news\', \'ssc\', \'upsc\')) AS is_government,\n    country,\n    department,\n    vacancies,\n    notification_number,\n    job_group,\n    last_seen_at,\n    enriched_overview,\n    enriched_keywords,\n    allowed_degrees,\n    allowed_courses,\n    allowed_specializations,\n    allowed_passout_years,\n    required_skills,\n    notes_highlights,\n    work_mode,\n    experience_min,\n    experience_max,\n    job_function,\n    structured_description,\n    is_thin,\n    quality_score,\n    content_tier,\n    content_table,\n    content_faq,\n    segment_key,\n    enriched_sections\n'
 BADGE_EXPRESSIONS = "\n    (COALESCE(posted_at, created_at) IS NOT NULL AND COALESCE(posted_at, created_at) > now() - interval '24 hours') AS is_new,\n    (lower(company) = ANY(:top_companies)) AS is_top_company,\n    (confidence_score >= 90 AND is_official_domain) AS is_verified_source,\n    (\n        deadline IS NOT NULL\n        AND deadline > now()\n        AND deadline < now() + interval '2 days'\n    ) AS is_hot,\n    (\n        COALESCE(posted_at, created_at) IS NOT NULL\n        AND COALESCE(posted_at, created_at) < now() - interval '30 days'\n    ) AS is_stale\n"
-RANKING_EXPRESSION = "\n    (\n        CASE WHEN lower(company) = ANY(:top_companies) THEN 40 ELSE 0 END\n        + CASE\n            WHEN COALESCE(posted_at, created_at) > now() - interval '24 hours' THEN 35\n            WHEN COALESCE(posted_at, created_at) > now() - interval '72 hours' THEN 20\n            WHEN COALESCE(posted_at, created_at) > now() - interval '7 days' THEN 8\n            WHEN COALESCE(posted_at, created_at) > now() - interval '30 days' THEN 0\n            ELSE -25\n          END\n        + (COALESCE(confidence_score, 0)::float / 100.0) * 25\n    )\n"
+# Freshness: the best an OLD listing can score (top company 40 + full confidence 25 + penalty) must stay below the worst a
+# listing from the last 30 days can score (0), or a 2-month-old posting from a top company outranks fresh ones on page 1
+# (the old penalty was only -25, so 40 - 25 + 25 = 40 beat most fresh listings). Old = 30-60 days: -100 (max -35);
+# 60+ days: -150. A listing still open by its own future deadline (typical for government notices) keeps the old -25, and
+# an unknown date keeps -25 too.
+RANKING_EXPRESSION = "\n    (\n        CASE WHEN lower(company) = ANY(:top_companies) THEN 40 ELSE 0 END\n        + CASE\n            WHEN COALESCE(posted_at, created_at) > now() - interval '24 hours' THEN 35\n            WHEN COALESCE(posted_at, created_at) > now() - interval '72 hours' THEN 20\n            WHEN COALESCE(posted_at, created_at) > now() - interval '7 days' THEN 8\n            WHEN COALESCE(posted_at, created_at) > now() - interval '30 days' THEN 0\n            WHEN COALESCE(posted_at, created_at) IS NULL THEN -25\n            WHEN deadline IS NOT NULL AND deadline > now() THEN -25\n            WHEN COALESCE(posted_at, created_at) > now() - interval '60 days' THEN -100\n            ELSE -150\n          END\n        + (COALESCE(confidence_score, 0)::float / 100.0) * 25\n    )\n"
 
 def _lower_top_companies() -> list[str]:
     """Seed/bootstrap only now -- see _top_companies() for the earned, DB-backed set
@@ -175,7 +223,7 @@ def _parse_multi(value: str | None) -> list[str]:
 
 FACET_MAX_OPTIONS = 60
 
-def _build_facet_scope_conditions(params: list, *, search: str | None, type: str | None, category: str | None, job_group: str | None, country: str | None, work_mode: str | None, exclude_government: bool = False) -> list[str]:
+def _build_facet_scope_conditions(params: list, *, search: str | None, type: str | None, exclude_type: str | None = None, category: str | None, job_group: str | None, country: str | None, work_mode: str | None, exclude_government: bool = False) -> list[str]:
     """Same scoping semantics as get_jobs's search/type/category/job_group/
     country/work_mode conditions, deliberately NOT including
     skill/course/source/batch/company — those are exactly the filters the
@@ -183,9 +231,7 @@ def _build_facet_scope_conditions(params: list, *, search: str | None, type: str
     make each dropdown shrink its own option list down to just the
     already-selected value (see jobs/page.tsx's comment on this)."""
     conditions = ['is_active = true', *_freshness_conditions()]
-    if type:
-        params.append(type)
-        conditions.append(f'type = ${len(params)}')
+    conditions.extend(_type_conditions(params, type, exclude_type))
     if category == 'remote':
         conditions.append('is_remote = true')
     elif category == 'government':
@@ -272,7 +318,7 @@ async def _batch_facet_counts(pool, where: str, params: list) -> list[dict]:
     return [dict(row) for row in rows]
 
 @router.get('/')
-async def get_jobs(exclude_government: bool=Query(default=False, description="True drops is_government rows. /jobs, /internships and /remote-jobs use it so government notifications only appear on /government-jobs."), limit: int=Query(default=200, ge=1, le=500), offset: int=Query(default=0, ge=0), source: str | None=Query(default=None), search: str | None=Query(default=None), type: str | None=Query(default=None, description="Filter by job type, e.g. 'internship'"), category: str | None=Query(default=None, pattern='^(remote|government)$', description="'remote' for is_remote=true, 'government' for is_government=true"), job_group: str | None=Query(default=None, pattern='^(software|sales|finance|other)$', description='Coarse role filter: software | sales | finance | other'), country: str | None=Query(default=None, description="Filter by country, e.g. 'Japan'. Case-insensitive exact match."), company: str | None=Query(default=None, description='Filter by company name. Case-insensitive exact match, used by /companies/[slug] hub pages.'), skill: str | None=Query(default=None, description='Filter by skill/technology. Matches the structured required_skills array first (exact, case-insensitive), then enriched_keywords, then falls back to title/description — used by /skills/[slug] hub pages.'), work_mode: str | None=Query(default=None, pattern='^(ONSITE|REMOTE|HYBRID)$', description='Filter by extracted work mode: ONSITE | REMOTE | HYBRID.'), course: str | None=Query(default=None, description='Filter by allowed course/degree, e.g. "B.Tech" or "Diploma". Matches allowed_courses array, case-insensitive.'), sort: str=Query(default='recent', pattern='^(recent|ranked)$', description="'recent' (default, unchanged) or 'ranked' for the boosted first-page ordering"), skills: str | None=Query(default=None, description='Phase 2 multi-select (PHASE_PLAN.md item 2): comma-separated skill slugs from GET /api/jobs/facets, e.g. "react-js,python". ANDed with the other filters; a job matches if it has ANY of the listed skills.'), courses: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated course slugs from the facets endpoint.'), sources: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated source slugs from the facets endpoint.'), batches: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated passout-year strings, e.g. "2026,2027".'), companies: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated company slugs from the facets endpoint.'), india_only: bool=Query(default=False, description='Phase 2 pagination follow-up: server-side equivalent of the frontend\'s isIndiaJob() filter (country is null/blank/India). Lets /jobs and /internships paginate the "India" location filter with real LIMIT/OFFSET instead of over-fetching and filtering client-side.'), india_first: bool=Query(default=False, description='Phase 2 pagination follow-up: server-side equivalent of the frontend\'s sortIndiaFirst() — orders India/blank-country rows first, then remote, then Japan, then everything else, before the existing sort/ranked ordering as a tiebreaker within each group.')):
+async def get_jobs(exclude_type: str | None=Query(default=None, pattern='^internship$', description="'internship' drops real internships. /jobs uses it so the jobs page shows jobs only."), fresher_first: bool=Query(default=False, description='/jobs page: boost 0-1 year / fresher roles from the last 30 days (sort=ranked only).'), exclude_government: bool=Query(default=False, description="True drops is_government rows. /jobs, /internships and /remote-jobs use it so government notifications only appear on /government-jobs."), limit: int=Query(default=200, ge=1, le=500), offset: int=Query(default=0, ge=0), source: str | None=Query(default=None), search: str | None=Query(default=None), type: str | None=Query(default=None, description="Filter by job type, e.g. 'internship'"), category: str | None=Query(default=None, pattern='^(remote|government)$', description="'remote' for is_remote=true, 'government' for is_government=true"), job_group: str | None=Query(default=None, pattern='^(software|sales|finance|other)$', description='Coarse role filter: software | sales | finance | other'), country: str | None=Query(default=None, description="Filter by country, e.g. 'Japan'. Case-insensitive exact match."), company: str | None=Query(default=None, description='Filter by company name. Case-insensitive exact match, used by /companies/[slug] hub pages.'), skill: str | None=Query(default=None, description='Filter by skill/technology. Matches the structured required_skills array first (exact, case-insensitive), then enriched_keywords, then falls back to title/description — used by /skills/[slug] hub pages.'), work_mode: str | None=Query(default=None, pattern='^(ONSITE|REMOTE|HYBRID)$', description='Filter by extracted work mode: ONSITE | REMOTE | HYBRID.'), course: str | None=Query(default=None, description='Filter by allowed course/degree, e.g. "B.Tech" or "Diploma". Matches allowed_courses array, case-insensitive.'), sort: str=Query(default='recent', pattern='^(recent|ranked)$', description="'recent' (default, unchanged) or 'ranked' for the boosted first-page ordering"), skills: str | None=Query(default=None, description='Phase 2 multi-select (PHASE_PLAN.md item 2): comma-separated skill slugs from GET /api/jobs/facets, e.g. "react-js,python". ANDed with the other filters; a job matches if it has ANY of the listed skills.'), courses: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated course slugs from the facets endpoint.'), sources: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated source slugs from the facets endpoint.'), batches: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated passout-year strings, e.g. "2026,2027".'), companies: str | None=Query(default=None, description='Phase 2 multi-select: comma-separated company slugs from the facets endpoint.'), india_only: bool=Query(default=False, description='Phase 2 pagination follow-up: server-side equivalent of the frontend\'s isIndiaJob() filter (country is null/blank/India). Lets /jobs and /internships paginate the "India" location filter with real LIMIT/OFFSET instead of over-fetching and filtering client-side.'), india_first: bool=Query(default=False, description='Phase 2 pagination follow-up: server-side equivalent of the frontend\'s sortIndiaFirst() — orders India/blank-country rows first, then remote, then Japan, then everything else, before the existing sort/ranked ordering as a tiebreaker within each group.')):
     pool = await get_db_pool()
     if pool is None:
         raise HTTPException(503, 'Database unavailable')
@@ -281,9 +327,7 @@ async def get_jobs(exclude_government: bool=Query(default=False, description="Tr
     if source:
         params.append(source)
         conditions.append(f'source = ${len(params)}')
-    if type:
-        params.append(type)
-        conditions.append(f'type = ${len(params)}')
+    conditions.extend(_type_conditions(params, type, exclude_type))
     if category == 'remote':
         conditions.append('is_remote = true')
     elif category == 'government':
@@ -381,6 +425,8 @@ async def get_jobs(exclude_government: bool=Query(default=False, description="Tr
     order_by = 'posted_at DESC NULLS LAST, id DESC'
     if sort == 'ranked':
         ranking_sql = RANKING_EXPRESSION.replace(':top_companies', placeholder)
+        if fresher_first:
+            ranking_sql = f'({ranking_sql} + {FRESHER_BOOST_EXPRESSION})'
         order_by = f'{ranking_sql} DESC, COALESCE(posted_at, created_at) DESC NULLS LAST, id DESC'
     if india_first:
         order_by = f'{_INDIA_BUCKET_SQL} ASC, {order_by}'
@@ -389,7 +435,7 @@ async def get_jobs(exclude_government: bool=Query(default=False, description="Tr
     return {'jobs': [_decode_job_json_fields(dict(row)) for row in rows], 'total': total, 'limit': limit, 'offset': offset}
 
 @router.get('/featured')
-async def get_featured_jobs(exclude_government: bool=Query(default=False), limit: int=Query(default=6, ge=1, le=12), type: str | None=Query(default=None), category: str | None=Query(default=None, pattern='^(remote|government)$', description="'remote' for is_remote=true, 'government' for is_government=true"), job_group: str | None=Query(default=None, pattern='^(software|sales|finance|other)$'), country: str | None=Query(default=None)):
+async def get_featured_jobs(exclude_type: str | None=Query(default=None, pattern='^internship$'), fresher_first: bool=Query(default=False), exclude_government: bool=Query(default=False), limit: int=Query(default=6, ge=1, le=12), type: str | None=Query(default=None), category: str | None=Query(default=None, pattern='^(remote|government)$', description="'remote' for is_remote=true, 'government' for is_government=true"), job_group: str | None=Query(default=None, pattern='^(software|sales|finance|other)$'), country: str | None=Query(default=None)):
     pool = await get_db_pool()
     if pool is None:
         raise HTTPException(503, 'Database unavailable')
@@ -403,9 +449,7 @@ async def get_featured_jobs(exclude_government: bool=Query(default=False), limit
     # (NULL posted_at allowed, deadline enforced, internship/other-type windows).
     conditions = ['is_active = true', *_freshness_conditions(), '(lower(company) = ANY($1) OR confidence_score >= 80)']
     params: list = [await _top_companies(pool)]
-    if type:
-        params.append(type)
-        conditions.append(f'type = ${len(params)}')
+    conditions.extend(_type_conditions(params, type, exclude_type))
     if category == 'remote':
         conditions.append('is_remote = true')
     elif category == 'government':
@@ -421,12 +465,14 @@ async def get_featured_jobs(exclude_government: bool=Query(default=False), limit
     where = 'WHERE ' + ' AND '.join(conditions)
     placeholder = '$1'
     ranking_sql = RANKING_EXPRESSION.replace(':top_companies', placeholder)
+    if fresher_first:
+        ranking_sql = f'({ranking_sql} + {FRESHER_BOOST_EXPRESSION})'
     badges_sql = BADGE_EXPRESSIONS.replace(':top_companies', placeholder)
     limit_pos = len(params) + 1
     rows = await pool.fetch(f'\n        SELECT\n            {JOB_COLUMNS},\n            {badges_sql}\n        FROM jobs\n        {where}\n        ORDER BY {ranking_sql} DESC, COALESCE(posted_at, created_at) DESC\n        LIMIT ${limit_pos}\n        ', *params, limit)
     return {'jobs': [_decode_job_json_fields(dict(row)) for row in rows]}
 @router.get('/facets')
-async def get_jobs_facets(exclude_government: bool=Query(default=False), search: str | None=Query(default=None), type: str | None=Query(default=None), category: str | None=Query(default=None, pattern='^(remote|government)$'), job_group: str | None=Query(default=None, pattern='^(software|sales|finance|other)$'), country: str | None=Query(default=None), work_mode: str | None=Query(default=None, pattern='^(ONSITE|REMOTE|HYBRID)$')):
+async def get_jobs_facets(exclude_type: str | None=Query(default=None, pattern='^internship$'), exclude_government: bool=Query(default=False), search: str | None=Query(default=None), type: str | None=Query(default=None), category: str | None=Query(default=None, pattern='^(remote|government)$'), job_group: str | None=Query(default=None, pattern='^(software|sales|finance|other)$'), country: str | None=Query(default=None), work_mode: str | None=Query(default=None, pattern='^(ONSITE|REMOTE|HYBRID)$')):
     """Phase 2 (PHASE_PLAN.md item 1): computes Skills/Course/Source/Batch/
     Company option counts against the FULL active-jobs table, scoped by
     the same location+role+mode+search params the list endpoint takes —
@@ -438,7 +484,7 @@ async def get_jobs_facets(exclude_government: bool=Query(default=False), search:
     if pool is None:
         raise HTTPException(503, 'Database unavailable')
     params: list = []
-    conditions = _build_facet_scope_conditions(params, search=search, type=type, category=category, job_group=job_group, country=country, work_mode=work_mode, exclude_government=exclude_government)
+    conditions = _build_facet_scope_conditions(params, search=search, type=type, exclude_type=exclude_type, category=category, job_group=job_group, country=country, work_mode=work_mode, exclude_government=exclude_government)
     where = ' AND '.join(conditions)
     skills_arr_expr = "CASE WHEN required_skills IS NOT NULL THEN required_skills ELSE enriched_keywords END"
     skills, courses, sources, batches, companies = await asyncio.gather(

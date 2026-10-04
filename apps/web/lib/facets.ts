@@ -185,6 +185,7 @@ type GetJobFacetsOptions = {
     country?: string;
     work_mode?: 'ONSITE' | 'REMOTE' | 'HYBRID';
     excludeGovernment?: boolean;
+    excludeType?: 'internship';
 };
 // Throws on failure (see getJobsOrThrow) -- for the batches sitemap, which must not drop every year page on an API blip.
 export async function getJobFacetsOrThrow(options: GetJobFacetsOptions = {}): Promise<FacetSnapshot> {
@@ -206,6 +207,8 @@ export async function getJobFacetsOrThrow(options: GetJobFacetsOptions = {}): Pr
         params.set('work_mode', options.work_mode);
     if (options.excludeGovernment)
         params.set('exclude_government', 'true');
+    if (options.excludeType)
+        params.set('exclude_type', options.excludeType);
     const qs = params.toString();
     const res = await fetchWithTimeout(`${process.env.API_BASE_URL}/api/jobs/facets${qs ? `?${qs}` : ''}`, { next: { revalidate: 3600 } });
     if (!res.ok) {

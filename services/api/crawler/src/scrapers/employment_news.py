@@ -3,6 +3,7 @@
 # Defines function(s): _detect_job_type, _to_iso_date, _clean
 #
 
+from utils import has_intern_word
 import re
 import time
 from datetime import datetime
@@ -123,7 +124,7 @@ class EmploymentNewsScraper(BaseScraper):
 
 def _detect_job_type(title: str) -> str:
     value = title.lower()
-    if 'intern' in value:
+    if has_intern_word(value):
         return 'internship'
     if 'apprentice' in value:
         return 'apprenticeship'

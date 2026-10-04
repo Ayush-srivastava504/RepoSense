@@ -13,7 +13,7 @@ from urllib.parse import urlencode, urljoin
 from bs4 import BeautifulSoup
 from config import COMPANY_PORTALS
 from scrapers.base import BaseScraper
-from utils import safe_get
+from utils import safe_get, has_intern_word
 MAX_PORTAL_PAGES = 5
 MIN_CARD_MATCHES = 2
 MAX_CARD_MATCHES = 250
@@ -37,7 +37,7 @@ def _text(soup, selector: str) -> str:
 
 def _infer_type(title: str) -> str:
     title = (title or '').lower()
-    if 'intern' in title:
+    if has_intern_word(title):
         return 'internship'
     if 'contract' in title or 'freelance' in title:
         return 'contract'

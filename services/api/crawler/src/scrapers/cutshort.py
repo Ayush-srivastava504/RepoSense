@@ -3,6 +3,7 @@
 # Defines function(s): _clean
 #
 
+from utils import has_intern_word
 import os
 import random
 import re
@@ -141,7 +142,7 @@ class CutshortScraper(BaseScraper):
         job['salary'] = salary_match.group(0).strip() if salary_match else ''
         job['description'] = text_blob[:1000]
         job['skills'] = []
-        job['type'] = 'internship' if 'intern' in title.lower() else 'full-time'
+        job['type'] = 'internship' if has_intern_word(title.lower()) else 'full-time'
         job['is_remote'] = is_remote
         job['posted_date'] = ''
         job['apply_url'] = href if href.startswith('http') else urljoin(BASE, href)

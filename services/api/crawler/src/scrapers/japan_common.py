@@ -3,6 +3,7 @@
 # scrapers/japan_internships.py (internships, incl. Japan-remote internships).
 # Keeping the fetch/filter logic here means both scrapers stay in sync and a
 
+from utils import has_intern_word
 import re
 from typing import Dict, List, Optional
 import requests
@@ -42,7 +43,7 @@ def parse_jobicy_entry(entry: Dict) -> Optional[Dict]:
         return None
     job_types = entry.get('jobType')
     job_types_text = ' '.join((_clean(t) for t in job_types)).lower() if isinstance(job_types, list) else _clean(job_types).lower()
-    if 'intern' in job_types_text or 'intern' in title.lower():
+    if has_intern_word(job_types_text) or has_intern_word(title.lower()):
         job_type = 'internship'
     elif 'contract' in job_types_text:
         job_type = 'contract'
@@ -108,5 +109,5 @@ def parse_remoteok_entry(entry: Dict) -> Optional[Dict]:
             apply_url = f'https://remoteok.com{slug}'
     if not apply_url:
         return None
-    job_type = 'internship' if 'intern' in title.lower() else 'full-time'
+    job_type = 'internship' if has_intern_word(title.lower()) else 'full-time'
     return {'title': title, 'company': company, 'location': 'Japan', 'type': job_type, 'salary': '', 'description': _clean(entry.get('description')), 'skills': tags, 'apply_url': apply_url, 'posted_date': entry.get('date') or '', 'is_remote': True, 'country': 'Japan'}

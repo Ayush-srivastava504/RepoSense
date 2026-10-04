@@ -4,6 +4,7 @@
 //
 
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { listPageState } from '@/lib/seo/pagination';
 import { listingMetadata } from '@/lib/seo/pageMeta';
 import Link from 'next/link';
@@ -189,10 +190,14 @@ export default async function InternshipsPage({ searchParams, }: {
     // out-of-range case pays for a second request; the common case above
     // is a single fetch.
     if (currentPage !== requestedPage) {
-        const clamped = await fetchJobsPage(currentPage);
-        jobs = clamped.jobs;
-        totalJobs = clamped.total;
-        totalPages = Math.max(1, Math.ceil(totalJobs / JOBS_PER_PAGE));
+        // Past the last page: send the visitor/crawler to the real last page instead of rendering its content again
+        // under a self-canonical ?page=N URL (a duplicate of the last page). Temporary (307): the total moves daily.
+        const qs = new URLSearchParams();
+        for (const [key, value] of Object.entries(searchParams)) {
+            if (typeof value === 'string' && value && key !== 'page') qs.set(key, value);
+        }
+        if (currentPage > 1) qs.set('page', String(currentPage));
+        redirect(`/internships${qs.toString() ? `?${qs.toString()}` : ''}`);
     }
     const featured = locationFilter === 'india'
         ? fetchedFeatured.filter(isIndiaJob)
@@ -340,9 +345,9 @@ export default async function InternshipsPage({ searchParams, }: {
 
               <p className="mt-3">
                 Landing a high-quality internship is crucial for launching your career. 
-                Freshly posted internships are ranked first. Listings open for
-                more than 30 days are automatically de-ranked, and eventually
-                retired once they&apos;re no longer active, ensuring you aren&apos;t 
+                Only real internships are listed here, freshly posted ones first.
+                Listings open for more than 30 days drop below every recent
+                listing, and are eventually retired once they&apos;re no longer active, ensuring you aren&apos;t 
                 wasting time on internships that have already filled their cohorts.
               </p>
             </div>

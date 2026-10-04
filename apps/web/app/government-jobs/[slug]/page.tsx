@@ -10,7 +10,7 @@ import { BASE_URL } from '@/lib/jobs';
 import { buildJobFaq } from '@/lib/jobFaq';
 import { getLocalizedJob, localizedCanonicalPath, jobLanguageAlternates } from '@/lib/jobLocale';
 import {  jobPostingSchema, breadcrumbSchema, faqSchema, safeJsonLd } from '@/lib/structuredData';
-import { buildGovernmentTitle, formatLastDate, truncateDescription, isIndexableJob, SERP_TITLE_PX_WITH_BRAND } from '@/lib/seo/seoMetrics';
+import { buildGovernmentTitle, formatLastDate, truncateDescription, isIndexableJob, SERP_TITLE_PX_WITH_BRAND, TITLE_MAX_CHARS_WITH_BRAND } from '@/lib/seo/seoMetrics';
 import { pageOpenGraph } from '@/lib/seo/pageMeta';
 import { jobOgImageUrl } from '@/lib/seo/ogImage';
 import JobDetail from '@/app/components/JobDetail';
@@ -31,6 +31,7 @@ export async function generateMetadata({ params, }: {
         title: job.title, department: job.department, vacancies: job.vacancies,
         deadline: job.deadline, posted_at: job.posted_at, created_at: job.created_at,
         maxPx: SERP_TITLE_PX_WITH_BRAND,
+        maxChars: TITLE_MAX_CHARS_WITH_BRAND,
     });
     const lastDate = formatLastDate(job.deadline);
     const rawDescription = `${job.department ? `${job.department} recruitment: ` : ''}${job.title}${job.vacancies ? `. ${job.vacancies} vacancies` : ''}${lastDate ? `. Last date: ${lastDate}` : ''}. View eligibility, notification details and the official application link.`;

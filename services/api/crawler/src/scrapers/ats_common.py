@@ -8,7 +8,7 @@ import re
 import time
 from typing import Dict, List, Optional
 import requests
-from utils import get_logger
+from utils import get_logger, has_intern_word
 log = get_logger('ats_common')
 WHITESPACE_RE = re.compile('\\s+')
 TAG_RE = re.compile('<[^>]+>')
@@ -22,7 +22,7 @@ def clean(value) -> str:
 
 def infer_type(*texts: str) -> str:
     blob = ' '.join((t or '' for t in texts)).lower()
-    if 'intern' in blob:
+    if has_intern_word(blob):
         return 'internship'
     if 'contract' in blob or 'freelance' in blob or 'temporary' in blob:
         return 'contract'

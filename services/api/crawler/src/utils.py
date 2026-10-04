@@ -4,6 +4,7 @@
 #
 
 import hashlib
+import re
 import json
 import logging
 import random
@@ -352,3 +353,13 @@ def safe_post(session: requests.Session, url: str, data: Optional[Dict]=None, js
     except requests.exceptions.RequestException as exc:
         log.warning('POST error for %s: %s', url, exc)
     return None
+
+
+# "intern" as a WORD. The old substring test ('intern' in text) also matched "International", "Internal",
+# "Internet" and "Internship-less" titles, so "Regional Manager - International Sales" was typed 'internship'
+# and showed on /internships.
+INTERN_WORD_RE = re.compile(r"\b(intern|interns|internship|internships)\b", re.IGNORECASE)
+
+
+def has_intern_word(text) -> bool:
+    return bool(INTERN_WORD_RE.search(str(text or '')))
