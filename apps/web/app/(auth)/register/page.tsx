@@ -6,10 +6,12 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth';
+import { useAuth, ensureGuestSession } from '@/lib/auth';
+import { featureFlags } from '@/lib/featureFlags';
 import Link from 'next/link';
 import Logo from '../../components/Logo';
-import { trackSignUp, trackFunnelStep } from '@/lib/analytics';
+import { trackSignUp, trackFunnelStep, trackEvent } from '@/lib/analytics';
+
 type Step = 'email' | 'otp';
 export default function Register() {
     const [step, setStep] = useState<Step>('email');
@@ -17,7 +19,8 @@ export default function Register() {
     const [otp, setOtp] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { requestOtp, verifyOtp } = useAuth();
+    const [guestLoading, setGuestLoading] = useState(false);
+    const { requestOtp, verifyOtp, refresh } = useAuth();
     const router = useRouter();
     const handleEmailSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -33,6 +36,25 @@ export default function Register() {
         }
         finally {
             setLoading(false);
+        }
+    };
+    const handleGuestStart = async () => {
+        setError('');
+        setGuestLoading(true);
+        try {
+            await ensureGuestSession();
+            if (!localStorage.getItem('token')) {
+                throw new Error('Could not start a free session. Try again or sign up with your email.');
+            }
+            refresh();
+            trackEvent('guest_start_free', { source: 'register' });
+            router.push('/dashboard');
+        }
+        catch (err: any) {
+            setError(err?.message || 'Could not start a free session. Try again.');
+        }
+        finally {
+            setGuestLoading(false);
         }
     };
     const handleOtpSubmit = async (e: React.FormEvent) => {
@@ -77,6 +99,19 @@ export default function Register() {
                 {loading ? 'Sending code...' : 'Send verification code'}
               </button>
             </form>
+            {!featureFlags.requireAuth && (<>
+                <div className="my-5 flex items-center gap-3 text-xs" style={{ color: 'var(--muted)' }}>
+                  <span className="h-px flex-1" style={{ background: 'var(--line)' }}/>
+                  or
+                  <span className="h-px flex-1" style={{ background: 'var(--line)' }}/>
+                </div>
+                <button type="button" onClick={handleGuestStart} disabled={guestLoading || loading} className="btn btn-secondary w-full">
+                  {guestLoading ? 'Starting...' : 'Get started free'}
+                </button>
+                <p className="mt-2 text-center text-xs" style={{ color: 'var(--muted)' }}>
+                  No email or card needed. Create an account any time.
+                </p>
+              </>)}
           </>) : (<>
             <p className="eyebrow eyebrow-accent">// verify email</p>
             <h1 className="display mt-2 text-2xl font-medium">Check your inbox</h1>
@@ -109,5 +144,6 @@ export default function Register() {
           </Link>
         </p>
       </div>
+
     </div>);
 }

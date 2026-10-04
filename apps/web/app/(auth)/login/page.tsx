@@ -1,81 +1,77 @@
-// Module: app/(auth)/login/page.tsx
-// Defines component(s)/export(s): Login
+// Module: app/(auth)/register/page.tsx
+// Defines component(s)/export(s): Register
 // Defines type(s): Step
 //
 
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth';
+import { useAuth, ensureGuestSession } from '@/lib/auth';
+import { featureFlags } from '@/lib/featureFlags';
 import Link from 'next/link';
 import Logo from '../../components/Logo';
-import { trackEvent } from '@/lib/analytics';
+import { trackSignUp, trackFunnelStep, trackEvent } from '@/lib/analytics';
+
 type Step = 'email' | 'otp';
-export default function Login() {
+export default function Register() {
     const [step, setStep] = useState<Step>('email');
     const [email, setEmail] = useState('');
     const [otp, setOtp] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { requestOtp, verifyOtp } = useAuth();
+    const [guestLoading, setGuestLoading] = useState(false);
+    const { requestOtp, verifyOtp, refresh } = useAuth();
     const router = useRouter();
     const handleEmailSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setLoading(true);
-        trackEvent('login_email_submitted', {
-            email: email,
-        });
         try {
             await requestOtp(email);
+            trackFunnelStep({ funnel: 'sign_up', step: 'otp_requested', step_index: 1 });
             setStep('otp');
-            trackEvent('login_otp_sent', {
-                email: email,
-            });
         }
         catch (err: any) {
-            setError(err?.message || "Couldn't send OTP. Check your email address.");
-            trackEvent('login_email_error', {
-                email: email,
-                error: err?.message,
-            });
+            setError(err?.message || 'Could not create your account. Try a different email.');
         }
         finally {
             setLoading(false);
+        }
+    };
+    const handleGuestStart = async () => {
+        setError('');
+        setGuestLoading(true);
+        try {
+            await ensureGuestSession();
+            if (!localStorage.getItem('token')) {
+                throw new Error('Could not start a free session. Try again or sign up with your email.');
+            }
+            refresh();
+            trackEvent('guest_start_free', { source: 'register' });
+            router.push('/dashboard');
+        }
+        catch (err: any) {
+            setError(err?.message || 'Could not start a free session. Try again.');
+        }
+        finally {
+            setGuestLoading(false);
         }
     };
     const handleOtpSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setLoading(true);
-        trackEvent('login_otp_submitted', {
-            email: email,
-        });
         try {
             await verifyOtp(email, otp);
-            trackEvent('login_success', {
-                email: email,
-            });
+            trackSignUp('email');
             router.push('/dashboard');
         }
         catch (err: any) {
             setError(err?.message || 'Invalid or expired code. Try again.');
-            trackEvent('login_otp_error', {
-                email: email,
-                error: err?.message,
-            });
         }
         finally {
             setLoading(false);
         }
-    };
-    const handleDifferentEmail = () => {
-        trackEvent('login_different_email_clicked', {
-            email: email,
-        });
-        setStep('email');
-        setOtp('');
-        setError('');
     };
     return (<div className="shell flex min-h-screen flex-col items-center justify-center px-6">
       <Link href="/" className="mb-8">
@@ -84,10 +80,10 @@ export default function Login() {
 
       <div className="panel w-full max-w-sm p-8">
         {step === 'email' ? (<>
-            <p className="eyebrow eyebrow-accent">// sign in</p>
-            <h1 className="display mt-2 text-2xl font-medium">Welcome back</h1>
+            <p className="eyebrow eyebrow-accent">// create account</p>
+            <h1 className="display mt-2 text-2xl font-medium">Set up InternFlow</h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--ink-soft)' }}>
-              We'll send a one-time code to your email.
+              No password needed — we'll verify you by email.
             </p>
             <form onSubmit={handleEmailSubmit} className="mt-6 space-y-4">
               <div>
@@ -100,12 +96,25 @@ export default function Login() {
                   {error}
                 </p>)}
               <button type="submit" disabled={loading} className="btn btn-primary w-full">
-                {loading ? 'Sending code...' : 'Send code'}
+                {loading ? 'Sending code...' : 'Send verification code'}
               </button>
             </form>
+            {!featureFlags.requireAuth && (<>
+                <div className="my-5 flex items-center gap-3 text-xs" style={{ color: 'var(--muted)' }}>
+                  <span className="h-px flex-1" style={{ background: 'var(--line)' }}/>
+                  or
+                  <span className="h-px flex-1" style={{ background: 'var(--line)' }}/>
+                </div>
+                <button type="button" onClick={handleGuestStart} disabled={guestLoading || loading} className="btn btn-secondary w-full">
+                  {guestLoading ? 'Starting...' : 'Get started free'}
+                </button>
+                <p className="mt-2 text-center text-xs" style={{ color: 'var(--muted)' }}>
+                  No email or card needed. Create an account any time.
+                </p>
+              </>)}
           </>) : (<>
-            <p className="eyebrow eyebrow-accent">// verify</p>
-            <h1 className="display mt-2 text-2xl font-medium">Check your email</h1>
+            <p className="eyebrow eyebrow-accent">// verify email</p>
+            <h1 className="display mt-2 text-2xl font-medium">Check your inbox</h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--ink-soft)' }}>
               We sent a 6-digit code to <strong>{email}</strong>.
             </p>
@@ -120,13 +129,21 @@ export default function Login() {
                   {error}
                 </p>)}
               <button type="submit" disabled={loading} className="btn btn-primary w-full">
-                {loading ? 'Verifying...' : 'Verify & sign in'}
+                {loading ? 'Verifying...' : 'Create account'}
               </button>
-              <button type="button" onClick={handleDifferentEmail} className="btn btn-ghost w-full">
+              <button type="button" onClick={() => { setStep('email'); setOtp(''); setError(''); }} className="btn btn-ghost w-full">
                 Use a different email
               </button>
             </form>
           </>)}
+
+        <p className="mt-6 text-center text-sm" style={{ color: 'var(--ink-soft)' }}>
+          Already have one?{' '}
+          <Link href="/login" className="font-semibold" style={{ color: 'var(--indigo)' }}>
+            Sign in
+          </Link>
+        </p>
       </div>
+
     </div>);
 }
