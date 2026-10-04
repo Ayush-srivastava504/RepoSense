@@ -1,14 +1,15 @@
 # /internships must hold real internships only, /jobs must not hold any, and 0-1 year roles get a bounded boost.
 import ast
-import os
+import importlib.util
 import re
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'crawler' / 'src'))
-os.environ.setdefault('DATABASE_URL', 'postgresql://u:p@localhost/db')
-
-from utils import has_intern_word  # noqa: E402
+# Loaded BY PATH under a private name: in CI PYTHONPATH=.:src, where `utils` is the src/utils package, not crawler/src/utils.py.
+_spec = importlib.util.spec_from_file_location(
+    'intern_text_under_test', Path(__file__).resolve().parents[1] / 'crawler' / 'src' / 'intern_text.py')
+_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_mod)
+has_intern_word = _mod.has_intern_word
 
 _SRC = (Path(__file__).resolve().parents[1] / 'src' / 'routes' / 'jobs.py').read_text()
 _NS: dict = {}
