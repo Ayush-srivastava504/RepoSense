@@ -9,6 +9,7 @@ import Logo from './Logo';
 import Footer from './Footer';
 import PageTransition from './PageTransition';
 import Sidebar from './Sidebar';
+import LandingNav from './LandingNav';
 import { LanguageProvider } from '@/i18n/LanguageContext';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -25,6 +26,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       document.body.style.overflow = '';
     };
   }, [mobileOpen]);
+
+  // Public homepage: top navigation instead of the app sidebar.
+  if (pathname === '/') {
+    return (
+      <LanguageProvider>
+        <div className="flex min-h-screen flex-col" style={{ background: 'var(--paper)' }}>
+          <LandingNav />
+          <main className="flex-1">{children}</main>
+          <Footer />
+        </div>
+      </LanguageProvider>
+    );
+  }
 
   return (
     <LanguageProvider>

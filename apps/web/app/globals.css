@@ -890,3 +890,9 @@ textarea,
 [contenteditable='true'] {
   cursor: text;
 }
+/* Homepage hero: rotating degree word (reduced-motion rule above neutralises it) */
+@keyframes word-in {
+  from { opacity: 0; transform: translateY(0.35em); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.word-in { display: inline-block; animation: word-in 0.45s ease both; }

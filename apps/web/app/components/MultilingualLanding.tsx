@@ -1,241 +1,246 @@
 'use client';
 
 import Link from 'next/link';
-import AuroraBackground from './AuroraBackground';
 import MagneticLink from './MagneticLink';
 import ScrollReveal from './ScrollReveal';
 import JobCard from './JobCard';
-import HomeSEOContent from './HomeSEOContent';
-import FAQAccordion from './FAQAccordion';
-import { useTranslation } from '@/i18n/LanguageContext';
+import HomeHero from './HomeHero';
+import HomeFaq from './HomeFaq';
 
 interface Props {
   previewJobs: any[];
 }
 
+const DEGREE_CARDS = [
+  {
+    tag: 'B.Tech / BE',
+    title: 'Engineering graduates',
+    body: 'Software engineer, backend and full-stack, data engineer, AI/ML and DevOps roles for CSE, IT and ECE freshers.',
+    links: [
+      { href: '/careers/software-engineer', label: 'Software Engineer' },
+      { href: '/careers/data-engineer', label: 'Data Engineer' },
+      { href: '/careers/ai-ml-engineer', label: 'AI / ML' },
+    ],
+  },
+  {
+    tag: 'BCA / B.Sc',
+    title: 'Computer science & IT graduates',
+    body: 'Web developer, QA, support engineer and data analyst openings that welcome BCA and B.Sc CS/IT candidates.',
+    links: [
+      { href: '/skills/react', label: 'React jobs' },
+      { href: '/careers/data-analyst', label: 'Data Analyst' },
+      { href: '/internships', label: 'Internships' },
+    ],
+  },
+  {
+    tag: 'MCA',
+    title: 'Master of Computer Applications',
+    body: 'Software engineer, data engineer and cloud roles. Stand out with Python, SQL, Java and one cloud platform.',
+    links: [
+      { href: '/skills/python', label: 'Python jobs' },
+      { href: '/skills/sql', label: 'SQL jobs' },
+      { href: '/skills/aws', label: 'AWS jobs' },
+    ],
+  },
+  {
+    tag: 'MBA',
+    title: 'Management graduates',
+    body: 'Business analyst, data analyst, operations and marketing roles. Excel, SQL and Power BI make a clear difference.',
+    links: [
+      { href: '/careers/data-analyst', label: 'Analyst roles' },
+      { href: '/skills/excel', label: 'Excel jobs' },
+      { href: '/skills/power-bi', label: 'Power BI jobs' },
+    ],
+  },
+];
+
+const ROLES = [
+  { href: '/careers/software-engineer', title: 'Software Engineer', body: 'Backend, frontend and full-stack jobs and internships for freshers.' },
+  { href: '/careers/data-engineer', title: 'Data Engineer', body: 'Pipelines, SQL, Spark and cloud data roles for new graduates.' },
+  { href: '/careers/ai-ml-engineer', title: 'AI / ML Engineer', body: 'Machine learning and AI openings, from intern to junior level.' },
+  { href: '/careers/devops-engineer', title: 'DevOps & Cloud', body: 'AWS, Docker, Kubernetes and CI/CD roles for entry-level engineers.' },
+  { href: '/careers/data-analyst', title: 'Data Analyst', body: 'SQL, Excel, Power BI and Python analyst roles for fresh graduates.' },
+  { href: '/internships', title: 'IT Internships', body: 'Paid and remote tech internships to build experience before you graduate.' },
+];
+
+const STEPS = [
+  { n: '01', title: 'Find roles that fit your degree', body: 'Browse jobs and internships by role, skill, city or passout batch, or search directly.' },
+  { n: '02', title: 'Make an ATS-ready resume', body: 'Build a one-page resume, then check it against the job description before you apply.' },
+  { n: '03', title: 'Apply and keep track', body: 'Write a tailored cover letter, apply on the company page and track every application.' },
+];
+
+const CITIES = [
+  { href: '/jobs-in/bangalore', label: 'Bangalore' },
+  { href: '/jobs-in/hyderabad', label: 'Hyderabad' },
+  { href: '/jobs-in/pune', label: 'Pune' },
+  { href: '/jobs-in/chennai', label: 'Chennai' },
+  { href: '/jobs-in/delhi-ncr', label: 'Delhi NCR' },
+];
+const BATCHES = ['2025', '2026', '2027', '2028'];
+
+const TOOLS = [
+  { href: '/resume/builder', title: 'Resume builder', body: 'Clean, ATS-friendly resume made for freshers.' },
+  { href: '/ats-checker', title: 'ATS resume checker', body: 'Score your resume against a job description.' },
+  { href: '/cover-letter', title: 'Cover letter generator', body: 'Draft a tailored cover letter in seconds.' },
+  { href: '/leetcode', title: 'Coding practice', body: 'Practise DSA problems for tech interviews.' },
+];
+
 export default function MultilingualLanding({ previewJobs }: Props) {
-  const { t, dict } = useTranslation();
-
-  const flowSteps = dict.flow?.steps || [
-    {
-      tag: 'discover',
-      title: 'Find the role',
-      body: 'Search jobs, internships, and remote roles crawled daily from company career pages, Indeed, and LinkedIn Jobs.',
-    },
-    {
-      tag: 'apply',
-      title: 'Apply with confidence',
-      body: 'Generate an ATS-ready resume and a tailored cover letter for the exact listing in a couple of minutes.',
-    },
-    {
-      tag: 'track',
-      title: 'Track every application',
-      body: 'Log statuses, deadlines, and follow-ups in one tracker instead of a scattered spreadsheet.',
-    },
-    {
-      tag: 'land it',
-      title: 'Prep and get hired',
-      body: 'Practice with STAR-method stories and common interview questions before the call.',
-    },
-  ];
-
-  const featureItems = dict.features?.items || [
-    {
-      tag: 'jobs',
-      title: 'One feed, every source',
-      body: 'Jobs, internships, remote roles, and government jobs — crawled daily and organised so you search once, not across ten tabs.',
-    },
-    {
-      tag: 'resume',
-      title: 'Resume from real work',
-      body: 'Turn your GitHub commits and project work into ATS-ready resume bullets, tuned to a specific job description.',
-    },
-    {
-      tag: 'ats',
-      title: 'ATS checker + cover letters',
-      body: 'Score your resume against a job description, then draft a tailored cover letter in seconds.',
-    },
-    {
-      tag: 'tracker',
-      title: 'Application tracker',
-      body: 'Every application, deadline, and interview in one board so nothing slips through.',
-    },
-  ];
-
-  const categoryCards = [
-    { href: '/jobs', label: dict.categories?.items?.[0]?.label || 'All jobs', body: dict.categories?.items?.[0]?.body || 'Every open listing across India, remote, and abroad.' },
-    { href: '/internships', label: dict.categories?.items?.[1]?.label || 'Internships', body: dict.categories?.items?.[1]?.body || 'India, remote, and Japan — refreshed daily.' },
-    { href: '/remote-jobs', label: dict.categories?.items?.[2]?.label || 'Remote jobs', body: dict.categories?.items?.[2]?.body || 'Fully remote roles from US, UK, and worldwide.' },
-    { href: '/government-jobs', label: dict.categories?.items?.[3]?.label || 'Government jobs', body: dict.categories?.items?.[3]?.body || 'Sarkari Naukri notifications, tracked daily.' },
-    { href: '/companies', label: dict.categories?.items?.[4]?.label || 'Companies hiring', body: dict.categories?.items?.[4]?.body || 'Top employers, mass-hiring drives, and startups.' },
-    { href: '/tools', label: dict.categories?.items?.[5]?.label || 'AI career tools', body: dict.categories?.items?.[5]?.body || 'Resume builder, ATS checker, and more — free.' },
-  ];
-
   return (
     <>
-      {/* Hero */}
-      <section className="hero-reveal relative container-xl grid items-center gap-10 overflow-hidden py-12 md:py-20">
-        <AuroraBackground particleCount={12} />
+      <HomeHero previewJobs={previewJobs} />
 
-        <div className="relative z-10 max-w-2xl">
-          <p data-reveal="0" className="eyebrow eyebrow-accent mb-3">
-            {t('hero.eyebrow', '// jobs, internships & resume tools')}
-          </p>
-          <h1 data-reveal="1" className="display text-[2rem] font-medium leading-[1.1] sm:text-[2.75rem]">
-            {t('hero.title', 'Your job search, internship hunt, and resume — in one place.')}
-          </h1>
-          <p data-reveal="2" className="mt-4 max-w-md text-base leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-            {t('hero.subtitle', 'InternFlow crawls listings from across the web every day, then helps you apply with an ATS-ready resume and a tailored cover letter — without juggling ten different tabs.')}
-          </p>
-
-          <div data-reveal="3" className="mt-5 flex flex-wrap gap-3">
-            <span className="chip chip-green">{t('hero.chipDaily', 'New listings daily')}</span>
-            <span className="chip chip-green">{t('hero.chipJobs', 'Jobs, internships & remote')}</span>
-            <span className="chip chip-green">{t('hero.chipFree', 'Free resume & ATS tools')}</span>
-          </div>
-
-          <div data-reveal="4" className="mt-7 flex flex-wrap items-center gap-3">
-            <MagneticLink href="/jobs" className="btn btn-primary">
-              {t('hero.browseJobs', 'Browse jobs')}
-            </MagneticLink>
-            <Link
-              href="/resume/builder"
-              className="btn btn-secondary transition-transform duration-150 hover:scale-[1.03] active:scale-[0.98]"
-            >
-              {t('hero.buildResume', 'Build my resume')}
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Intern Flow */}
-      <ScrollReveal as="section" className="container-xl py-14">
-        <hr className="hr-line mb-10" />
-        <p className="eyebrow eyebrow-accent mb-2">{t('flow.eyebrow', '// the intern flow')}</p>
-        <h2 className="display text-2xl font-medium mb-2">{t('flow.title', 'From search to signed offer')}</h2>
-        <p className="max-w-xl text-sm leading-relaxed mb-10" style={{ color: 'var(--ink-soft)' }}>
-          {t('flow.subtitle', 'One simple loop, start to finish — no need to piece it together across separate sites.')}
+      {/* By degree */}
+      <ScrollReveal as="section" className="container-xl py-10 sm:py-14">
+        <p className="eyebrow eyebrow-accent mb-2">// pick your degree</p>
+        <h2 className="display text-2xl font-medium mb-2">Jobs for B.Tech, BCA, MCA, B.Sc and MBA freshers</h2>
+        <p className="max-w-2xl text-sm leading-relaxed mb-8" style={{ color: 'var(--ink-soft)' }}>
+          Start from your degree and see which roles and skills to focus on first.
         </p>
-
-        <ScrollReveal as="div" stagger className="relative grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-          <div
-            className="pointer-events-none absolute left-0 right-0 top-6 hidden lg:block"
-            style={{ height: '1px', background: 'var(--line)' }}
-          />
-
-          {flowSteps.map((s: any, idx: number) => (
-            <div key={idx} className="relative">
-              <div
-                className="relative z-10 mb-4 flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold"
-                style={{ background: 'var(--indigo)', color: '#fff' }}
-              >
-                0{idx + 1}
+        <ScrollReveal as="div" stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {DEGREE_CARDS.map((d) => (
+            <div key={d.tag} className="panel card-lift flex flex-col p-5">
+              <p className="eyebrow eyebrow-accent">// {d.tag}</p>
+              <h3 className="display mt-2 text-lg font-medium">{d.title}</h3>
+              <p className="mt-2 flex-1 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{d.body}</p>
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                {d.links.map((l) => (
+                  <Link key={l.href} href={l.href} className="chip chip-indigo text-[11px] transition hover:opacity-80">{l.label}</Link>
+                ))}
               </div>
-              <p className="eyebrow eyebrow-accent mb-1.5">// {s.tag}</p>
-              <h3 className="display text-lg font-medium">{s.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-                {s.body}
-              </p>
             </div>
           ))}
         </ScrollReveal>
       </ScrollReveal>
 
-      {/* What's inside */}
-      <ScrollReveal as="section" className="container-xl py-14">
+      {/* Popular roles */}
+      <ScrollReveal as="section" className="container-xl py-10 sm:py-14">
         <hr className="hr-line mb-10" />
-        <p className="eyebrow eyebrow-accent mb-2">{t('features.eyebrow', "// what's inside")}</p>
-        <h2 className="display text-2xl font-medium mb-8">
-          {t('features.title', 'Everything in one workspace')}
-        </h2>
-        <ScrollReveal as="div" stagger className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {featureItems.map((f: any, idx: number) => (
-            <div key={idx} className="panel card-lift p-6">
-              <p className="eyebrow eyebrow-accent">// {f.tag}</p>
-              <h3 className="display mt-3 text-xl font-medium">{f.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-                {f.body}
-              </p>
-            </div>
+        <p className="eyebrow eyebrow-accent mb-2">// popular roles</p>
+        <h2 className="display text-2xl font-medium mb-8">Software, data and AI roles hiring freshers</h2>
+        <ScrollReveal as="div" stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {ROLES.map((r) => (
+            <Link key={r.href} href={r.href} className="panel card-lift block p-5">
+              <h3 className="display text-base font-medium">{r.title}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{r.body}</p>
+            </Link>
           ))}
         </ScrollReveal>
       </ScrollReveal>
 
-      {/* Featured jobs */}
+      {/* Latest listings */}
       {previewJobs.length > 0 && (
-        <ScrollReveal as="section" className="container-xl py-14">
+        <ScrollReveal as="section" className="container-xl py-10 sm:py-14">
           <hr className="hr-line mb-10" />
-          <div className="flex flex-wrap items-end justify-between gap-3 mb-8">
+          <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="eyebrow eyebrow-accent mb-2">{t('common.openNow', '// open right now')}</p>
-              <h2 className="display text-2xl font-medium">
-                {t('common.jobsThisWeek', "Jobs and internships from this week's crawl")}
-              </h2>
+              <p className="eyebrow eyebrow-accent mb-2">// open right now</p>
+              <h2 className="display text-2xl font-medium">Latest jobs and internships</h2>
             </div>
-            <Link
-              href="/jobs"
-              className="btn btn-secondary text-sm transition-transform duration-150 hover:scale-[1.03] active:scale-[0.98]"
-            >
-              {t('common.seeAll', 'See all listings')}
-            </Link>
+            <Link href="/jobs" className="btn btn-secondary text-sm">See all listings</Link>
           </div>
           <ScrollReveal as="div" stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {previewJobs.slice(0, 6).map((j) => (
               <JobCard key={j.id} job={j} />
             ))}
           </ScrollReveal>
-          <p className="mt-5 text-sm text-center" style={{ color: 'var(--muted)' }}>
-            {t('common.browseFull', 'Browse the full feed and apply directly — no account needed.')}
-          </p>
         </ScrollReveal>
       )}
 
-      {/* Browse by category */}
-      <ScrollReveal as="section" className="container-xl py-14">
+      {/* How it works */}
+      <ScrollReveal as="section" className="container-xl py-10 sm:py-14">
         <hr className="hr-line mb-10" />
-        <p className="eyebrow eyebrow-accent mb-2">{t('categories.eyebrow', '// browse by category')}</p>
-        <h2 className="display text-2xl font-medium mb-8">
-          {t('categories.title', "Find what you're looking for")}
-        </h2>
-        <ScrollReveal as="div" stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {categoryCards.map((c, i) => (
-            <Link key={i} href={c.href} className="panel card-lift p-5 block">
-              <h3 className="display text-base font-medium">{c.label}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-                {c.body}
-              </p>
+        <p className="eyebrow eyebrow-accent mb-2">// how it works</p>
+        <h2 className="display text-2xl font-medium mb-8">From search to application in three steps</h2>
+        <ScrollReveal as="div" stagger className="grid gap-6 sm:grid-cols-3">
+          {STEPS.map((s) => (
+            <div key={s.n}>
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold" style={{ background: 'var(--indigo)', color: '#fff' }}>{s.n}</div>
+              <h3 className="display text-lg font-medium">{s.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{s.body}</p>
+            </div>
+          ))}
+        </ScrollReveal>
+      </ScrollReveal>
+
+      {/* City & batch */}
+      <ScrollReveal as="section" className="container-xl py-10 sm:py-14">
+        <hr className="hr-line mb-10" />
+        <div className="grid gap-8 md:grid-cols-2">
+          <div>
+            <p className="eyebrow eyebrow-accent mb-2">// by city</p>
+            <h2 className="display text-xl font-medium mb-4">IT jobs in top Indian cities</h2>
+            <div className="flex flex-wrap gap-2">
+              {CITIES.map((c) => (<Link key={c.href} href={c.href} className="chip chip-muted transition hover:opacity-80">{c.label}</Link>))}
+              <Link href="/jobs-in" className="chip chip-indigo">All cities</Link>
+            </div>
+          </div>
+          <div>
+            <p className="eyebrow eyebrow-accent mb-2">// by passout batch</p>
+            <h2 className="display text-xl font-medium mb-4">Openings for your graduation year</h2>
+            <div className="flex flex-wrap gap-2">
+              {BATCHES.map((y) => (<Link key={y} href={`/batch/${y}`} className="chip chip-muted transition hover:opacity-80">{y} batch</Link>))}
+              <Link href="/batch" className="chip chip-indigo">All batches</Link>
+            </div>
+          </div>
+        </div>
+      </ScrollReveal>
+
+      {/* Tools */}
+      <ScrollReveal as="section" className="container-xl py-10 sm:py-14">
+        <hr className="hr-line mb-10" />
+        <p className="eyebrow eyebrow-accent mb-2">// free tools</p>
+        <h2 className="display text-2xl font-medium mb-8">Get your application ready</h2>
+        <ScrollReveal as="div" stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {TOOLS.map((t) => (
+            <Link key={t.href} href={t.href} className="panel card-lift block p-5">
+              <h3 className="display text-base font-medium">{t.title}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{t.body}</p>
             </Link>
           ))}
         </ScrollReveal>
       </ScrollReveal>
 
-      {/* About InternFlow long-form content */}
-      <HomeSEOContent />
+      {/* About (short, honest copy) */}
+      <ScrollReveal as="section" className="container-xl py-10 sm:py-14">
+        <hr className="hr-line mb-10" />
+        <p className="eyebrow eyebrow-accent mb-2">// about InternFlow</p>
+        <h2 className="display text-2xl font-medium mb-5">A job and internship search built for Indian freshers</h2>
+        <div className="max-w-3xl space-y-4 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+          <p>
+            InternFlow collects <Link href="/jobs" className="underline">jobs</Link> and{' '}
+            <Link href="/internships" className="underline">internships</Link> from company career pages and job boards, so you do
+            not have to check dozens of sites. It is aimed at B.Tech, BCA, MCA, B.Sc and MBA students and recent graduates looking
+            for their first role in software, data, AI, cloud or analytics.
+          </p>
+          <p>
+            Filter by role, skill, city or passout batch, then use the{' '}
+            <Link href="/resume/builder" className="underline">resume builder</Link>,{' '}
+            <Link href="/ats-checker" className="underline">ATS checker</Link> and{' '}
+            <Link href="/cover-letter" className="underline">cover letter generator</Link> before you apply. Read our{' '}
+            <Link href="/blog" className="underline">blog</Link> for interview preparation and resume guides.
+          </p>
+        </div>
+      </ScrollReveal>
 
       {/* FAQ */}
-      <ScrollReveal as="section" className="container-xl py-14">
+      <ScrollReveal as="section" className="container-xl py-10 sm:py-14">
         <hr className="hr-line mb-10" />
-        <p className="eyebrow eyebrow-accent mb-2">{t('common.faq', '// frequently asked')}</p>
-        <h2 className="display text-2xl font-medium mb-8">
-          {t('common.faqTitle', 'Questions about jobs, internships, and resumes')}
-        </h2>
-        <FAQAccordion />
+        <p className="eyebrow eyebrow-accent mb-2">// frequently asked</p>
+        <h2 className="display text-2xl font-medium mb-6">Fresher jobs in India: common questions</h2>
+        <HomeFaq />
       </ScrollReveal>
 
       {/* CTA */}
-      <ScrollReveal as="section" className="container-xl pb-20">
+      <ScrollReveal as="section" className="container-xl pb-16 sm:pb-20">
         <div className="panel-dark flex flex-col items-start justify-between gap-6 p-7 sm:flex-row sm:items-center">
           <div>
-            <p className="eyebrow" style={{ color: '#9ea3ab' }}>
-              {t('cta.eyebrow', '// ready when you are')}
-            </p>
+            <p className="eyebrow" style={{ color: '#9ea3ab' }}>// ready when you are</p>
             <p className="display mt-2 text-xl font-medium text-white sm:text-2xl">
-              {t('cta.title', 'Stop hunting across ten tabs. Start applying from one.')}
+              Find your first IT job or internship today.
             </p>
           </div>
-          <MagneticLink href="/jobs" className="btn btn-primary flex-shrink-0 whitespace-nowrap">
-            {t('cta.button', 'Browse jobs free')}
-          </MagneticLink>
+          <MagneticLink href="/jobs" className="btn btn-primary flex-shrink-0 whitespace-nowrap">Browse jobs free</MagneticLink>
         </div>
       </ScrollReveal>
     </>

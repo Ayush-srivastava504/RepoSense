@@ -9,15 +9,15 @@ import { languageAlternates } from '@/lib/structuredData';
 
 // SEO Metadata with international hreflang tags
 export const metadata: Metadata = {
-  title: { absolute: 'InternFlow — Jobs, Internships & AI Resume Tools' },
-  description: 'Find high paying jobs, remote DevOps jobs, AI engineer roles, and internships. Free AI resume generator, cover letter templates, and ATS resume builder.',
+  title: { absolute: 'Fresher Jobs & Internships in India for B.Tech, BCA, MCA, MBA | InternFlow' },
+  description: 'Find software engineer, data engineer, AI/ML and IT jobs and internships in India for B.Tech, BCA, MCA, B.Sc and MBA freshers. Updated daily, with a free ATS resume builder and cover letter tool.',
   alternates: {
     canonical: BASE_URL,
     languages: languageAlternates('/'),
   },
   openGraph: {
-    title: 'InternFlow — AI-Powered Career Platform for High Paying Jobs & Internships',
-    description: 'Get AI code reviews, generate ATS-friendly resumes, and find high paying jobs, remote devops jobs, and internships. Free tools for students.',
+    title: 'Fresher Jobs & Internships in India — Software, Data & AI Roles',
+    description: 'IT jobs and internships for B.Tech, BCA, MCA, B.Sc and MBA freshers in India, plus a free ATS resume builder and cover letter generator.',
     url: BASE_URL,
     siteName: 'InternFlow',
     images: [
@@ -32,8 +32,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'InternFlow — Find High Paying Jobs & Internships',
-    description: 'AI-powered resume builder, cover letter templates, and job search platform for students.',
+    title: 'Fresher Jobs & Internships in India | InternFlow',
+    description: 'Software, data and AI jobs and internships for Indian freshers, plus free resume and ATS tools.',
     images: [`${BASE_URL}/og-image.png`],
   },
 };
