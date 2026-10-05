@@ -69,7 +69,7 @@ export default function TrackerPage() {
         { name: 'Home', url: BASE_URL },
         { name: 'My Applications', url: PAGE_URL },
     ]);
-    return (<main className="mx-auto w-full max-w-6xl px-4 py-8 sm:py-10">
+    return (<div className="mx-auto w-full max-w-6xl">
       <Script id="tracker-app-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(appSchema) }}/>
       <Script id="tracker-howto-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howTo) }}/>
       <Script id="tracker-faq-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqs) }}/>
@@ -77,64 +77,48 @@ export default function TrackerPage() {
       <Breadcrumbs schema={crumbs}/>
       <TrackView event="tracker_landing_view"/>
 
-      <p className="eyebrow eyebrow-accent">// career tools</p>
-      <h1 className="display mt-2 text-3xl font-medium sm:text-4xl">
+      <h1 className="display text-3xl font-medium sm:text-4xl">
         My Applications
       </h1>
-      <p className="mt-3 max-w-2xl text-lg" style={{ color: 'var(--ink-soft)' }}>
-        Track every internship and job application in one free pipeline —
+      <p className="mt-2 max-w-2xl text-base" style={{ color: 'var(--ink-soft)' }}>
+        Track every internship and job application in one free pipeline,
         no account required.
       </p>
-      <p className="mt-4 max-w-2xl leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-        Job boards are stateless — you find a listing, leave, and lose track
-        of what you saved, what you already applied to, and when a deadline
-        is coming up. Save any job or internship from InternFlow in one
-        click, move it through Saved → Applied → Interviewing → Offer, and
-        get a heads-up on deadlines before it&apos;s too late to apply.
-        Everything stays in your own browser, not on a server.
-      </p>
 
-      <section className="mt-10">
+      <TrackerBoard />
+
+      <section className="mt-14">
         <h2 className="display text-xl font-medium">How it works</h2>
         <div className="mt-4">
           <StepGrid steps={HOW_IT_WORKS}/>
         </div>
+        <p className="mt-6 max-w-2xl text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+          Job boards are stateless: you find a listing, leave, and lose track
+          of what you saved, what you already applied to, and when a deadline
+          is coming up. Save any job or internship from InternFlow in one
+          click, move it through Saved, Applied, Interviewing and Offer, and
+          get a heads-up on deadlines before it&apos;s too late to apply.
+          Everything stays in your own browser, not on a server.
+        </p>
       </section>
 
-      <TrackerBoard />
-
-      <section className="mt-12 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
+      <section className="mt-12 max-w-3xl">
         <h2 className="display text-xl font-medium">Frequently asked questions</h2>
-        <div className="mt-4 space-y-3">
-          {FAQS.map((faq) => (<div key={faq.question} className="panel p-4 sm:p-5">
-              <p className="font-medium">{faq.question}</p>
-              <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{faq.answer}</p>
-            </div>))}
+        <div className="mt-4 divide-y border-y" style={{ borderColor: 'var(--line)' }}>
+          {FAQS.map((faq) => (<details key={faq.question} className="group py-4">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium">
+                {faq.question}
+                <span aria-hidden="true" className="flex-none text-lg transition-transform group-open:rotate-45" style={{ color: 'var(--muted)' }}>+</span>
+              </summary>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{faq.answer}</p>
+            </details>))}
         </div>
       </section>
 
-      <section className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
-        <h2 className="display text-xl font-medium">Explore more</h2>
-        <ul className="mt-4 grid gap-3 sm:grid-cols-3">
-          <li>
-            <Link href="/jobs" className="panel card-lift flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium">
-              Browse jobs
-              <span aria-hidden="true" style={{ color: 'var(--ink-soft)' }}>→</span>
-            </Link>
-          </li>
-          <li>
-            <Link href="/internships" className="panel card-lift flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium">
-              Browse internships
-              <span aria-hidden="true" style={{ color: 'var(--ink-soft)' }}>→</span>
-            </Link>
-          </li>
-          <li>
-            <Link href="/tools/job-match-score" className="panel card-lift flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium">
-              AI job match score
-              <span aria-hidden="true" style={{ color: 'var(--ink-soft)' }}>→</span>
-            </Link>
-          </li>
-        </ul>
-      </section>
-    </main>);
+      <nav aria-label="Keep exploring" className="mt-12 flex flex-wrap gap-2 text-sm">
+        <Link href="/internships" className="btn btn-secondary">Browse internships</Link>
+        <Link href="/jobs" className="btn btn-secondary">Browse jobs</Link>
+        <Link href="/tools/job-match-score" className="btn btn-secondary">AI job match score</Link>
+      </nav>
+    </div>);
 }

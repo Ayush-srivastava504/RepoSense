@@ -1,4 +1,6 @@
 // Module: app/tracker/TrackerBoard.tsx
+// The pipeline board: a stage bar, closing-soon banner, four stage lanes (tabs on mobile) and a collapsed
+// Rejected list. Data lives in localStorage via lib/tracker.
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -16,93 +18,107 @@ import {
 } from '@/lib/tracker';
 import { trackEvent } from '@/lib/analytics';
 
-function DeadlinePill({ deadline }: { deadline?: string }) {
+const STAGE_COLOR: Record<ApplicationStatus, string> = {
+  saved: 'var(--line-strong)',
+  applied: 'var(--ink-soft)',
+  interviewing: 'var(--indigo)',
+  offer: 'var(--green)',
+  rejected: 'var(--rust)',
+};
+// The one-tap move shown on each card. Offer and Rejected are end states, so they have none.
+const NEXT: Partial<Record<ApplicationStatus, { to: ApplicationStatus; label: string }>> = {
+  saved: { to: 'applied', label: 'Mark applied' },
+  applied: { to: 'interviewing', label: 'Got an interview' },
+  interviewing: { to: 'offer', label: 'Got an offer' },
+};
+const LANES = STATUS_ORDER.filter((s) => s !== 'rejected');
+const DAY = 24 * 60 * 60 * 1000;
+
+function daysSince(iso: string): number {
+  const t = new Date(iso).getTime();
+  return Number.isNaN(t) ? 0 : Math.floor((Date.now() - t) / DAY);
+}
+
+function deadlineInfo(deadline?: string): { text: string; color: string } | null {
   const days = daysUntilDeadline(deadline);
   if (days === null) return null;
-
-  let color = 'var(--muted)';
-  let text = `${days} day${days === 1 ? '' : 's'} left`;
-
-  if (days < 0) {
-    color = 'var(--muted)';
-    text = 'Deadline passed';
-  } else if (days <= 2) {
-    color = 'var(--rust)';
-  } else if (days <= 7) {
-    color = 'var(--score-amber, #b45309)';
-  }
-
-  return (
-    <span className="text-[11px] font-medium" style={{ color }}>
-      ⏳ {text}
-    </span>
-  );
+  if (days < 0) return { text: 'Deadline passed', color: 'var(--muted)' };
+  const text = days === 0 ? 'Closes today' : `Closes in ${days} day${days === 1 ? '' : 's'}`;
+  if (days <= 2) return { text, color: 'var(--rust)' };
+  if (days <= 7) return { text, color: 'var(--score-amber, #b45309)' };
+  return { text, color: 'var(--ink-soft)' };
 }
 
 function TrackedJobCard({ job }: { job: TrackedJob }) {
+  const due = job.status === 'saved' || job.status === 'applied' ? deadlineInfo(job.deadline) : null;
+  const waiting = job.status === 'applied' ? daysSince(job.statusUpdatedAt) : 0;
+  const next = NEXT[job.status];
   return (
-    <div className="panel flex flex-col gap-2 p-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium" style={{ color: 'var(--ink)' }}>
-            {job.title}
+    <article className="flex flex-col gap-3 rounded-[var(--radius-md)] p-3" style={{ background: 'var(--paper)', border: '1px solid var(--line)' }}>
+      <div className="flex items-start gap-2.5">
+        <span aria-hidden="true" className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-md text-sm font-semibold" style={{ background: 'var(--paper-dim)', color: 'var(--ink-soft)' }}>
+          {job.company.trim().charAt(0).toUpperCase() || '?'}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-sm font-semibold leading-snug">
+            {job.url ? (
+              <a href={job.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{job.title}</a>
+            ) : job.title}
           </p>
-          <p className="truncate text-xs" style={{ color: 'var(--ink-soft)' }}>
-            {job.company}
-            {job.location ? ` · ${job.location}` : ''}
+          <p className="mt-0.5 truncate text-xs" style={{ color: 'var(--ink-soft)' }}>
+            {job.company}{job.location ? `, ${job.location}` : ''}
           </p>
         </div>
-
         <button
           type="button"
           onClick={() => {
             removeTrackedJob(job.jobId);
             trackEvent('tracker_remove', { job_id: job.jobId });
           }}
-          aria-label="Remove"
-          className="shrink-0 text-xs"
-          style={{ color: 'var(--muted)', minWidth: '32px', minHeight: '32px' }}
+          aria-label={`Remove ${job.title}`}
+          className="-mr-1 -mt-1 flex h-8 w-8 flex-none items-center justify-center rounded-md text-sm transition-colors hover:bg-[var(--paper-dim)]"
+          style={{ color: 'var(--muted)' }}
         >
-          ✕
+          <span aria-hidden="true">✕</span>
         </button>
       </div>
 
-      <DeadlinePill deadline={job.deadline} />
+      {(due || waiting >= 7) && (
+        <p className="text-xs font-medium" style={{ color: due ? due.color : 'var(--score-amber, #b45309)' }}>
+          {due ? due.text : `No reply in ${waiting} days. Worth a follow-up.`}
+        </p>
+      )}
 
       <div className="flex items-center gap-2">
+        {next && (
+          <button
+            type="button"
+            onClick={() => {
+              updateStatus(job.jobId, next.to);
+              trackEvent('tracker_status_change', { job_id: job.jobId, status: next.to });
+            }}
+            className="btn btn-secondary min-h-[36px] flex-1 !px-2 !py-1 text-xs"
+          >
+            {next.label}
+          </button>
+        )}
         <select
+          aria-label={`Status of ${job.title}`}
           value={job.status}
           onChange={(e) => {
             const status = e.target.value as ApplicationStatus;
             updateStatus(job.jobId, status);
             trackEvent('tracker_status_change', { job_id: job.jobId, status });
           }}
-          className="flex-1 rounded-md p-1.5 text-xs"
-          style={{
-            border: '1px solid var(--line-strong)',
-            background: 'transparent',
-            color: 'var(--ink)',
-          }}
+          className={`min-h-[36px] rounded-md px-1.5 text-xs ${next ? 'w-[6.5rem]' : 'flex-1'}`}
+          style={{ border: '1px solid var(--line-strong)', background: 'transparent', color: 'var(--ink)' }}
         >
           {STATUS_ORDER.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABELS[s]}
-            </option>
+            <option key={s} value={s}>{STATUS_LABELS[s]}</option>
           ))}
         </select>
-
-        {job.url && (
-          <a
-            href={job.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn btn-secondary px-2 py-1 text-[11px]"
-          >
-            View →
-          </a>
-        )}
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -117,102 +133,111 @@ export default function TrackerBoard() {
   }, []);
 
   const byStatus = (status: ApplicationStatus) => jobs.filter((j) => j.status === status);
-
-  const upcomingDeadlines = jobs
-    .filter((j) => {
-      const d = daysUntilDeadline(j.deadline);
-      return d !== null && d >= 0 && d <= 7 && j.status !== 'rejected';
-    })
-    .sort((a, b) => (daysUntilDeadline(a.deadline) ?? 0) - (daysUntilDeadline(b.deadline) ?? 0));
+  const closing = jobs
+    .map((job) => ({ job, days: daysUntilDeadline(job.deadline) }))
+    .filter((x): x is { job: TrackedJob; days: number } => x.days !== null && x.days >= 0 && x.days <= 7 && (x.job.status === 'saved' || x.job.status === 'applied'))
+    .sort((a, b) => a.days - b.days);
+  const rejected = byStatus('rejected');
+  const inPlay = jobs.length - rejected.length;
 
   return (
-    <div className="mt-6 sm:mt-10">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="display text-xl font-medium" style={{ color: 'var(--ink)' }}>
-          Your pipeline
-        </h2>
-      </div>
-
-      {upcomingDeadlines.length > 0 && (
-        <div className="panel mt-6 flex flex-col gap-1.5 p-4" style={{ borderColor: 'var(--rust)' }}>
-          <p className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>
-            ⏳ {upcomingDeadlines.length} deadline
-            {upcomingDeadlines.length === 1 ? '' : 's'} coming up this week
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {upcomingDeadlines.map((j) => (
-              <span key={j.jobId} className="chip chip-rust text-[11px]">
-                {j.title} · {j.company}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
+    <section aria-label="Application pipeline" className="mt-8">
       {jobs.length === 0 ? (
-        <div className="panel mt-8 flex flex-col items-center gap-3 p-8 text-center sm:p-10">
-          <p className="text-sm" style={{ color: 'var(--ink-soft)' }}>
-            You haven&apos;t saved any jobs yet. Tap the bookmark icon on any listing to start
-            building your pipeline.
+        <div className="panel p-6 sm:p-8">
+          <h2 className="display text-xl font-medium">Your pipeline starts with one saved listing</h2>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+            Tap the bookmark on any job or internship. It shows up in Saved, and you move it across as you apply, interview and get offers.
           </p>
-          <Link href="/jobs" className="btn btn-primary px-4 py-2 text-sm">
-            Browse jobs →
-          </Link>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link href="/internships" className="btn btn-primary text-sm">Browse internships</Link>
+            <Link href="/jobs" className="btn btn-secondary text-sm">Browse jobs</Link>
+          </div>
         </div>
       ) : (
-        <>
-          <div className="mt-6 flex gap-1.5 overflow-x-auto no-scrollbar pb-1 lg:hidden">
-            {STATUS_ORDER.map((status) => (
-              <button
-                key={status}
-                type="button"
-                onClick={() => setActiveTab(status)}
-                className={`flex-none rounded-[var(--radius-sm)] px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors ${
-                  activeTab === status
-                    ? 'bg-[var(--indigo-soft)] text-[var(--indigo)]'
-                    : 'text-[var(--ink-soft)] hover:bg-[var(--paper-dim)]'
-                }`}
-              >
-                {STATUS_LABELS[status]}
-                {byStatus(status).length > 0 && (
-                  <span className="ml-1.5 rounded-full bg-[var(--line)] px-1.5 text-[10px]">
-                    {byStatus(status).length}
-                  </span>
-                )}
-              </button>
-            ))}
+        <div className="flex flex-col gap-4">
+          <div>
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="display text-xl font-medium">{inPlay} in play</h2>
+              <p className="text-xs" style={{ color: 'var(--muted)' }}>Saved on this device only</p>
+            </div>
+            <div className="mt-3 flex h-2 overflow-hidden rounded-full" style={{ background: 'var(--line)' }} role="img" aria-label={LANES.map((s) => `${byStatus(s).length} ${STATUS_LABELS[s].toLowerCase()}`).join(', ')}>
+              {LANES.map((s) => byStatus(s).length > 0 && (
+                <span key={s} style={{ width: `${(byStatus(s).length / Math.max(inPlay, 1)) * 100}%`, background: STAGE_COLOR[s] }} />
+              ))}
+            </div>
           </div>
 
-          <div className="mt-3 flex flex-col gap-3 lg:hidden">
-            {byStatus(activeTab).length === 0 ? (
-              <p className="py-6 text-center text-sm" style={{ color: 'var(--muted)' }}>
-                No applications here yet.
-              </p>
+          {closing.length > 0 && (
+            <div className="rounded-[var(--radius-md)] p-4" style={{ background: 'var(--rust-soft)', border: '1px solid var(--rust)' }}>
+              <p className="text-sm font-semibold">Closing this week</p>
+              <ul className="mt-2 space-y-1">
+                {closing.map(({ job, days }) => (
+                  <li key={job.jobId} className="flex items-baseline justify-between gap-3 text-sm">
+                    <span className="min-w-0 truncate">{job.title} <span style={{ color: 'var(--ink-soft)' }}>at {job.company}</span></span>
+                    <span className="flex-none text-xs font-semibold" style={{ color: days <= 2 ? 'var(--rust)' : 'var(--ink)' }}>
+                      {days === 0 ? 'Today' : `${days}d left`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Mobile and tablet: one stage at a time */}
+      <div className="mt-6 lg:hidden">
+        <div role="tablist" aria-label="Stages" className="no-scrollbar flex gap-1.5 overflow-x-auto pb-1">
+          {STATUS_ORDER.map((status) => (
+            <button
+              key={status}
+              role="tab"
+              aria-selected={activeTab === status}
+              type="button"
+              onClick={() => setActiveTab(status)}
+              className={`flex-none whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold transition-colors ${
+                activeTab === status ? 'bg-[var(--ink)] text-[var(--paper)]' : 'bg-[var(--paper-dim)] text-[var(--ink-soft)]'
+              }`}
+            >
+              {STATUS_LABELS[status]} <span className="ml-1 tabular-nums opacity-70">{byStatus(status).length}</span>
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-col gap-3">
+          {byStatus(activeTab).length === 0 ? (
+            <p className="py-8 text-center text-sm" style={{ color: 'var(--muted)' }}>Nothing in {STATUS_LABELS[activeTab].toLowerCase()} yet.</p>
+          ) : (
+            byStatus(activeTab).map((job) => <TrackedJobCard key={job.jobId} job={job} />)
+          )}
+        </div>
+      </div>
+
+      {/* Desktop: four stage lanes, Rejected tucked below */}
+      <div className="mt-6 hidden items-start gap-3 lg:grid lg:grid-cols-4">
+        {LANES.map((status) => (
+          <div key={status} className="flex min-h-[8rem] flex-col gap-2.5 rounded-[var(--radius-lg)] p-2.5" style={{ background: 'var(--paper-dim)' }}>
+            <div className="flex items-center gap-2 px-1.5 pt-1">
+              <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full" style={{ background: STAGE_COLOR[status] }} />
+              <h3 className="text-sm font-semibold">{STATUS_LABELS[status]}</h3>
+              <span className="ml-auto text-xs tabular-nums" style={{ color: 'var(--muted)' }}>{byStatus(status).length}</span>
+            </div>
+            {byStatus(status).length === 0 ? (
+              <p className="px-1.5 py-4 text-xs" style={{ color: 'var(--muted)' }}>Nothing here yet.</p>
             ) : (
-              byStatus(activeTab).map((job) => <TrackedJobCard key={job.jobId} job={job} />)
+              byStatus(status).map((job) => <TrackedJobCard key={job.jobId} job={job} />)
             )}
           </div>
+        ))}
+      </div>
 
-          <div className="mt-8 hidden grid-cols-1 gap-4 sm:grid-cols-2 lg:grid lg:grid-cols-5">
-            {STATUS_ORDER.map((status) => (
-              <div key={status} className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ink-soft)' }}>
-                    {STATUS_LABELS[status]}
-                  </p>
-                  <span className="chip chip-muted text-[11px]">{byStatus(status).length}</span>
-                </div>
-                <div className="flex flex-col gap-3">
-                  {byStatus(status).map((job) => (
-                    <TrackedJobCard key={job.jobId} job={job} />
-                  ))}
-                </div>
-              </div>
-            ))}
+      {rejected.length > 0 && (
+        <details className="mt-4 hidden rounded-[var(--radius-md)] p-3 lg:block" style={{ border: '1px solid var(--line)' }}>
+          <summary className="cursor-pointer text-sm font-semibold">Rejected ({rejected.length})</summary>
+          <div className="mt-3 grid grid-cols-4 gap-3">
+            {rejected.map((job) => <TrackedJobCard key={job.jobId} job={job} />)}
           </div>
-        </>
+        </details>
       )}
-    </div>
+    </section>
   );
 }
-

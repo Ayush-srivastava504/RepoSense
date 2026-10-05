@@ -19,147 +19,108 @@ export const metadata: Metadata = {
         url: `${BASE_URL}/about`,
     },
 };
-const values = [
+const beliefs = [
     {
-        tag: 'why',
         title: 'Built by students, for students',
-        body: 'We were tired of resumes full of vague bullet points and code reviews that only happen during a job interview. InternFlow turns the work you are already doing on GitHub into proof — and into a better resume.',
+        body: 'We were tired of resumes full of vague bullet points and code reviews that only happen during a job interview. InternFlow turns the work you are already doing into proof, and into a better resume.',
     },
     {
-        tag: 'how',
         title: 'Real signal, not templates',
-        body: 'Every resume bullet is generated from your actual commits, pull requests, and AI review history — never a generic template filled in with guesses.',
+        body: 'Every resume bullet is generated from your actual commits, pull requests, and AI review history, never a generic template filled in with guesses.',
     },
     {
-        tag: 'what',
-        title: 'A full workspace, not a single tool',
-        body: 'Code review, a connected GitHub workspace, a curated internship feed, and a resume builder — all reading from the same source of truth.',
+        title: 'One workspace, not a single tool',
+        body: 'Listings, a resume builder, an ATS checker, cover letters, an application tracker, and code review, all in one place so each step feeds the next.',
     },
 ];
-const stats = [
-    { value: '1,200+', label: 'students' },
-    { value: '8,400', label: 'repos analyzed' },
-    { value: '3,100', label: 'resumes generated' },
+
+const tools = [
+    { href: '/internships', name: 'Internships', body: 'Fresh internship listings for students and freshers.' },
+    { href: '/jobs', name: 'Jobs', body: 'Entry-level and fresher roles, with top companies first.' },
+    { href: '/government-jobs', name: 'Government jobs', body: 'Recruitment notices with vacancies and last dates.' },
+    { href: '/companies', name: 'Companies hiring', body: 'See every open role at a company in one place.' },
+    { href: '/resume/builder', name: 'Resume builder', body: 'ATS-friendly resumes built from your real work.' },
+    { href: '/ats-checker', name: 'ATS resume checker', body: 'Score your resume against a job and find missing keywords.' },
+    { href: '/cover-letter', name: 'Cover letter generator', body: 'A first draft from your resume and the job description.' },
+    { href: '/tracker', name: 'Application tracker', body: 'Saved, Applied, Interviewing, Offer, with deadline alerts.' },
 ];
-const team = [
-    {
-        name: 'Product & Engineering',
-        body: 'Small team, shipping weekly. We dogfood InternFlow on our own repos.',
-    },
-];
+
 export default function AboutPage() {
     const breadcrumb = breadcrumbSchema([
         { name: 'Home', url: BASE_URL },
         { name: 'About', url: `${BASE_URL}/about` },
     ]);
-    return (<>
+    return (<div className="mx-auto w-full max-w-4xl">
       <script type="application/ld+json" dangerouslySetInnerHTML={{
             __html: JSON.stringify(breadcrumb),
         }}/>
       <Breadcrumbs schema={breadcrumb}/>
 
-      <div>
-        <p className="eyebrow eyebrow-accent">// about</p>
-
-        <h1 className="display mt-2 text-2xl font-medium sm:text-3xl">
+      <header className="max-w-3xl">
+        <h1 className="display text-3xl font-medium leading-tight sm:text-5xl">
           Why InternFlow exists
         </h1>
-
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-          InternFlow connects to your GitHub, reviews your code like a senior
-          engineer would, and turns that real work into a resume tuned for the
-          internship you're applying to — all in one workspace.
+        <p className="mt-5 text-lg leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+          InternFlow helps college students and freshers in India find internships
+          and entry-level jobs, then get their resume and code ready to apply.
+          It connects to your GitHub, reviews your code like a senior engineer
+          would, and turns that real work into a resume tuned for the role you
+          want, all in one workspace.
         </p>
-      </div>
+        <div className="mt-7 flex flex-wrap gap-3">
+          <Link href="/dashboard" className="btn btn-primary">Get started free</Link>
+          <Link href="/internships" className="btn btn-secondary">Browse internships</Link>
+        </div>
+      </header>
 
-      <div className="mt-8 flex flex-wrap gap-3">
-        {stats.map((s) => (<div key={s.label} className="panel px-5 py-3">
-            <p className="display text-xl font-medium">{s.value}</p>
-            <p className="eyebrow mt-0.5">{s.label}</p>
-          </div>))}
-      </div>
-
-      <div className="mt-12">
-        <hr className="hr-line mb-10"/>
-
-        <p className="eyebrow eyebrow-accent mb-2">// the mission</p>
-
-        <h2 className="display text-xl font-medium mb-8">
-          What we believe
-        </h2>
-
-        <div className="grid gap-5 sm:grid-cols-3">
-          {values.map((v) => (<div key={v.tag} className="panel p-6">
-              <p className="eyebrow eyebrow-accent">// {v.tag}</p>
-
-              <h3 className="display mt-3 text-lg font-medium">
-                {v.title}
-              </h3>
-
-              <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-                {v.body}
-              </p>
+      <section className="mt-16" aria-labelledby="beliefs">
+        <h2 id="beliefs" className="display text-2xl font-medium">What we believe</h2>
+        <div className="mt-6 grid gap-8 sm:grid-cols-3">
+          {beliefs.map((b) => (<div key={b.title} className="border-l-2 pl-4" style={{ borderColor: 'var(--indigo)' }}>
+              <h3 className="display text-lg font-medium leading-snug">{b.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{b.body}</p>
             </div>))}
         </div>
-      </div>
+      </section>
 
-      <div className="mt-12">
-        <hr className="hr-line mb-10"/>
+      <section className="mt-16" aria-labelledby="tools">
+        <h2 id="tools" className="display text-2xl font-medium">What you can do here</h2>
+        <ul className="panel mt-6 grid overflow-hidden sm:grid-cols-2">
+          {tools.map((t, i) => (<li key={t.href} className={`${i > 0 ? 'border-t' : ''} ${i === 1 ? 'sm:border-t-0' : ''} ${i >= 2 ? 'sm:border-t' : ''} ${i % 2 === 1 ? 'sm:border-l' : ''}`} style={{ borderColor: 'var(--line)' }}>
+              <Link href={t.href} className="block px-5 py-4 transition-colors hover:bg-[var(--paper-dim)]">
+                <span className="block text-sm font-semibold">{t.name}</span>
+                <span className="mt-0.5 block text-sm leading-snug" style={{ color: 'var(--ink-soft)' }}>{t.body}</span>
+              </Link>
+            </li>))}
+        </ul>
+      </section>
 
-        <p className="eyebrow eyebrow-accent mb-2">// the team</p>
-
-        <h2 className="display text-xl font-medium mb-6">
-          Who&apos;s behind it
-        </h2>
-
-        <div className="grid gap-5 sm:grid-cols-2">
-          {team.map((t) => (<div key={t.name} className="panel p-6">
-              <p className="display text-base font-medium">{t.name}</p>
-
-              <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-                {t.body}
-              </p>
-            </div>))}
-        </div>
-      </div>
-
-      <div className="mt-12">
-        <hr className="hr-line mb-10"/>
-
-        <p className="eyebrow eyebrow-accent mb-2">// contact</p>
-
-        <h2 className="display text-xl font-medium mb-4">
-          Get in touch
-        </h2>
-
-        <div className="panel p-6 max-w-md">
-          <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-            Questions, feedback, partnership requests, or a job/internship
-            listing you'd like removed — reach out any time.
+      <section className="mt-16 grid gap-10 sm:grid-cols-2" aria-label="Team and contact">
+        <div>
+          <h2 className="display text-2xl font-medium">Who&apos;s behind it</h2>
+          <p className="mt-3 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+            A small product and engineering team, shipping weekly. We dogfood InternFlow on our own repos.
           </p>
-
-          <a href="mailto:creatoramplified@gmail.com" className="mt-3 inline-block text-sm font-medium underline">
+        </div>
+        <div>
+          <h2 className="display text-2xl font-medium">Get in touch</h2>
+          <p className="mt-3 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+            Questions, feedback, partnership requests, or a job or internship listing you&apos;d like removed:
+            email us any time.
+          </p>
+          <a href="mailto:creatoramplified@gmail.com" className="mt-2 inline-block text-sm font-medium underline underline-offset-2">
             creatoramplified@gmail.com
           </a>
         </div>
-      </div>
+      </section>
 
-      <div className="mt-12">
-        <div className="panel-dark flex flex-col items-start justify-between gap-6 p-7 sm:flex-row sm:items-center">
-          <div>
-            <p className="eyebrow" style={{ color: '#9ea3ab' }}>
-              // ready when you are
-            </p>
-
-            <p className="display mt-2 text-xl font-medium text-white sm:text-2xl">
-              Connect a repo and see your first review in minutes.
-            </p>
-          </div>
-
-          <Link href="/dashboard" className="btn btn-primary flex-shrink-0 whitespace-nowrap">
-            Get started free
-          </Link>
-        </div>
-      </div>
-    </>);
+      <section className="panel-dark mt-16 flex flex-col items-start justify-between gap-6 p-7 sm:flex-row sm:items-center">
+        <p className="display max-w-lg text-xl font-medium text-white sm:text-2xl">
+          Find an internship, build your resume, and track every application in one place.
+        </p>
+        <Link href="/dashboard" className="btn btn-primary flex-shrink-0 whitespace-nowrap">
+          Get started free
+        </Link>
+      </section>
+    </div>);
 }
