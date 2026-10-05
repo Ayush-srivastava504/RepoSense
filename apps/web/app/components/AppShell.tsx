@@ -12,7 +12,9 @@ import Sidebar from './Sidebar';
 import LandingNav from './LandingNav';
 import { LanguageProvider } from '@/i18n/LanguageContext';
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+// footerExtra is a server-rendered node (the footer's "Hiring now" rows) passed through to Footer; a client
+// component can render it but cannot import the async server component itself.
+export default function AppShell({ children, footerExtra }: { children: React.ReactNode; footerExtra?: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -34,7 +36,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex min-h-screen flex-col" style={{ background: 'var(--paper)' }}>
           <LandingNav />
           <main className="flex-1">{children}</main>
-          <Footer />
+          <Footer hiring={footerExtra} />
         </div>
       </LanguageProvider>
     );
@@ -113,7 +115,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <PageTransition>{children}</PageTransition>
           </main>
 
-          <Footer />
+          <Footer hiring={footerExtra} />
         </div>
       </div>
     </LanguageProvider>

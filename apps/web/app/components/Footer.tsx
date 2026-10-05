@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 import Logo from './Logo';
+import { BASE_URL } from '@/lib/site';
 
 const COLUMNS: { heading: string; links: { href: string; label: string }[] }[] = [
   {
@@ -51,7 +52,11 @@ const linkStyle = { color: 'var(--ink-soft)' } as const;
 const inline = 'underline underline-offset-2 transition hover:opacity-80';
 const inlineStyle = { color: 'var(--ink)' } as const;
 
-export default function Footer() {
+// Google's "preferred sources" deep link (developers.google.com/search/docs/appearance/preferred-sources).
+// Domain-level only; it affects Top Stories for users who opt in.
+const PREFERRED_SOURCE_URL = `https://www.google.com/preferences/source?q=${new URL(BASE_URL).host}`;
+
+export default function Footer({ hiring }: { hiring?: React.ReactNode }) {
   return (
     <footer className="mt-8 border-t" style={{ borderColor: 'var(--line)' }}>
       <div className="container-xl py-10 sm:py-14">
@@ -80,6 +85,22 @@ export default function Footer() {
               </ul>
             </nav>
           ))}
+        </div>
+
+        <div className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
+          <a
+            href={PREFERRED_SOURCE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition hover:opacity-80"
+            style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z" />
+            </svg>
+            Add InternFlow as a preferred source on Google
+          </a>
+          {hiring}
         </div>
 
         <div className="mt-10 border-t pt-8" style={{ borderColor: 'var(--line)' }}>
