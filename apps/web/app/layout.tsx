@@ -8,6 +8,7 @@ import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
 import { Inter, Fraunces, IBM_Plex_Mono } from 'next/font/google';
 import AppShell from './components/AppShell';
+import BotSignals from './components/BotSignals';
 import FooterHiring from './components/FooterHiring';
 import { BASE_URL } from '@/lib/site';
 import { ADSENSE_SRC } from '@/lib/adsense';
@@ -190,6 +191,8 @@ export default function RootLayout({ children, }: Readonly<{
             });
           `}
         </Script>
+
+        <BotSignals />
 
         <AppShell footerExtra={<FooterHiring />}>{children}</AppShell>
       </body>
