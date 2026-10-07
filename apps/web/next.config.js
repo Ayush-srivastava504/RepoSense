@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+	// Docker builds set NEXT_OUTPUT=standalone to emit a minimal self-contained server
+	// (.next/standalone). Unset on Vercel / local dev, so those behave exactly as before.
+	output: process.env.NEXT_OUTPUT === 'standalone' ? 'standalone' : undefined,
+
 	// Several routes fetch from api.intern-flow.in during static generation.
 	// Give SSG more headroom under load.
 	staticPageGenerationTimeout: 180,
@@ -68,48 +72,3 @@ const nextConfig = {
 };
 
 module.exports = nextConfig;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

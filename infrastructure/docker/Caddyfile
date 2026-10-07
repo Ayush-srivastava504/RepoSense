@@ -1,0 +1,22 @@
+# Caddy gets and renews HTTPS certificates automatically (Let's Encrypt).
+# DOMAIN and API_DOMAIN come from the environment (see docker-compose.prod.yml / .env).
+
+# Canonical host is the non-www domain (see apps/web/lib/site.ts)
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy web:3000
+}
+
+{$API_DOMAIN} {
+	encode zstd gzip
+	# Resume compile / AI endpoints can be slow; don't cut them off early.
+	reverse_proxy api:8000 {
+		transport http {
+			response_header_timeout 300s
+		}
+	}
+}
