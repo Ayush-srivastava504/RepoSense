@@ -171,7 +171,49 @@ services:
         condition: service_healthy
     mem_limit: 1024m
     cpus: 1
+  web:
+    build:
+      context: ../../apps/web
+      dockerfile: Dockerfile
+      args:
+        # Baked into the browser bundle at build time: rebuild (up -d --build web) after changing.
+        NEXT_PUBLIC_API_URL: https://${API_DOMAIN}
+        NEXT_PUBLIC_API_BASE_URL: https://${API_DOMAIN}
+        NEXT_PUBLIC_SITE_URL: https://${DOMAIN}
+        NEXT_PUBLIC_LOGO_DEV_TOKEN: ${NEXT_PUBLIC_LOGO_DEV_TOKEN:-}
+        # Only used while building; the build still succeeds if the API is unreachable.
+        API_BASE_URL: https://${API_DOMAIN}
+    container_name: reposense-web
+    restart: unless-stopped
+    environment:
+      # Server-side rendering calls the API over the Docker network (fast, no TLS hop).
+      API_BASE_URL: http://api:8000
+      # Same value as INTERNAL_API_KEY in .env (read by the api) so SSR is not rate limited.
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-}
+    depends_on:
+      api:
+        condition: service_healthy
+  caddy:
+    image: caddy:2-alpine
+    container_name: reposense-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env}
+      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
 volumes:
   postgres_data:
   rag_data:
   huggingface_cache:
+  caddy_data:
+  caddy_config:

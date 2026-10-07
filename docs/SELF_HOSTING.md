@@ -1,56 +1,43 @@
-# Self-hosting the whole stack (frontend + API) on one server
+# Running the frontend on your own server (replacing Vercel)
 
-Replaces Vercel for the frontend. Everything runs in Docker behind Caddy, which handles HTTPS.
+The frontend now runs as the `web` service in `infrastructure/docker/docker-compose.yml`, next to the
+API, Postgres, Redis and the crawlers. A `caddy` service in front of it serves HTTPS for both domains.
 
-## What you need
-- A Linux VPS, **2 vCPU / 4 GB RAM** recommended (the Next.js build and the TeX Live resume compiler are the heavy parts). 2 GB works if you add swap and skip the `ai` profile.
-- Docker Engine + the Compose plugin.
-- Two DNS A records pointing at the server's IP: `intern-flow.in` and `api.intern-flow.in` (plus `www`, which redirects).
-- Ports 80 and 443 open. Nothing else needs to be public.
-
-## First deploy
+## 1. Add these to `infrastructure/docker/.env` (the same file the api already uses)
 ```bash
-git clone <your repo> && cd RepoSense/infrastructure/docker
-cp .env.prod.example .env
-nano .env                       # set DOMAIN, API_DOMAIN, POSTGRES_PASSWORD, JWT_SECRET, ...
-docker compose -f docker-compose.prod.yml up -d --build
-docker compose -f docker-compose.prod.yml ps
-docker compose -f docker-compose.prod.yml logs -f api web caddy
+DOMAIN=intern-flow.in
+API_DOMAIN=api.intern-flow.in
+INTERNAL_API_KEY=<same value the api already has; if empty, generate one: openssl rand -hex 32>
+NEXT_PUBLIC_LOGO_DEV_TOKEN=<optional>
 ```
-The first build takes several minutes (TeX Live is large). Caddy requests certificates as soon as DNS resolves.
+`CORS_ORIGINS`/`FRONTEND_URL` need no change if the site stays on `https://intern-flow.in`.
 
-Optional local-LLM resume features: add `--profile ai` to the `up` command.
+## 2. DNS and firewall
+- A records for `intern-flow.in`, `www.intern-flow.in` and `api.intern-flow.in` -> this server's IP.
+- Open ports 80 and 443 (Caddy needs them to get certificates).
 
-## Moving existing data from your current database
+## 3. Start
 ```bash
-# on the old server
-pg_dump -U postgres -Fc internship_db > internship_db.dump
-# on the new server (after `up -d postgres`)
-docker compose -f docker-compose.prod.yml cp internship_db.dump postgres:/tmp/
-docker compose -f docker-compose.prod.yml exec postgres \
-  pg_restore -U postgres -d internship_db --clean --if-exists /tmp/internship_db.dump
+cd infrastructure/docker
+docker compose up -d --build web caddy      # build the frontend and start HTTPS
+docker compose logs -f web caddy
 ```
+Your existing services keep running untouched; nothing else is rebuilt.
 
-## Updating
+## Updating the frontend later
 ```bash
-git pull
-docker compose -f docker-compose.prod.yml up -d --build
+git pull && docker compose up -d --build web
 ```
-`NEXT_PUBLIC_*` values (including the API URL) are baked into the frontend at build time, so changing them needs `--build`.
+`NEXT_PUBLIC_*` values are baked in at build time, so changing them needs `--build`.
 
 ## Cutting over from Vercel
-1. Confirm `https://api.<domain>/health` and the site both work using the new server (test with a temporary hosts-file entry or a staging subdomain).
-2. Lower the DNS TTL a day ahead, then point the A records to the new server.
-3. Remove the project from Vercel once traffic has moved.
+1. Check the new site using a temporary hosts-file entry (or a staging subdomain) before touching DNS.
+2. Lower the DNS TTL a day ahead, then switch the A records.
+3. Remove the Vercel project once traffic has moved.
 
-## Backups (do this before relying on it)
-```bash
-docker compose -f docker-compose.prod.yml exec -T postgres \
-  pg_dump -U postgres -Fc internship_db > backup_$(date +%F).dump
-```
-Run it from cron daily and copy the file off the server (object storage, another machine).
-
-## Notes
-- The crawler is not part of this compose file; keep running it the way you do today (cron on the host).
-- API migrations re-run on every API start (existing behaviour of `entrypoint.sh`). Some older migrations are not idempotent, so harmless "already exists" errors in the logs are expected.
-- Free Cloudflare in front of the site is a good extra: it caches static assets and absorbs bot traffic. Set its SSL mode to Full (strict).
+## Worth fixing soon (already in your compose, not changed here)
+- `postgres` (5432), `redis` (6379) and `api` (8000) are published on all interfaces, and Postgres uses the
+  password `password`. Caddy makes the public ports unnecessary: bind them to localhost
+  (`"127.0.0.1:5432:5432"`, etc.) or delete the `ports:` lines, and set a real database password.
+- Back up Postgres daily and copy the dump off the server:
+  `docker compose exec -T postgres pg_dump -U postgres -Fc internship_db > backup_$(date +%F).dump`
