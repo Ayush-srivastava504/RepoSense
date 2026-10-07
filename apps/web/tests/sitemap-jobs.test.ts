@@ -24,6 +24,13 @@ const DAY = 86400000;
 const NOW = Date.parse('2026-09-20T12:00:00Z');
 const iso = (offsetDays: number) => new Date(NOW + offsetDays * DAY).toISOString();
 
+// Freeze the clock for the whole file. isIndexableJob() -> isStaleForIndexing() reads Date.now()
+// (45-day grace on posted_at), while every fixture below is dated relative to the fixed NOW. Without
+// this, the fixtures silently go stale as real time passes and tests start failing in CI for no code
+// change (this is what happened on 2026-10-05). node --test runs each file in its own process, so the
+// override cannot leak into other test files.
+Date.now = () => NOW;
+
 function job(id: string, extra: Record<string, unknown> = {}) {
     return { id, title: `Engineer ${id}`, company: 'Acme', location: 'Pune', posted_at: iso(-3), ...extra } as any;
 }
