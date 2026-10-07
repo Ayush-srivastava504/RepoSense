@@ -4,7 +4,7 @@ A small FastAPI microservice that indexes text documents into a local vector
 store and answers questions against them using retrieval-augmented
 generation. Used by the core API for repo/documentation-aware AI features.
 
-## Structure
+## Structure.
 
 ```
 src/
