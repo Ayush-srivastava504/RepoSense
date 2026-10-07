@@ -185,6 +185,8 @@ services:
         API_BASE_URL: https://${API_DOMAIN}
     container_name: reposense-web
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"   # reachable only from this server (host nginx proxies to it)
     environment:
       # Server-side rendering calls the API over the Docker network (fast, no TLS hop).
       API_BASE_URL: http://api:8000
@@ -193,27 +195,7 @@ services:
     depends_on:
       api:
         condition: service_healthy
-  caddy:
-    image: caddy:2-alpine
-    container_name: reposense-caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    environment:
-      DOMAIN: ${DOMAIN:?Set DOMAIN in .env}
-      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN in .env}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - web
-      - api
 volumes:
   postgres_data:
   rag_data:
   huggingface_cache:
-  caddy_data:
-  caddy_config:
