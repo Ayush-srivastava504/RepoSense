@@ -28,6 +28,8 @@ type SitemapJob = {
     posted_at?: string;
     created_at?: string;
     last_seen_at?: string;
+    // Newest real content change (posted/created/enrichment). Computed by the API; see contentModifiedAt().
+    content_modified_at?: string;
     is_thin?: boolean;
     enriched_overview?: string;
     quality_score?: number;
@@ -93,6 +95,15 @@ export async function collectAllJobs<T extends SitemapJob>(
     return all;
 }
 
+/**
+ * <lastmod> source for a job: the API's content_modified_at (newest of posted/created/enrichment), falling back to
+ * posted_at, then created_at. Never last_seen_at (moves on every crawl). Mirrors content_modified_at() in
+ * services/api/src/services/sitemap_builder.py.
+ */
+export function contentModifiedAt(job: SitemapJob): string | undefined {
+    return job.content_modified_at || job.posted_at || job.created_at;
+}
+
 /** Indexable, de-duplicated sitemap entries on the canonical (non-www) host. */
 export function buildJobSitemapEntries<T extends SitemapJob>(jobs: T[], now: number = Date.now()): SitemapUrlEntry[] {
     const seen = new Set<string>();
@@ -109,7 +120,7 @@ export function buildJobSitemapEntries<T extends SitemapJob>(jobs: T[], now: num
             // created_at (a real creation timestamp), never last_seen_at
             // (moves on every crawl -- fabricating freshness on every entry
             // teaches Google to ignore lastmod).
-            lastmod: toLastmod(job.posted_at || job.created_at, now),
+            lastmod: toLastmod(contentModifiedAt(job), now),
         });
     }
     return entries;
@@ -182,7 +193,7 @@ export function buildCategorySitemapEntries<T extends SitemapJob>(jobs: T[], now
             // every crawl (not a content change), so using it would stamp
             // nearly every URL as "just updated" and teach Google to ignore
             // lastmod. No real date at all -> no <lastmod>.
-            lastmod: toLastmod(job.posted_at || job.created_at, now),
+            lastmod: toLastmod(contentModifiedAt(job), now),
         });
     }
     return out;

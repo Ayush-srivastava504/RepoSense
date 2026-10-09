@@ -450,7 +450,7 @@ export function routeSitemapByPath(path: string): RouteSitemap | undefined {
 }
 
 /** Body of every app/sitemap-<slug>.xml/route.ts. */
-export function serveRouteSitemap(slug: string): Promise<Response> {
+export function serveRouteSitemap(slug: string, req?: Request): Promise<Response> {
     const s = routeSitemapBySlug(slug);
-    return serveSitemap(s.slug, s.build, s.fallback);
+    return serveSitemap(s.slug, s.build, s.fallback, req);
 }

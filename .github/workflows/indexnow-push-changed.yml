@@ -1,0 +1,49 @@
+name: IndexNow Push Changed Jobs
+
+# Announces job pages whose content changed AFTER their first IndexNow submission (AI overview / sections added).
+# See services/api/scripts/indexnow_push_changed.py. Same SSH-into-EC2 pattern as phase-f-priority-index.yml
+# (Postgres is only reachable from the box). Runs 30 minutes after each Phase F run, in small batches, rather
+# than as one daily bulk submission -- IndexNow/Bing guidance prefers timely, streaming notifications.
+
+on:
+  schedule:
+    - cron: '30 5,8,11,14,17,20 * * *'
+  workflow_dispatch:
+    inputs:
+      cap:
+        description: 'Max changed jobs to announce this run'
+        required: false
+        default: '500'
+      dry_run:
+        description: 'Select + log only, no submissions (true/false)'
+        required: false
+        default: 'false'
+
+jobs:
+  push-changed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Announce changed jobs to IndexNow on EC2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          timeout: 60s
+          command_timeout: 15m
+          envs: CAP,DRY_RUN
+          script: |
+            set -e
+            cd /home/ec2-user/RepoSense
+            CAP="${CAP:-500}"
+            EXTRA_ARGS=""
+            if [ "${DRY_RUN:-false}" = "true" ]; then
+              EXTRA_ARGS="--dry-run"
+            fi
+            docker compose -f infrastructure/docker/docker-compose.yml \
+              run --rm --entrypoint python api \
+              scripts/indexnow_push_changed.py --cap "$CAP" $EXTRA_ARGS
+        env:
+          CAP: ${{ github.event.inputs.cap || '500' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}

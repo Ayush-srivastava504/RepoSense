@@ -7,4 +7,4 @@ export const dynamic = 'force-dynamic';
 // Headroom for a cold build on platforms that honour it (Vercel); a no-op elsewhere.
 export const maxDuration = 60;
 
-export const GET = () => serveRouteSitemap('companies');
+export const GET = (req: Request) => serveRouteSitemap('companies', req);

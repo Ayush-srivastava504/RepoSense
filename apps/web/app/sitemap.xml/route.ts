@@ -98,4 +98,4 @@ function fallbackIndex(): SitemapBuild {
     return renderIndex([first, ...jobs, ...rest]);
 }
 
-export const GET = () => serveSitemap('index', buildIndex, fallbackIndex);
+export const GET = (req: Request) => serveSitemap('index', buildIndex, fallbackIndex, req);

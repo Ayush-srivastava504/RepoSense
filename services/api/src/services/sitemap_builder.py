@@ -41,6 +41,7 @@ JOB_SQL = '''
 SELECT id, title, company, location, salary, stipend, type, is_remote,
        (is_government IS TRUE OR source IN ('freejobalert', 'employment_news', 'ssc', 'upsc')) AS is_government,
        deadline, posted_at, created_at, last_seen_at, is_thin, quality_score,
+       enriched_at, enriched_sections_at,
        (enriched_overview IS NOT NULL AND enriched_overview <> '') AS has_overview
 FROM jobs
 WHERE is_active = true
@@ -132,6 +133,20 @@ def to_lastmod(value: Optional[datetime], now: datetime) -> Optional[str]:
     return value.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.') + f'{value.microsecond // 1000:03d}Z'
 
 
+def content_modified_at(job: dict, now: datetime) -> Optional[datetime]:
+    """Newest *real* content change for a job, for <lastmod>.
+
+    Candidates: posted_at, created_at, enriched_sections_at, and enriched_at -- but enriched_at only when an
+    overview actually exists, because enrich_job_content.mark_attempted() stamps enriched_at on failed attempts
+    too (nothing on the page changed). Never last_seen_at (moves on every crawl). Future dates (bad scrapes,
+    clock skew) are ignored, not clamped. Mirrors contentModifiedAt in apps/web/lib/sitemapJobs.ts."""
+    candidates = [job.get('posted_at'), job.get('created_at'), job.get('enriched_sections_at')]
+    if job.get('has_overview'):
+        candidates.append(job.get('enriched_at'))
+    valid = [d for d in (_aware(c) for c in candidates) if d is not None and d <= now]
+    return max(valid) if valid else None
+
+
 def escape_xml(value: str) -> str:
     return (value.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
             .replace('"', '&quot;').replace("'", '&apos;'))
@@ -165,7 +180,7 @@ def build_files(jobs: Iterable[dict], now: Optional[datetime] = None, enabled: O
         if category not in buckets or not is_job_for_sitemap(job, now):
             continue
         buckets[category].append(
-            (f'{SITE_URL}{canonical_path(job)}', to_lastmod(job.get('posted_at') or job.get('created_at'), now)))
+            (f'{SITE_URL}{canonical_path(job)}', to_lastmod(content_modified_at(job, now), now)))
     files = {}
     for category, entries in buckets.items():
         # newest first so page 1 holds the freshest URLs

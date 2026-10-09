@@ -196,3 +196,28 @@ def test_undated_job_expires_on_created_at_after_60_days():
     assert not sb.is_stale_for_indexing(job(1, posted_at=None, created_at=None), NOW)
     # A real posted_at keeps the 45-day rule.
     assert sb.is_stale_for_indexing(job(1, posted_at=NOW - timedelta(days=46)), NOW)
+
+
+def test_lastmod_moves_on_real_enrichment():
+    enriched = NOW - timedelta(days=1)
+    j = job(1, days=10, enriched_at=enriched, enriched_sections_at=None)
+    assert sb.content_modified_at(j, NOW) == enriched
+    assert '<lastmod>2026-09-27T00:00:00.000Z</lastmod>' in sb.build_files([j], NOW)['jobs-1.xml'][3]
+
+
+def test_lastmod_uses_sections_timestamp():
+    sections = NOW - timedelta(hours=6)
+    j = job(1, days=10, enriched_at=NOW - timedelta(days=2), enriched_sections_at=sections)
+    assert sb.content_modified_at(j, NOW) == sections
+
+
+def test_lastmod_ignores_enriched_at_without_overview():
+    # mark_attempted() stamps enriched_at on failed attempts: nothing on the page changed
+    j = job(1, days=10, has_overview=False, enriched_at=NOW - timedelta(hours=1))
+    assert sb.content_modified_at(j, NOW) == j['posted_at']
+
+
+def test_lastmod_never_last_seen_or_future():
+    j = job(1, days=10, last_seen_at=NOW, enriched_at=NOW + timedelta(days=2))
+    assert sb.content_modified_at(j, NOW) == j['posted_at']
+    assert sb.content_modified_at(job(1, posted_at=None, created_at=None), NOW) is None

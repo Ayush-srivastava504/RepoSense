@@ -179,7 +179,7 @@ test('a job page has exactly one <main> and never prints "unknown" as its source
 });
 
 // ---------- sitemap resilience ----------
-import { serveSitemap, mapWithLimit, _clearSitemapCache } from '../lib/sitemapResponse';
+import { serveSitemap, mapWithLimit, _clearSitemapCache, sitemapEtag, etagMatches } from '../lib/sitemapResponse';
 
 test('a failing sitemap build serves the last good copy, then a static fallback, and only then 503', async () => {
     _clearSitemapCache();
@@ -250,7 +250,7 @@ test('mapWithLimit never exceeds the concurrency cap and keeps result order', as
 test('every sitemap route is a one-liner over the resilient helper, and skills stays capped', () => {
     for (const r of ['static', 'hackathons', 'tools', 'blog', 'skills', 'companies', 'locations', 'batches', 'resume', 'careers']) {
         const src = read(`app/sitemap-${r}.xml/route.ts`);
-        assert.ok(new RegExp(`serveRouteSitemap\\('${r}'\\)`).test(src), r);
+        assert.ok(new RegExp(`serveRouteSitemap\\('${r}'(, req)?\\)`).test(src), r);
         assert.ok(!/new Response\(/.test(src), `${r} must not build its own response (no cache headers, no fallback)`);
     }
     const registry = read('lib/routeSitemaps.ts');
@@ -302,4 +302,31 @@ test('every detail route passes the character budget', () => {
         assert.ok(/maxChars:\s*TITLE_MAX_CHARS_WITH_BRAND/.test(read(`app/${f}/[slug]/page.tsx`)), `${f}/[slug]`);
     }
     assert.ok(/TITLE_MAX_CHARS_WITH_BRAND/.test(read('app/companies/[company]/page.tsx')));
+});
+
+
+test('sitemaps send an ETag and answer If-None-Match with a body-less 304', async () => {
+    _clearSitemapCache();
+    const build = async () => ({ xml: '<urlset>etag</urlset>', lastmod: '2026-10-01T00:00:00.000Z' });
+    const first = await serveSitemap('etag1', build);
+    const etag = first.headers.get('ETag');
+    assert.equal(first.status, 200);
+    assert.equal(etag, sitemapEtag('<urlset>etag</urlset>'));
+    const req = new Request('https://x.test/s.xml', { headers: { 'If-None-Match': etag! } });
+    const cached = await serveSitemap('etag1', build, undefined, req);
+    assert.equal(cached.status, 304);
+    assert.equal(await cached.text(), '');
+    assert.equal(cached.headers.get('ETag'), etag);
+    // changed content -> different validator -> full 200
+    const changed = await serveSitemap('etag2', async () => ({ xml: '<urlset>changed</urlset>' }), undefined, req);
+    assert.equal(changed.status, 200);
+});
+
+test('etagMatches handles weak prefixes, lists and *', () => {
+    const e = sitemapEtag('a');
+    assert.equal(etagMatches(`W/${e}`, e), true);
+    assert.equal(etagMatches(`"zzz", ${e}`, e), true);
+    assert.equal(etagMatches('*', e), true);
+    assert.equal(etagMatches('"nope"', e), false);
+    assert.equal(etagMatches(null, e), false);
 });

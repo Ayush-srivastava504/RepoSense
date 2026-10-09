@@ -19,7 +19,7 @@ export const maxDuration = 60;
 
 const LASTMOD_RX = /<lastmod>\s*([^<\s]+)\s*<\/lastmod>/g;
 
-export async function GET(_req: Request, { params }: { params: { file: string } }) {
+export async function GET(req: Request, { params }: { params: { file: string } }) {
     const parsed = parseSitemapFileName(params.file);
     if (!parsed)
         return new Response('Not found', { status: 404 });
@@ -28,5 +28,5 @@ export async function GET(_req: Request, { params }: { params: { file: string } 
         if (xml === null)
             return null; // the API says the file does not exist -> 404
         return { xml, lastmod: newestLastmod([...xml.matchAll(LASTMOD_RX)].map((m) => m[1])) };
-    });
+    }, undefined, req);
 }

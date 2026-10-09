@@ -34,6 +34,8 @@ export interface Job {
     // Present once services/api/src/routes/jobs.py's JOB_COLUMNS includes
     // it and migrations/016_fix_jobs_created_at.sql has run in production.
     created_at?: string;
+    // Newest real content change (posted/created/enrichment); used for sitemap <lastmod>.
+    content_modified_at?: string;
     location?: string;
     type?: string;
     salary?: string;

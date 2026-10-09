@@ -17,6 +17,7 @@
 // Cache-Control: s-maxage lets the CDN answer Googlebot without running the route at all; stale-while-revalidate +
 // stale-if-error let it keep answering from the old copy while the origin is failing. Degraded answers are cached for
 // 5 minutes only, so the real build is retried soon.
+import { createHash } from 'node:crypto';
 import { unstable_cache } from 'next/cache';
 
 export interface SitemapBuild {
@@ -33,16 +34,33 @@ const BUILD_DEADLINE_MS = 25_000;
 
 const lastGood = new Map<string, SitemapBuild>();
 
-function xmlResponse(b: SitemapBuild, cache: string, served: string): Response {
+/** Strong validator for the exact bytes we send. Lets Bing/Google (and the CDN) revalidate with If-None-Match. */
+export function sitemapEtag(xml: string): string {
+    return `"${createHash('sha1').update(xml).digest('hex').slice(0, 32)}"`;
+}
+
+/** True when an If-None-Match header (list, W/ prefixes, or *) matches `etag`. */
+export function etagMatches(ifNoneMatch: string | null | undefined, etag: string): boolean {
+    if (!ifNoneMatch) return false;
+    if (ifNoneMatch.trim() === '*') return true;
+    const strip = (v: string) => v.trim().replace(/^W\//, '');
+    return ifNoneMatch.split(',').some((v) => strip(v) === etag);
+}
+
+function xmlResponse(b: SitemapBuild, cache: string, served: string, req?: Request): Response {
+    const etag = sitemapEtag(b.xml);
     const headers: Record<string, string> = {
         'Content-Type': 'application/xml; charset=utf-8',
         'Cache-Control': cache,
+        'ETag': etag,
         'x-sitemap-served': served,
     };
     if (b.lastmod) {
         const t = new Date(b.lastmod);
         if (!Number.isNaN(t.getTime())) headers['Last-Modified'] = t.toUTCString();
     }
+    // Unchanged since the crawler's last fetch -> 304, no body. Saves crawl budget on 1000-URL files.
+    if (etagMatches(req?.headers.get('if-none-match'), etag)) return new Response(null, { status: 304, headers });
     return new Response(b.xml, { headers });
 }
 
@@ -95,7 +113,7 @@ async function viaDataCache(name: string, build: () => Promise<SitemapBuild | nu
  * Never throws. Never returns 5xx unless `fallback` is omitted and every cache layer is cold.
  * `build` may resolve null = "this sitemap does not exist" -> 404 (cached briefly), not an error path.
  */
-export async function serveSitemap(name: string, build: () => Promise<SitemapBuild | null>, fallback?: () => SitemapBuild): Promise<Response> {
+export async function serveSitemap(name: string, build: () => Promise<SitemapBuild | null>, fallback?: () => SitemapBuild, req?: Request): Promise<Response> {
     try {
         const built = await withDeadline(viaDataCache(name, build), BUILD_DEADLINE_MS, name);
         if (built === null) {
@@ -103,18 +121,18 @@ export async function serveSitemap(name: string, build: () => Promise<SitemapBui
             return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'public, s-maxage=300' } });
         }
         lastGood.set(name, built);
-        return xmlResponse(built, OK_CACHE, 'fresh');
+        return xmlResponse(built, OK_CACHE, 'fresh', req);
     }
     catch (err) {
         const stale = lastGood.get(name);
         if (stale) {
             console.error(`Sitemap "${name}" build failed, serving last good copy:`, err);
-            return xmlResponse(stale, DEGRADED_CACHE, 'stale');
+            return xmlResponse(stale, DEGRADED_CACHE, 'stale', req);
         }
         if (fallback) {
             console.error(`Sitemap "${name}" build failed, serving static fallback:`, err);
             try {
-                return xmlResponse(fallback(), DEGRADED_CACHE, 'fallback');
+                return xmlResponse(fallback(), DEGRADED_CACHE, 'fallback', req);
             }
             catch (fallbackErr) {
                 console.error(`Sitemap "${name}" fallback failed too:`, fallbackErr);

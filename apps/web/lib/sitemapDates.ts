@@ -22,8 +22,8 @@ export function newestLastmod(values: ReadonlyArray<string | undefined | null>, 
 
 /** Newest posted_at / created_at among `jobs`. */
 export function newestJobDate(
-    jobs: ReadonlyArray<{ posted_at?: string | null; created_at?: string | null }>,
+    jobs: ReadonlyArray<{ posted_at?: string | null; created_at?: string | null; content_modified_at?: string | null }>,
     now: number = Date.now(),
 ): string | undefined {
-    return newestLastmod(jobs.flatMap((j) => [j.posted_at, j.created_at]), now);
+    return newestLastmod(jobs.flatMap((j) => [j.posted_at, j.created_at, j.content_modified_at]), now);
 }

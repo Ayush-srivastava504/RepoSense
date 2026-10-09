@@ -18,6 +18,7 @@ import {
     parseSitemapFileName,
     categorySitemapUrls,
     SITEMAP_URLS_PER_FILE,
+    contentModifiedAt,
 } from '../lib/sitemapJobs';
 
 const DAY = 86400000;
@@ -281,4 +282,23 @@ test('lastmod falls back to created_at (never last_seen_at) when posted_at is mi
     ], NOW);
     const entry = b.jobs.find((e) => e.loc.endsWith('cdate'));
     assert.equal(entry?.lastmod, '2026-09-10T00:00:00.000Z');
+});
+
+
+// ---------- lastmod follows real content changes ----------
+test('lastmod prefers content_modified_at (enrichment) over posted_at', () => {
+    const [e] = buildJobSitemapEntries([job('m1', { posted_at: iso(-10), content_modified_at: iso(-1) })], NOW);
+    assert.equal(e.lastmod, iso(-1));
+});
+
+test('lastmod falls back to posted_at, then created_at, when content_modified_at is absent', () => {
+    assert.equal(contentModifiedAt(job('m2', { posted_at: iso(-4) })), iso(-4));
+    assert.equal(contentModifiedAt(job('m3', { posted_at: undefined, created_at: iso(-6) })), iso(-6));
+});
+
+test('lastmod never uses last_seen_at, and a future content_modified_at yields no lastmod', () => {
+    const [seen] = buildJobSitemapEntries([job('m4', { posted_at: iso(-4), last_seen_at: iso(0) })], NOW);
+    assert.equal(seen.lastmod, iso(-4));
+    const [future] = buildJobSitemapEntries([job('m5', { posted_at: undefined, content_modified_at: iso(+3) })], NOW);
+    assert.equal(future?.lastmod, undefined);
 });
