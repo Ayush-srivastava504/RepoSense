@@ -25,16 +25,16 @@ DNS for `intern-flow.in` and `www` must already point at this server (certbot ch
 ```bash
 sudo cp ../nginx/intern-flow.in.conf /etc/nginx/conf.d/intern-flow.in.conf
 sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d intern-flow.in -d www.intern-flow.in --redirect
+sudo certbot --nginx -d intern-flow.in -d wwwintern-flowi--redirect
 ```
 Then, inside the `listen 443` server block certbot created for `intern-flow.in`, add as the first line:
 ```nginx
-if ($host = www.intern-flow.in) { return 301 https://intern-flow.in$request_uri; }
+if ($host = wwwintern-flowin) { return 301 https://intern-flow.in$request_uri; }
 ```
 and run `sudo nginx -t && sudo systemctl reload nginx`. Check renewal with `sudo certbot renew --dry-run`.
 
 ## 4. Verify
-`https://intern-flow.in` loads, `https://www.intern-flow.in` redirects to it, `https://api.intern-flow.in/health` works.
+`https://intern-flow.in` loads, wwwintern-flow  redirects to it, `https://api.intern-flow.in/health` works.
 
 ## Updating the frontend later
 ```bash
