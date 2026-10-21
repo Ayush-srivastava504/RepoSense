@@ -1,8 +1,8 @@
 """enrich_all_content.py --target companies: fact-only profiles (no LLM).
 
 DB access is faked here; the same SQL was also run against a real Postgres 16
-with migrations 019 + 023 when this was written (see REPO_AUDIT_2026-09-20.md,
-Session 3): case-variant merge, stale-row refresh, thin companies stored without
+with migrations 019 + 023 when this was written (see CHANGELOG.md's 2026-09-20
+baseline entry, Session 3): case-variant merge, stale-row refresh, thin companies stored without
 an overview, expired/inactive/blank companies skipped, idempotent second run.
 """
 import argparse

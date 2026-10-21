@@ -145,6 +145,15 @@ k6 run loadtest.js
 
 ---
 
+## 📚 Project Docs
+
+Two other docs live at the repo root alongside this one:
+- **[`CHANGELOG.md`](./CHANGELOG.md)** — engineering history, newest first.
+- **[`TODO.md`](./TODO.md)** — open backlog, items blocked on a decision, and the
+  manual SEO QA checklist.
+
+---
+
 ## 📄 License & Attribution
 
 Built for students, early-career developers, and tech job seekers worldwide. Distributed under the MIT License.

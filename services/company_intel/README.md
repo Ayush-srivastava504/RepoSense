@@ -24,4 +24,4 @@ Tests: `python -m pytest services/company_intel/tests`.
 ## Not built yet
 - Wikipedia / Wikidata as an extra source for founding year, size and funding (needs reliable entity matching first).
 - JavaScript-rendered sites (plain HTTP only; those companies end up `skipped` with a reason).
-- FAQPage schema: deliberately not built (no rich-result benefit for this site; see seo-remaining-items.md).
+- FAQPage schema: deliberately not built (no rich-result benefit for this site; see TODO.md's "Already correctly deferred" section).
