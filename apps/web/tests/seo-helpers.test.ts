@@ -80,6 +80,17 @@ test('getJobById: 200 -> job, 404 -> null', async () => {
     assert.equal(await withFetch(reply(404), () => getJobById('abc')), null);
 });
 
+// A scraped title can carry source artifacts (stripped subteam leaves "Engineer,, Team"); left
+// unsanitized this reaches <title>/<h1>/OG/breadcrumb/JobPosting JSON-LD verbatim, and on a long
+// title it's also what the SERP_TITLE pixel budget measures — see lib/seo/seoMetrics.ts.
+test('getJobById: normalizes a scraped title (dedupes punctuation, collapses whitespace)', async () => {
+    const job = await withFetch(
+        reply(200, { id: 'abc', title: 'System Development Engineer,,  DSP Analytics' }),
+        () => getJobById('abc'),
+    );
+    assert.equal(job?.title, 'System Development Engineer, DSP Analytics');
+});
+
 test('getJobById: 429, 5xx and network errors throw instead of producing a false 404', async () => {
     const quiet = console.error;
     console.error = () => {};

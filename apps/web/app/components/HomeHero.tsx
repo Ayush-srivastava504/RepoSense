@@ -89,7 +89,13 @@ export default function HomeHero({ previewJobs }: { previewJobs: any[] }) {
           </p>
 
           <h1 data-reveal="1" className="display max-w-4xl text-[2rem] font-semibold leading-[1.08] sm:text-5xl md:text-6xl">
-            Jobs &amp; internships for
+            {/* The {' '} is deliberate: the span below is block-level, so it already
+                wraps to its own line visually, but without an explicit space character
+                here the two text nodes have no whitespace between them in the DOM's
+                flattened text content — crawlers, screen readers and view-source all
+                read "forB.Tech freshers in India" (no space) instead of "for B.Tech
+                freshers in India". The block display makes the extra space invisible. */}
+            Jobs &amp; internships for{' '}
             <span className="mt-1 block" style={{ color: 'var(--indigo)' }}>
               <span key={i} className="word-in">{DEGREES[i]}</span> freshers in India
             </span>

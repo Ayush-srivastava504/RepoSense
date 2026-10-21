@@ -131,15 +131,39 @@ interface JobsResponse {
     results?: Job[];
     total?: number;
 }
+// Scraped titles occasionally carry source artifacts — a doubled comma from a
+// stripped-out subteam name ("System Development Engineer,, DSP Analytics"),
+// repeated whitespace, stray leading/trailing punctuation. Left as-is, this
+// string flows unsanitized into <title> (lib/seo/seoMetrics.ts buildJobTitle),
+// <h1> (JobDetail.tsx), OG/Twitter tags, the breadcrumb and JobPosting JSON-LD
+// — and on a long title it's also what SERP_TITLE pixel-truncation measures,
+// so a doubled comma can be the difference between the company name fitting
+// in the title tag or getting truncated off entirely. Normalizing once here,
+// at the single chokepoint every Job passes through, means every downstream
+// consumer of job.title is automatically clean without touching each one.
+function normalizeJobTitle(title: string): string {
+    return title
+        .replace(/\s+/g, ' ')
+        // collapse 2+ repeated punctuation marks (",," "..", "--" etc.) down to one
+        .replace(/([,.;:!?-])\1+/g, '$1')
+        // drop a comma/semicolon left dangling right before another punctuation mark
+        .replace(/\s*,\s*(?=[,.;:!?])/g, '')
+        // no space directly before punctuation (left over once the dupes above collapse)
+        .replace(/\s+([,.;:!?])/g, '$1')
+        .trim();
+}
+function normalizeJob(job: Job): Job {
+    return job.title ? { ...job, title: normalizeJobTitle(job.title) } : job;
+}
 function coerceJobs(data: JobsResponse | Job[]): Job[] {
     if (Array.isArray(data))
-        return data;
+        return data.map(normalizeJob);
     if (Array.isArray(data.jobs))
-        return data.jobs;
+        return data.jobs.map(normalizeJob);
     if (Array.isArray(data.data))
-        return data.data;
+        return data.data.map(normalizeJob);
     if (Array.isArray(data.results))
-        return data.results;
+        return data.results.map(normalizeJob);
     return [];
 }
 interface GetJobsOptions {
@@ -362,5 +386,6 @@ export async function getJobById(id: string, locale?: string): Promise<Job | nul
         console.error('Job detail API returned', res.status, 'for id', id);
         throw new JobApiUnavailableError(`Job API returned ${res.status} for id ${id}`);
     }
-    return res.json();
+    const job: Job = await res.json();
+    return normalizeJob(job);
 }
