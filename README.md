@@ -33,8 +33,6 @@ Repo_Sense/
 │   ├── api/                   # Core FastAPI backend (port 8000)
 │   │   ├── src/               # Auth, jobs, resume compiler, ATS checker, LeetCode judge
 │   │   ├── crawler/           # Automated scrapers for external career portals
-│   │   ├── rag/               # RAG Q&A service with vector search (port 8001)
-│   │   ├── neural_generator/  # Local LLM text generation via llama.cpp (port 8002)
 │   │   ├── loadtest/          # k6 load testing suites
 │   │   └── database/          # PostgreSQL migrations (001 to 018)
 ├── infrastructure/
@@ -79,7 +77,7 @@ The web app serves statically generated and dynamically cached public hubs engin
 git clone https://github.com/Ayush-srivastava504/RepoSense.git
 cd RepoSense
 
-# Start PostgreSQL, Redis, FastAPI, RAG, and Web services
+# Start PostgreSQL, Redis, FastAPI and the web app
 make build
 make dev
 ```

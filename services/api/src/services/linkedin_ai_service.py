@@ -1,11 +1,9 @@
 # services/api/src/services/linkedin_ai_service.py
-# Calls the same on-prem Qwen3 model (NEURAL_GENERATOR_URL, see
-# resume_ai_service.py for the original pattern) to turn the deterministic
+# Calls the hosted LLM providers (services/llm_text.py) to turn the deterministic
 # 14-rule report (linkedin_rules.py) into specific, human-sounding feedback:
 
 import json
-import httpx
-from configs.config import settings
+from services.llm_text import generate_text
 
 class LinkedInAIService:
 
@@ -13,11 +11,10 @@ class LinkedInAIService:
         failed_rules = [r for r in rule_report['rules'] if not r['passed']]
         failed_labels = '\n'.join((f'- {r["label"]}: {r["detail"]}' for r in failed_rules)) or 'None — profile passes every rule.'
         prompt = f'You are a LinkedIn profile coach. Output only a single valid JSON object. No markdown, no explanation, no code fences, no text before or after.\n\nThe JSON must follow this exact structure:\n{{\n  "overall_feedback": "2-3 sentence verdict on the profile, encouraging but honest",\n  "headline_rewrite": "one improved headline, under 220 characters",\n  "about_rewrite": "an improved 2-3 sentence opening for the About section",\n  "priority_tips": ["most important fix first", "second most important fix", "third most important fix"]\n}}\n\nProfile score: {rule_report["score"]}/100 ({rule_report["tier"]})\nCurrent headline: {profile.get("headline") or "(empty)"}\nCurrent about section: {(profile.get("about") or "(empty)")[:600]}\nCurrent title: {profile.get("current_title") or "(none)"}\nCurrent company: {profile.get("current_company") or "(none)"}\nTop skills: {", ".join((profile.get("skills") or [])[:10]) or "(none listed)"}\n\nRules that failed:\n{failed_labels}\n\nOutput the JSON now:'
-        async with httpx.AsyncClient(timeout=300) as client:
-            response = await client.post(f'{settings.NEURAL_GENERATOR_URL}/generate', json={'prompt': prompt, 'max_tokens': 500, 'temperature': 0.4, 'top_k': 40, 'top_p': 0.9, 'repeat_penalty': 1.1})
-            response.raise_for_status()
-            output = response.json()
-        text = output.get('text', '').strip()
+        try:
+            text = await generate_text(prompt, temperature=0.4, json_object=True)
+        except Exception:
+            return self._fallback(rule_report)
         text = text.replace('```json', '').replace('```', '').replace('`', '').strip()
         json_text = self._extract_first_json(text)
         if not json_text:

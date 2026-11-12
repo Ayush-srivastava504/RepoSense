@@ -28,8 +28,6 @@ class Settings(BaseSettings):
     CORS_ORIGIN_REGEX: str = '^https://([a-zA-Z0-9\\-]+\\.)*vercel\\.app$|^https://(www\\.)?intern-flow\\.in$'
     GITHUB_REDIRECT_URI: str = ''
     FRONTEND_URL: str = ''
-    RAG_SERVICE_URL: str = 'http://localhost:8001'
-    NEURAL_GENERATOR_URL: str = 'http://localhost:8002'
     EMAIL_PROVIDER: str = 'resend'
     RESEND_API_KEY: str = ''
     REQUIRE_AUTH: bool = False

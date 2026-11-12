@@ -11,8 +11,8 @@ import uuid
 from datetime import datetime
 from typing import Any
 import httpx
-from configs.config import settings
 from configs.db import get_db_pool
+from services.llm_text import generate_text
 
 async def _update_job(pool, job_id: str, **kwargs):
     kwargs['updated_at'] = datetime.utcnow()
@@ -70,10 +70,7 @@ async def run_readme_job(job_id: str, user_id: str, github_token: str, repo_name
                 except Exception:
                     pass
         prompt = f'You are a senior software architect and technical documentation engineer.\nGenerate a production-grade GitHub README.md for the repository below.\n\nRepository: {repo_name}\nROOT FILES: {chr(10).join(file_names)}\nROOT FOLDERS: {chr(10).join(folder_names)}\nPROJECT FILES: {chr(10).join(important_files)}\nDIRECTORY SNIPPETS: {chr(10).join(dir_snippets)}\n\nCRITICAL:\nNever mention a technology unless it appears explicitly in the provided files.\nIf unsure, omit it.\nReturn EXACTLY ONE README.\nDo not repeat sections.\nDo not output multiple versions.\n\nGenerate a complete README with:\n1. Project title\n2. Overview\n3. Key features\n4. Technology stack\n5. Installation\n6. Usage\n7. Project structure\n8. API endpoints (if detected)\n9. Environment variables (if detected)\n10. License\nOutput raw markdown only.'
-        async with httpx.AsyncClient(timeout=httpx.Timeout(900.0, connect=60.0)) as client:
-            resp = await client.post(f'{settings.NEURAL_GENERATOR_URL}/generate', json={'prompt': prompt, 'max_tokens': 1200, 'temperature': 0.55, 'top_k': 50, 'top_p': 0.92})
-            resp.raise_for_status()
-            readme = resp.json().get('text', '').strip()
+        readme = await generate_text(prompt, temperature=0.55, timeout_s=180)
         for marker in ['Final Answer', "Alright, I've thoroughly analyzed"]:
             if marker in readme:
                 readme = readme.split(marker, 1)[-1]

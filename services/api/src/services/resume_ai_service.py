@@ -4,18 +4,13 @@
 #
 
 import json
-import httpx
-from configs.config import settings
+from services.llm_text import generate_text
 
 class ResumeAIService:
 
     async def generate_resume_data(self, resume_type: str, job_description: str, skills: str, experience: str):
         prompt = f'You are a JSON generator. Output only a single valid JSON object. No markdown, no explanation, no code fences, no text before or after.\n\nThe JSON must follow this exact structure:\n{{\n  "summary": "2-3 sentence professional summary",\n  "technical_skills": {{\n    "languages": "comma separated list",\n    "backend": "comma separated list",\n    "ai_ml": "comma separated list",\n    "databases": "comma separated list",\n    "tools": "comma separated list"\n  }},\n  "experience": [\n    {{\n      "company": "company name",\n      "role": "job title",\n      "duration": "start - end",\n      "location": "city, country",\n      "bullets": ["achievement 1", "achievement 2"]\n    }}\n  ],\n  "projects": [\n    {{\n      "title": "project name",\n      "tech": "comma separated tech stack",\n      "github": "url or empty string",\n      "bullets": ["what it does", "impact"]\n    }}\n  ]\n}}\n\nResume type: {resume_type}\nJob description: {job_description}\nSkills: {skills}\nExperience: {experience}\n\nOutput the JSON now:'
-        async with httpx.AsyncClient(timeout=300) as client:
-            response = await client.post(f'{settings.NEURAL_GENERATOR_URL}/generate', json={'prompt': prompt, 'max_tokens': 800, 'temperature': 0.1, 'top_k': 1, 'top_p': 0.1, 'repeat_penalty': 1.1})
-            response.raise_for_status()
-            output = response.json()
-        text = output.get('text', '').strip()
+        text = await generate_text(prompt, temperature=0.1, json_object=True)
         text = text.replace('```json', '').replace('```', '').replace('`', '').strip()
         json_text = self._extract_first_json(text)
         if not json_text:
@@ -26,11 +21,7 @@ class ResumeAIService:
 
     async def generate_cover_letter(self, job_description: str, resume_text: str, company_name: str=''):
         prompt = f'You are a career writing assistant. Write a short, specific cover letter (250-350 words) for this application. No markdown, no placeholders like [Company Name] left unfilled if the company name is given below, no generic filler sentences. Reference 1-2 concrete things from the resume that match the job description. Output only the letter body text, no subject line, no explanation.\n\nCompany: {company_name or "the company"}\nJob description: {job_description}\nCandidate resume: {resume_text}\n\nCover letter:'
-        async with httpx.AsyncClient(timeout=300) as client:
-            response = await client.post(f'{settings.NEURAL_GENERATOR_URL}/generate', json={'prompt': prompt, 'max_tokens': 500, 'temperature': 0.4, 'top_k': 40, 'top_p': 0.9, 'repeat_penalty': 1.1})
-            response.raise_for_status()
-            output = response.json()
-        text = output.get('text', '').strip()
+        text = await generate_text(prompt, temperature=0.4)
         text = text.replace('```', '').strip()
         return {'letter': text}
 
