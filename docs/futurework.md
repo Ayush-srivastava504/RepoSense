@@ -46,7 +46,7 @@ RepoSense-master/
 │       └── neural_generator/       local Qwen3-0.6B GGUF via llama-cpp-python, port 8002
 ├── infrastructure/docker/          docker-compose.yml
 ├── scripts/                        generate-daily-posts.mjs, indexnow-submit.mjs
-├── docs/                           Overview.md, SETUP_GUIDE.md, DEPLOYMENT_GUIDE.md, MODEL_CONFIGURATION.md
+├── docs/                           Overview.md, SETUP_GUIDE.md, DEPLOYMENT_GUIDE.md
 ├── tests/                          root pytest suite (currently thin — test_basic.py only)
 ├── PHASE_PLAN.md                   the *existing* phase-tracking doc for jobs/SEO/filters work — read it, don't duplicate it
 └── INDEXING_RECOVERY_PLAN.md       GSC-driven indexing audit — read before touching sitemaps/robots/metadata
