@@ -9,6 +9,7 @@ on:
     branches: [master]
     paths:
       - "services/api/**"
+      - "apps/web/**"
       - "infrastructure/docker/**"
       - ".github/workflows/backend-cicd.yml"
       - "tests/**"
@@ -167,25 +168,32 @@ jobs:
             ghcr.io/ayush-srivastava504/reposense-api:latest
             ghcr.io/ayush-srivastava504/reposense-api:${{ github.sha }}
 
-      - name: Build and Push RAG Image
+      - name: Build and Push Crawler Image
         uses: docker/build-push-action@v6
         with:
-          context: ./services/api/rag
-          file: ./services/api/rag/Dockerfile
+          context: ./services/api/crawler
+          file: ./services/api/crawler/Dockerfile
           push: true
           tags: |
-            ghcr.io/ayush-srivastava504/reposense-rag:latest
-            ghcr.io/ayush-srivastava504/reposense-rag:${{ github.sha }}
+            ghcr.io/ayush-srivastava504/reposense-crawler:latest
+            ghcr.io/ayush-srivastava504/reposense-crawler:${{ github.sha }}
 
-      - name: Build and Push Neural Generator Image
+      # NEXT_PUBLIC_* values are baked into the browser bundle here, at build time.
+      - name: Build and Push Web Image
         uses: docker/build-push-action@v6
         with:
-          context: ./services/api/neural_generator
-          file: ./services/api/neural_generator/Dockerfile
+          context: ./apps/web
+          file: ./apps/web/Dockerfile
           push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://api.intern-flow.in
+            NEXT_PUBLIC_API_BASE_URL=https://api.intern-flow.in
+            NEXT_PUBLIC_SITE_URL=https://intern-flow.in
+            NEXT_PUBLIC_LOGO_DEV_TOKEN=${{ secrets.NEXT_PUBLIC_LOGO_DEV_TOKEN }}
+            API_BASE_URL=https://api.intern-flow.in
           tags: |
-            ghcr.io/ayush-srivastava504/reposense-neural:latest
-            ghcr.io/ayush-srivastava504/reposense-neural:${{ github.sha }}
+            ghcr.io/ayush-srivastava504/reposense-web:latest
+            ghcr.io/ayush-srivastava504/reposense-web:${{ github.sha }}
 
   deploy:
     name: Deploy to EC2
@@ -218,10 +226,11 @@ jobs:
             git pull
 
             echo "Pulling pre-built images from GHCR..."
-            docker compose -f infrastructure/docker/docker-compose.yml pull api rag neural-generator
+            docker compose -f infrastructure/docker/docker-compose.yml --profile jobs pull
 
             echo "Starting containers..."
-            docker compose -f infrastructure/docker/docker-compose.yml up -d api rag neural-generator
+            docker compose -f infrastructure/docker/docker-compose.yml up -d --remove-orphans
+            docker image prune -f
 
             echo "Waiting for API to be healthy..."
             for i in $(seq 1 12); do
@@ -265,9 +274,8 @@ jobs:
               fi
             }
             echo "Running smoke tests..."
-            check "API Gateway"      "http://localhost:8000/health"
-            check "Neural Generator" "http://localhost:8002/health"
-            check "RAG Service"      "http://localhost:8001/health"
+            check "API"      "http://localhost:8000/health"
+            check "Website"  "https://intern-flow.in/"
             echo "✓ All services healthy"
 
   health_monitor:
@@ -299,7 +307,7 @@ jobs:
           script: |
             cd /home/ec2-user/RepoSense
             ALERT_WEBHOOK_URL="${{ secrets.ALERT_WEBHOOK }}" \
-              python3 monitor.py 2>/dev/null || echo "Monitor script not found"
+              python3 services/api/monitor.py
 
       - name: Alert on failure
         if: failure()

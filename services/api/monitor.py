@@ -18,7 +18,7 @@ except ImportError:
     subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'httpx', 'aiofiles', '-q'])
     import httpx
     import aiofiles
-SERVICES = [{'name': 'API Gateway', 'url': 'http://localhost:8000/health', 'critical': True}, {'name': 'Neural Generator', 'url': 'http://localhost:8002/health', 'critical': False}, {'name': 'RAG Service', 'url': 'http://localhost:8001/health', 'critical': False}, {'name': 'Crawler', 'url': 'http://localhost:8003/health', 'critical': False}]
+SERVICES = [{'name': 'API', 'url': 'http://localhost:8000/health', 'critical': True}, {'name': 'Website', 'url': 'https://intern-flow.in/', 'critical': True}]
 TIMEOUT_SECONDS = 5
 ALERT_WEBHOOK_URL = os.getenv('ALERT_WEBHOOK_URL', '')
 ALERT_COOLDOWN_SECS = int(os.getenv('ALERT_COOLDOWN_SECS', '300'))
