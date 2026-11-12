@@ -11,6 +11,7 @@ from config import DEFAULT_KEYWORDS, DEFAULT_LOCATIONS, ENABLED_SCRAPERS, MAX_PA
 from processors.dedupe import deduplicate, deduplicate_incremental, deduplicate_against_db
 from processors.enricher import enrich_batch
 from processors.normalizer import normalize_batch
+from processors.india_filter import filter_india
 from processors.trust import score_batch
 from processors.quality import filter_and_score
 from processors.content_layer import attach_content_plan
@@ -51,38 +52,6 @@ def _load_scrapers() -> Dict:
         registry['company_portals'] = CompanyPortalsScraper
     except ImportError as exc:
         log.warning('company_portals scraper unavailable: %s', exc)
-    try:
-        from scrapers.remoteok import RemoteOKScraper
-        registry['remoteok'] = RemoteOKScraper
-    except ImportError as exc:
-        log.warning('remoteok scraper unavailable: %s', exc)
-    try:
-        from scrapers.weworkremotely import WeWorkRemotelyScraper
-        registry['weworkremotely'] = WeWorkRemotelyScraper
-    except ImportError as exc:
-        log.warning('weworkremotely scraper unavailable: %s', exc)
-    try:
-        from scrapers.remotive import RemotiveScraper
-        registry['remotive'] = RemotiveScraper
-    except ImportError as exc:
-        log.warning('remotive scraper unavailable: %s', exc)
-    try:
-        from scrapers.japan_jobs import JapanJobsScraper
-        registry['japan_jobs'] = JapanJobsScraper
-    except ImportError as exc:
-        log.warning('japan_jobs scraper unavailable: %s', exc)
-    try:
-        from scrapers.japan_internships import JapanInternshipsScraper
-        registry['japan_internships'] = JapanInternshipsScraper
-    except ImportError as exc:
-        log.warning('japan_internships scraper unavailable: %s', exc)
-    _europe_scrapers = [('europe_jobicy', 'scrapers.europe_jobicy', 'EuropeJobicyScraper'), ('europe_arbeitnow', 'scrapers.europe_arbeitnow', 'EuropeArbeitnowScraper'), ('europe_remotive', 'scrapers.europe_remotive', 'EuropeRemotiveScraper'), ('europe_weworkremotely', 'scrapers.europe_weworkremotely', 'EuropeWeWorkRemotelyScraper'), ('europe_remoteok', 'scrapers.europe_remoteok', 'EuropeRemoteOKScraper')]
-    for _source_name, _module_name, _class_name in _europe_scrapers:
-        try:
-            _module = __import__(_module_name, fromlist=[_class_name])
-            registry[_source_name] = getattr(_module, _class_name)
-        except ImportError as exc:
-            log.warning('%s scraper unavailable: %s', _source_name, exc)
     try:
         from scrapers.employment_news import EmploymentNewsScraper
         registry['employment_news'] = EmploymentNewsScraper
@@ -155,6 +124,8 @@ def run_pipeline(keywords: List[str]=None, locations: List[str]=None, max_pages:
     log.info('Total raw jobs collected: %d', len(raw_jobs))
     normalized = normalize_batch(raw_jobs)
     log.info('After normalization: %d', len(normalized))
+    normalized, non_india = filter_india(normalized)
+    log.info('After India filter: %d (dropped %d non-India listings)', len(normalized), non_india)
     if existing_ids:
         deduped = deduplicate_incremental(normalized, existing_ids)
     else:

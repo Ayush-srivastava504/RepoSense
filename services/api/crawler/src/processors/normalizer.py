@@ -12,7 +12,7 @@ from utils import get_logger, utcnow, has_intern_word
 log = get_logger('normalizer')
 CANONICAL_FIELDS = {'id': str, 'title': str, 'company': str, 'location': str, 'type': str, 'duration': str, 'stipend': str, 'salary': str, 'description': str, 'requirements': list, 'skills': list, 'apply_url': str, 'source': str, 'posted_date': str, 'deadline': str, 'is_remote': bool, 'experience_required': str, 'scraped_at': str, 'category': str, 'seniority': str, 'normalized_location': str, 'is_government': bool, 'country': str, 'department': str, 'vacancies': str, 'notification_number': str}
 GOVERNMENT_SOURCES = {'employment_news', 'freejobalert'}
-REMOTE_SOURCES = {'remoteok', 'weworkremotely', 'remotive', 'hiringcafe', 'japan_jobs', 'japan_internships', 'europe_jobicy', 'europe_arbeitnow', 'europe_remotive', 'europe_weworkremotely', 'europe_remoteok'}
+REMOTE_SOURCES = {'hiringcafe'}
 
 def normalize(job: Dict) -> Optional[Dict]:
     try:
