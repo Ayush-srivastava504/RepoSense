@@ -117,9 +117,7 @@ export const TOOLS: ToolDefinition[] = [
         ],
         relatedSlugs: ['ats-resume-checker', 'resume-builder', 'application-tracker'],
         relatedArticleSlugs: [
-            'github-portfolio-builder-india-kw-0172',
             'github-portfolio-guide-junior-developers-hireable',
-            'github-readme-generator-india-kw-0142',
         ],
     },
     {
@@ -161,9 +159,6 @@ export const TOOLS: ToolDefinition[] = [
         relatedSlugs: ['resume-builder', 'cover-letter-generator', 'job-match-score'],
         relatedArticleSlugs: [
             'how-ats-resume-algorithms-parse-software-engineer-resumes',
-            'resume-format-checker-for-students-kw-0096',
-            'resume-score-checker-for-freshers-kw-0118',
-            'resume-for-data-science-internship-kw-0137',
         ],
     },
     {
@@ -204,8 +199,6 @@ export const TOOLS: ToolDefinition[] = [
         ],
         relatedSlugs: ['ats-resume-checker', 'github-readme-generator', 'cover-letter-generator', 'job-match-score', 'application-tracker'],
         relatedArticleSlugs: [
-            'resume-headline-for-freshers-kw-0041',
-            'resume-for-data-science-internship-kw-0137',
         ],
     },
     {
@@ -249,7 +242,7 @@ export const TOOLS: ToolDefinition[] = [
             },
         ],
         relatedSlugs: ['resume-builder', 'ats-resume-checker'],
-        relatedArticleSlugs: ['linkedin-headline-examples-for-freshers-kw-0046'],
+        relatedArticleSlugs: [],
     },
     {
         slug: 'cover-letter-generator',
@@ -292,7 +285,7 @@ export const TOOLS: ToolDefinition[] = [
             },
         ],
         relatedSlugs: ['resume-builder', 'ats-resume-checker'],
-        relatedArticleSlugs: ['cover-letter-template-free-download-kw-0022'],
+        relatedArticleSlugs: [],
     },
     {
         slug: 'application-tracker',

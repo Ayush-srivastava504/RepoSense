@@ -44,17 +44,25 @@ export async function middleware(request: NextRequest) {
 
   const shouldNoIndex = NOINDEX_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
-  // Check if pathname starts with a locale prefix like /es, /es/blog, /ja, /fr, etc.
+  // The site is English-only. The old locale prefixes (/es, /ja, /fr, /de, /pt, /ko, /it, /hi)
+  // served the same English content under a translated shell and canonicalised to English, so
+  // every one was a duplicate URL. They now 301 to the English page so Google drops them and
+  // merges any signals into the real URL. The NEXT_LOCALE cookie is cleared so returning
+  // visitors don't keep a translated UI chrome.
   const pathSegments = pathname.split('/');
   const maybeLocale = pathSegments[1] as Locale;
-  const isLocalePrefix = i18n.locales.includes(maybeLocale) && maybeLocale !== i18n.defaultLocale;
+  if (i18n.locales.includes(maybeLocale) && maybeLocale !== i18n.defaultLocale) {
+    const target = request.nextUrl.clone();
+    target.pathname = '/' + pathSegments.slice(2).join('/');
+    const redirect = NextResponse.redirect(target, 301);
+    redirect.cookies.delete('NEXT_LOCALE');
+    return redirect;
+  }
 
   // Expired jobs answer 410 Gone instead of 404 (Next.js 14 pages can't set a
-  // 410 themselves). Runs on the locale-stripped path so /es/jobs/... is
-  // covered too. Fails open: API errors just fall through to normal rendering.
+  // 410 themselves). Fails open: API errors just fall through to normal rendering.
   if (request.method === 'GET' || request.method === 'HEAD') {
-    const logicalPath = isLocalePrefix ? '/' + pathSegments.slice(2).join('/') : pathname;
-    const jobId = jobIdFromDetailPath(logicalPath);
+    const jobId = jobIdFromDetailPath(pathname);
     if (jobId && (await isJobGone(jobId))) {
       return new NextResponse(goneHtml(), {
         status: 410,
@@ -68,39 +76,13 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  if (isLocalePrefix) {
-    // Strip locale prefix for internal Next.js App Router rewrite
-    // e.g. /es/blog -> /blog, /es -> /
-    const remainingSegments = pathSegments.slice(2);
-    const internalPath = '/' + remainingSegments.join('/');
-    const rewriteUrl = request.nextUrl.clone();
-    rewriteUrl.pathname = internalPath === '' ? '/' : internalPath;
-
-    // Set x-locale on the REQUEST headers (not just the response) so
-    // Server Components -- app/layout.tsx, app/blog/page.tsx,
-    // app/blog/[slug]/page.tsx -- can read the real locale via headers()
-    // on every request, not only once the NEXT_LOCALE cookie set below has
-    // round-tripped back on a later visit.
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('x-locale', maybeLocale);
-    const response = NextResponse.rewrite(rewriteUrl, { request: { headers: requestHeaders } });
-    response.headers.set('x-locale', maybeLocale);
-    response.cookies.set('NEXT_LOCALE', maybeLocale, {
-      path: '/',
-      maxAge: 31536000,
-      sameSite: 'lax',
-    });
-    if (shouldNoIndex) {
-      response.headers.set('X-Robots-Tag', 'noindex, nofollow');
-    }
-    return response;
-  }
-
-  // Default English route
-  const defaultRequestHeaders = new Headers(request.headers);
-  defaultRequestHeaders.set('x-locale', i18n.defaultLocale);
-  const response = NextResponse.next({ request: { headers: defaultRequestHeaders } });
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-locale', i18n.defaultLocale);
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set('x-locale', i18n.defaultLocale);
+  if (request.cookies.has('NEXT_LOCALE')) {
+    response.cookies.delete('NEXT_LOCALE');
+  }
   if (shouldNoIndex) {
     response.headers.set('X-Robots-Tag', 'noindex, nofollow');
   }

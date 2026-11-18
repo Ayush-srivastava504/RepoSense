@@ -1,18 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SECTION_LINKS, sectionLinksExcluding, topCompaniesFromJobs, matchResumeRole, matchCareer, regionHubForJob } from '../lib/hubLinks';
+import { SECTION_LINKS, sectionLinksExcluding, topCompaniesFromJobs, matchResumeRole, matchCareer } from '../lib/hubLinks';
 import { RESUME_ROLES } from '../app/resume-for/data';
 import { CAREERS } from '../app/careers/data';
 import { SKILLS } from '../app/skills/data';
 import { CITIES } from '../app/jobs-in/data';
 import { BATCHES } from '../app/batch/data';
 
-test('section links drop the current page and keep the other five', () => {
-    assert.equal(SECTION_LINKS.length, 6);
+test('section links drop the current page and keep the other India sections', () => {
+    assert.equal(SECTION_LINKS.length, 4);
     const rest = sectionLinksExcluding('/remote-jobs');
-    assert.equal(rest.length, 5);
+    assert.equal(rest.length, 3);
     assert.ok(!rest.some((s) => s.href === '/remote-jobs'));
-    assert.ok(rest.some((s) => s.href === '/japan-jobs') && rest.some((s) => s.href === '/europe-jobs'));
+    assert.ok(!SECTION_LINKS.some((s) => s.href === '/japan-jobs' || s.href === '/europe-jobs'));
 });
 
 test('top companies: most listings first, case-insensitive merge, top flag breaks ties, capped', () => {
@@ -30,13 +30,6 @@ test('resume guide and career link only when the title really names the role', (
     assert.equal(matchResumeRole('Marketing Manager'), undefined);
     assert.equal(matchResumeRole('Softwareengineering Lead'), undefined);
     assert.equal(matchCareer('Junior Data Engineer')?.slug, 'data-engineer');
-});
-
-test('region hubs exist only for Japan and Europe jobs', () => {
-    assert.equal(regionHubForJob({ country: 'Japan' })?.href, '/japan-jobs');
-    assert.equal(regionHubForJob({ country: ' europe ' })?.href, '/europe-jobs');
-    assert.equal(regionHubForJob({ country: 'India' }), undefined);
-    assert.equal(regionHubForJob({}), undefined);
 });
 
 test('every curated link target exists (no 404s from hub blocks)', () => {

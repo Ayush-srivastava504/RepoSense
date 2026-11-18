@@ -1,19 +1,9 @@
 User-agent: *
 Allow: /
-Allow: /es/
-Allow: /ja/
-Allow: /fr/
-Allow: /de/
-Allow: /pt/
-Allow: /ko/
-Allow: /it/
-Allow: /hi/
 Allow: /jobs
 Allow: /internships
 Allow: /remote-jobs
 Allow: /government-jobs
-Allow: /japan-jobs
-Allow: /europe-jobs
 Allow: /companies
 Allow: /company-directory
 Allow: /hackathons
@@ -37,47 +27,9 @@ Disallow: /register
 Disallow: /api/
 Disallow: /static/
 
-# Locale-prefixed job DETAIL pages (/es/jobs/<slug> ...) render the same English
-# job as the unprefixed URL and canonicalise to it, and they are not in any
-# sitemap. Every one is a duplicate Googlebot would spend crawl budget on, which
-# is the scarce resource while thousands of real listings sit at "Discovered -
-# currently not indexed". The trailing slash blocks only detail pages: the
-# translated list pages (/es/jobs, ...) that hreflang points at stay crawlable.
-#
-# es/ and pt/ are NOT in this block (Session 6, migrations/024_job_translations.sql,
-# IMPLEMENTATION_PLAN.md §7): those two locales have a real translation pipeline now,
-# so a given /es/jobs/<slug> or /pt/jobs/<slug> is either genuinely unique translated
-# content that self-canonicalises to its own URL (job.translated_locales includes the
-# locale) or still duplicates and canonicalises to English (no translation yet for
-# that job) -- lib/jobLocale.ts decides which per request. Leaving those crawlable
-# either way is what keeps this Disallow list and the job-aware hreflang
-# (jobHreflangLinks() in lib/hreflang.ts) from contradicting each other the same way
-# the site-wide HREFLANG_ENABLED=false comment above describes. The other six locales
-# (ja/fr/de/ko/it/hi) have no translation pipeline at all yet and stay blocked.
-Disallow: /ja/jobs/
-Disallow: /ja/internships/
-Disallow: /ja/remote-jobs/
-Disallow: /ja/government-jobs/
-Disallow: /fr/jobs/
-Disallow: /fr/internships/
-Disallow: /fr/remote-jobs/
-Disallow: /fr/government-jobs/
-Disallow: /de/jobs/
-Disallow: /de/internships/
-Disallow: /de/remote-jobs/
-Disallow: /de/government-jobs/
-Disallow: /ko/jobs/
-Disallow: /ko/internships/
-Disallow: /ko/remote-jobs/
-Disallow: /ko/government-jobs/
-Disallow: /it/jobs/
-Disallow: /it/internships/
-Disallow: /it/remote-jobs/
-Disallow: /it/government-jobs/
-Disallow: /hi/jobs/
-Disallow: /hi/internships/
-Disallow: /hi/remote-jobs/
-Disallow: /hi/government-jobs/
+# The old locale prefixes (/es/, /ja/, ...) now 301 to the English URL (middleware.ts).
+# They are deliberately NOT disallowed: Googlebot has to fetch them to see the redirect
+# and drop the duplicates from its index.
 
 # Prevent crawl budget exhaustion on duplicate query permutations.
 # NOTE: ?page= is deliberately NOT blocked. Paginated list pages (12 jobs each) are the

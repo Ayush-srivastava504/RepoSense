@@ -8,7 +8,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Logo from './Logo';
 import { useAuth } from '@/lib/auth';
-import LanguageSwitcher from './LanguageSwitcher';
 import { useTranslation } from '@/i18n/LanguageContext';
 
 type NavLink = { href: string; label: string; key?: string };
@@ -311,10 +310,8 @@ export default function Sidebar({
       links: [
         { href: '/jobs', label: 'Jobs', key: 'jobs' },
         { href: '/internships', label: 'Internships', key: 'internships' },
-        { href: '/remote-jobs', label: 'Remote', key: 'remoteJobs' },
+        { href: '/remote-jobs', label: 'Work from home', key: 'remoteJobs' },
         { href: '/government-jobs', label: 'Government', key: 'governmentJobs' },
-        { href: '/japan-jobs', label: 'Japan', key: 'japanJobs' },
-        { href: '/europe-jobs', label: 'Europe', key: 'europeJobs' },
         { href: '/hackathons', label: 'Hackathons', key: 'hackathons' },
         { href: '/companies', label: 'Companies', key: 'companies' },
         { href: '/jobs-in', label: 'Jobs by city', key: 'jobsByCity' },
@@ -438,9 +435,6 @@ export default function Sidebar({
         borderColor: 'var(--line)',
         paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
       }}>
-        <div className="px-1">
-          <LanguageSwitcher />
-        </div>
         <ThemeToggle collapsed={collapsed} />
 
         {user ? (

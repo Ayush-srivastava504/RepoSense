@@ -13,24 +13,28 @@ import { getJobs, getJobsPage, getFeaturedJobs, BASE_URL, } from '@/lib/jobs';
 import JobCard from '@/app/components/JobCard';
 import FeaturedJobs from '@/app/components/FeaturedJobs';
 import { RoleFilter, parseGroupFilter } from '@/app/components/JobFilters';
-import {  breadcrumbSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
+import {  breadcrumbSchema, safeJsonLd } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 import HubExplore from '@/app/components/HubExplore';
 import SectionGuide from '@/app/components/SectionGuide';
+import { WFH_MIN_INDEXABLE, wfhJobCount } from '@/lib/wfhHub';
 import { SECTION_GUIDES } from '@/lib/content/sectionGuides';
 const JOBS_PER_PAGE = 12;
 export async function generateMetadata({ searchParams, }: {
     searchParams: Record<string, string | undefined>;
 }): Promise<Metadata> {
-    // Purpose: remote roles only (is_remote), open to India, US, UK and worldwide. Matches the on-page <h1>.
-    return listingMetadata({
+    // Purpose: work-from-home roles open to candidates in India. Matches the on-page <h1>.
+    const meta = listingMetadata({
         path: '/remote-jobs',
-        title: 'Remote Jobs — India, US, UK & Worldwide, Updated Daily',
-        description: 'Remote software, product, data and sales roles from Himalayas, Remote OK, We Work Remotely and Remotive. Updated daily, open to India, US, UK and worldwide.',
+        title: 'Work From Home Jobs in India for Freshers — Remote Roles, Updated Daily',
+        description: 'Work from home and remote jobs open to freshers and graduates in India: software, data, product and support roles from company career pages, checked and updated daily.',
         searchParams,
-        imageAlt: 'InternFlow — Remote jobs open to India, US, UK and worldwide',
-        languages: languageAlternates('/remote-jobs'),
+        imageAlt: 'InternFlow — Work from home jobs in India',
     });
+    // Thin while only a few WFH roles are live: keep it out of the index until it is a useful list (lib/wfhHub.ts).
+    if ((await wfhJobCount()) < WFH_MIN_INDEXABLE)
+        return { ...meta, robots: { index: false, follow: true } };
+    return meta;
 }
 function Pagination({ currentPage, totalPages, search, role, }: {
     currentPage: number;
@@ -172,7 +176,7 @@ export default async function RemoteJobsPage({ searchParams, }: {
     };
     const crumbs = breadcrumbSchema([
         { name: 'Home', url: BASE_URL },
-        { name: 'Remote Jobs', url: `${BASE_URL}/remote-jobs` },
+        { name: 'Work From Home Jobs', url: `${BASE_URL}/remote-jobs` },
     ]);
     return (<div className="min-h-screen">
       <script type="application/ld+json" dangerouslySetInnerHTML={{
@@ -186,11 +190,11 @@ export default async function RemoteJobsPage({ searchParams, }: {
         }}/>
 
         <p className="eyebrow eyebrow-accent text-xs sm:text-sm">
-          // remote jobs
+          // work from home
         </p>
 
         <h1 className="display mt-2 text-2xl sm:text-3xl font-medium">
-          Remote Jobs — India, US, UK & Worldwide
+          Work From Home Jobs in India
         </h1>
         <p className="mt-1 text-sm italic" style={{ color: 'var(--indigo)' }}>
           {SECTION_GUIDES['remote-jobs'].motto}
@@ -200,9 +204,8 @@ export default async function RemoteJobsPage({ searchParams, }: {
         <p className="mt-2 text-xs sm:text-sm" style={{
             color: 'var(--ink-soft)',
         }}>
-          Remote-first roles aggregated from Himalayas,
-          Remote OK, We Work Remotely, and Remotive,
-          refreshed daily.{' '}
+          Remote and work-from-home roles open to candidates in India, collected
+          from company career pages and refreshed daily.{' '}
 
           <Link href="/jobs" className="underline">
             See all jobs

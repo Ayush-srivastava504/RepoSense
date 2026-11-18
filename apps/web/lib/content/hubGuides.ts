@@ -1,6 +1,6 @@
 // Module: lib/content/hubGuides.ts
 // Editorial content for the hub/index pages: /companies, /jobs-in, /batch, /careers,
-// /resume-for, /japan-jobs and /europe-jobs. Same shape as sectionGuides.ts and rendered
+// and /resume-for. Same shape as sectionGuides.ts and rendered
 // by the same SectionGuide component. Every hub has its own motto, topics and FAQ.
 //
 // Editing rule: keep claims durable. No salary figures, vacancy counts, visa thresholds or
@@ -13,9 +13,7 @@ export type HubKey =
     | 'jobs-in'
     | 'batch'
     | 'careers'
-    | 'resume-for'
-    | 'japan-jobs'
-    | 'europe-jobs';
+    | 'resume-for';
 
 export const HUB_GUIDES: Record<HubKey, SectionGuideContent> = {
     companies: {
@@ -464,183 +462,6 @@ export const HUB_GUIDES: Record<HubKey, SectionGuideContent> = {
             { href: '/jobs', label: 'Jobs', note: 'Find a listing to match' },
             { href: '/internships', label: 'Internships', note: 'Early-career roles' },
             { href: '/tools', label: 'Career tools', note: 'Cover letter and more' },
-        ],
-    },
-
-    'japan-jobs': {
-        motto: 'Japan is a real option. Go in with open eyes.',
-        heading: 'What to know before you apply for jobs in Japan',
-        intro:
-            'Working in Japan is realistic for Indian engineers, but the route is different from applying in India. These are the points that matter most before you spend time on applications.',
-        topics: [
-            {
-                title: 'Understand what "remote for Japan" means',
-                body: [
-                    'Many listings on this page come from remote-work boards. A role marked for Japan often expects you to be in Japan already, or to have the right to work there. It is not always an offer to relocate you. Read the location and eligibility lines before you apply.',
-                ],
-            },
-            {
-                title: 'Work visas need a sponsor',
-                body: [
-                    'To work in Japan you usually need an employer to sponsor a work visa, and the common route for engineers expects a relevant degree or experience. Visa categories and requirements change, so confirm them on the Japanese immigration authority\'s official site or with the employer\'s HR.',
-                ],
-            },
-            {
-                title: 'Language: it depends on the company',
-                body: [
-                    'Many Japanese companies work in Japanese and ask for a JLPT level, often N2 or N1 for local teams. International companies and startups hire for English-speaking roles. Honestly check how much Japanese a role needs, and be realistic about learning it.',
-                ],
-            },
-            {
-                title: 'How hiring and work culture differ',
-                body: [
-                    'Hiring can be slower and more formal than in India, with multiple interviews and a strong focus on fit with the team. Expect clear processes and an emphasis on reliability. Ask about overtime expectations and team size during interviews.',
-                ],
-            },
-            {
-                title: 'Internships in Japan',
-                body: [
-                    'Some listings are internships, either based in Japan or open to applicants in Japan. Rules and visa category depend on the programme and the employer. Ask the company how they arrange it, and check the official guidance before making plans.',
-                ],
-                link: { href: '/internships', label: 'Browse internships' },
-            },
-            {
-                title: 'A practical first step',
-                body: [
-                    'Start by applying to English-language roles at international companies, keep learning Japanese on the side, and build a resume that shows concrete projects. A few years in a strong team at home can also make a later move to Japan easier.',
-                ],
-                link: { href: '/resume-for', label: 'Resume guides' },
-            },
-        ],
-        faqs: [
-            {
-                question: 'Can an Indian graduate work in Japan?',
-                answer:
-                    'Yes, with an employer willing to sponsor a work visa and a qualifying degree or experience. Requirements change, so check the official immigration site. Many people start with a role in India at a company with a Japan office and move later.',
-            },
-            {
-                question: 'Do I need to speak Japanese?',
-                answer:
-                    'Not for every role. Some international companies and startups hire in English, while many local teams expect a JLPT level such as N2. Check each listing, and treat Japanese as a long-term asset either way.',
-            },
-            {
-                question: 'Are these jobs in Japan or remote?',
-                answer:
-                    'A mix. Many come from remote-work boards, and some are based in Japan or open only to people already there. The listing states the arrangement, so read it before applying.',
-            },
-            {
-                question: 'Will the company help with the visa?',
-                answer:
-                    'Some do and some do not. A listing that mentions visa support is a good sign. If it does not say, ask early in the process, since it affects whether the role is possible for you.',
-            },
-            {
-                question: 'Can I apply for a Japan internship from India?',
-                answer:
-                    'Sometimes. Some internships are open to remote applicants and some require you to be in Japan. The company can tell you the arrangement and how any visa or permission is handled.',
-            },
-            {
-                question: 'How should I prepare my resume for Japan?',
-                answer:
-                    'Keep it clear and factual, with specific projects and skills. For Japanese-language roles, a Japanese-format resume may be expected, so ask the recruiter. For English-language roles, a normal tech resume works.',
-            },
-        ],
-        related: [
-            { href: '/europe-jobs', label: 'Europe jobs', note: 'Another route abroad' },
-            { href: '/remote-jobs', label: 'Remote jobs', note: 'Work from India' },
-            { href: '/jobs', label: 'Jobs in India', note: 'All open roles' },
-            { href: '/resume-for', label: 'Resume guides', note: 'Role-specific advice' },
-            { href: '/tools', label: 'Career tools', note: 'Resume and cover letter' },
-        ],
-    },
-
-    'europe-jobs': {
-        motto: 'Europe hires across borders. Learn the rules, then apply.',
-        heading: 'Applying for jobs in Europe from India',
-        intro:
-            'Europe is many job markets, each with its own visa rules, languages and salary norms. A little groundwork before applying will keep you from wasting weeks on roles you cannot take.',
-        topics: [
-            {
-                title: 'Europe is not one market',
-                body: [
-                    'The UK, Germany, the Netherlands and other countries differ in rules, salaries, taxes and language needs. Choose one or two countries to focus on rather than applying everywhere with the same letter.',
-                ],
-            },
-            {
-                title: 'Visa and sponsorship come first',
-                body: [
-                    'Most roles need a work visa. Some employers sponsor, some do not. Several countries have routes for skilled graduates, such as the EU Blue Card in participating countries, the UK Skilled Worker route and Germany\'s Opportunity Card for job seekers. Eligibility and salary thresholds change, so check official government sources before relying on any number.',
-                ],
-            },
-            {
-                title: 'Look for listings that mention relocation',
-                body: [
-                    'Some listings state visa sponsorship or relocation help. Those are far more likely to be open to you than a role that says nothing. Filter your attention to them first, and ask about it early in the process otherwise.',
-                ],
-            },
-            {
-                title: 'Language is a real factor',
-                body: [
-                    'Many tech teams in Europe work in English, especially in international companies and startups. In some countries, local-language skills are still expected for client-facing or non-tech roles. Check the listing, and consider learning the local language as a long-term plan.',
-                ],
-            },
-            {
-                title: 'CVs, not resumes',
-                body: [
-                    'In much of Europe the document is called a CV and follows local norms: concise, factual, often with a short professional profile. Some countries expect more personal details than India does, others fewer. Look at examples from the country you target.',
-                ],
-                link: { href: '/resume-for', label: 'Resume guides' },
-            },
-            {
-                title: 'Remote roles for Europe',
-                body: [
-                    'Many listings here are remote roles from European companies. Some accept candidates anywhere, many require you to be in a European time zone or have the right to work in the country. Check the eligibility line, then ask about contracts and payment if you work from India.',
-                ],
-                link: { href: '/remote-jobs', label: 'See remote jobs' },
-            },
-        ],
-        faqs: [
-            {
-                question: 'Can I get a job in Europe from India?',
-                answer:
-                    'Yes, though it takes preparation. You need an employer willing to sponsor a visa or a route for skilled workers, and a profile that fits the role. Many people also start with a remote role and relocate later.',
-            },
-            {
-                question: 'Which European country is easiest for tech jobs?',
-                answer:
-                    'There is no simple answer. It depends on your field, language and the current visa rules. Look at the countries with the most English-language tech roles and compare their visa routes on official sites.',
-            },
-            {
-                question: 'What is a visa-sponsored job?',
-                answer:
-                    'It is a job where the employer supports your work visa application, handling the paperwork and meeting the sponsor requirements. A listing that mentions visa sponsorship is more realistic for an overseas applicant.',
-            },
-            {
-                question: 'Do I need to speak the local language?',
-                answer:
-                    'Not always. Many tech roles in international companies use English. Roles that deal with local customers or government often need the local language. The listing should say.',
-            },
-            {
-                question: 'What is the difference between a CV and a resume?',
-                answer:
-                    'In India they are mostly used interchangeably. In much of Europe, CV is the standard word, and the format follows local conventions. Keep it concise, factual and tailored to the country.',
-            },
-            {
-                question: 'Are salaries in Europe higher than in India?',
-                answer:
-                    'In nominal terms often yes, but taxes, rent and living costs are also higher. Compare what you would keep after costs, and check the real salary range on the listing or from the recruiter.',
-            },
-            {
-                question: 'Can I work remotely for a European company from India?',
-                answer:
-                    'Sometimes. Some companies hire contractors anywhere, others need you in a specific region. Ask how payment, tax and your contract are handled, and get the terms in writing.',
-            },
-        ],
-        related: [
-            { href: '/japan-jobs', label: 'Japan jobs', note: 'Another route abroad' },
-            { href: '/remote-jobs', label: 'Remote jobs', note: 'Work from India' },
-            { href: '/jobs', label: 'Jobs in India', note: 'All open roles' },
-            { href: '/resume-for', label: 'Resume guides', note: 'CV and resume advice' },
-            { href: '/tools', label: 'Career tools', note: 'Resume and cover letter' },
         ],
     },
 };

@@ -55,11 +55,21 @@ const nextConfig = {
 				destination: '/resume/builder',
 				permanent: true,
 			},
-			{
-				source: '/japan-internships',
-				destination: '/japan-jobs?type=internship',
-				permanent: true,
-			},
+			// The site is India-only (migration 039). The old abroad hubs fold into the India listings.
+			{ source: '/japan-internships', destination: '/internships', permanent: true },
+			{ source: '/japan-jobs', destination: '/jobs', permanent: true },
+			{ source: '/europe-jobs', destination: '/jobs', permanent: true },
+			// Retired keyword-template blog posts -> the tool page each one was written around.
+			...[
+				['cover-letter-template-free-download-kw-0022', '/tools/cover-letter-generator'],
+				['github-portfolio-builder-india-kw-0172', '/tools/github-readme-generator'],
+				['github-readme-generator-india-kw-0142', '/tools/github-readme-generator'],
+				['linkedin-headline-examples-for-freshers-kw-0046', '/tools/linkedin-optimizer'],
+				['resume-for-data-science-internship-kw-0137', '/tools/resume-builder'],
+				['resume-format-checker-for-students-kw-0096', '/tools/ats-resume-checker'],
+				['resume-headline-for-freshers-kw-0041', '/tools/resume-builder'],
+				['resume-score-checker-for-freshers-kw-0118', '/tools/ats-resume-checker'],
+			].map(([slug, destination]) => ({ source: `/blog/${slug}`, destination, permanent: true })),
 		];
 	},
 

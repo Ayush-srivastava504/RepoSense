@@ -14,6 +14,7 @@ import { getCompaniesOrThrow, getIntelSitemapEntries, getCompanyDirectory, compa
 import { getJobFacetsOrThrow } from '@/lib/facets';
 import { getAllPosts } from '@/lib/blog';
 import { hreflangLinks } from '@/lib/hreflang';
+import { WFH_MIN_INDEXABLE, wfhJobCount } from '@/lib/wfhHub';
 import { mapWithLimit, serveSitemap, type SitemapBuild } from '@/lib/sitemapResponse';
 import { buildUrlsetXml, toLastmod, type SitemapUrlEntry } from '@/lib/sitemapXml';
 import { newestJobDate, newestLastmod } from '@/lib/sitemapDates';
@@ -70,8 +71,6 @@ const CORE_HUBS = [
     { path: '/government-jobs', changefreq: 'daily' as const, priority: 0.9, live: true },
     { path: '/companies', changefreq: 'daily' as const, priority: 0.8, live: true },
     { path: '/hackathons', changefreq: 'daily' as const, priority: 0.8, live: true },
-    { path: '/japan-jobs', changefreq: 'daily' as const, priority: 0.8, live: true },
-    { path: '/europe-jobs', changefreq: 'daily' as const, priority: 0.8, live: true },
     { path: '/tools', changefreq: 'weekly' as const, priority: 0.8, live: false },
     { path: '/about', changefreq: 'monthly' as const, priority: 0.6, live: false },
     { path: '/contact', changefreq: 'yearly' as const, priority: 0.3, live: false },
@@ -93,8 +92,6 @@ const HUB_QUERIES: Record<string, JobQuery[]> = {
     '/internships': [{ type: 'internship', excludeGovernment: true, sort: 'ranked', limit: 12 }],
     '/remote-jobs': [{ category: 'remote', excludeGovernment: true, excludeType: 'internship', sort: 'ranked', limit: 12 }],
     '/government-jobs': [{ category: 'government', sort: 'ranked', limit: 12 }],
-    '/japan-jobs': [{ country: 'Japan', sort: 'ranked', limit: 12 }],
-    '/europe-jobs': [{ country: 'Europe', sort: 'ranked', limit: 12 }],
 };
 
 /** path -> lastmod for the live hubs of the static sitemap. */
@@ -121,11 +118,18 @@ function staticEntries(dates: Record<string, string | undefined> = {}): SitemapU
     }));
 }
 
+// /remote-jobs is noindexed while thin (lib/wfhHub.ts); a sitemap entry for a noindexed page is a mixed signal.
+async function withoutThinHubs(entries: SitemapUrlEntry[]): Promise<SitemapUrlEntry[]> {
+    if ((await wfhJobCount()) >= WFH_MIN_INDEXABLE)
+        return entries;
+    return entries.filter((e) => e.loc !== `${BASE_URL}/remote-jobs`);
+}
+
 const staticSitemap: RouteSitemap = {
     slug: 'static',
     path: '/sitemap-static.xml',
-    build: async () => done(staticEntries(await staticHubDates())),
-    fallback: () => done(staticEntries()),
+    build: async () => done(await withoutThinHubs(staticEntries(await staticHubDates()))),
+    fallback: () => done(staticEntries().filter((e) => e.loc !== `${BASE_URL}/remote-jobs`)),
     lastmod: async () => newestLastmod(Object.values(await staticHubDates())),
 };
 

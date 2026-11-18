@@ -11,7 +11,7 @@ const COLUMNS: { heading: string; links: { href: string; label: string }[] }[] =
     links: [
       { href: '/jobs', label: 'Jobs' },
       { href: '/internships', label: 'Internships' },
-      { href: '/remote-jobs', label: 'Remote jobs' },
+      { href: '/remote-jobs', label: 'Work from home jobs' },
       { href: '/resume/builder', label: 'Resume builder' },
       { href: '/ats-checker', label: 'ATS resume checker' },
       { href: '/cover-letter', label: 'Cover letter generator' },

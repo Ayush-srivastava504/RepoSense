@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 const links = [
     { href: '/jobs', label: 'Jobs' },
     { href: '/internships', label: 'Internships' },
-    { href: '/remote-jobs', label: 'Remote jobs' },
+    { href: '/remote-jobs', label: 'Work from home jobs' },
     { href: '/government-jobs', label: 'Government jobs' },
     { href: '/companies', label: 'Companies hiring' },
     { href: '/hackathons', label: 'Hackathons' },
