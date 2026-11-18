@@ -91,9 +91,9 @@ it with `docker compose logs -f caddy`. You can turn the orange-cloud proxy back
 mode: Full (strict)).
 
 ### 8. Point GitHub Actions at the new server
-Repository → Settings → Secrets → Actions: update `EC2_HOST` to the new IP and `EC2_SSH_KEY` if the
-key pair changed. Add `NEXT_PUBLIC_LOGO_DEV_TOKEN` (optional) for the web image build. Then run
-**Backend CI/CD** once (Actions → Run workflow) to confirm deploys work.
+GitHub no longer connects to the server (see "How deploys work" below), so no SSH secrets are needed.
+Add `NEXT_PUBLIC_LOGO_DEV_TOKEN` (optional) for the web image build. The server needs to be logged in to
+GHCR once (step 6) so `auto-deploy.sh` can pull new images.
 
 ### 9. Verify, then terminate the old instance
 - `https://intern-flow.in` and `https://api.intern-flow.in/health` respond.
@@ -113,5 +113,22 @@ docker compose logs -f --tail=100 api              # logs (web, caddy, postgres 
 docker compose --profile jobs run --rm crawler     # crawl now
 free -h && docker stats --no-stream                # memory
 ```
-Deploys happen automatically on push to `master` (`backend-cicd.yml`): it builds images, pulls them on
-the server and runs `docker compose up -d`.
+Logs for every scheduled job are in `~/logs/` (`deploy.log`, `sitemaps.log`, `daily.log`, ...).
+
+### How deploys work
+The server deploys itself. `infrastructure/scripts/auto-deploy.sh` runs from cron every 5 minutes:
+it fast-forwards the checkout to `origin/master`, pulls the `:latest` images that **Backend CI/CD**
+pushed to GHCR, and runs `docker compose up -d` only when something changed. So a push to `master`
+is live about 5 minutes after the CI build finishes. GitHub never connects to the server, which is why
+port 22 is open only to the owner's IP. Watch a deploy with `tail -f ~/logs/deploy.log`.
+
+### Scheduled jobs
+Everything that used to run as an SSH workflow now runs as cron on the server through
+`infrastructure/scripts/server-jobs.sh` (installed by `setup-server.sh`; re-run it after changing the
+schedule). Run any job by hand:
+```bash
+bash ~/RepoSense/infrastructure/scripts/server-jobs.sh sitemaps     # also: queue, daily, index-push,
+                                                                    # indexnow, structured, companies, company-intel
+```
+GitHub Actions keeps only what needs no server access: tests + image builds (`backend-cicd.yml`),
+an HTTPS uptime check every 15 minutes, and the daily Search Console / IndexNow pings (`daily-pipeline.yml`).

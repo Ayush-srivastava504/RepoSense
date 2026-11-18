@@ -1,91 +1,23 @@
-# Chained daily loop:  enrich -> sitemap rebuild -> index push (4 categories) -> gone-URL submit.
-# Beside the sitemap stage: enrich -> charts (nightly chart_stats aggregation, non-blocking).
-# After the job index pushes: index-routes (IndexNow for the 10 non-job sitemaps, non-blocking).
-# Beside the sitemap stage: gsc-sitemaps (daily Search Console re-read request for every sitemap, non-blocking).
-# Each stage starts only when the previous one has finished, so IndexNow/Google are never
-# told about pages whose enrichment hasn't landed in sitemap_cache yet (previously these ran
-# by clock: enrich 04:00, sitemap hourly, index 06:00-07:00). Crawl stays a continuous
-# 20-minute container loop; it logs itself to pipeline_runs (stage='crawl').
-# Every stage is recorded in pipeline_runs (migration 029) under run_id = this GitHub run id.
-#
-# Failure policy:
-#   enrich fails      -> sitemap + index still run (they act on whatever is already enriched)
-#   sitemap fails     -> index and gone are SKIPPED (don't push URLs from a stale/shrunk cache)
-#   an index category fails -> the next category and gone still run
-name: Daily pipeline (enrich -> sitemap -> index -> gone)
+name: Daily search pings
+
+# The daily SEO pipeline itself (enrich -> charts -> sitemap -> Indexing API pushes) runs as cron
+# on the server: infrastructure/scripts/server-jobs.sh daily, 04:00 UTC. This workflow only does the
+# two steps that talk to Google/IndexNow from outside and never needed the server: it runs after the
+# server's pipeline has had time to rebuild the sitemaps.
 
 on:
   schedule:
-    - cron: '0 4 * * *'   # 04:00 UTC = 09:30 IST
+    - cron: '15 5 * * *'   # 05:15 UTC = 10:45 IST, ~75 min after the server's 04:00 run
   workflow_dispatch:
-    inputs:
-      enrich_limit:
-        description: 'Max listings to enrich'
-        required: false
-        default: '100'
-      enrich_max_minutes:
-        description: 'Enrichment time budget (minutes)'
-        required: false
-        default: '30'
-      dry_run:
-        description: 'Index push: select + log only (true/false)'
-        required: false
-        default: 'false'
 
 concurrency:
-  group: daily-pipeline
+  group: daily-search-pings
   cancel-in-progress: false
 
 jobs:
-  enrich:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          timeout: 60s
-          command_timeout: 45m
-          script_stop: true
-          script: |
-            set -e
-            cd /home/ec2-user/RepoSense
-            docker compose -f infrastructure/docker/docker-compose.yml exec -T api \
-              python scripts/pipeline_stage.py --run-id "${{ github.run_id }}" --stage enrich -- \
-              python scripts/enrich_all_content.py --target jobs --redo-fallback --no-fallback \
-              --max-runtime-minutes "${{ github.event.inputs.enrich_max_minutes || '30' }}" \
-              --limit "${{ github.event.inputs.enrich_limit || '100' }}"
-
-  sitemap:
-    needs: enrich
-    if: ${{ !cancelled() }}   # run even if enrichment failed
-    runs-on: ubuntu-latest
-    steps:
-      - uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          timeout: 60s
-          command_timeout: 5m
-          script_stop: true
-          script: |
-            set -e
-            cd /home/ec2-user/RepoSense
-            docker compose -f infrastructure/docker/docker-compose.yml exec -T api \
-              python scripts/pipeline_stage.py --run-id "${{ github.run_id }}" --stage sitemap -- \
-              python scripts/build_sitemaps.py
-
   gsc-sitemaps:
-    # Ask Search Console to re-read the sitemap index + every child once a day (scripts/gsc-submit-sitemaps.mjs), so
-    # "Last read" follows the real change cadence for ALL sitemaps, not only the ones Google happens to poll. Needs the
-    # GSC_SERVICE_ACCOUNT_JSON secret (setup is in the script header); without it the step logs a notice and passes.
-    # Beside the index pushes, never blocks them, and a failure here changes nothing on the site.
-    needs: sitemap
-    if: ${{ !cancelled() && needs.sitemap.result == 'success' && github.event.inputs.dry_run != 'true' }}
+    # Ask Search Console to re-read the sitemap index + every child (scripts/gsc-submit-sitemaps.mjs).
+    # Needs the GSC_SERVICE_ACCOUNT_JSON secret; without it the script logs a notice and passes.
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
@@ -99,99 +31,10 @@ jobs:
           GSC_SERVICE_ACCOUNT_JSON: ${{ secrets.GSC_SERVICE_ACCOUNT_JSON }}
           GSC_SITE_URL: ${{ secrets.GSC_SITE_URL }}
 
-  charts:
-    # Nightly shared-chart aggregates (chart_stats, migration 031). Needs enrichment output (skills,
-    # experience) but nothing downstream depends on it, so it runs beside the sitemap stage and a
-    # failure here never blocks indexing.
-    needs: enrich
-    if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          timeout: 60s
-          command_timeout: 10m
-          script_stop: true
-          script: |
-            set -e
-            cd /home/ec2-user/RepoSense
-            docker compose -f infrastructure/docker/docker-compose.yml exec -T api \
-              python scripts/pipeline_stage.py --run-id "${{ github.run_id }}" --stage charts -- \
-              python scripts/build_chart_stats.py
-
-  index-jobs:
-    needs: sitemap
-    uses: ./.github/workflows/_category-index-cycle-reusable.yml
-    with:
-      category: jobs
-      dry_run: ${{ github.event.inputs.dry_run == 'true' }}
-      run_id: ${{ github.run_id }}
-    secrets: inherit
-
-  index-internships:
-    needs: [sitemap, index-jobs]
-    if: ${{ !cancelled() && needs.sitemap.result == 'success' }}
-    uses: ./.github/workflows/_category-index-cycle-reusable.yml
-    with:
-      category: internships
-      dry_run: ${{ github.event.inputs.dry_run == 'true' }}
-      run_id: ${{ github.run_id }}
-    secrets: inherit
-
-  index-remote:
-    needs: [sitemap, index-internships]
-    if: ${{ !cancelled() && needs.sitemap.result == 'success' }}
-    uses: ./.github/workflows/_category-index-cycle-reusable.yml
-    with:
-      category: remote
-      dry_run: ${{ github.event.inputs.dry_run == 'true' }}
-      run_id: ${{ github.run_id }}
-    secrets: inherit
-
-  index-government:
-    needs: [sitemap, index-remote]
-    if: ${{ !cancelled() && needs.sitemap.result == 'success' }}
-    uses: ./.github/workflows/_category-index-cycle-reusable.yml
-    with:
-      category: government
-      dry_run: ${{ github.event.inputs.dry_run == 'true' }}
-      run_id: ${{ github.run_id }}
-    secrets: inherit
-
-  index-routes:
-    # Push new/changed/removed URLs from the NON-job sitemaps (static, hackathons, tools, blog, skills, companies,
-    # locations, batches, resume, careers) to IndexNow. State lives in route_sitemap_urls (migration 032).
-    # A sitemap that answers 503 is skipped and retried next run. Runs beside `gone`; failure blocks nothing.
-    needs: [sitemap, index-government]
-    if: ${{ !cancelled() && needs.sitemap.result == 'success' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          timeout: 60s
-          command_timeout: 10m
-          script_stop: true
-          script: |
-            set -e
-            cd /home/ec2-user/RepoSense
-            docker compose -f infrastructure/docker/docker-compose.yml exec -T api \
-              python scripts/pipeline_stage.py --run-id "${{ github.run_id }}" --stage index:routes -- \
-              python scripts/push_route_sitemaps.py ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
-
   gone:
-    # Tell IndexNow engines (Bing/Yandex/Naver/Seznam) about jobs deactivated in the last day.
-    # Uses the public API, so it runs on the runner -- no SSH needed.
-    needs: [sitemap, index-government]
-    if: ${{ !cancelled() && needs.sitemap.result == 'success' && github.event.inputs.dry_run != 'true' }}
+    # Tell IndexNow (Bing, Yandex, ...) which listings closed in the last two days.
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -201,16 +44,3 @@ jobs:
         run: node scripts/indexnow-submit-gone.mjs --since-days=2
         env:
           API_BASE_URL: https://api.intern-flow.in
-      - name: Record stage
-        if: always()
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script: |
-            cd /home/ec2-user/RepoSense
-            docker compose -f infrastructure/docker/docker-compose.yml exec -T api \
-              python scripts/pipeline_stage.py --run-id "${{ github.run_id }}" --stage gone -- \
-              python -c "import sys; sys.exit(${{ job.status == 'success' && '0' || '1' }})"
