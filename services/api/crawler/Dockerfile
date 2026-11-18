@@ -1,6 +1,6 @@
 # Job crawler image. Built by GitHub Actions and pushed to GHCR; on the server it runs on a
 # schedule via `docker compose --profile jobs run --rm crawler` (see docs/DEPLOYMENT_GUIDE.md).
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 
 WORKDIR /app
 
