@@ -167,25 +167,19 @@ def test_run_with_some_successes_or_no_candidates_exits_normally(mod, monkeypatc
     _run_main(mod, monkeypatch, ['--target', 'structured', '--no-fallback'], pool_rows=[])
 
 
-def _default(text, name):
-    m = re.search(rf"inputs\.{name} \|\| '(\d+)'", text)
-    assert m, f'{name} default not found'
-    return int(m.group(1))
+SERVER_JOBS = SCRIPTS.parents[2] / 'infrastructure' / 'scripts' / 'server-jobs.sh'
 
 
-@pytest.mark.parametrize('name', ['phase-b-structured-backfill.yml', 'job-content-enrichment.yml'])
-def test_groq_workflows_have_a_runtime_budget_that_fits_the_command_timeout(name):
-    text = (WORKFLOWS / name).read_text()
-    assert '--no-fallback' in text and '--max-runtime-minutes' in text
-    budget = _default(text, 'max_minutes')
-    timeout = int(re.search(r'command_timeout:\s*(\d+)m', text).group(1))
-    assert timeout >= budget + 10, 'leave room for the row in flight (Groq 429 backoff) and startup'
+def test_groq_cron_jobs_have_a_runtime_budget_and_cannot_overlap():
+    # The Groq backfills run from cron on the server. Each has a runtime budget, and every job takes a
+    # flock so a slow run (Groq 429 backoff) is skipped rather than stacked on the next one.
+    text = SERVER_JOBS.read_text()
+    for target in ('--target structured', '--target jobs'):
+        line = text[text.index(target):].split('||')[0]
+        assert '--no-fallback' in line and '--max-runtime-minutes' in line, target
+    assert 'flock -n' in text
 
 
-def test_no_workflow_comment_points_at_the_deleted_workflow_as_if_it_exists():
-    assert not (WORKFLOWS / 'content-enrichment.yml').exists()
-    for f in WORKFLOWS.glob('*.yml'):
-        for line in f.read_text().splitlines():
-            if re.search(r'(?<![-\w])content-enrichment\.yml', line):
-                # only the replacement workflow may mention it, and only as history
-                assert f.name == 'job-content-enrichment.yml' and ('Replaces' in line or 'used' in line), (f.name, line)
+def test_enrichment_workflows_are_gone():
+    for name in ('content-enrichment.yml', 'job-content-enrichment.yml', 'phase-b-structured-backfill.yml'):
+        assert not (WORKFLOWS / name).exists(), name

@@ -107,8 +107,9 @@ def test_no_fallback_without_groq_key_refuses_to_run(mod, monkeypatch):
     assert exc.value.code == 2
 
 
-def test_workflow_uses_the_flags_and_old_workflow_is_gone(mod):
-    root = SCRIPTS.parents[2] / '.github' / 'workflows'
-    assert not (root / 'content-enrichment.yml').exists()
-    text = (root / 'job-content-enrichment.yml').read_text()
-    assert 'enrich_all_content.py' in text and '--no-fallback' in text and '--redo-fallback' in text
+def test_server_cron_job_uses_the_flags(mod):
+    # Job enrichment runs from cron on the server (infrastructure/scripts/server-jobs.sh `daily`),
+    # not from a GitHub workflow.
+    text = (SCRIPTS.parents[2] / 'infrastructure' / 'scripts' / 'server-jobs.sh').read_text()
+    assert 'enrich_all_content.py --target jobs' in text and '--no-fallback' in text and '--redo-fallback' in text
+    assert not (SCRIPTS.parents[2] / '.github' / 'workflows' / 'job-content-enrichment.yml').exists()
