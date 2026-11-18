@@ -27,7 +27,7 @@ export async function generateMetadata({ searchParams, }: {
     const meta = listingMetadata({
         path: '/remote-jobs',
         title: 'Work From Home Jobs in India for Freshers — Remote Roles, Updated Daily',
-        description: 'Work from home and remote jobs open to freshers and graduates in India: software, data, product and support roles from company career pages, checked and updated daily.',
+        description: 'Work from home jobs for freshers and graduates in India: remote software, data, product and support roles from company career pages, updated daily.',
         searchParams,
         imageAlt: 'InternFlow — Work from home jobs in India',
     });
