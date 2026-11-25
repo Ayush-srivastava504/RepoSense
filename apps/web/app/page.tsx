@@ -5,7 +5,8 @@ import type { Metadata } from 'next';
 import AuthRedirect from '@/app/components/AuthRedirect';
 import MultilingualLanding from '@/app/components/MultilingualLanding';
 import { getFeaturedJobs, getJobs, BASE_URL } from '@/lib/jobs';
-import { languageAlternates } from '@/lib/structuredData';
+import { languageAlternates, safeJsonLd } from '@/lib/structuredData';
+import { TOOL_VIDEOS, TOOL_VIDEO_UPLOAD_DATE } from '@/lib/toolVideos';
 
 // SEO Metadata with international hreflang tags
 export const metadata: Metadata = {
@@ -38,12 +39,33 @@ export const metadata: Metadata = {
   },
 };
 
+// One VideoObject per homepage tool recording, so the videos can appear in Google video results.
+const toolVideosSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: 'InternFlow tools in action',
+  itemListElement: TOOL_VIDEOS.map((v, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    item: {
+      '@type': 'VideoObject',
+      name: `${v.title}: InternFlow walkthrough`,
+      description: v.body,
+      thumbnailUrl: `${BASE_URL}/videos/${v.slug}.jpg`,
+      contentUrl: `${BASE_URL}/videos/${v.slug}.mp4`,
+      uploadDate: TOOL_VIDEO_UPLOAD_DATE,
+      duration: `PT${v.seconds}S`,
+    },
+  })),
+};
+
 export default async function LandingPage() {
   const featured = await getFeaturedJobs({ limit: 6 });
   const previewJobs = featured.length > 0 ? featured : await getJobs({ sort: 'recent', limit: 6 });
 
   return (
     <>
+      <script id="tool-videos-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(toolVideosSchema) }} />
       <AuthRedirect />
       <MultilingualLanding previewJobs={previewJobs} />
     </>

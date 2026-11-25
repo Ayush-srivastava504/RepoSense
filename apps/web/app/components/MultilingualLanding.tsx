@@ -6,6 +6,8 @@ import ScrollReveal from './ScrollReveal';
 import JobCard from './JobCard';
 import HomeHero from './HomeHero';
 import HomeFaq from './HomeFaq';
+import ToolVideos from './ToolVideos';
+import { TOOL_VIDEOS } from '@/lib/toolVideos';
 
 interface Props {
   previewJobs: any[];
@@ -78,12 +80,6 @@ const CITIES = [
 ];
 const BATCHES = ['2025', '2026', '2027', '2028'];
 
-const TOOLS = [
-  { href: '/resume/builder', title: 'Resume builder', body: 'Clean, ATS-friendly resume made for freshers.' },
-  { href: '/ats-checker', title: 'ATS resume checker', body: 'Score your resume against a job description.' },
-  { href: '/cover-letter', title: 'Cover letter generator', body: 'Draft a tailored cover letter in seconds.' },
-  { href: '/leetcode', title: 'Coding practice', body: 'Practise DSA problems for tech interviews.' },
-];
 
 export default function MultilingualLanding({ previewJobs }: Props) {
   return (
@@ -186,19 +182,15 @@ export default function MultilingualLanding({ previewJobs }: Props) {
         </div>
       </ScrollReveal>
 
-      {/* Tools */}
+      {/* Tools, shown in use */}
       <ScrollReveal as="section" className="container-xl py-10 sm:py-14">
         <hr className="hr-line mb-10" />
-        <p className="eyebrow eyebrow-accent mb-2">// free tools</p>
-        <h2 className="display text-2xl font-medium mb-8">Get your application ready</h2>
-        <ScrollReveal as="div" stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {TOOLS.map((t) => (
-            <Link key={t.href} href={t.href} className="panel card-lift block p-5">
-              <h3 className="display text-base font-medium">{t.title}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{t.body}</p>
-            </Link>
-          ))}
-        </ScrollReveal>
+        <p className="eyebrow eyebrow-accent mb-2">// free tools, in action</p>
+        <h2 id="tools-in-action" className="display text-2xl font-medium mb-2">See every tool at work</h2>
+        <p className="mb-8 max-w-2xl text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+          Real screen recordings of each tool, made with a sample resume. Every tool is free and works without an account.
+        </p>
+        <ToolVideos videos={TOOL_VIDEOS} />
       </ScrollReveal>
 
       {/* About (short, honest copy) */}
