@@ -4,6 +4,7 @@
 
 import { ImageResponse } from 'next/og';
 import { getCompanyBySlug } from '@/lib/companies';
+import { OgBrandMark } from '@/lib/seo/ogBrandMark';
 
 export const runtime = 'edge';
 
@@ -33,7 +34,7 @@ function card(title: string, subtitle: string, cache: string) {
             fontFamily: 'sans-serif',
         }}>
       <div style={{ display: 'flex', alignItems: 'center' }}>
-        <div style={{ width: 14, height: 14, borderRadius: '50%', background: ACCENT, marginRight: 12, display: 'flex' }}/>
+        <OgBrandMark/>
         <div style={{ fontSize: 28, fontWeight: 700, color: INK, display: 'flex' }}>InternFlow</div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column' }}>

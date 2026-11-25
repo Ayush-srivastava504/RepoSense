@@ -18,6 +18,7 @@
 
 import { ImageResponse } from 'next/og';
 import { getPostBySlug } from '@/lib/blog';
+import { OgBrandMark } from '@/lib/seo/ogBrandMark';
 
 const WIDTH = 1200;
 const HEIGHT = 630;
@@ -100,16 +101,7 @@ export async function GET(_request: Request, { params }: { params: { filename: s
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div
-            style={{
-              width: 14,
-              height: 14,
-              borderRadius: '50%',
-              background: ACCENT,
-              marginRight: 12,
-              display: 'flex',
-            }}
-          />
+          <OgBrandMark/>
           <div style={{ fontSize: 28, fontWeight: 700, color: INK, display: 'flex' }}>InternFlow Blog</div>
         </div>
 

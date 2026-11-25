@@ -12,6 +12,7 @@
 
 import { ImageResponse } from 'next/og';
 import { getToolBySlug } from '@/app/tools/data';
+import { OgBrandMark } from '@/lib/seo/ogBrandMark';
 
 export const runtime = 'edge';
 
@@ -79,16 +80,7 @@ export async function GET(_request: Request, { params }: { params: { filename: s
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div
-            style={{
-              width: 14,
-              height: 14,
-              borderRadius: '50%',
-              background: ACCENT,
-              marginRight: 12,
-              display: 'flex',
-            }}
-          />
+          <OgBrandMark/>
           <div style={{ fontSize: 28, fontWeight: 700, color: INK, display: 'flex' }}>InternFlow</div>
         </div>
 

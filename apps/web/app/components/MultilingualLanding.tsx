@@ -155,7 +155,7 @@ export default function MultilingualLanding({ previewJobs }: Props) {
         <ScrollReveal as="div" stagger className="grid gap-6 sm:grid-cols-3">
           {STEPS.map((s) => (
             <div key={s.n}>
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold" style={{ background: 'var(--indigo)', color: '#fff' }}>{s.n}</div>
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold" style={{ background: 'var(--indigo)', color: 'var(--paper)' }}>{s.n}</div>
               <h3 className="display text-lg font-medium">{s.title}</h3>
               <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{s.body}</p>
             </div>

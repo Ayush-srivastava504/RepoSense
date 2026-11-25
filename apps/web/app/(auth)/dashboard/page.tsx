@@ -11,6 +11,8 @@ import { api } from '@/lib/api';
 import { trackEvent } from '@/lib/analytics';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { getTrackedJobs, subscribeTracker, daysUntilDeadline, type TrackedJob } from '@/lib/tracker';
+import { canonicalPathForJob } from '@/lib/slug';
+import type { Job } from '@/lib/jobs';
 
 interface Stats {
     total_reviews: number;
@@ -86,7 +88,7 @@ function Column({ title, meta, href, linkLabel, loading, emptyText, emptyCta, ch
       {loading ? <SkeletonLines/> : empty ? (<div>
           <p className="text-sm" style={soft}>{emptyText}</p>
           <Link href={href} className="btn btn-secondary mt-3 !px-3 !py-1.5 text-xs">{emptyCta}</Link>
-        </div>) : (<ul className="divide-y" style={{ borderColor: 'var(--line)' }}>{children}</ul>)}
+        </div>) : (<ul className="divide-y divide-[color:var(--line)]" style={{ borderColor: 'var(--line)' }}>{children}</ul>)}
     </section>);
 }
 
@@ -108,10 +110,10 @@ function Pipeline({ jobs }: { jobs: TrackedJob[] }) {
         <h2 className="display text-lg font-medium">Your applications</h2>
         <Link href="/tracker" className="text-xs font-medium" style={{ color: 'var(--indigo)' }}>Open tracker</Link>
       </div>
-      <div className="mt-4 grid grid-cols-4 divide-x border-y" style={{ borderColor: 'var(--line)' }}>
-        {stages.map((s) => (<Link key={s.key} href="/tracker" className="px-3 py-4 text-center transition-colors hover:bg-[var(--paper-dim)] sm:px-5 sm:text-left">
+      <div className="mt-4 grid grid-cols-2 gap-px border-y sm:grid-cols-4" style={{ borderColor: 'var(--line)', background: 'var(--line)' }}>
+        {stages.map((s) => (<Link key={s.key} href="/tracker" className="px-4 py-4 transition-colors hover:bg-[var(--paper-dim)] sm:px-5" style={{ background: 'var(--paper)' }}>
             <span className="display block text-3xl font-medium tabular-nums" style={{ color: count(s.key) > 0 ? s.color : 'var(--line-strong)' }}>{count(s.key)}</span>
-            <span className="mt-0.5 block text-xs" style={soft}>{s.label}</span>
+            <span className="mt-0.5 block whitespace-nowrap text-xs" style={soft}>{s.label}</span>
           </Link>))}
       </div>
       <div className="flex-1 p-5">
@@ -130,6 +132,39 @@ function Pipeline({ jobs }: { jobs: TrackedJob[] }) {
             </ul>
           </>)}
       </div>
+    </section>);
+}
+
+// Highest-ranked live openings (API ranking: Big 4 / FAANG-level, top startups, top companies, mass hiring,
+// then recency). Gives the dashboard something useful to act on before the user has saved anything.
+function TopOpenings() {
+    const [jobs, setJobs] = useState<Job[] | null>(null);
+    useEffect(() => {
+        let live = true;
+        api.get('/jobs/featured?limit=6&exclude_government=true')
+            .then((d: { jobs?: Job[] }) => { if (live) setJobs(d?.jobs ?? []); })
+            .catch(() => { if (live) setJobs([]); });
+        return () => { live = false; };
+    }, []);
+    if (jobs !== null && jobs.length === 0)
+        return null;
+    return (<section className="panel mt-6 overflow-hidden" aria-labelledby="top-openings">
+      <div className="flex items-baseline justify-between gap-3 px-5 pt-5">
+        <h2 id="top-openings" className="display text-lg font-medium">Top openings right now</h2>
+        <Link href="/jobs" className="text-xs font-medium" style={{ color: 'var(--indigo)' }}>All jobs</Link>
+      </div>
+      <p className="px-5 pt-1 text-sm" style={soft}>Top companies, Big 4 and leading startups first.</p>
+      {jobs === null ? (<div className="p-5"><SkeletonLines/></div>) : (<ul className="mt-3 grid border-t sm:grid-cols-2" style={{ borderColor: 'var(--line)' }}>
+          {jobs.map((j, i) => (<li key={j.id} className={`border-b ${i % 2 === 0 ? 'sm:border-r' : ''}`} style={{ borderColor: 'var(--line)' }}>
+              <Link href={canonicalPathForJob(j)} onClick={() => trackEvent('dashboard_top_opening', { job_id: j.id })} className="group flex min-h-[44px] items-center justify-between gap-3 px-5 py-3.5 transition-colors hover:bg-[var(--paper-dim)]">
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold" title={j.title}>{j.title}</span>
+                  <span className="mt-0.5 block truncate text-sm" style={soft}>{j.company}{j.location ? ` · ${j.location.split(',')[0]}` : ''}</span>
+                </span>
+                <Chevron/>
+              </Link>
+            </li>))}
+        </ul>)}
     </section>);
 }
 
@@ -206,12 +241,14 @@ function DashboardContent() {
         {[['Software engineer', 'software engineer'], ['Data analyst', 'data analyst'], ['Remote', 'remote'], ['Marketing', 'marketing']].map(([label, q]) => (<Link key={q} href={`/jobs?search=${encodeURIComponent(q)}`} className="chip chip-muted !font-sans transition-colors hover:!bg-[var(--indigo-soft)] hover:!text-[var(--indigo)]">{label}</Link>))}
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+      <TopOpenings/>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Pipeline jobs={tracked}/>
 
         <section className="panel overflow-hidden">
           <h2 className="display px-5 pt-5 text-lg font-medium">What to do next</h2>
-          <ul className="mt-3 divide-y border-t" style={{ borderColor: 'var(--line)' }}>
+          <ul className="mt-3 divide-y divide-[color:var(--line)] border-t" style={{ borderColor: 'var(--line)' }}>
             {nextSteps.map((s) => (<li key={s.action}>
                 <Link href={s.href} onClick={() => trackEvent('dashboard_quick_action', { action: s.action })} className="group flex min-h-[44px] items-center justify-between gap-3 px-5 py-3.5 transition-colors hover:bg-[var(--paper-dim)]">
                   <span className="min-w-0">
@@ -226,7 +263,7 @@ function DashboardContent() {
       </div>
 
       {user && (<section className="panel mt-6 overflow-hidden" aria-label="Your workspace">
-          <div className="grid divide-y lg:grid-cols-3 lg:divide-x lg:divide-y-0" style={{ borderColor: 'var(--line)' }}>
+          <div className="grid divide-y divide-[color:var(--line)] lg:grid-cols-3 lg:divide-x lg:divide-y-0 divide-[color:var(--line)]" style={{ borderColor: 'var(--line)' }}>
             <Column title={t('dashboard.recentReviewsLabel', 'Code reviews')} meta={stats?.avg_quality_score != null ? `avg ${stats.avg_quality_score}/100` : undefined} href="/github" linkLabel={t('dashboard.viewAll', 'View all')} loading={loadingActivity} emptyText={t('dashboard.noReviewsYet', 'No reviews yet — open a file in GitHub to start.')} emptyCta={t('dashboard.goToCodeReview', 'Go to code review')}>
               {recentReviews.map((r) => (<li key={r.id} className="flex items-start justify-between gap-3 py-3">
                   <div className="min-w-0">

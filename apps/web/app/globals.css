@@ -15,8 +15,9 @@
   --line-strong: #cfc8b2;
   --green: #2e6f4f;
   --green-soft: #e3efe7;
-  --indigo: #3a3ad6;
-  --indigo-soft: #e8e8fb;
+  /* Action/accent colour. Kept under its old name; now the brand's deep green (matches the logo). */
+  --indigo: #1f5c40;
+  --indigo-soft: #e3efe7;
   --rust: #b5482a;
   --rust-soft: #f6e7e1;
   --purple: #6d28d9;
@@ -43,8 +44,8 @@
   --line-strong: #2e3139;
   --green: #4caf7a;
   --green-soft: #1a2f22;
-  --indigo: #6060e8;
-  --indigo-soft: #1e1e40;
+  --indigo: #5fbf8a;
+  --indigo-soft: #1a2f22;
   --rust: #d4724e;
   --rust-soft: #2d1a12;
   --purple: #a78bfa;
@@ -217,11 +218,16 @@ body {
   }
 
   .btn-primary:hover {
-    background: #2f2fb8;
+    background: #174a33;
+  }
+
+  /* Light green in dark mode: dark text keeps contrast above 7:1. */
+  [data-theme="dark"] .btn-primary {
+    color: #0c1a12;
   }
 
   [data-theme="dark"] .btn-primary:hover {
-    background: #7070f0;
+    background: #78cc9e;
   }
 
   .btn-secondary {
