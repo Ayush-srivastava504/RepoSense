@@ -21,6 +21,11 @@ const API_BASE_URL = process.env.API_BASE_URL ||
     process.env.NEXT_PUBLIC_API_BASE_URL ||
     'https://api.intern-flow.in';
 export type JobGroup = 'software' | 'sales' | 'finance' | 'other';
+export interface JobArticle {
+    sections: { key: string; heading: string; paragraphs: string[] }[];
+    faqs: { q: string; a: string }[];
+    words: number;
+}
 export interface Job {
     id: string;
     title: string;
@@ -109,7 +114,12 @@ export interface Job {
         common_mistakes?: string[];
         ats_keywords?: string[];
         faqs?: { q: string; a: string }[];
+        // 1,500+ word job-specific guide (services/api/src/services/job_article_service.py). Only the single-job
+        // endpoint returns it; list endpoints strip it and send article_words instead.
+        article?: JobArticle | null;
     } | null;
+    // Word count of the published article (0 = none yet). Present on list and detail responses.
+    article_words?: number;
     // Locale-aware content — migrations/024_job_translations.sql,
     // IMPLEMENTATION_PLAN.md §7. Always present (possibly []); lists every
     // locale this job actually has translated content for, regardless of

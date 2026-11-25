@@ -22,6 +22,7 @@ import MatchScoreBadge from '@/app/components/MatchScoreBadge';
 import StructuredDetails from '@/app/components/StructuredDetails';
 import ExploreRelated from '@/app/components/ExploreRelated';
 import JobFAQ from '@/app/components/JobFAQ';
+import JobArticle from '@/app/components/JobArticle';
 import JobFactsTable from '@/app/components/JobFactsTable';
 import { JobResponsibilities, JobPreparation } from '@/app/components/JobSections';
 import JobCompanyAbout from '@/app/components/JobCompanyAbout';
@@ -175,6 +176,7 @@ export default async function JobDetail({ job, canonicalPath, backHref, backLabe
         {job.structured_description || job.description}
       </p>
 
+      <JobArticle job={job}/>
       <JobResponsibilities job={job}/>
       <SkillsBreakdown job={job}/>
       <JobFactsTable job={job}/>

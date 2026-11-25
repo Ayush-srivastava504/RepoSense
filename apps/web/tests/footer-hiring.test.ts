@@ -8,7 +8,7 @@ const daysAgo = (n: number) => new Date(Date.now() - n * 86400000).toISOString()
 const co = (company: string, job_count: number, tier: Company['tier'] = 'top', last_posted_at?: string) =>
     ({ company, job_count, tier, last_posted_at }) as Company;
 const job = (id: string, company: string, extra: Partial<Job> = {}) =>
-    ({ id, title: `Engineer ${id}`, company, posted_at: daysAgo(1), description: 'd', url: 'u', source: 's', is_top_company: false, ...extra }) as Job;
+    ({ id, title: `Engineer ${id}`, company, posted_at: daysAgo(1), description: 'd', url: 'u', source: 's', is_top_company: false, article_words: 1600, ...extra }) as Job;
 
 test('hiring companies skip thin hubs (under 2 jobs) and duplicate slugs', () => {
     const r = pickHiringCompanies([co('Acme', 5), co('Thin', 1), co('acme', 9), co('Beta', 2)]);
@@ -34,12 +34,12 @@ test('company href uses the same slug as the company page', () => {
     assert.equal(companyHref({ company: 'NTT DATA, Inc.' }), '/companies/ntt-data-inc');
 });
 
-test('fresh jobs: one per company, top companies first, noindex jobs dropped', () => {
+test('fresh jobs: one per company, top companies first, jobs without a full article dropped', () => {
     const jobs = [
         job('1', 'SmallCo'),
         job('2', 'Accenture', { is_top_company: true }),
         job('3', 'Accenture', { is_top_company: true }),
-        job('4', 'ThinCo', { is_top_company: true, is_thin: true }),
+        job('4', 'ThinCo', { is_top_company: true, article_words: 0 }),
         job('5', 'StaleCo', { is_top_company: true, posted_at: daysAgo(90) }),
         job('6', 'Google', { is_top_company: true }),
     ];
@@ -47,8 +47,8 @@ test('fresh jobs: one per company, top companies first, noindex jobs dropped', (
     assert.deepEqual(r.map((j) => j.id), ['2', '6', '1']);
 });
 
-test('fresh jobs: a thin job is kept once it has an enriched overview', () => {
-    const r = pickFreshJobs([job('1', 'Acme', { is_thin: true, enriched_overview: 'real overview' })]);
+test('fresh jobs: a thin-description job is kept once its 1,500-word article is published', () => {
+    const r = pickFreshJobs([job('1', 'Acme', { is_thin: true, article_words: 1500 })]);
     assert.equal(r.length, 1);
 });
 

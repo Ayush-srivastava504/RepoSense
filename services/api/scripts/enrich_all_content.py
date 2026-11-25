@@ -60,6 +60,7 @@ from services.company_facts_service import (
 )
 from services.content_enrichment_service import ContentEnrichmentService, FALLBACK_MODEL
 from services.job_sections_service import JobSectionsService, has_enough_source
+from services.job_article_service import JobArticleService, has_enough_source as article_has_source
 from services.structured_enrichment_service import (
     FALLBACK_MODEL as STRUCTURED_FALLBACK_MODEL,
     StructuredEnrichmentService,
@@ -149,7 +150,7 @@ SECTIONS_QUERY = """
 SELECT id, title, company, location, description, type, salary, stipend, deadline, work_mode, experience_min,
        experience_max, allowed_degrees, allowed_courses, allowed_passout_years, required_skills, structured_description
 FROM jobs
-WHERE is_active = true AND enriched_sections IS NULL
+WHERE is_active = true AND NOT (coalesce(enriched_sections, '{}'::jsonb) ? 'faqs')
   AND length(coalesce(structured_description, description, '')) >= 250
 ORDER BY (lower(company) = ANY($2::text[])) DESC, posted_at DESC NULLS LAST
 LIMIT $1
@@ -196,13 +197,106 @@ async def enrich_sections(pool, args) -> dict:
             continue
         if not args.dry_run:
             await pool.execute(
-                'UPDATE jobs SET enriched_sections = $2::jsonb, enriched_sections_model = $3, enriched_sections_at = now() WHERE id = $1',
+                "UPDATE jobs SET enriched_sections = coalesce(enriched_sections, '{}'::jsonb) || $2::jsonb, "
+                "enriched_sections_model = $3, enriched_sections_at = now() WHERE id = $1",
                 row['id'], json.dumps(result.sections), result.model)
         else:
             print(json.dumps({'id': row['id'], 'sections': result.sections}, ensure_ascii=False)[:1200])
         done += 1
         await asyncio.sleep(REQUEST_DELAY_S)
     print(f'[enrich_all_content] sections: wrote {done}/{len(rows)} (skipped/failed={skipped})')
+    return {'attempted': len(rows), 'enriched': done, 'skipped': skipped, 'stopped_early': stopped_early}
+
+
+ARTICLE_QUERY = """
+SELECT id, title, company, location, description, type, salary, stipend, deadline, work_mode, experience_min,
+       experience_max, allowed_degrees, allowed_courses, allowed_passout_years, required_skills, structured_description,
+       department, vacancies, job_function, notes_highlights, enriched_overview, enriched_keywords, content_table,
+       (is_government IS TRUE OR source IN ('freejobalert', 'employment_news', 'ssc', 'upsc')) AS is_government
+FROM jobs
+WHERE is_active = true AND NOT (coalesce(enriched_sections, '{}'::jsonb) ? 'article')
+  AND coalesce(title, '') <> '' AND coalesce(company, '') <> ''
+ORDER BY
+  CASE WHEN lower(company) = ANY($2::text[]) THEN 0
+       WHEN lower(company) = ANY($3::text[]) THEN 1
+       WHEN lower(company) = ANY($4::text[]) THEN 2
+       WHEN title ~* $5 OR (vacancies ~ '^[0-9][0-9,]*$' AND replace(vacancies, ',', '')::bigint >= $6) THEN 3
+       ELSE 4 END,
+  COALESCE(posted_at, created_at) DESC NULLS LAST, id
+LIMIT $1
+"""
+# Order: Big 4 / FAANG-level (0), top startups (1), other top companies (2), mass hiring (3), the rest (4).
+# Recent published articles seed the duplicate-phrasing check, so a new article is compared with what is live.
+ARTICLE_SEED_QUERY = """
+SELECT enriched_sections->'article' AS article FROM jobs
+WHERE enriched_sections ? 'article' ORDER BY enriched_sections_at DESC NULLS LAST LIMIT 400
+"""
+
+
+def _tiers():
+    """(elite, startups, top, mass_re, mass_min) from routes/jobs.py, so the article queue and listing order agree."""
+    from routes.jobs import ELITE_COMPANIES, TOP_STARTUPS, TOP_COMPANY_TIER, MASS_HIRING_TITLE_RE, MASS_HIRING_MIN_VACANCIES
+
+    def low(xs):
+        return [x.lower() for x in xs]
+    return low(ELITE_COMPANIES), low(TOP_STARTUPS), low(TOP_COMPANY_TIER), MASS_HIRING_TITLE_RE, MASS_HIRING_MIN_VACANCIES
+
+
+async def enrich_articles(pool, args) -> dict:
+    """1,500+ word, job-specific guide for every job page (enriched_sections->'article'). Top tiers first.
+    No fallback: an article that is short, ungrounded or duplicates others is not stored; the row is retried."""
+    seeds = []
+    for r in await pool.fetch(ARTICLE_SEED_QUERY):
+        a = r['article']
+        try:
+            seeds.append(json.loads(a) if isinstance(a, str) else a)
+        except (TypeError, ValueError):
+            pass
+    service = JobArticleService(seed_articles=[s for s in seeds if isinstance(s, dict)])
+    rows = await pool.fetch(ARTICLE_QUERY, args.limit, *_tiers())
+    print(f'[enrich_all_content] article: {len(rows)} candidate(s), {len(seeds)} seed article(s) (ai_enabled={service.enabled})')
+    done = skipped = 0
+    stopped_early = False
+    for row in rows:
+        if _out_of_time(args):
+            stopped_early = True
+            print(f'[enrich_all_content] article: --max-runtime-minutes budget spent after {done} row(s); stopping')
+            break
+        if service.all_providers_dead:
+            print('[enrich_all_content] article: every AI provider is unusable; stopping.')
+            break
+        wait = service.seconds_until_any_provider()
+        if wait > 0:
+            if args.deadline is not None:
+                wait = min(wait, max(0.0, args.deadline - time.monotonic()))
+            await asyncio.sleep(wait)
+            if _out_of_time(args):
+                stopped_early = True
+                break
+        job = dict(row)
+        if isinstance(job.get('content_table'), str):
+            try:
+                job['content_table'] = json.loads(job['content_table'])
+            except (TypeError, ValueError):
+                job['content_table'] = []
+        if not article_has_source(job):
+            skipped += 1
+            continue
+        result = await service.generate(job)
+        if result is None:
+            skipped += 1
+            continue
+        if not args.dry_run:
+            await pool.execute(
+                "UPDATE jobs SET enriched_sections = coalesce(enriched_sections, '{}'::jsonb) || jsonb_build_object('article', $2::jsonb), "
+                "enriched_sections_model = $3, enriched_sections_at = now() WHERE id = $1",
+                row['id'], json.dumps(result.article), result.model)
+        else:
+            print(json.dumps({'id': row['id'], 'words': result.words, 'article': result.article}, ensure_ascii=False)[:2000])
+        done += 1
+        print(f"[enrich_all_content] article: {row['company']} / {row['title']} -> {result.words} words")
+        await asyncio.sleep(REQUEST_DELAY_S)
+    print(f'[enrich_all_content] article: wrote {done}/{len(rows)} (skipped/failed={skipped})')
     return {'attempted': len(rows), 'enriched': done, 'skipped': skipped, 'stopped_early': stopped_early}
 
 
@@ -476,7 +570,7 @@ async def enrich_translations(pool, args) -> dict:
 
 async def main():
     parser = argparse.ArgumentParser(description='Bulk/fallback content enrichment for jobs and internships')
-    parser.add_argument('--target', choices=['jobs', 'structured', 'sections', 'companies', 'translations', 'all'], default='all')
+    parser.add_argument('--target', choices=['jobs', 'structured', 'sections', 'article', 'companies', 'translations', 'all'], default='all')
     parser.add_argument('--limit', type=int, default=BATCH_LIMIT_DEFAULT)
     parser.add_argument('--bulk', action='store_true', help='Process all rows, not just never-enriched ones — for backfilling every page at once')
     parser.add_argument('--no-fallback', action='store_true', help='jobs/structured: never store template or rule-based fallback content. Rows Groq cannot handle are left for the next run; exits 2 if GROQ_API_KEY is not set, and 3 if a target attempted rows but enriched none.')
@@ -488,6 +582,9 @@ async def main():
     if not settings.DATABASE_URL:
         print('[enrich_all_content] DATABASE_URL not set — cannot run.')
         sys.exit(1)
+    if args.target == 'article' and not JobArticleService().enabled:
+        print('[enrich_all_content] --target article needs GROQ_API_KEY / GEMINI_API_KEY / NVIDIA_API_KEY, none is set in this environment — refusing to run.')
+        sys.exit(2)
     if args.target == 'sections' and not JobSectionsService().enabled:
         # No rule-based substitute exists for grounded sections, so a missing key means nothing can be done.
         print('[enrich_all_content] --target sections needs GROQ_API_KEY / GEMINI_API_KEY / NVIDIA_API_KEY, none is set in this environment — refusing to run.')
@@ -522,13 +619,15 @@ async def main():
             summary['structured'] = await enrich_structured(pool, args)
         if args.target == 'sections':
             summary['sections'] = await enrich_sections(pool, args)
+        if args.target == 'article':
+            summary['article'] = await enrich_articles(pool, args)
         if args.target == 'companies':
             summary['companies'] = await enrich_companies(pool, args)
         if args.target == 'translations':
             summary['translations'] = await enrich_translations(pool, args)
         print(f'[enrich_all_content] done in {(time.monotonic() - started) / 60:.1f} min:', json.dumps(summary))
         if args.no_fallback:
-            stalled = [n for n in ('jobs', 'structured', 'sections') if summary.get(n, {}).get('attempted') and not summary[n]['enriched'] and not summary[n].get('stopped_early')]
+            stalled = [n for n in ('jobs', 'structured', 'sections', 'article') if summary.get(n, {}).get('attempted') and not summary[n]['enriched'] and not summary[n].get('stopped_early')]
             if stalled:
                 # Every candidate failed (Groq outage, or the same rows failing every night at the
                 # head of the queue). Fail the run so it shows up instead of looking healthy.

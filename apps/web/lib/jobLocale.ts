@@ -13,19 +13,13 @@
 import { jobHreflangLinks, TRANSLATABLE_LOCALES } from './hreflang';
 import { getJobById, type Job } from './jobs';
 
-/** Same 'x-locale' header (set by middleware.ts) / 'NEXT_LOCALE' cookie
- * fallback chain the blog pages already use, so job pages resolve the
- * request's locale the same way the rest of the site does.
- *
- * 'next/headers' is imported dynamically, only inside this function, so
- * merely importing this module (as tests/job-locale.test.ts does, for the
- * pure helpers below) never triggers Node to resolve the 'next' package.
- * The web unit-test CI step runs `tsx --test` without an `npm install`
- * step, so a static top-level import here would fail module resolution
- * even for tests that never call this function. */
+/** Always 'en'. Every locale-prefixed URL (/es/..., /pt/...) now 301s to the English page before it reaches
+ * a job route, so reading the x-locale header / NEXT_LOCALE cookie here could only ever return 'en' -- while
+ * the headers()/cookies() call itself forced every job page to render per request with `no-store` (1-3s
+ * TTFB on each Googlebot fetch, a direct cause of "Discovered - currently not indexed"). Returning a
+ * constant lets the job routes be cached (revalidate = 3600). */
 export async function resolveJobLocale(): Promise<string> {
-    const { headers, cookies } = await import('next/headers');
-    return headers().get('x-locale') || cookies().get('NEXT_LOCALE')?.value || 'en';
+    return 'en';
 }
 
 /** Record<lang, href> for a job's alternates.languages, or {} when the job

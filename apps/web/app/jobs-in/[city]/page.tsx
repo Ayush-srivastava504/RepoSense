@@ -14,7 +14,6 @@ import { topCompaniesFromJobs } from '@/lib/hubLinks';
 import HubExplore from '@/app/components/HubExplore';
 import { CITIES, getCityBySlug, getRelatedCities, type CityDefinition } from '@/app/jobs-in/data';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
-import { LOCATION_MIN_JOBS, belowHubThreshold } from '@/lib/seo/hubThresholds';
 import JobCard from '@/app/components/JobCard';
 import TrackView from '@/app/components/TrackView';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -60,9 +59,6 @@ export async function generateMetadata({ params, }: {
         title: city.metaTitle,
         description: city.metaDescription,
         alternates: { canonical: url, languages: languageAlternates(`/jobs-in/${city.slug}`) },
-        ...(belowHubThreshold(jobs.length + internships.length, LOCATION_MIN_JOBS)
-            ? { robots: { index: false, follow: true } }
-            : {}),
         openGraph: {
             type: 'website',
             url,

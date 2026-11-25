@@ -7,7 +7,7 @@
 // related links, breadcrumbs) with the job filter swapped from skill to
 // passout-year batch (getJobs({ batches: [year] }), routes/jobs.py's
 // existing Phase 2 multi-select param). See PHASE_PLAN.md Phase 3 item 2
-// for the below-threshold noindex gate applied here (BATCH_MIN_JOBS).
+// (BATCH_MIN_JOBS only decides sitemap inclusion; the page is always indexable).
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -18,7 +18,6 @@ import { canonicalPathForJob } from '@/lib/slug';
 import { companySlug } from '@/lib/companies';
 import { BATCHES, getBatchByYear, getRelatedBatches } from '@/app/batch/data';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
-import { BATCH_MIN_JOBS, belowHubThreshold } from '@/lib/seo/hubThresholds';
 import JobCard from '@/app/components/JobCard';
 import TrackView from '@/app/components/TrackView';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
@@ -56,9 +55,6 @@ export async function generateMetadata({ params, }: {
         title: batchDef.metaTitle,
         description: batchDef.metaDescription,
         alternates: { canonical: url, languages: languageAlternates(`/batch/${batchDef.year}`) },
-        ...(belowHubThreshold(jobs.length + internships.length, BATCH_MIN_JOBS)
-            ? { robots: { index: false, follow: true } }
-            : {}),
         openGraph: {
             type: 'website',
             url,

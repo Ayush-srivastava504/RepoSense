@@ -10,12 +10,15 @@ import { BASE_URL } from '@/lib/jobs';
 import { buildJobFaq } from '@/lib/jobFaq';
 import { getLocalizedJob, localizedCanonicalPath, jobLanguageAlternates } from '@/lib/jobLocale';
 import {  jobPostingSchema, breadcrumbSchema, faqSchema, safeJsonLd } from '@/lib/structuredData';
-import { buildJobTitle, truncateDescription, isIndexableJob, SERP_TITLE_PX_WITH_BRAND, TITLE_MAX_CHARS_WITH_BRAND } from '@/lib/seo/seoMetrics';
+import { buildJobTitle, truncateDescription, SERP_TITLE_PX_WITH_BRAND, TITLE_MAX_CHARS_WITH_BRAND } from '@/lib/seo/seoMetrics';
 import { pageOpenGraph } from '@/lib/seo/pageMeta';
 import { jobOgImageUrl } from '@/lib/seo/ogImage';
 import JobDetail from '@/app/components/JobDetail';
 import TrackView from '@/app/components/TrackView';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+
+// Cached and rebuilt at most hourly (job data is cached for an hour too). Was rendered per request.
+export const revalidate = 3600;
 
 export async function generateMetadata({ params, }: {
     params: {
@@ -50,13 +53,6 @@ export async function generateMetadata({ params, }: {
             languages: jobLanguageAlternates(canonicalPathForJob(job), job.translated_locales),
         },
         ...pageOpenGraph({ title, description, url: `${BASE_URL}${canonicalPath}`, image: ogImage, imageAlt: title }),
-        // Defense in depth alongside the JobPosting schema's validThrough:
-        // Search Console can take days to re-crawl and honor a stale
-        // validThrough, so this header/meta noindex acts immediately on
-        // the next crawl instead of waiting for schema-driven cleanup.
-        ...(!isIndexableJob(job)
-            ? { robots: { index: false, follow: true } }
-            : {}),
     };
 }
 export default async function JobDetailPage({ params, }: {

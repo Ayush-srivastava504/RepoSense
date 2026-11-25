@@ -17,7 +17,7 @@ const DEGREE_LABELS: Record<string, string> = {
     DEGREE: "Bachelor's degree",
     PG: 'Postgraduate degree',
 };
-const MAX_FAQ = 8;
+const MAX_FAQ = 14;
 
 function list(values?: string[] | null): string {
     return (values ?? []).filter(Boolean).join(', ');
@@ -80,7 +80,8 @@ export function buildJobFaq(job: Job): JobFaqItem[] {
         return [];
     const seen = new Set<string>();
     const merged: JobFaqItem[] = [];
-    const ai = (job.enriched_sections?.faqs ?? []).map((f) => ({ question: f.q, answer: f.a }));
+    const ai = [...(job.enriched_sections?.faqs ?? []), ...(job.enriched_sections?.article?.faqs ?? [])]
+        .map((f) => ({ question: f.q, answer: f.a }));
     // Fact-based answers lead (always correct for this job); AI answers add the role-specific ones.
     for (const item of [...factFaqs(job), ...ai]) {
         const key = item.question.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();

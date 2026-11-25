@@ -9,7 +9,7 @@ def job(i, days=5, **kw):
     d = dict(id=f'id{i}', title='Data Analyst', company='Acme & Co', location='Pune, IN', salary=None, stipend=None,
              type='full-time', is_remote=False, is_government=False, deadline=None,
              posted_at=NOW - timedelta(days=days), created_at=NOW - timedelta(days=days),
-             last_seen_at=NOW, is_thin=False, quality_score=0, has_overview=True)
+             last_seen_at=NOW, is_thin=False, quality_score=0, has_overview=True, article_words=1600)
     d.update(kw)
     return d
 
@@ -30,7 +30,9 @@ def test_tiers():
 
 
 def test_excludes_unenriched_stale_and_thin():
-    assert not sb.is_job_for_sitemap(job(1, has_overview=False), NOW)
+    assert not sb.is_job_for_sitemap(job(1, article_words=0), NOW)
+    assert not sb.is_job_for_sitemap(job(1, article_words=1499), NOW)
+    assert sb.is_job_for_sitemap(job(1, article_words=1500), NOW)
     assert not sb.is_job_for_sitemap(job(1, deadline=NOW - timedelta(days=1)), NOW)
     assert not sb.is_job_for_sitemap(job(1, posted_at=None, last_seen_at=None), NOW)
 

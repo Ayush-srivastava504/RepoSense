@@ -12,7 +12,6 @@ import { canonicalPathForJob } from '@/lib/slug';
 import { companySlug } from '@/lib/companies';
 import { SKILLS, getSkillBySlug, getRelatedSkills } from '@/app/skills/data';
 import {  breadcrumbSchema, faqSchema, languageAlternates } from '@/lib/structuredData';
-import { SKILL_MIN_JOBS, belowHubThreshold } from '@/lib/seo/hubThresholds';
 import JobCard from '@/app/components/JobCard';
 import TrackView from '@/app/components/TrackView';
 import FAQAccordion from '@/app/components/FAQAccordion';
@@ -43,9 +42,6 @@ export async function generateMetadata({ params, }: {
         title: skill.metaTitle,
         description: skill.metaDescription,
         alternates: { canonical: url, languages: languageAlternates(`/skills/${skill.slug}`) },
-        ...(belowHubThreshold(jobs.length + internships.length, SKILL_MIN_JOBS)
-            ? { robots: { index: false, follow: true } }
-            : {}),
         openGraph: {
             type: 'website',
             url,

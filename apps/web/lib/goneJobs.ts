@@ -108,7 +108,6 @@ export async function isJobGone(
 export function goneHtml(): string {
     return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, follow">
 <title>This listing has expired</title></head>
 <body style="font-family:system-ui,sans-serif;max-width:40rem;margin:4rem auto;padding:0 1rem">
 <h1>This listing has expired</h1>

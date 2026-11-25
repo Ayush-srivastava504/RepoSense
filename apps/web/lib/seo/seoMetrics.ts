@@ -1,3 +1,6 @@
+import type { Job } from '../jobs';
+import { hasFullJobContent } from '../jobContent';
+
 // Module: lib/seo/seoMetrics.ts
 // Defines function(s): estimatePixelWidth, truncateTitleForSerp, truncateDescription, buildJobTitle
 //
@@ -113,10 +116,8 @@ export function buildJobTitle(params: {
 // A job counts as stale for indexing purposes once its deadline (or, when
 // no deadline was scraped, 45 days past posted_at) has passed. This is
 // independent of the JobPosting schema: jobPostingSchema() only emits
-// validThrough for a real scraped deadline and never invents one. Google explicitly recommends noindex-ing expired JobPosting
-// pages rather than deleting them outright (broken links, lost
-// backlinks) — this mirrors FresherFlow's 45-day grace-period noindex in
-// opportunitySeo.ts. Shared across every job-detail route
+// validThrough for a real scraped deadline and never invents one. A stale job leaves the sitemap; once it
+// is deactivated upstream its URL answers 410 Gone (middleware.ts). Shared across every job-detail route
 // (jobs/internships/remote-jobs/government-jobs [slug] pages) rather than
 // duplicated per-route so the grace period only ever needs updating once.
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -140,31 +141,18 @@ export function isStaleForIndexing(job: { deadline?: string; posted_at?: string;
     return expiry !== null && !Number.isNaN(expiry) && expiry < Date.now();
 }
 
-// A job counts as low-value for indexing purposes while it's both flagged
-// is_thin (crawler/src/processors/quality.py's description-length
-// heuristic) and hasn't yet received a real AI overview. This is the same
-// condition sitemap-jobs.xml uses to drop a job from the sitemap entirely
-// — noindex-ing the page itself too means Google isn't relying solely on
-// the sitemap omission (it can still discover the URL via internal links).
-// Clears automatically the moment enrichment backfills enriched_overview,
-// same as isStaleForIndexing clears once a deadline resolves.
-export function isThinAndUnenriched(job: { is_thin?: boolean; enriched_overview?: string }): boolean {
-    return job.is_thin === true && !job.enriched_overview;
-}
-
-// SINGLE predicate for "should this job URL be indexed?". Used by BOTH the
-// job-detail pages (robots noindex in generateMetadata) and the jobs
-// sitemap, so a URL can never be submitted in the sitemap while its own
-// page tells Google `noindex` (a conflicting signal that counts against
-// sitemap quality). Change the rule here and both sides follow.
+// SINGLE predicate for "should this job URL be in the sitemap / footer links?". It never drives a robots
+// tag: job pages are always indexable. A job qualifies once it is live (not past its deadline / grace
+// period) AND carries a published article of at least 1,500 words unique to it (lib/jobContent.ts). Mirrors
+// is_indexable() in services/api/src/services/sitemap_builder.py, which builds the live job sitemaps.
 export function isIndexableJob(job: {
     deadline?: string;
     posted_at?: string;
     created_at?: string;
-    is_thin?: boolean;
-    enriched_overview?: string;
+    enriched_sections?: Job['enriched_sections'];
+    article_words?: number;
 }): boolean {
-    return !isStaleForIndexing(job) && !isThinAndUnenriched(job);
+    return !isStaleForIndexing(job) && hasFullJobContent(job);
 }
 
 // Government notices are searched as "<department> <post> recruitment 2026" and judged by vacancy count and last

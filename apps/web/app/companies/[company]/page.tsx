@@ -10,7 +10,6 @@ import { BASE_URL, getJobs, getJobsPage } from '@/lib/jobs';
 import { relatedCompanies } from '@/lib/companyLinks';
 import RelatedCompanies from '@/app/components/RelatedCompanies';
 import { getCompanies, getCompanyBySlug, getCompanyIntel, getCompanyProfile, companySlug } from '@/lib/companies';
-import { companyIsThin } from '@/lib/seo/hubThresholds';
 import { truncateDescription, fitTitle, SERP_TITLE_PX_WITH_BRAND, TITLE_MAX_CHARS_WITH_BRAND } from '@/lib/seo/seoMetrics';
 import { companyOgImageUrl } from '@/lib/seo/ogImage';
 import {  breadcrumbSchema, companyOrganizationSchema, languageAlternates, safeJsonLd } from '@/lib/structuredData';
@@ -44,7 +43,7 @@ export async function generateMetadata({ params, searchParams, }: {
   }
   catch (err) {
     console.error('generateMetadata failed for company', params.company, err);
-    return { robots: { index: false, follow: true } };
+    return {};
   }
 }
 
@@ -55,7 +54,7 @@ async function buildCompanyMetadata(params: { company: string }, searchParams: {
     const page = Math.max(1, Number.parseInt(searchParams?.page ?? '1', 10) || 1);
     const url = `${BASE_URL}/companies/${params.company}${page > 1 ? `?page=${page}` : ''}`;
     const pageSuffix = page > 1 ? ` — Page ${page}` : '';
-    const [profile, intel] = await Promise.all([getCompanyProfile(company.company), getCompanyIntel(params.company)]);
+    const intel = await getCompanyIntel(params.company);
     const hasHiringProcess = Boolean(intel?.topics.some((t) => t.topic_key === 'hiring_process'));
     // layout.tsx appends ' | InternFlow'; Bing flags a final <title> over 65 characters, so drop the optional tail first.
     const co = company.company;
@@ -68,11 +67,9 @@ async function buildCompanyMetadata(params: { company: string }, searchParams: {
     const overview = intel?.topics.find((t) => t.topic_key === 'overview')?.body;
     const jobsLine = `${company.job_count} active listing${company.job_count === 1 ? '' : 's'} at ${company.company} right now.`;
     const description = truncateDescription(overview ? `${overview} ${jobsLine}${pageSuffix}` : `${jobsLine} Browse jobs and internships, with the skills they ask for. Updated daily on InternFlow.${pageSuffix}`);
-    const thin = companyIsThin(company.job_count, Boolean(profile), intel?.topics.length ?? 0);
     return {
         title,
         description,
-        ...(thin ? { robots: { index: false, follow: true } } : {}),
         alternates: { canonical: url, languages: page > 1 ? undefined : languageAlternates(`/companies/${params.company}`) },
         openGraph: {
             type: 'website',

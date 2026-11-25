@@ -137,7 +137,7 @@ test('undated job goes stale 60 days after created_at, never before', () => {
     assert.equal(isStaleForIndexing({ created_at: ago(61) }), true);
     assert.equal(isStaleForIndexing({}), false);
     assert.equal(isStaleForIndexing({ posted_at: ago(46), created_at: ago(1) }), true);
-    assert.equal(isIndexableJob({ created_at: ago(61), is_thin: false }), false);
+    assert.equal(isIndexableJob({ created_at: ago(61), article_words: 1600 }), false);
 });
 
 // ---------- government detail title ----------

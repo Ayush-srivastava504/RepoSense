@@ -9,7 +9,8 @@ from pathlib import Path
 _SRC = (Path(__file__).resolve().parents[1] / 'src' / 'routes' / 'jobs.py').read_text()
 RANKING_EXPRESSION = ast.literal_eval(re.search(r'^RANKING_EXPRESSION = (".*")$', _SRC, re.M).group(1))
 
-TOP_COMPANY_BONUS = 40
+# Highest company tier (elite: Big 4 / FAANG) plus the mass-hiring bonus.
+TOP_COMPANY_BONUS = 120 + 60
 MAX_CONFIDENCE = 25
 
 

@@ -33,7 +33,7 @@ const iso = (offsetDays: number) => new Date(NOW + offsetDays * DAY).toISOString
 Date.now = () => NOW;
 
 function job(id: string, extra: Record<string, unknown> = {}) {
-    return { id, title: `Engineer ${id}`, company: 'Acme', location: 'Pune', posted_at: iso(-3), ...extra } as any;
+    return { id, title: `Engineer ${id}`, company: 'Acme', location: 'Pune', posted_at: iso(-3), article_words: 1600, ...extra } as any;
 }
 
 // ---------- host ----------
@@ -87,14 +87,15 @@ test('every <loc> is on the canonical host', () => {
     for (const e of entries) assert.ok(e.loc.startsWith('https://intern-flow.in/'), e.loc);
 });
 
-test('expired deadline, stale-by-45-days and thin-unenriched jobs are excluded', () => {
+test('expired deadline, stale-by-45-days and under-1,500-word jobs are excluded', () => {
     const jobs = [
         job('live'),
         job('expired', { deadline: iso(-1) }),
         job('future', { deadline: iso(10) }),
         job('stale45', { posted_at: iso(-60) }), // no deadline, >45d old
-        job('thin', { is_thin: true }),
-        job('thinenriched', { is_thin: true, enriched_overview: 'Real overview' }),
+        job('thin', { article_words: 0 }),
+        job('short', { article_words: 1499 }),
+        job('thinenriched', { is_thin: true, article_words: 1500 }),
     ];
     // isStaleForIndexing/isThinAndUnenriched read Date.now(); freeze it for determinism
     const realNow = Date.now;
@@ -107,13 +108,13 @@ test('expired deadline, stale-by-45-days and thin-unenriched jobs are excluded',
     }
 });
 
-test('sitemap eligibility equals the page-level noindex rule (no conflicting signals)', () => {
+test('sitemap eligibility equals isIndexableJob (one rule for sitemap and footer links)', () => {
     const realNow = Date.now;
     Date.now = () => NOW;
     try {
         const jobs = [
             job('a'), job('b', { deadline: iso(-5) }), job('c', { posted_at: iso(-90) }),
-            job('d', { is_thin: true }), job('e', { posted_at: undefined }), job('f', { deadline: 'garbage' }),
+            job('d', { article_words: 300 }), job('e', { posted_at: undefined }), job('f', { deadline: 'garbage' }),
         ];
         const inSitemap = new Set(buildJobSitemapEntries(jobs, NOW).map((e) => e.loc.split('-').pop()));
         for (const j of jobs) assert.equal(inSitemap.has(j.id), isIndexableJob(j), j.id);
@@ -180,11 +181,11 @@ test('maxPages caps the crawl', async () => {
 });
 
 // ---------- stage 3: category sitemaps (sitemap-only priority rule) ----------
-const enriched = { enriched_overview: 'Real overview' };
+const enriched = { article_words: 1600 };
 
 test('isJobForSitemap needs enrichment and recency; falls back to last_seen_at', () => {
     assert.equal(isJobForSitemap(job('a', enriched), NOW), true);
-    assert.equal(isJobForSitemap(job('b'), NOW), false); // not enriched
+    assert.equal(isJobForSitemap(job('b', { article_words: 0 }), NOW), false); // no published article
     assert.equal(isJobForSitemap(job('c', { ...enriched, posted_at: iso(-30) }), NOW), true); // within the 30d "always" tier
     // posted_at NULL (very common) -> judged on last_seen_at
     assert.equal(isJobForSitemap(job('d', { ...enriched, posted_at: undefined, last_seen_at: iso(-2) }), NOW), true);
@@ -210,16 +211,14 @@ test('isJobForSitemap: mid tier (31-90d) needs quality_score >= 50, old tier (90
     assert.equal(isJobForSitemap(job('o2', { ...oldAge, quality_score: 75 }), NOW), true);
 });
 
-test('leaving a job out of the sitemap does NOT make its page noindex', () => {
-    const realNow = Date.now;
-    Date.now = () => NOW;
-    try {
-        const notPrioritised = job('old', { posted_at: iso(-30) }); // unenriched + 30d old
-        assert.equal(isJobForSitemap(notPrioritised, NOW), false);
-        assert.equal(isIndexableJob(notPrioritised), true); // page-level rule unchanged
-    } finally {
-        Date.now = realNow;
+test('job pages are never noindexed, whatever the sitemap decides', () => {
+    // User rule: noindex is never used. Pages below the 1,500-word bar stay indexable and linked; they only
+    // wait for the sitemap until their article is published.
+    for (const route of ['jobs', 'internships', 'remote-jobs', 'government-jobs']) {
+        const src = readFileSync(resolve(__dirname, `../app/${route}/[slug]/page.tsx`), "utf8");
+        assert.doesNotMatch(src, /index:\s*false|noindex/i, route);
     }
+    assert.equal(isJobForSitemap(job('old', { article_words: 0 }), NOW), false);
 });
 
 test('each priority job lands in exactly one category (government > internship > remote > jobs)', () => {
@@ -232,7 +231,7 @@ test('each priority job lands in exactly one category (government > internship >
             job('r1', { ...enriched, is_remote: true }),
             job('j1', enriched),
             job('j1', enriched), // duplicate id
-            job('skip'), // not enriched
+            job('skip', { article_words: 0 }), // no published article
         ], NOW);
         assert.equal(b['government-jobs'].length, 1);
         assert.equal(b.internships.length, 1);

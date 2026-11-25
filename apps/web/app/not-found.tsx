@@ -7,10 +7,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 export const metadata: Metadata = {
     title: 'Page not found',
-    robots: {
-        index: false,
-        follow: true,
-    },
 };
 const links = [
     { href: '/jobs', label: 'Jobs' },

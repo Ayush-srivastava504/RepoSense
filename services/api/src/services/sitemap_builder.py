@@ -42,7 +42,8 @@ SELECT id, title, company, location, salary, stipend, type, is_remote,
        (is_government IS TRUE OR source IN ('freejobalert', 'employment_news', 'ssc', 'upsc')) AS is_government,
        deadline, posted_at, created_at, last_seen_at, is_thin, quality_score,
        enriched_at, enriched_sections_at,
-       (enriched_overview IS NOT NULL AND enriched_overview <> '') AS has_overview
+       (enriched_overview IS NOT NULL AND enriched_overview <> '') AS has_overview,
+       COALESCE((enriched_sections->'article'->>'words')::int, 0) AS article_words
 FROM jobs
 WHERE is_active = true
 ORDER BY id
@@ -103,14 +104,20 @@ def is_stale_for_indexing(job: dict, now: datetime) -> bool:
     return False
 
 
+# A job is listed only once its page carries a published 1,500+ word article that is unique to it
+# (enriched_sections->'article', job_article_service.py). Mirrors JOB_MIN_UNIQUE_WORDS in apps/web/lib/jobContent.ts.
+# This is a sitemap rule only: every job page stays indexable and internally linked.
+MIN_ARTICLE_WORDS = 1500
+
+
 def is_indexable(job: dict, now: datetime) -> bool:
     if is_stale_for_indexing(job, now):
         return False
-    return not (job.get('is_thin') is True and not job.get('has_overview'))
+    return (job.get('article_words') or 0) >= MIN_ARTICLE_WORDS
 
 
 def is_job_for_sitemap(job: dict, now: datetime) -> bool:
-    if not is_indexable(job, now) or not job.get('has_overview'):
+    if not is_indexable(job, now):
         return False
     ref = _aware(job.get('posted_at')) or _aware(job.get('last_seen_at'))
     if ref is None:

@@ -5,6 +5,7 @@
 import { canonicalCategoryForJob, canonicalPathForJob } from './slug';
 import { isIndexableJob } from './seo/seoMetrics';
 import { BASE_URL } from './site';
+import type { Job } from './jobs';
 import { toLastmod, type SitemapUrlEntry } from './sitemapXml';
 
 export { toLastmod };
@@ -33,6 +34,9 @@ type SitemapJob = {
     is_thin?: boolean;
     enriched_overview?: string;
     quality_score?: number;
+    // Published article size (lib/jobContent.ts); the sitemap only lists jobs at 1,500+ unique words.
+    article_words?: number;
+    enriched_sections?: Job['enriched_sections'];
 };
 
 export type JobsPageFetcher<T extends SitemapJob = SitemapJob> = (
@@ -159,8 +163,6 @@ export type CategorySitemaps = Record<SitemapCategory, SitemapUrlEntry[]>;
  */
 export function isJobForSitemap(job: SitemapJob, now: number = Date.now()): boolean {
     if (!isIndexableJob(job))
-        return false;
-    if (!job.enriched_overview)
         return false;
     const ref = job.posted_at || job.last_seen_at;
     const t = ref ? new Date(ref).getTime() : NaN;

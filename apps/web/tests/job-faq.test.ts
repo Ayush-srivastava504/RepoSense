@@ -20,10 +20,10 @@ test('no invented eligibility or skills when the job has none; compensation says
     assert.ok(faq.some((f) => /not stated compensation/.test(f.answer)));
 });
 
-test('table_only tier gets no FAQ; AI faqs are merged and deduped; capped at 8', () => {
+test('table_only tier gets no FAQ; AI and article faqs are merged and deduped; capped at 14', () => {
     assert.deepEqual(buildJobFaq({ ...base, content_tier: 'table_only' } as Job), []);
-    const ai = Array.from({ length: 10 }, (_, i) => ({ q: `What is topic ${i} like at Acme?`, a: `Answer number ${i} for this listing.` }));
+    const ai = Array.from({ length: 20 }, (_, i) => ({ q: `What is topic ${i} like at Acme?`, a: `Answer number ${i} for this listing.` }));
     const faq = buildJobFaq({ ...base, enriched_sections: { faqs: [{ q: 'How do I apply for the Application Security Engineer role?', a: 'dupe' }, ...ai] } } as Job);
-    assert.equal(faq.length, 8);
+    assert.equal(faq.length, 14);
     assert.equal(faq.filter((f) => /^How do I apply/.test(f.question)).length, 1);
 });
