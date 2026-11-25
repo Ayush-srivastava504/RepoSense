@@ -7,10 +7,11 @@
 // app/blog/[slug]/page.tsx's parseRobotsDirective (robots meta mapping).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { validateBlogPost, articleWordCount, isStructuredBody, type BlogPost } from '../lib/blog';
 import { parseRobotsDirective } from '../lib/seo/robots';
+import { parseMarkdown, headingsFromBlocks, tokenizeInline } from '../lib/blogMarkdown';
 
 const BLOG_DIR = resolve(__dirname, '..', 'content', 'blog');
 
@@ -184,4 +185,77 @@ test('every real blog article with seoMetadata.canonicalUrl points at the non-ww
       );
     }
   }
+});
+
+test('blog metadata uses an absolute title and internal blog links point to real posts', () => {
+  const page = readFileSync(resolve(__dirname, '..', 'app/blog/[slug]/page.tsx'), 'utf8');
+  assert.match(page, /title:\s*\{\s*absolute:\s*metaTitle\s*\}/);
+
+  const files = readdirSync(BLOG_DIR).filter((f) => f.endsWith('.json'));
+  const slugs = new Set(files.map((f) => f.replace(/\.json$/, '')));
+  for (const file of files) {
+    const post = require(resolve(BLOG_DIR, file));
+    for (const link of post.internalLinks || []) {
+      const url = new URL(link.url);
+      if (url.pathname.startsWith('/blog/')) {
+        assert.ok(slugs.has(url.pathname.split('/').pop()!), `${file}: broken internal blog link ${link.url}`);
+      }
+    }
+  }
+});
+
+// ---------- content depth + SERP snippet lengths (Nov 2026 redesign) ----------
+const englishPosts = () =>
+  readdirSync(BLOG_DIR)
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => ({ file: f, post: require(resolve(BLOG_DIR, f)) as BlogPost }));
+
+test('every English blog article has at least 1000 words of body copy', () => {
+  for (const { file, post } of englishPosts()) {
+    const words = articleWordCount(post.body);
+    assert.ok(words >= 1000, `${file}: body is ${words} words (minimum 1000)`);
+  }
+});
+
+test('every English blog article has a <=60 char meta title and a 120-160 char meta description', () => {
+  for (const { file, post } of englishPosts()) {
+    const title = post.seoMetadata?.metaTitle;
+    const desc = post.seoMetadata?.metaDescription;
+    assert.ok(title && title.length <= 60, `${file}: metaTitle "${title}" is ${title?.length} chars`);
+    assert.ok(desc && desc.length >= 120 && desc.length <= 160, `${file}: metaDescription is ${desc?.length} chars`);
+  }
+});
+
+test('in-body /blog/ links point to real posts and no article shares an identical intro', () => {
+  const slugs = new Set(englishPosts().map(({ file }) => file.replace(/\.json$/, '')));
+  const intros = new Map<string, string>();
+  for (const { file, post } of englishPosts()) {
+    const text = isStructuredBody(post.body)
+      ? [post.body.introduction, ...post.body.sections.map((s) => s.content)].join('\n\n')
+      : post.body;
+    for (const m of text.matchAll(/\]\(\/blog\/([^)#]+)\)/g)) {
+      assert.ok(slugs.has(m[1]), `${file}: in-body link to missing post /blog/${m[1]}`);
+    }
+    const intro = text.split('\n\n')[0].replace(/"[^"]*"/g, '').slice(0, 200);
+    assert.ok(!intros.has(intro), `${file}: intro duplicates ${intros.get(intro)}`);
+    intros.set(intro, file);
+  }
+});
+
+// ---------- lib/blogMarkdown parser ----------
+test('parseMarkdown: headings get unique ids, lists/tables/quotes parse', () => {
+  const blocks = parseMarkdown(
+    '## Setup\n\ntext\n\n## Setup\n\n9. nine\n10. ten\n\n- a\n- b\n\n> one\n> two\n\n| A | B |\n|---|---|\n| x | y \\| z |'
+  );
+  assert.deepEqual(blocks.map((b) => b.type), ['h2', 'p', 'h2', 'ol', 'ul', 'quote', 'table']);
+  assert.equal((blocks[0] as any).id, 'setup');
+  assert.equal((blocks[2] as any).id, 'setup-2');
+  assert.equal((blocks[3] as any).start, 9);
+  assert.deepEqual((blocks[5] as any).lines, ['one', 'two']);
+  assert.deepEqual((blocks[6] as any).rows, [['x', 'y | z']]);
+  assert.deepEqual(headingsFromBlocks(blocks).map((h) => h.id), ['setup', 'setup-2']);
+});
+
+test('tokenizeInline: bold, code and links', () => {
+  assert.deepEqual(tokenizeInline('a **b** `c` [d](/e)').map((t) => t.type), ['text', 'bold', 'text', 'code', 'text', 'link']);
 });

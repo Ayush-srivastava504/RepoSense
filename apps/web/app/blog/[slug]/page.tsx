@@ -1,6 +1,6 @@
 // Module: app/blog/[slug]/page.tsx
 // Defines component(s)/export(s): BlogPostPage
-// Defines function(s): generateStaticParams, generateMetadata, renderBody
+// Defines function(s): generateStaticParams, generateMetadata
 // Defines type(s): Props
 
 import type { Metadata } from 'next';
@@ -12,13 +12,15 @@ import { BASE_URL } from '@/lib/jobs';
 import type { ComponentProps } from 'react';
 import StatBarChart from '@/app/components/StatBarChart';
 import { getChartStats, seriesFor } from '@/lib/chartStats';
-import { getAllPosts, getPostBySlug, isStructuredBody, articleWordCount, type BodySection } from '@/lib/blog';
+import { getAllPosts, getPostBySlug, isStructuredBody, articleWordCount, type BlogPost, type BodySection } from '@/lib/blog';
+import { parseMarkdown, headingsFromBlocks, readingMinutes, type Block, type Heading } from '@/lib/blogMarkdown';
 import { getToolsForArticle } from '@/app/tools/data';
 import { breadcrumbSchema, faqSchema, languageAlternates, ORG_NAME, ORG_LOGO } from '@/lib/structuredData';
 import { parseRobotsDirective } from '@/lib/seo/robots';
 import type { Locale } from '@/i18n/config';
 import { getDictionary } from '@/i18n/get-dictionary';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
+import ArticleBody, { Inline } from '../components/ArticleBody';
 
 interface Props {
   params: {
@@ -30,6 +32,17 @@ export function generateStaticParams() {
   return getAllPosts().map((post) => ({ slug: post.slug }));
 }
 
+/**
+ * An authored image wins, except the site-wide /og-image.png placeholder that
+ * older posts copied in: that made every article share one social card, so it
+ * falls through to the per-article generator at /og/blog/<slug>.png.
+ */
+function articleImage(post: BlogPost): string {
+  const authored = post.image?.url;
+  if (authored && !authored.endsWith('/og-image.png')) return authored;
+  return `${BASE_URL}/og/blog/${post.slug}.png`;
+}
+
 export function generateMetadata({ params }: Props): Metadata {
   const post = getPostBySlug(params.slug);
   if (!post) return {};
@@ -38,16 +51,14 @@ export function generateMetadata({ params }: Props): Metadata {
   const metaTitle = seo?.metaTitle || `${post.title} | InternFlow Blog`;
   const metaDescription = seo?.metaDescription || post.description;
   const canonicalUrl = seo?.canonicalUrl || `${BASE_URL}/blog/${post.slug}`;
-  // Prefer an explicitly authored image; otherwise generate one per-article
-  // (title + category, real dimensions) rather than falling back to the
-  // single generic /og-image.png every other page type uses.
-  const imageUrl = post.image?.url || `${BASE_URL}/og/blog/${post.slug}.png`;
+  const imageUrl = articleImage(post);
   const imageAlt = post.image?.alt || post.title;
 
   return {
-    title: metaTitle,
+    title: { absolute: metaTitle },
     description: metaDescription,
     keywords: post.tags || [post.keyword],
+    authors: [{ name: post.author?.name || ORG_NAME }],
     alternates: {
       canonical: canonicalUrl,
       languages: languageAlternates(`/blog/${post.slug}`),
@@ -59,6 +70,8 @@ export function generateMetadata({ params }: Props): Metadata {
       type: 'article',
       publishedTime: post.publishedAt,
       modifiedTime: post.updatedAt || post.publishedAt,
+      section: post.category.replace(/-/g, ' '),
+      tags: post.tags,
       url: canonicalUrl,
       images: [
         {
@@ -79,57 +92,20 @@ export function generateMetadata({ params }: Props): Metadata {
   };
 }
 
-function renderBody(body: string) {
-  const blocks = body.split('\n\n');
-  return blocks.map((block, i) => {
-    if (block.startsWith('## ')) {
-      return (
-        <h2 key={i} className="mt-8 text-xl font-semibold tracking-tight">
-          {block.replace('## ', '')}
-        </h2>
-      );
-    }
-    if (block.startsWith('### ')) {
-      return (
-        <h3 key={i} className="mt-6 text-lg font-medium">
-          {block.replace('### ', '')}
-        </h3>
-      );
-    }
-    if (block.startsWith('- ')) {
-      const items = block.split('\n').map((l) => l.replace(/^- /, ''));
-      return (
-        <ul key={i} className="mt-3 list-disc space-y-1.5 pl-5 leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-          {items.map((item, j) => (
-            <li key={j}>{item}</li>
-          ))}
-        </ul>
-      );
-    }
-    return (
-      <p key={i} className="mt-4 leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-        {block}
-      </p>
-    );
-  });
-}
-
 /**
- * Renders whichever "extra" shape a section carries, if any. Sections in the
- * structured format share id/title/content but differ after that (a skill
- * graph, a comparison table, a list of career paths, ...). Unknown/future
- * shapes are simply skipped here rather than guessed at.
+ * Renders whichever "extra" shape a structured section carries, if any.
+ * Unknown/future shapes are skipped rather than guessed at.
  */
-function renderSectionExtra(section: BodySection) {
+function SectionExtra({ section }: { section: BodySection }) {
   if (section.graph) {
     return (
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className="not-prose mt-5 grid gap-3 sm:grid-cols-2">
         {section.graph.nodes.map((node) => (
-          <div key={node.name} className="rounded-lg border p-3" style={{ borderColor: 'var(--line)' }}>
-            <p className="text-sm font-medium">{node.name}</p>
+          <div key={node.name} className="rounded-xl border p-4" style={{ borderColor: 'var(--line)', background: 'var(--paper-dim)' }}>
+            <p className="text-sm font-semibold">{node.name}</p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {node.skills.map((skill) => (
-                <span key={skill} className="rounded px-2 py-0.5 text-xs font-mono" style={{ background: 'var(--hover)', color: 'var(--ink-soft)' }}>
+                <span key={skill} className="rounded-md px-2 py-0.5 font-mono text-xs" style={{ background: 'var(--paper)', color: 'var(--ink-soft)', border: '1px solid var(--line)' }}>
                   {skill}
                 </span>
               ))}
@@ -142,11 +118,11 @@ function renderSectionExtra(section: BodySection) {
 
   if (section.examples) {
     return (
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className="not-prose mt-5 grid gap-3 sm:grid-cols-2">
         {section.examples.map((ex) => (
-          <div key={ex.cluster} className="rounded-lg border p-3" style={{ borderColor: 'var(--line)' }}>
-            <p className="text-sm font-medium">{ex.cluster}</p>
-            <p className="mt-1 text-sm" style={{ color: 'var(--ink-soft)' }}>{ex.skills.join(', ')}</p>
+          <div key={ex.cluster} className="rounded-xl border p-4" style={{ borderColor: 'var(--line)', background: 'var(--paper-dim)' }}>
+            <p className="text-sm font-semibold">{ex.cluster}</p>
+            <p className="mt-1 text-sm" style={{ color: 'var(--ink-soft)' }}>{ex.skills.join(' · ')}</p>
           </div>
         ))}
       </div>
@@ -155,19 +131,19 @@ function renderSectionExtra(section: BodySection) {
 
   if (section.comparison) {
     return (
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className="blog-table-wrap">
+        <table>
           <thead>
-            <tr className="border-b text-left" style={{ borderColor: 'var(--line)' }}>
-              <th className="py-2 pr-4 font-medium">Level</th>
-              <th className="py-2 font-medium">Typical focus</th>
+            <tr>
+              <th scope="col">Level</th>
+              <th scope="col">Typical focus</th>
             </tr>
           </thead>
           <tbody>
             {section.comparison.map((row) => (
-              <tr key={row.level} className="border-b" style={{ borderColor: 'var(--line)' }}>
-                <td className="py-2 pr-4 font-medium">{row.level}</td>
-                <td className="py-2" style={{ color: 'var(--ink-soft)' }}>{row.typicalFocus.join(', ')}</td>
+              <tr key={row.level}>
+                <td><strong>{row.level}</strong></td>
+                <td>{row.typicalFocus.join(', ')}</td>
               </tr>
             ))}
           </tbody>
@@ -178,10 +154,10 @@ function renderSectionExtra(section: BodySection) {
 
   if (section.paths) {
     return (
-      <div className="mt-4 space-y-3">
+      <div className="not-prose mt-5 space-y-3">
         {section.paths.map((p) => (
-          <div key={p.startingRole} className="rounded-lg border p-3" style={{ borderColor: 'var(--line)' }}>
-            <p className="text-sm font-medium">From: {p.startingRole}</p>
+          <div key={p.startingRole} className="rounded-xl border p-4" style={{ borderColor: 'var(--line)', background: 'var(--paper-dim)' }}>
+            <p className="text-sm font-semibold">From: {p.startingRole}</p>
             <p className="mt-1 text-sm" style={{ color: 'var(--ink-soft)' }}>Bridge skills: {p.bridgeSkills.join(', ')}</p>
           </div>
         ))}
@@ -189,10 +165,10 @@ function renderSectionExtra(section: BodySection) {
     );
   }
 
-  if (section.salaryDimensions || section.signals) {
-    const items = section.salaryDimensions || section.signals || [];
+  const items = section.salaryDimensions || section.signals;
+  if (items) {
     return (
-      <ul className="mt-4 list-disc space-y-1.5 pl-5 leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+      <ul>
         {items.map((item) => (
           <li key={item}>{item}</li>
         ))}
@@ -203,22 +179,31 @@ function renderSectionExtra(section: BodySection) {
   return null;
 }
 
-/**
- * Table of contents generated from the structured body's own section ids —
- * no separate data source to keep in sync, and it doubles as a set of
- * crawlable in-page anchors (Phase 4 item 15 in the SEO plan).
- */
-function TableOfContents({ sections }: { sections: BodySection[] }) {
-  if (sections.length < 2) return null;
+function StructuredArticle({ body }: { body: { introduction: string; sections: BodySection[] } }) {
   return (
-    <nav aria-label="Table of contents" className="mt-8 rounded-xl border p-5" style={{ borderColor: 'var(--line)' }}>
-      <p className="text-sm font-semibold">Contents</p>
-      <ol className="mt-2 space-y-1.5 text-sm">
-        {sections.map((section) => (
-          <li key={section.id}>
-            <a href={`#${section.id}`} className="hover:underline" style={{ color: 'var(--accent)' }}>
-              {section.title}
-            </a>
+    <div className="blog-prose">
+      {parseMarkdown(body.introduction).map((b, i) => (b.type === 'p' ? <p key={i}><Inline text={b.text} /></p> : null))}
+      {body.sections.map((section) => (
+        <section key={section.id} aria-labelledby={section.id}>
+          <h2 id={section.id}>{section.title}</h2>
+          <ArticleBody blocks={parseMarkdown(section.content)} />
+          <SectionExtra section={section} />
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function TableOfContents({ headings, title }: { headings: Heading[]; title: string }) {
+  const top = headings.filter((h) => h.level === 2);
+  if (top.length < 2) return null;
+  return (
+    <nav aria-label="Table of contents" className="blog-toc">
+      <p className="blog-toc-title">{title}</p>
+      <ol>
+        {top.map((h) => (
+          <li key={h.id}>
+            <a href={`#${h.id}`}>{h.text}</a>
           </li>
         ))}
       </ol>
@@ -226,20 +211,20 @@ function TableOfContents({ sections }: { sections: BodySection[] }) {
   );
 }
 
-function renderStructuredBody(body: { introduction: string; sections: BodySection[] }) {
-  return (
-    <>
-      <p className="leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{body.introduction}</p>
-      <TableOfContents sections={body.sections} />
-      {body.sections.map((section) => (
-        <section key={section.id} id={section.id} className="mt-8">
-          <h2 className="text-xl font-semibold tracking-tight">{section.title}</h2>
-          <p className="mt-3 leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{section.content}</p>
-          {renderSectionExtra(section)}
-        </section>
-      ))}
-    </>
-  );
+function formatDate(value: string, locale: Locale) {
+  return new Date(value).toLocaleDateString(locale === 'en' ? 'en-US' : locale, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+/** Same-category posts first, then the most recent of the rest. */
+function relatedPosts(post: BlogPost, locale: Locale, limit = 3): BlogPost[] {
+  const others = getAllPosts(locale).filter((p) => p.slug !== post.slug);
+  const same = others.filter((p) => p.category === post.category);
+  const rest = others.filter((p) => p.category !== post.category);
+  return [...same, ...rest].slice(0, limit);
 }
 
 export default async function BlogPostPage({ params }: Props) {
@@ -252,6 +237,8 @@ export default async function BlogPostPage({ params }: Props) {
   if (!post) notFound();
 
   const linkedTools = getToolsForArticle(post.slug);
+  const blogHref = locale === 'en' ? '/blog' : `/${locale}/blog`;
+  const postHref = (slug: string) => (locale === 'en' ? `/blog/${slug}` : `/${locale}/blog/${slug}`);
 
   // Charts render only from real nightly aggregates (chart_stats). A chart with no statsKey, no
   // stats row yet (too few listings), or a label the stats don't cover is omitted -- never faked.
@@ -265,6 +252,18 @@ export default async function BlogPostPage({ params }: Props) {
       sampleSize: chart.metric === 'experience' ? stats.stats.experience_known : stats.sample_size, computedAt: stats.computed_at });
   }
 
+  const structured = isStructuredBody(post.body);
+  const blocks: Block[] = structured ? [] : parseMarkdown(post.body as string);
+  const headings: Heading[] = structured
+    ? (post.body as { sections: BodySection[] }).sections.map((s) => ({ id: s.id, text: s.title, level: 2 as const }))
+    : headingsFromBlocks(blocks);
+  const wordCount = articleWordCount(post.body);
+  const minutes = readingMinutes(wordCount);
+  const updated = post.updatedAt && post.updatedAt.slice(0, 10) !== post.publishedAt.slice(0, 10) ? post.updatedAt : null;
+  const authorName = post.author?.name || 'InternFlow Editorial';
+  const related = relatedPosts(post, locale);
+  const tocTitle = 'On this page';
+
   const crumbs = breadcrumbSchema([
     { name: 'Home', url: BASE_URL },
     { name: 'Blog', url: `${BASE_URL}/blog` },
@@ -273,254 +272,226 @@ export default async function BlogPostPage({ params }: Props) {
 
   const articleSchema = {
     '@context': 'https://schema.org',
-    // BlogPosting (a subtype of Article) describes these pages more
-    // precisely than the generic Article type, since every post here lives
-    // under /blog and reads as a blog article rather than e.g. news content.
     '@type': 'BlogPosting',
     headline: post.title,
     description: post.seoMetadata?.metaDescription || post.description,
-    image: post.image?.url || `${BASE_URL}/og/blog/${post.slug}.png`,
+    image: articleImage(post),
     datePublished: post.publishedAt,
     dateModified: post.updatedAt || post.publishedAt,
     author: {
       '@type': 'Organization',
-      name: post.author?.name || ORG_NAME,
-      url: BASE_URL,
+      name: authorName,
+      url: `${BASE_URL}/about`,
     },
     publisher: {
       '@type': 'Organization',
       name: ORG_NAME,
       logo: { '@type': 'ImageObject', url: ORG_LOGO },
     },
-    mainEntityOfPage: `${BASE_URL}/blog/${post.slug}`,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': `${BASE_URL}/blog/${post.slug}` },
     keywords: (post.tags && post.tags.length > 0 ? post.tags : [post.keyword]).join(', '),
     articleSection: post.category.replace(/-/g, ' '),
-    wordCount: articleWordCount(post.body),
+    wordCount,
+    timeRequired: `PT${minutes}M`,
     inLanguage: locale,
   };
 
-  const faq = post.faq
-    ? faqSchema(post.faq.map((f) => ({ question: f.q, answer: f.a })))
-    : null;
+  const faq = post.faq?.length ? faqSchema(post.faq.map((f) => ({ question: f.q, answer: f.a }))) : null;
 
   return (
     <main className="w-full">
-      <Script
-        id={`blog-post-breadcrumb-${post.slug}`}
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}
-      />
-      <Breadcrumbs schema={crumbs}/>
-      <Script
-        id={`blog-post-article-${post.slug}`}
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
-      />
+      <Script id={`blog-post-breadcrumb-${post.slug}`} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }} />
+      <Script id={`blog-post-article-${post.slug}`} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
       {faq && (
-        <Script
-          id={`blog-post-faq-${post.slug}`}
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faq) }}
-        />
+        <Script id={`blog-post-faq-${post.slug}`} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faq) }} />
       )}
 
-      <article className="mx-auto w-full max-w-3xl px-3 py-10 sm:px-4 sm:py-14">
-        <Link
-          href={locale === 'en' ? '/blog' : `/${locale}/blog`}
-          className="text-sm font-medium transition hover:underline"
-          style={{ color: 'var(--accent)' }}
-        >
-          {dict.blog?.backToAll || '← All guides'}
-        </Link>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="chip chip-green text-xs uppercase tracking-wide">
-            {post.category.replace(/-/g, ' ')}
-          </span>
-          {post.readingTime && (
-            <span className="text-xs" style={{ color: 'var(--muted)' }}>
-              • {post.readingTime}
-            </span>
-          )}
-        </div>
-
-        {post.hero?.eyebrow && (
-          <p className="mt-3 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--accent)' }}>
-            {post.hero.eyebrow}
-          </p>
-        )}
-
-        <h1 className="display mt-3 text-3xl font-medium sm:text-4xl leading-tight">
-          {post.title}
-        </h1>
-
-        {post.hero?.summary && (
-          <p className="mt-3 leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-            {post.hero.summary}
-          </p>
-        )}
-
-        <div
-          className="mt-4 flex items-center justify-between border-b pb-4 text-xs"
-          style={{ borderColor: 'var(--line)', color: 'var(--ink-soft)' }}
-        >
-          <div>
-            <span>By {post.author?.name || 'InternFlow Engineering'}</span>
-            <span className="mx-2">•</span>
-            <span>
-              {dict.blog?.published || 'Published'}{' '}
-              {new Date(post.publishedAt).toLocaleDateString(locale === 'en' ? 'en-US' : locale, {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-              })}
-            </span>
-          </div>
-        </div>
-
-        {post.tags && post.tags.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-1.5">
-            {post.tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded px-2 py-0.5 text-xs font-mono"
-                style={{ background: 'var(--hover)', color: 'var(--ink-soft)' }}
-              >
-                #{tag}
+      {/* Header */}
+      <header className="blog-hero">
+        <div className="mx-auto w-full max-w-6xl px-4 pb-10 pt-6 sm:px-6 sm:pb-12">
+          <Breadcrumbs schema={crumbs} />
+          <div className="mt-6 max-w-3xl">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <Link href={`${blogHref}#${post.category}`} className="blog-category">
+                {post.category.replace(/-/g, ' ')}
+              </Link>
+              <span style={{ color: 'var(--muted)' }}>{minutes} min read</span>
+            </div>
+            <h1 className="display mt-4 text-3xl font-semibold leading-[1.15] tracking-tight sm:text-[2.6rem]">{post.title}</h1>
+            <p className="mt-4 text-lg leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+              {post.hero?.summary || post.description}
+            </p>
+            <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm" style={{ color: 'var(--ink-soft)' }}>
+              <span className="blog-avatar" aria-hidden="true">{authorName.charAt(0)}</span>
+              <span>
+                <span className="font-medium" style={{ color: 'var(--ink)' }}>{authorName}</span>
+                {post.author?.role && <span style={{ color: 'var(--muted)' }}> · {post.author.role}</span>}
               </span>
-            ))}
+              <span aria-hidden="true" style={{ color: 'var(--line-strong)' }}>|</span>
+              {updated ? (
+                <span>
+                  Updated <time dateTime={updated}>{formatDate(updated, locale)}</time>
+                </span>
+              ) : (
+                <span>
+                  {dict.blog?.published || 'Published'} <time dateTime={post.publishedAt}>{formatDate(post.publishedAt, locale)}</time>
+                </span>
+              )}
+            </div>
           </div>
-        )}
-
-        {post.keyTakeaways && post.keyTakeaways.length > 0 && (
-          <div className="mt-8 rounded-xl border p-5" style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>
-            <h2 className="text-base font-semibold">Key takeaways</h2>
-            <ul className="mt-2 list-disc space-y-1.5 pl-5 leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-              {post.keyTakeaways.map((point) => (
-                <li key={point}>{point}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        <div className="mt-8 prose-tech">
-          {isStructuredBody(post.body) ? renderStructuredBody(post.body) : renderBody(post.body)}
         </div>
+      </header>
 
-        {liveCharts.length > 0 && (
-          <div className="mt-8 space-y-6">
-            {liveCharts.map((c) => (
-              <StatBarChart key={c.title} {...c} />
-            ))}
-          </div>
-        )}
+      <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_260px] lg:gap-14">
+        <article className="min-w-0 max-w-3xl">
+          {post.keyTakeaways && post.keyTakeaways.length > 0 && (
+            <aside className="blog-callout mb-10" aria-label="Key takeaways">
+              <p className="blog-callout-title">Key takeaways</p>
+              <ul>
+                {post.keyTakeaways.map((point) => (
+                  <li key={point}>{point}</li>
+                ))}
+              </ul>
+            </aside>
+          )}
 
-        {post.methodology && (
-          <div className="mt-8 rounded-xl border p-5" style={{ borderColor: 'var(--line)' }}>
-            <h2 className="text-base font-semibold">{post.methodology.title}</h2>
-            <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{post.methodology.details}</p>
-            {post.methodology.importantNote && (
-              <p className="mt-2 text-sm leading-relaxed italic" style={{ color: 'var(--muted)' }}>{post.methodology.importantNote}</p>
-            )}
-          </div>
-        )}
+          {/* Mobile TOC: collapsed so the article starts above the fold */}
+          {headings.filter((h) => h.level === 2).length >= 2 && (
+            <details className="blog-toc-mobile mb-8 lg:hidden">
+              <summary>{tocTitle}</summary>
+              <TableOfContents headings={headings} title="" />
+            </details>
+          )}
 
-        {post.realWorldExample && (
-          <div className="mt-8">
-            <h2 className="text-xl font-semibold tracking-tight">{post.realWorldExample.title}</h2>
-            <p className="mt-3 leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{post.realWorldExample.context}</p>
-            <ol className="mt-3 list-decimal space-y-1.5 pl-5 leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-              {post.realWorldExample.workflow.map((step) => (
-                <li key={step}>{step}</li>
-              ))}
-            </ol>
-          </div>
-        )}
+          {structured ? <StructuredArticle body={post.body as { introduction: string; sections: BodySection[] }} /> : <ArticleBody blocks={blocks} />}
 
-        {linkedTools.length > 0 && (
-          <div className="mt-8">
-            <h2 className="text-base font-semibold">Tools mentioned in this article</h2>
-            <div className="mt-2 flex flex-wrap gap-3">
-              {linkedTools.map((tool) => (
-                <Link key={tool.slug} href={`/tools/${tool.slug}`} className="text-sm font-medium hover:underline" style={{ color: 'var(--accent)' }}>
-                  {tool.shortName} →
-                </Link>
+          {liveCharts.length > 0 && (
+            <div className="mt-10 space-y-6">
+              {liveCharts.map((c) => (
+                <StatBarChart key={c.title} {...c} />
               ))}
             </div>
-          </div>
-        )}
+          )}
 
-        {post.internalLinks && post.internalLinks.length > 0 && (
-          <div className="mt-8">
-            <h2 className="text-base font-semibold">Related</h2>
-            <div className="mt-2 flex flex-wrap gap-3">
-              {post.internalLinks.map((link) => (
-                <Link key={link.url} href={link.url} className="text-sm font-medium hover:underline" style={{ color: 'var(--accent)' }}>
-                  {link.anchorText}
-                </Link>
+          {post.realWorldExample && (
+            <section className="blog-prose mt-10" aria-labelledby="real-world-example">
+              <h2 id="real-world-example">{post.realWorldExample.title}</h2>
+              <p>{post.realWorldExample.context}</p>
+              <ol>
+                {post.realWorldExample.workflow.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+            </section>
+          )}
+
+          {post.methodology && (
+            <aside className="blog-callout mt-10" aria-label={post.methodology.title}>
+              <p className="blog-callout-title">{post.methodology.title}</p>
+              <p className="text-sm leading-relaxed">{post.methodology.details}</p>
+              {post.methodology.importantNote && (
+                <p className="mt-2 text-sm italic leading-relaxed" style={{ color: 'var(--muted)' }}>{post.methodology.importantNote}</p>
+              )}
+            </aside>
+          )}
+
+          {post.faq && post.faq.length > 0 && (
+            <section className="mt-14" aria-labelledby="faq">
+              <h2 id="faq" className="display text-2xl font-semibold tracking-tight">
+                {dict.blog?.faqTitle || 'Frequently asked questions'}
+              </h2>
+              <div className="mt-5 divide-y rounded-2xl border" style={{ borderColor: 'var(--line)' }}>
+                {post.faq.map((f, i) => (
+                  <details key={i} className="blog-faq group" open={i === 0}>
+                    <summary>
+                      <span>{f.q}</span>
+                      <span aria-hidden="true" className="blog-faq-icon">+</span>
+                    </summary>
+                    <p>{f.a}</p>
+                  </details>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {post.tags && post.tags.length > 0 && (
+            <div className="mt-10 flex flex-wrap gap-2">
+              {post.tags.map((tag) => (
+                <span key={tag} className="rounded-full border px-3 py-1 text-xs" style={{ borderColor: 'var(--line)', color: 'var(--ink-soft)' }}>
+                  {tag}
+                </span>
               ))}
             </div>
-          </div>
-        )}
+          )}
 
-        {post.cta && (
-          <div className="mt-8 rounded-xl p-6 text-center border" style={{ background: 'var(--hover)', borderColor: 'var(--line)' }}>
-            <h3 className="text-lg font-medium">{post.cta.title}</h3>
-            <p className="mt-2 text-sm max-w-md mx-auto" style={{ color: 'var(--ink-soft)' }}>{post.cta.description}</p>
-            <div className="mt-4 flex justify-center">
-              <Link href={post.cta.url} className="btn btn-primary text-sm">
-                {post.cta.buttonText}
+          {/* CTA */}
+          <div className="blog-cta mt-12">
+            <div>
+              <p className="text-lg font-semibold">
+                {post.cta?.title || (linkedTools[0] ? `Try ${linkedTools[0].shortName}` : 'Check your resume before you apply')}
+              </p>
+              <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
+                {post.cta?.description || linkedTools[0]?.tagline || 'Score your resume against any job description and see exactly which keywords are missing. Free.'}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Link href={post.cta?.url || linkedTools[0]?.ctaHref || '/ats-checker'} className="btn btn-primary text-sm">
+                {post.cta?.buttonText || linkedTools[0]?.ctaLabel || 'Run free ATS check'}
+              </Link>
+              <Link href="/jobs" className="btn btn-secondary text-sm">
+                Browse open roles
               </Link>
             </div>
           </div>
-        )}
+        </article>
 
-        {post.faq && post.faq.length > 0 && (
-          <div
-            className="mt-12 rounded-xl border p-6"
-            style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}
-          >
-            <h2 className="text-xl font-semibold mb-4">
-              {dict.blog?.faqTitle || 'Frequently Asked Questions'}
-            </h2>
-            <div className="space-y-4">
-              {post.faq.map((f, i) => (
-                <div
-                  key={i}
-                  className="border-t pt-4 first:border-t-0 first:pt-0"
-                  style={{ borderColor: 'var(--line)' }}
-                >
-                  <p className="font-medium text-base">{f.q}</p>
-                  <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
-                    {f.a}
-                  </p>
-                </div>
+        {/* Desktop sidebar */}
+        <aside className="hidden lg:block">
+          <div className="sticky top-24 space-y-8">
+            <TableOfContents headings={headings} title={tocTitle} />
+            {(linkedTools.length > 0 || (post.internalLinks?.length ?? 0) > 0) && (
+              <div>
+                <p className="blog-toc-title">Useful tools</p>
+                <ul className="mt-3 space-y-2 text-sm">
+                  {linkedTools.map((tool) => (
+                    <li key={tool.slug}>
+                      <Link href={`/tools/${tool.slug}`} className="blog-side-link">{tool.shortName} →</Link>
+                    </li>
+                  ))}
+                  {post.internalLinks?.map((link) => (
+                    <li key={link.url}>
+                      <Link href={link.url.replace(BASE_URL, '') || '/'} className="blog-side-link">{link.anchorText} →</Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </aside>
+      </div>
+
+      {related.length > 0 && (
+        <section className="border-t" style={{ borderColor: 'var(--line)', background: 'var(--paper-dim)' }} aria-labelledby="related-guides">
+          <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6">
+            <div className="flex items-end justify-between gap-4">
+              <h2 id="related-guides" className="display text-2xl font-semibold tracking-tight">Keep reading</h2>
+              <Link href={blogHref} className="text-sm font-medium hover:underline" style={{ color: 'var(--green)' }}>
+                {(dict.blog?.backToAll || 'All guides').replace(/^←\s*/, '')} →
+              </Link>
+            </div>
+            <div className="mt-6 grid gap-5 md:grid-cols-3">
+              {related.map((p) => (
+                <Link key={p.slug} href={postHref(p.slug)} className="blog-card">
+                  <span className="blog-category">{p.category.replace(/-/g, ' ')}</span>
+                  <span className="mt-3 block text-base font-semibold leading-snug">{p.title}</span>
+                  <span className="mt-2 block text-sm leading-relaxed line-clamp-2" style={{ color: 'var(--ink-soft)' }}>{p.description}</span>
+                  <span className="mt-4 block text-xs" style={{ color: 'var(--muted)' }}>{readingMinutes(articleWordCount(p.body))} min read</span>
+                </Link>
               ))}
             </div>
           </div>
-        )}
-
-        {/* AI Career Tools Call to Action */}
-        <div
-          className="mt-12 rounded-xl p-6 text-center border"
-          style={{ background: 'var(--hover)', borderColor: 'var(--line)' }}
-        >
-          <h3 className="text-lg font-medium">
-            {linkedTools.length > 0 ? `Try ${linkedTools[0].shortName}` : 'Accelerate Your Tech Job Search'}
-          </h3>
-          <p className="mt-2 text-sm max-w-md mx-auto" style={{ color: 'var(--ink-soft)' }}>
-            {linkedTools.length > 0 ? linkedTools[0].tagline : 'Score your resume against any job description and generate tailored cover letters for free.'}
-          </p>
-          <div className="mt-4 flex justify-center gap-3">
-            <Link href={linkedTools.length > 0 ? linkedTools[0].ctaHref : '/tools/ats-resume-checker'} className="btn btn-primary text-sm">
-              {linkedTools.length > 0 ? linkedTools[0].ctaLabel : 'Try ATS Resume Checker'}
-            </Link>
-            <Link href="/jobs" className="btn btn-secondary text-sm">
-              Browse Open Jobs
-            </Link>
-          </div>
-        </div>
-      </article>
+        </section>
+      )}
     </main>
   );
 }
