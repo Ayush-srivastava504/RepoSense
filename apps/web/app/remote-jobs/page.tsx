@@ -17,7 +17,6 @@ import {  breadcrumbSchema, safeJsonLd } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 import HubExplore from '@/app/components/HubExplore';
 import SectionGuide from '@/app/components/SectionGuide';
-import { WFH_MIN_INDEXABLE, wfhJobCount } from '@/lib/wfhHub';
 import { SECTION_GUIDES } from '@/lib/content/sectionGuides';
 const JOBS_PER_PAGE = 12;
 export async function generateMetadata({ searchParams, }: {
@@ -31,9 +30,7 @@ export async function generateMetadata({ searchParams, }: {
         searchParams,
         imageAlt: 'InternFlow — Work from home jobs in India',
     });
-    // Thin while only a few WFH roles are live: keep it out of the index until it is a useful list (lib/wfhHub.ts).
-    if ((await wfhJobCount()) < WFH_MIN_INDEXABLE)
-        return { ...meta, robots: { index: false, follow: true } };
+    // Never noindexed. While only a few WFH roles are live the hub just stays out of the sitemap (lib/wfhHub.ts).
     return meta;
 }
 function Pagination({ currentPage, totalPages, search, role, }: {

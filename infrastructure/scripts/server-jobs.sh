@@ -6,7 +6,7 @@
 #
 #   bash infrastructure/scripts/server-jobs.sh <job>
 #
-# Jobs: sitemaps | queue | daily | index-push | indexnow | structured | companies | company-intel
+# Jobs: sitemaps | queue | daily | index-push | indexnow | structured | article | companies | company-intel
 # Each job takes a lock, so a slow run is never stacked on top of itself.
 set -uo pipefail
 
@@ -62,6 +62,11 @@ case "$JOB" in
   structured)
     api python scripts/enrich_all_content.py --target structured --bulk --no-fallback \
       --max-runtime-minutes 25 --limit 300 || status=$?
+    ;;
+  article)
+    # 1,500+ word job-specific guide per job (job_article_service.py). Top tiers first; nothing is stored
+    # unless it passes validation, and only jobs with an article are listed in the job sitemaps.
+    api python scripts/enrich_all_content.py --target article --no-fallback       --max-runtime-minutes 40 --limit 150 || status=$?
     ;;
   companies)
     api python scripts/enrich_all_content.py --target companies --limit 5000 || status=$?
