@@ -42,21 +42,9 @@ export const metadata: Metadata = {
     authors: [{ name: 'InternFlow', url: BASE_URL }],
     creator: 'InternFlow',
     publisher: 'InternFlow',
-    alternates: {
-        canonical: BASE_URL,
-        languages: {
-            'x-default': BASE_URL,
-            'en': BASE_URL,
-            'es': `${BASE_URL}/es`,
-            'ja': `${BASE_URL}/ja`,
-            'fr': `${BASE_URL}/fr`,
-            'de': `${BASE_URL}/de`,
-            'pt': `${BASE_URL}/pt`,
-            'ko': `${BASE_URL}/ko`,
-            'it': `${BASE_URL}/it`,
-            'hi': `${BASE_URL}/hi`,
-        },
-    },
+    // No site-wide `alternates`: every page sets its own canonical. A root canonical would make error
+    // pages (and any page that forgot one) point at the homepage, and the old /es, /ja... hreflang
+    // targets now 301 to English (middleware.ts).
     openGraph: {
         type: 'website',
         url: BASE_URL,

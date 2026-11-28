@@ -28,7 +28,7 @@ function career(
         name,
         searchTerm,
         metaTitle: `${name} Career Path — Skills, Jobs & Resume Guide`,
-        metaDescription: `What a ${name} does day to day, the skills employers screen for, live ${name} jobs and internships, and how to build a resume for the role — all in one place.`,
+        metaDescription: `What a ${name} does, the skills employers screen for, live jobs and internships, and how to write a resume for the role.`,
         heroDescription: `A one-stop overview of the ${name} path: what the role actually involves, the skills that show up in real job descriptions, live openings you can apply to right now, and how to get your resume and interview prep in shape.`,
         whatTheyDo,
         relatedSkillSlugs,

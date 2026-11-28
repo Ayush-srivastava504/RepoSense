@@ -26,8 +26,8 @@ export interface BatchDefinition {
 function batch(year: string, relatedYears: string[]): BatchDefinition {
     return {
         year,
-        metaTitle: `${year} Batch Jobs & Internships for Freshers — InternFlow`,
-        metaDescription: `Live jobs and internships open to the ${year} passout batch, sourced from company career pages and job boards and refreshed daily, plus the resume and interview tools to apply faster.`,
+        metaTitle: `${year} Batch Jobs & Internships for Freshers`,
+        metaDescription: `Live jobs and internships open to the ${year} passout batch, from company career pages and job boards, refreshed daily, plus free resume tools.`,
         heroDescription: `Every active job and internship on InternFlow that accepts the ${year} passout batch, aggregated from company career pages and job boards and refreshed daily — with the companies hiring and the tools to get your application ready.`,
         relatedYears,
     };

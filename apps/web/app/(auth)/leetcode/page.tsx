@@ -7,6 +7,7 @@ import type { Metadata } from 'next';
 import { BASE_URL } from '@/lib/jobs';
 import {  breadcrumbSchema, languageAlternates } from '@/lib/structuredData';
 import LeetCodeClient from './LeetCodeClient';
+import ToolVideoGuide from '@/app/components/ToolVideoGuide';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 export const metadata: Metadata = {
     title: 'Free LeetCode Practice: Blind 75 & Top 150',
@@ -47,5 +48,6 @@ export default function LeetCodePage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }}/>
       <Breadcrumbs schema={crumbs}/>
       <LeetCodeClient />
+      <ToolVideoGuide slug="coding-practice" className="mt-16"/>
     </>);
 }

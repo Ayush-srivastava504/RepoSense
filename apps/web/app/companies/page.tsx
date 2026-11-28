@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { companySlug, directoryLabel, getCompanyDirectory } from '@/lib/companies';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 import SectionGuide from '@/app/components/SectionGuide';
+import ToolVideoGuide from '@/app/components/ToolVideoGuide';
 import { HUB_GUIDES } from '@/lib/content/hubGuides';
 export const metadata: Metadata = {
     title: 'Companies Hiring — Top, Mass-Hiring & Startups',
@@ -131,6 +132,7 @@ export default async function CompaniesPage() {
           </div>
         </nav>)}
 
+      <ToolVideoGuide slug="companies" className="mt-12"/>
       <SectionGuide section="companies"/>
     </main>);
 }

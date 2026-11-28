@@ -29,7 +29,7 @@ function city(
         region,
         matchers,
         metaTitle: `Jobs & Internships in ${name} — Live Openings, Updated Daily`,
-        metaDescription: `Live jobs and internships based in ${name}, sourced from company career pages and job boards and refreshed daily, plus the resume and interview tools to apply faster.`,
+        metaDescription: `Live jobs and internships in ${name} from company career pages and job boards, refreshed daily, plus free resume and interview tools.`,
         heroDescription: `Every active job and internship listed for ${name} on InternFlow, aggregated from company career pages and job boards and refreshed daily — with the companies hiring and the tools to get your application ready.`,
         relatedSlugs,
     };

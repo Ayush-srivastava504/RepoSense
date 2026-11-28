@@ -6,6 +6,7 @@
 
 import type { Metadata } from 'next';
 import { BASE_URL } from '@/lib/site';
+import ToolVideoGuide from '@/app/components/ToolVideoGuide';
 
 export const metadata: Metadata = {
     title: 'AI Cover Letter Generator — Tailored to the Job',
@@ -19,6 +20,12 @@ export const metadata: Metadata = {
     },
 };
 
+// The tool UI renders client-side (nothing in the server HTML), so the server-rendered video guide
+// below is what crawlers read first. The min-height reserves the tool's space so the guide does not
+// jump down when the tool mounts.
 export default function Layout({ children }: { children: React.ReactNode }) {
-    return children;
+    return (<>
+      <div className="min-h-[85vh]">{children}</div>
+      <ToolVideoGuide slug="cover-letter" className="mx-auto mt-16 max-w-6xl"/>
+    </>);
 }

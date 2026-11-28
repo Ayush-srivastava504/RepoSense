@@ -7,6 +7,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 export const metadata: Metadata = {
     title: 'Page not found',
+    // Matches the noindex Next.js adds to 404 responses, instead of inheriting the root "index, follow".
+    robots: { index: false, follow: true },
 };
 const links = [
     { href: '/jobs', label: 'Jobs' },

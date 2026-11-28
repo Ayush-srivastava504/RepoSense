@@ -4,10 +4,11 @@ import { BASE_URL } from '@/lib/jobs';
 import { breadcrumbSchema, faqSchema, howToSchema, softwareApplicationSchema, languageAlternates } from '@/lib/structuredData';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 import AutoApplyDashboard from './AutoApplyDashboard';
+import ToolVideoGuide from '@/app/components/ToolVideoGuide';
 
 const PAGE_URL = `${BASE_URL}/auto-apply`;
-const TITLE = 'Automated Job Application Engine — RepoSense';
-const DESCRIPTION = 'AI-powered 5-layer automated job application engine: PDF resume ingestion, multi-ATS discovery, hybrid match scoring, Playwright stealth browser automation, and application tracking.';
+const TITLE = 'Auto-Apply: Match Your Resume to Jobs and Apply Faster';
+const DESCRIPTION = 'Upload your resume once, see the job openings it matches with a score for each, and apply faster. Free for students and freshers.';
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -53,14 +54,14 @@ const FAQS = [
 
 export default function AutoApplyPage() {
   const appSchema = softwareApplicationSchema({
-    name: 'RepoSense Auto-Apply Engine',
+    name: 'InternFlow Auto-Apply',
     description: DESCRIPTION,
     url: PAGE_URL,
     category: 'Career Automation Tools',
   });
 
   const howTo = howToSchema({
-    name: 'How to automate job applications with RepoSense',
+    name: 'How to apply to jobs faster with InternFlow Auto-Apply',
     description: DESCRIPTION,
     steps: HOW_IT_WORKS,
   });
@@ -72,7 +73,7 @@ export default function AutoApplyPage() {
   ]);
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:py-10 space-y-8">
+    <div className="mx-auto w-full max-w-6xl space-y-8">
       <Script id="auto-apply-app-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(appSchema) }} />
       <Script id="auto-apply-howto-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howTo) }} />
       <Script id="auto-apply-faq-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqs) }} />
@@ -92,6 +93,8 @@ export default function AutoApplyPage() {
 
       <AutoApplyDashboard />
 
+      <ToolVideoGuide slug="auto-apply" className="mt-12"/>
+
       <section className="mt-12 border-t pt-8 border-slate-200 dark:border-slate-800">
         <h2 className="display text-xl font-medium mb-4">Frequently Asked Questions</h2>
         <div className="grid gap-4 md:grid-cols-3">
@@ -103,6 +106,6 @@ export default function AutoApplyPage() {
           ))}
         </div>
       </section>
-    </main>
+    </div>
   );
 }

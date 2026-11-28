@@ -26,7 +26,7 @@ function skill(
         name,
         category,
         searchTerm,
-        metaTitle: `${name} Jobs & Internships for Students — InternFlow`,
+        metaTitle: `${name} Jobs & Internships for Students`,
         metaDescription: `Live ${name} jobs and internships for engineering students, plus resume and interview prep tools built for ${name} roles. Updated daily.`,
         heroDescription: `Every active ${name} job and internship on InternFlow, aggregated from company career pages and job boards, refreshed daily — with the companies hiring for it and the tools to get your resume ready.`,
         relatedSlugs,

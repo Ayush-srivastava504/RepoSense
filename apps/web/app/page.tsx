@@ -6,12 +6,12 @@ import AuthRedirect from '@/app/components/AuthRedirect';
 import MultilingualLanding from '@/app/components/MultilingualLanding';
 import { getFeaturedJobs, getJobs, BASE_URL } from '@/lib/jobs';
 import { languageAlternates, safeJsonLd } from '@/lib/structuredData';
-import { TOOL_VIDEOS, TOOL_VIDEO_UPLOAD_DATE } from '@/lib/toolVideos';
+import { HERO_VIDEO, videoObjectSchema } from '@/lib/toolVideos';
 
 // SEO Metadata with international hreflang tags
 export const metadata: Metadata = {
   title: { absolute: 'Fresher Jobs & Internships in India for B.Tech, BCA, MCA, MBA | InternFlow' },
-  description: 'Find software engineer, data engineer, AI/ML and IT jobs and internships in India for B.Tech, BCA, MCA, B.Sc and MBA freshers. Updated daily, with a free ATS resume builder and cover letter tool.',
+  description: 'Software, data, AI/ML and IT jobs and internships in India for B.Tech, BCA, MCA, B.Sc and MBA freshers. Updated daily, plus free ATS resume tools.',
   alternates: {
     canonical: BASE_URL,
     languages: languageAlternates('/'),
@@ -39,25 +39,9 @@ export const metadata: Metadata = {
   },
 };
 
-// One VideoObject per homepage tool recording, so the videos can appear in Google video results.
-const toolVideosSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'ItemList',
-  name: 'InternFlow tools in action',
-  itemListElement: TOOL_VIDEOS.map((v, i) => ({
-    '@type': 'ListItem',
-    position: i + 1,
-    item: {
-      '@type': 'VideoObject',
-      name: `${v.title}: InternFlow walkthrough`,
-      description: v.body,
-      thumbnailUrl: `${BASE_URL}/videos/${v.slug}.jpg`,
-      contentUrl: `${BASE_URL}/videos/${v.slug}.mp4`,
-      uploadDate: TOOL_VIDEO_UPLOAD_DATE,
-      duration: `PT${v.seconds}S`,
-    },
-  })),
-};
+// The hero recording is the homepage's one VideoObject. Each tool's recording is marked up on that
+// tool's own page (ToolVideoGuide), where it is the main content.
+const heroVideoSchema = videoObjectSchema(HERO_VIDEO, BASE_URL);
 
 export default async function LandingPage() {
   const featured = await getFeaturedJobs({ limit: 6 });
@@ -65,7 +49,7 @@ export default async function LandingPage() {
 
   return (
     <>
-      <script id="tool-videos-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(toolVideosSchema) }} />
+      <script id="hero-video-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(heroVideoSchema) }} />
       <AuthRedirect />
       <MultilingualLanding previewJobs={previewJobs} />
     </>

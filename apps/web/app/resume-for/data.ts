@@ -36,7 +36,7 @@ function role(
         atsRoleId,
         searchTerm,
         metaTitle: `${name} Resume — Keywords, Bullet Examples & ATS Tips`,
-        metaDescription: `What to put on a ${name} resume: the keywords ATS systems scan for, common mistakes to avoid, and bullet-point templates, plus a free ATS check for this role.`,
+        metaDescription: `What to put on a ${name} resume: the keywords ATS systems scan for, mistakes to avoid and bullet examples, plus a free ATS check.`,
         heroDescription: `A resume for a ${name} role gets scanned by an ATS before a human ever reads it. Here's what to include, what trips people up, and how to phrase your project and experience bullets so both the parser and the recruiter reading it understand your impact.`,
         keywordsToInclude,
         commonMistakes,

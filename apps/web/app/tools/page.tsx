@@ -17,7 +17,7 @@ import SectionGuide from '@/app/components/SectionGuide';
 export const metadata: Metadata = {
     title: 'Free AI Career Tools for Students',
     description:
-        'Free career tools for engineering students: resume builder, ATS resume checker, GitHub README generator, LinkedIn optimizer, cover letter generator, job match score, application tracker and auto-apply.',
+        'Free career tools for students: resume builder, ATS checker, cover letter generator, LinkedIn optimizer, job match score, application tracker and more.',
     alternates: { canonical: `${BASE_URL}/tools`, languages: languageAlternates('/tools') },
 };
 

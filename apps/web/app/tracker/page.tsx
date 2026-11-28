@@ -10,11 +10,12 @@ import { BASE_URL } from '@/lib/jobs';
 import {  breadcrumbSchema, faqSchema, howToSchema, softwareApplicationSchema, languageAlternates, } from '@/lib/structuredData';
 import TrackView from '@/app/components/TrackView';
 import TrackerBoard from './TrackerBoard';
+import ToolVideoGuide from '@/app/components/ToolVideoGuide';
 import { StepGrid } from '@/app/components/FactGrid';
 import Breadcrumbs from '@/app/components/Breadcrumbs';
 const PAGE_URL = `${BASE_URL}/tracker`;
 const TITLE = 'My Applications — Free Job Application Tracker';
-const DESCRIPTION = 'Track every internship and job application in one free pipeline: Saved, Applied, Interviewing, Offer. Get deadline reminders so you never miss an application window — no account required.';
+const DESCRIPTION = 'Track every job and internship application in one free board: Saved, Applied, Interviewing, Offer, with deadline reminders. No account needed.';
 export const metadata: Metadata = {
     title: TITLE,
     description: DESCRIPTION,
@@ -86,6 +87,8 @@ export default function TrackerPage() {
       </p>
 
       <TrackerBoard />
+
+      <ToolVideoGuide slug="tracker" className="mt-14"/>
 
       <section className="mt-14">
         <h2 className="display text-xl font-medium">How it works</h2>
